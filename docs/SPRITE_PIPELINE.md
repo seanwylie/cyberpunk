@@ -42,3 +42,13 @@ Everything is code, runs headless on Linux (`pip install bpy pillow numpy`, Pyth
 Render cost: ~7 min for idle+run (1120 layer renders, 256 px, 32 spp) on 8 cores.
 Atlas extension (backwards compatible): an anim may carry `layers:[{name,image}]` + `order[dir][frame]=[layer idx far->near]`; the loader draws the layers in that order, else the flat `image`. Anims not yet authored fall back (dodge->run, attack/cast/hit/down->idle); only idle and run are required.
 Swapping a limb = bake a replacement mesh on the same joints into the same slot name (e.g. `armL`) and replace that layer's PNG; the depth `order` is per body, so re-run step 2 for the new loadout (or bake per-limb variants with the same pose/order).
+
+
+## v2 character (mesh/texture upgrade)
+- `textures.py OUT` now writes tileable 1024px **colour + roughness + height** maps per material (jacket, pants, olive, ivory, skin, boot, canvas, metal, cloth, glass, amber, rubber). Height maps drive a Bump node.
+- `build_char.py` v2: lofted/sculpted-look meshes (hood shell with face opening and thickness, goggles with lens/frame/strap, gaiter, hooded faded jacket with folds, open V front, solidify, belt, vial pouches, shoulder straps, back patch, knee pads, cargo pocket, ceramic ivory arm with segment plates/hinge discs/bolts/hose, fingered hands, olive stamped-plate leg with bolts, hinge caps, greaves, lugged boots). Shader adds ambient-occlusion multiply (AO node, not baked), low-body grime, and bevel-driven edge wear. Per-slot joined meshes, ~57k polys.
+- Each slot layer renders with shadows cast only by its own slot (the layers stay independent and swap-safe; contact shading comes from the AO node). Render uses a border crop per slot (~0.2 s/layer) and 64 spp + denoise.
+- Env: `ANIMS=idle,run,...  DIRS=S,SE  FRAMES=0,3  SLOTS=armL  SAMPLES  RES  MERGE=1` for partial re-renders. Cell size = RES/2 (RES 320 => 160 px cells).
+- `pack.py RAW OUT`: premultiplied-alpha downsample (no dark fringes), silhouette outline on the composite, thin per-layer outlines, light unsharp. `SCALE=` sets the atlas draw scale.
+- All 7 anims, all 8 directions (hit/down too, since the character is asymmetric: ivory L arm / olive R leg). `hitFrame` is written for attack (2) and cast (3) and exposed as `PlayerAnimator.frame / hitFrame / atHitFrame`.
+- Loader: the flat composite sheet is used by default; the per-slot layer sheets are only loaded with `?layers=1` (they would cost ~10x decoded memory on phones). Limb-swap tooling should enable that mode.

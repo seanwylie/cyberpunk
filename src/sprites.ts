@@ -52,9 +52,10 @@ export async function loadAtlas(url='sprites/player.json'):Promise<LoadedAtlas|n
     const r=await fetch(url,{cache:'no-cache'}); if(!r.ok) return null;
     const ct=r.headers.get('content-type')||''; if(ct.includes('text/html')) return null; // SPA fallback => no atlas
     const atlas=await r.json() as Atlas; const err=validateAtlas(atlas); if(err){ console.warn('[sprites] atlas rejected:',err); return null; }
+    const wantLayers=typeof location!=='undefined'&&/[?&]layers=1/.test(location.search); // modular layer sheets are only loaded on demand (memory); the flat composite is the default
     const base=url.slice(0,url.lastIndexOf('/')+1); const images:LoadedAtlas['images']={}; const layerImages:LoadedAtlas['layerImages']={};
     const loadImg=(src:string,a:AnimDef,what:string)=>new Promise<HTMLImageElement>((res,rej)=>{ const im=new Image(); im.onload=()=>{ if(im.naturalWidth<atlas.frame.w*a.frames||im.naturalHeight<atlas.frame.h*a.dirs) rej(new Error(what+' image smaller than frames*dirs*frame size')); else res(im); }; im.onerror=()=>rej(new Error('failed '+src)); im.src=base+src; });
-    await Promise.all(Object.entries(atlas.anims).map(async([n,a])=>{ const d=a!; if(d.layers&&d.order){ layerImages[n as AnimName]=await Promise.all(d.layers.map(l=>loadImg(l.image,d,n+'/'+l.name))); } else images[n as AnimName]=await loadImg(d.image,d,n); }));
+    await Promise.all(Object.entries(atlas.anims).map(async([n,a])=>{ const d=a!; if(wantLayers&&d.layers&&d.order){ layerImages[n as AnimName]=await Promise.all(d.layers.map(l=>loadImg(l.image,d,n+'/'+l.name))); } else images[n as AnimName]=await loadImg(d.image,d,n); }));
     return { atlas, images, layerImages };
   }catch(e){ console.warn('[sprites] falling back to procedural character:',e); return null; }
 }
@@ -66,6 +67,8 @@ export function validateAtlas(a:Atlas):string|null{
 
 /** Per-frame animation state chosen from game state (no sim changes needed). */
 export class PlayerAnimator {
+  /** current frame index + the anim's hitFrame (-1 if none); `atHitFrame` is true on the frame where damage/effect should visually land. */
+  frame=0; hitFrame=-1; get atHitFrame(){ return this.hitFrame>=0&&this.frame===this.hitFrame; }
   anim:AnimName='idle'; t=0; dir:Dir8=0; private lastHp=-1; private hitT=0; private lastDown=false; private atkT=0; private lastCastIdx=-1; private lastAtkCd=0;
   constructor(public loaded:LoadedAtlas){}
   update(g:{hp:number;downed:boolean;moving:boolean;dodgeT:number;cast:any;atkCd:number;face:number;inputMove:{x:number;y:number};dodgeDx:number;dodgeDy:number},dt:number){
@@ -81,7 +84,7 @@ export class PlayerAnimator {
   draw(c:CanvasRenderingContext2D,x:number,y:number,unit:number):boolean{
     const a=this.loaded.atlas; let an:AnimName=this.anim; if(!a.anims[an]) an=FALLBACK[an].find(k=>a.anims[k])||'idle';
     const d=a.anims[an], im=this.loaded.images[an], lay=this.loaded.layerImages[an]; if(!d||(!im&&!lay)) return false;
-    let f=Math.floor(this.t*d.fps); f=d.loop?f%d.frames:Math.min(f,d.frames-1);
+    let f=Math.floor(this.t*d.fps); f=d.loop?f%d.frames:Math.min(f,d.frames-1); this.frame=f; this.hitFrame=d.hitFrame??-1;
     let row:number=this.dir, mirror=false; if(d.dirs===5&&this.dir>4){ row=8-this.dir; mirror=true; } // SE(7)->SW(1), E(6)->W(2), NE(5)->NW(3)
     const W=a.frame.w,H=a.frame.h,s=unit*a.scale*(48/ (H*0.6)) ; // normalise: character ~60% of cell height ≈ 48 procedural px
     c.save(); c.translate(x,y); if(mirror) c.scale(-1,1); c.imageSmoothingEnabled=true;
