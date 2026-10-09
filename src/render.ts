@@ -12,16 +12,20 @@ const hash=(x:number,y:number)=>{ let h=(x*374761393+y*668265263)|0; h=(h^(h>>>1
 export class Renderer {
   ctx:CanvasRenderingContext2D; w=0; h=0; dpr=1; TW=64; camx=0; camy=0; shake=0;
   anim:PlayerAnimator|null=null; lastT=0; env:Env|null=null; private wallCache=new WeakMap<Level,Map<number,{style:'concrete'|'steel';v:number;zone:string}>>();
-  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); loadAtlas().then(l=>{ if(l) this.anim=new PlayerAnimator(l); }); }
+  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); loadAtlas().then(l=>{ if(l){ this.anim=new PlayerAnimator(l); this.anim.onImpact=k=>this.impact(k); } }); }
   resize(){ this.dpr=Math.min(window.devicePixelRatio||1,2); const w=window.innerWidth,h=window.innerHeight; this.canvas.width=w*this.dpr; this.canvas.height=h*this.dpr; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
   // projection
   sx(x:number,y:number){ return (x-y)*this.TW/2 + this.w/2 - this.camx; }
   sy(x:number,y:number,z=0){ return (x+y)*this.TW/4 + this.h/2 - this.camy - z*this.TW/2; }
+  /** Impact emphasis (screen shake) fired exactly at the sim's hit time == sprite hitFrame. Procedural fallback uses the same edge detector. */
+  impact(k:'attack'|'cast'){ if(this.g.save.settings.reducedFx) return; this.shake=Math.max(this.shake,k==='cast'?.55:.2); }
+  private fbAtk=0; private fbAb=0; private fbCast=false;
+  private fallbackImpacts(){ const g=this.g; const ab=g.abCd.reduce((a:number,b:number)=>a+b,0); if(g.atkCd>this.fbAtk+.01) this.impact('attack'); if(this.fbCast&&!g.cast&&ab>this.fbAb+.01) this.impact('cast'); this.fbAtk=g.atkCd; this.fbAb=ab; this.fbCast=!!g.cast; }
   screenToWorld(px:number,py:number){ const a=(px-this.w/2+this.camx)/(this.TW/2), b=(py-this.h/2+this.camy)/(this.TW/4); return { x:(a+b)/2, y:(b-a)/2 }; }
   screenVecToWorld(dx:number,dy:number){ const a=dx/(this.TW/2), b=dy/(this.TW/4); return { x:(a+b)/2, y:(b-a)/2 }; }
 
   draw(dt:number){
-    const g=this.g, c=this.ctx; c.setTransform(this.dpr,0,0,this.dpr,0,0);
+    const g=this.g, c=this.ctx; c.setTransform(this.dpr,0,0,this.dpr,0,0); if(!this.anim) this.fallbackImpacts(); const sh=this.shake>0?this.shake*7:0; if(sh) c.translate((Math.random()*2-1)*sh,(Math.random()*2-1)*sh);
     const tx=(g.px-g.py)*this.TW/2, ty=(g.px+g.py)*this.TW/4; this.camx+= (tx-this.camx)*Math.min(1,dt*8); this.camy+=(ty-this.camy)*Math.min(1,dt*8);
     if(this.shake>0) this.shake=Math.max(0,this.shake-dt*3);
     c.fillStyle=PAL.soot; c.fillRect(0,0,this.w,this.h);

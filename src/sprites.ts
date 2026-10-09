@@ -1,3 +1,4 @@
+import { COMBAT } from './config';
 /**
  * Sprite-sheet character animation (optional layer over the procedural character).
  * Drop-in: put public/sprites/player.json (+ PNGs it references) and the game uses it automatically.
@@ -65,26 +66,45 @@ export function validateAtlas(a:Atlas):string|null{
   return null;
 }
 
-/** Per-frame animation state chosen from game state (no sim changes needed). */
+/** Per-frame animation state chosen from game state. The sim stays authoritative: playback is time-scaled/offset so the
+ *  anim's hitFrame is shown exactly when the sim applies the hit (auto-attack: same tick; cast: when windup ends; dodge: spans COMBAT.dodge.time). */
+export type ImpactKind='attack'|'cast';
 export class PlayerAnimator {
   /** current frame index + the anim's hitFrame (-1 if none); `atHitFrame` is true on the frame where damage/effect should visually land. */
   frame=0; hitFrame=-1; get atHitFrame(){ return this.hitFrame>=0&&this.frame===this.hitFrame; }
-  anim:AnimName='idle'; t=0; dir:Dir8=0; private lastHp=-1; private hitT=0; private lastDown=false; private atkT=0; private lastCastIdx=-1; private lastAtkCd=0;
+  anim:AnimName='idle'; t=0; dir:Dir8=0; impacts=0; lastImpact:{kind:ImpactKind;anim:AnimName;frame:number;hitFrame:number}|null=null; onImpact?:(k:ImpactKind)=>void;
+  private lastHp=-1; private hitT=0; private atkT=0; private followT=0; private lastAtkCd=0; private lastAbSum=0; private wasCast=false; private lastDown=false;
   constructor(public loaded:LoadedAtlas){}
-  update(g:{hp:number;downed:boolean;moving:boolean;dodgeT:number;cast:any;atkCd:number;face:number;inputMove:{x:number;y:number};dodgeDx:number;dodgeDy:number},dt:number){
-    const L=this.loaded.atlas.anims; let next:AnimName='idle';
-    if(this.lastHp>=0&&g.hp<this.lastHp-0.5) this.hitT=(1/(L.hit?.fps||12))*(L.hit?.frames||4); this.lastHp=g.hp; this.hitT=Math.max(0,this.hitT-dt);
-    if(g.atkCd>this.lastAtkCd+0.01) this.atkT=(L.attack?.frames||6)/(L.attack?.fps||16); this.lastAtkCd=g.atkCd; this.atkT=Math.max(0,this.atkT-dt);
-    if(g.downed) next='down'; else if(g.dodgeT>0) next='dodge'; else if(g.cast) next='cast'; else if(this.hitT>0) next='hit'; else if(this.atkT>0) next='attack'; else if(g.moving) next='run';
+  private def(n:AnimName){ const a=this.loaded.atlas.anims; return a[n]?a[n]!:undefined; }
+  private resolve(n:AnimName):AnimName{ const a=this.loaded.atlas.anims; return a[n]?n:(FALLBACK[n].find(k=>a[k])||'idle'); }
+  private sample(){ const d=this.def(this.resolve(this.anim)); if(!d){ this.frame=0; this.hitFrame=-1; return; } let f=Math.floor(this.t*d.fps+1e-6); f=d.loop?f%d.frames:Math.max(0,Math.min(f,d.frames-1)); this.frame=f; this.hitFrame=d.hitFrame??-1; }
+  private impact(k:ImpactKind,n:AnimName){ this.impacts++; this.sample(); this.lastImpact={kind:k,anim:this.anim,frame:this.frame,hitFrame:this.hitFrame}; this.onImpact?.(k); }
+  update(g:{hp:number;downed:boolean;moving:boolean;dodgeT:number;cast:any;atkCd:number;abCd?:number[];face:number;inputMove:{x:number;y:number};dodgeDx:number;dodgeDy:number},dt:number){
+    const L=this.loaded.atlas.anims; const dur=(n:AnimName)=>{ const d=L[n]; return d?d.frames/d.fps:0; }; const hitTime=(n:AnimName)=>{ const d=L[n]; return d&&d.hitFrame!=null?d.hitFrame/d.fps:0; };
+    if(this.lastHp>=0&&g.hp<this.lastHp-0.5&&!g.downed) this.hitT=dur('hit')||.3; this.lastHp=g.hp; this.hitT=Math.max(0,this.hitT-dt);
+    // auto-attack: the sim deals damage on the tick atkCd is set, so start playback AT the hit frame (anticipation is skipped; follow-through plays)
+    let attackStart=false; if(g.atkCd>this.lastAtkCd+0.01&&!g.downed){ attackStart=true; this.atkT=Math.max(.001,dur('attack')-hitTime('attack')); } this.lastAtkCd=g.atkCd; this.atkT=Math.max(0,this.atkT-dt);
+    // ability cast: playback is scaled so hitFrame lands exactly when windup completes (sim executes the ability); then follow-through at normal speed
+    const abSum=(g.abCd||[]).reduce((a,b)=>a+b,0); const executed=this.wasCast&&!g.cast&&abSum>this.lastAbSum+0.01&&!g.downed&&g.dodgeT<=0; this.lastAbSum=abSum; this.wasCast=!!g.cast;
+    if(executed) this.followT=Math.max(.001,dur('cast')-hitTime('cast')); this.followT=Math.max(0,this.followT-dt);
+    if(g.cast) this.followT=0;
+    let next:AnimName='idle'; let driven:number|null=null;
+    if(g.downed) next='down'; else if(g.dodgeT>0){ next='dodge'; const dd=L.dodge; if(dd) driven=Math.min(1,Math.max(0,1-g.dodgeT/COMBAT.dodge.time))*dd.frames/dd.fps*0.9999; }
+    else if(g.cast){ next='cast'; const c=g.cast, w=Math.max(.001,c.ab?.windup??.2); driven=Math.min(1,c.t/w)*hitTime('cast'); }
+    else if(this.followT>0) next='cast'; else if(this.hitT>0) next='hit'; else if(this.atkT>0) next='attack'; else if(g.moving) next='run';
     if(next!==this.anim){ this.anim=next; this.t=0; } else this.t+=dt;
+    if(driven!=null) this.t=driven; else if(executed&&next==='cast') this.t=hitTime('cast'); else if(attackStart&&next==='attack') this.t=hitTime('attack');
+    if(g.downed&&!this.lastDown){ this.anim='down'; this.t=0; } this.lastDown=g.downed;
     const fx=next==='dodge'?g.dodgeDx:g.moving&&next==='run'?g.inputMove.x:Math.cos(g.face), fy=next==='dodge'?g.dodgeDy:g.moving&&next==='run'?g.inputMove.y:Math.sin(g.face);
     if(Math.hypot(fx,fy)>0.05) this.dir=dirFromWorld(fx,fy);
+    this.sample();
+    if(executed&&next==='cast') this.impact('cast','cast'); else if(attackStart&&next==='attack') this.impact('attack','attack');
   }
   /** Draw with feet at (x,y) in screen px. unit = TW/64. Returns false if anim missing (caller falls back). */
   draw(c:CanvasRenderingContext2D,x:number,y:number,unit:number):boolean{
-    const a=this.loaded.atlas; let an:AnimName=this.anim; if(!a.anims[an]) an=FALLBACK[an].find(k=>a.anims[k])||'idle';
+    const a=this.loaded.atlas; const an=this.resolve(this.anim);
     const d=a.anims[an], im=this.loaded.images[an], lay=this.loaded.layerImages[an]; if(!d||(!im&&!lay)) return false;
-    let f=Math.floor(this.t*d.fps); f=d.loop?f%d.frames:Math.min(f,d.frames-1); this.frame=f; this.hitFrame=d.hitFrame??-1;
+    this.sample(); const f=this.frame;
     let row:number=this.dir, mirror=false; if(d.dirs===5&&this.dir>4){ row=8-this.dir; mirror=true; } // SE(7)->SW(1), E(6)->W(2), NE(5)->NW(3)
     const W=a.frame.w,H=a.frame.h,s=unit*a.scale*(48/ (H*0.6)) ; // normalise: character ~60% of cell height ≈ 48 procedural px
     c.save(); c.translate(x,y); if(mirror) c.scale(-1,1); c.imageSmoothingEnabled=true;

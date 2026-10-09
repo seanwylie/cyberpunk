@@ -14,14 +14,43 @@ for n,(f,d,fps,l) in A.items():
         for c in range(f): dr.rectangle([c*64+20,r*64+10,c*64+44,r*64+58],fill=(255,0,255,255))
     im.save('${dir}/'+n+'.png')
 P`);
-const atlas = { version:1, frame:{w:64,h:64}, anchor:{x:32,y:58}, scale:1, anims:Object.fromEntries(Object.entries(anims).map(([n,[f,d,fps,l]])=>[n,{image:n+'.png',frames:f,fps,loop:l,dirs:d}])) };
+const atlas = { version:1, frame:{w:64,h:64}, anchor:{x:32,y:58}, scale:1, anims:Object.fromEntries(Object.entries(anims).map(([n,[f,d,fps,l]])=>[n,{image:n+'.png',frames:f,fps,loop:l,dirs:d,...(n==='attack'?{hitFrame:2}:n==='cast'?{hitFrame:3}:{})}])) };
 fs.writeFileSync(dir+'/player.json', JSON.stringify(atlas));
+await new Promise(r=>setTimeout(r,2500)); // let vite's dev watcher notice the new public files
 let fails=0; const ok=(c,m)=>{ console.log((c?'PASS ':'FAIL ')+m); if(!c) fails++; };
 try {
-  let { browser, page } = await launch(); await sleep(1500);
+  let { browser, page } = await launch(); await sleep(2500);
   ok(await page.evaluate(()=>!!window.__rend&&true) !== false, 'page boots with atlas');
   const used = await page.evaluate(()=>{ const r=window.__rend; return r? !!r.anim : 'noexpose'; });
   console.log('anim loaded:', used); if(used!=='noexpose') ok(used===true,'atlas loaded and animator active');
+  // ---- animation/combat sync (sim timing untouched; playback is aligned/scaled to it) ----
+  const sync = await page.evaluate(async()=>{
+    const { PlayerAnimator } = await import('/src/sprites.ts'); const R=window.__rend; const A=new PlayerAnimator(R.anim.loaded); const out={};
+    const base={hp:100,downed:false,moving:false,dodgeT:0,cast:null,atkCd:0,abCd:[0,0,0],face:0,inputMove:{x:0,y:0},dodgeDx:1,dodgeDy:0};
+    const st={...base}; const step=(dt=1/60)=>A.update(st,dt);
+    for(let i=0;i<5;i++) step();
+    // auto-attack: hit frame shown on the very tick atkCd is set
+    st.atkCd=.5; step(); out.atk={anim:A.anim,frame:A.frame,hit:A.hitFrame,li:A.lastImpact&&A.lastImpact.kind,n:A.impacts};
+    for(let i=0;i<60;i++){ st.atkCd=Math.max(0,st.atkCd-1/60); step(); } out.atkEnd=A.anim;
+    // cast: windup .25s scaled so hitFrame(3) lands exactly at windup end, then follow-through
+    st.cast={t:0,ab:{windup:.25}}; const frames=[]; let t=0; for(;t<.25-1e-9;t+=1/60){ st.cast.t=t; step(); frames.push(A.frame); } out.castPre=frames; out.castPreMax=Math.max(...frames);
+    st.cast=null; st.abCd=[5,0,0]; step(); out.cast={anim:A.anim,frame:A.frame,hit:A.hitFrame,li:A.lastImpact&&A.lastImpact.kind,n:A.impacts};
+    for(let i=0;i<5;i++){ st.abCd=[5,0,0]; step(); } out.castFollow=A.anim;
+    // cancelled cast (no cooldown commit) must not fire an impact
+    for(let i=0;i<60;i++){ st.abCd=[0,0,0]; step(); } const n0=A.impacts; st.cast={t:0,ab:{windup:.3}}; step(); st.cast=null; step(); out.cancelN=A.impacts-n0;
+    for(let i=0;i<60;i++) step();
+    // dodge: spans exactly COMBAT.dodge.time (.22s) -> first frame at start, last frame just before end
+    const D=.22; st.dodgeT=D; const df=[]; for(let tt=D;tt>0;tt-=1/60){ st.dodgeT=tt; step(); df.push(A.frame); } out.dodgeFrames=df; out.dodgeAnim=A.anim; st.dodgeT=0; step(); out.afterDodge=A.anim;
+    // hit then down
+    for(let i=0;i<30;i++) step(); st.hp=90; step(); out.hit=A.anim; for(let i=0;i<30;i++) step(); st.hp=0; st.downed=true; step(); out.down=A.anim; for(let i=0;i<120;i++) step(); out.downFrame=A.frame;
+    return out; });
+  console.log(JSON.stringify(sync));
+  ok(sync.atk.anim==='attack'&&sync.atk.frame===sync.atk.hit&&sync.atk.hit===2&&sync.atk.li==='attack'&&sync.atk.n===1,'auto-attack: anim hitFrame (2) shown on the tick the sim hits');
+  ok(sync.atkEnd==='idle','attack anim returns to idle');
+  ok(sync.castPreMax<3||sync.castPre[sync.castPre.length-1]<=3,'cast: hitFrame not passed before windup ends'); ok(sync.cast.anim==='cast'&&sync.cast.frame===3&&sync.cast.li==='cast','cast: hitFrame (3) shown exactly when ability executes'); ok(sync.castFollow==='cast','cast: follow-through plays after hit');
+  ok(sync.cancelN===0,'cancelled cast fires no impact');
+  ok(sync.dodgeAnim==='dodge'&&sync.dodgeFrames[0]===0&&sync.dodgeFrames[sync.dodgeFrames.length-1]===anims.dodge[0]-1&&sync.dodgeFrames.every((v,i,a)=>i===0||v>=a[i-1]),'dodge: all frames span the 0.22s dodge, monotonic'); ok(sync.afterDodge!=='dodge','dodge anim ends with dodge');
+  ok(sync.hit==='hit','hit anim triggers on damage'); ok(sync.down==='down'&&sync.downFrame===anims.down[0]-1,'down anim triggers and holds last frame');
   await browser.close();
   clear();
   ({ browser, page } = await launch()); await sleep(800);
