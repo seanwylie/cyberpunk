@@ -95,3 +95,23 @@ Debug hooks: `window.__game`, `__ui`, `__rend`; `game.dbg.god/oneShot` for tests
 
 ## Test evidence (`npm test`)
 ~50 assertions on the real objects in headless Chrome, including: gates/locks, force/hack routes and boss arbitration, boss reveal damage-free + full length + music state, completion consumed once, loot/pickup, town channel interruption, instance persistence across town trip and **page reload**, invalid-aim cancel costs nothing, dodge cancels windup, heat/overheat, level-filter, full-pack behaviour, down/checkpoint/repair-bill rules, staged-draft/Apply, mock story, validator rejection, provider outage. Screenshots in `shots/`.
+
+
+## Universe & dungeon pack (v0.2)
+
+Lore bible, factions, recurring cast, districts, season-1 framing, MMO roadmap and the decision log: **`docs/UNIVERSE.md`**. Art requests: `docs/DUNGEON_ART_PROMPTS.md`. Concept sheets: `public/dungeons/source/`.
+
+**Dungeons** (all from the town gate, `Dungeon gates`; the select screen filters to your level band by default, tick "Show all" for every dungeon; entry is never level-gated):
+
+| Dungeon | Level band | Replacement bosses |
+|---|---|---|
+| Reclamation Annex | 10-20 | hack terminal -> Neural Warden; force armory fuse -> Reclamation Enforcer |
+| Kestrel Distribution Hub 9 | 8-18 | hack order console -> Retrieval Unit R-0; defib cradle -> Returns Reclaimer |
+| Harrow-Brandt Foundry Line 7 | 18-30 | force interlock -> Ladle-Tyrant Brannoch; hack console -> Governor ORE-9 |
+| Aldane Ward 9 Clinic | 22-34 | hack terminal -> GEMINI Autosurgeon; cloak seal -> The Recovered |
+
+* Each dungeon has its own daily lockout (boss completion consumes it), its own loot pools and item-level cap, hazards, named elites, and orange signatures (level-gated; one authored Easter egg, Lazarus Rack).
+* **Contacts & contracts:** press `C` in town (or talk to the fixer). Nine contacts, 14 deterministic contracts (credits and reputation only). Contract progress and dungeon events feed the story mock.
+* **Dev tools** (backtick): "Grant all dungeon-pack hardware", level presets (12/20/26/30/34), reset lockouts. To see the orange rules in action set level 34, then farm or call `__game.dropEntry({item:'sig_anvil_arm',w:1},__game.px,__game.py)`.
+* Data lives in `src/content/` (`dungeons.ts`, `enemies.ts`, `items.ts`, `npcs.ts`); adding a dungeon is a layout builder plus a registry entry.
+* Tests: `npm test` runs `tests/smoke.mjs` and `tests/dungeons.mjs`. `node tests/dungeon_shots.mjs` captures screenshots into `shots/dungeons/`.

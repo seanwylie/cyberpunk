@@ -41,7 +41,7 @@ export class Game {
 
   // ---------- mode transitions ----------
   enterTown(first=false){
-    this.mode='town'; this.level=buildTown(); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; this.px=this.level.spawn.x; this.py=this.level.spawn.y; this.channel=null; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
+    this.mode='town'; this.level=buildTown(); for(const it of this.level.interacts) if(it.id==='annex') it.label='Dungeon gates (select a dungeon)'; this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; this.px=this.level.spawn.x; this.py=this.level.spawn.y; this.channel=null; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.');
   }
   hasLiveInstance(){ return !!this.inst && this.inst.expiresAt>this.now(); }
