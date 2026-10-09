@@ -1,6 +1,7 @@
 import { Game, En } from './sim';
 import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES } from './config';
 import { installedLayout } from './build';
+import { PlayerAnimator, loadAtlas } from './sprites';
 
 export const PAL = { concrete:'#7a7c78', soot:'#1b1c1e', bone:'#cfc6b0', oxide:'#8f3b2e', metal:'#6b5a4a', slate:'#4f6578', olive:'#6b7035', skin:'#b29b84' };
 const ZCOL:Record<string,[string,string]> = { yard:['#7b7d79','#727470'], proc:['#6c6e6b','#646663'], junction:['#74777b','#6c6f73'], boss:['#5f6163','#57595b'], salvage:['#6d6b63','#656359'], corridor:['#696b69','#616361'], passage:['#55585b','#4d5053'], town:['#7c7b75','#74736d'], none:['#222','#222'] };
@@ -8,7 +9,8 @@ const hash=(x:number,y:number)=>{ let h=(x*374761393+y*668265263)|0; h=(h^(h>>>1
 
 export class Renderer {
   ctx:CanvasRenderingContext2D; w=0; h=0; dpr=1; TW=64; camx=0; camy=0; shake=0;
-  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; }
+  anim:PlayerAnimator|null=null; lastT=0;
+  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; loadAtlas().then(l=>{ if(l) this.anim=new PlayerAnimator(l); }); }
   resize(){ this.dpr=Math.min(window.devicePixelRatio||1,2); const w=window.innerWidth,h=window.innerHeight; this.canvas.width=w*this.dpr; this.canvas.height=h*this.dpr; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
   // projection
   sx(x:number,y:number){ return (x-y)*this.TW/2 + this.w/2 - this.camx; }
@@ -84,6 +86,7 @@ export class Renderer {
   drawPlayer(){
     const g=this.g, c=this.ctx; const s=this.TW/64; const a=this.sx(g.px,g.py), b=this.sy(g.px,g.py); const L=installedLayout(g.save); const broken=g.inst?.broken||[];
     c.save(); c.fillStyle='rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(a,b,13*s,6*s,0,0,7); c.fill();
+    if(this.anim){ const now=g.time, dtp=Math.min(.1,Math.max(0,now-this.lastT)); this.lastT=now; this.anim.update(g as any,dtp); if(g.cloakT>0) c.globalAlpha=.32; else if(g.iframes>0&&g.dodgeT>0) c.globalAlpha=.55; if(this.anim.draw(c,a,b,s)){ c.restore(); if(g.save.settings.reducedFx===false&&g.braceT>0) this.ring(g.px,g.py,.7,'#d8d2bf',.8); return; } }
     if(g.downed){ c.translate(a,b-6*s); c.rotate(-1.4); }
     else { c.translate(a,b); }
     if(g.cloakT>0) c.globalAlpha=.32; if(g.iframes>0&&g.dodgeT>0) c.globalAlpha=.55;
