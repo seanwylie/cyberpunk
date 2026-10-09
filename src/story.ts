@@ -18,7 +18,7 @@ export const APPROVED = {
 };
 export function newStory():StoryState { return { events:[], edges:[{from:'player',to:'odalys_vane',roles:['contractor'],w:1}], arc:'quiet_trade', clues:{A:null,B:null,general:null}, town:null, log:[], nextEvent:1, lastProposalEvent:0, boosts:{} }; }
 export function record(s:StoryState, kind:EventKind, key:string, n=1) {
-  const e=s.events.find(e=>e.kind===kind&&e.key===key&&e.id>s.lastProposalEvent); if(e){e.n+=n;return;}
+  const e=s.events.find(e=>e.kind===kind&&e.key===key&&e.id>s.lastProposalEvent); if(e){e.n+=n; e.id=s.nextEvent++; return;}
   s.events.push({id:s.nextEvent++,kind,key,n,t:Date.now()}); if(s.events.length>200) s.events.splice(0,50);
 }
 export interface BoundedContext { facts:string[]; events:StoryEvent[]; edges:Edge[]; allowed:{ dungeons:string[]; contacts:string[]; nodes:string[]; roles:string[]; arcs:string[]; conditions:string[]; sources:string[] }; currentArc:string; }

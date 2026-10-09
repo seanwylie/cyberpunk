@@ -9,7 +9,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
-    "test": "node tests/smoke.mjs",
+    "test": "node tests/smoke.mjs && node tests/dungeons.mjs",
+    "test:dungeons": "node tests/dungeons.mjs",
     "test:music": "node tests/music.mjs",
     "test:sprites": "node tests/sprites.mjs",
     "shots": "node tests/screenshots.mjs"
