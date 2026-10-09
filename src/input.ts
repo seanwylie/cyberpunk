@@ -3,7 +3,7 @@ import { Renderer } from './render';
 import { AudioSys } from './audio';
 
 export interface InputOpts { modalOpen:()=>boolean; onToggleInv:()=>void; onEsc:()=>void; }
-/** Keyboard/mouse + touch. Desktop: WASD, hold Q/E/R (or 1/2/3) to aim at cursor and release to cast, Space dodge, F interact, T town. */
+/** Keyboard/mouse + touch. Desktop: WASD, hold Q/E/R (or 1/2/3) to aim at cursor and release to cast, F dodge, Space interact, T town. */
 export class Input {
   keys=new Set<string>(); mouse={x:0,y:0}; heldAbility:number|null=null; joy:{id:number;ox:number;oy:number;x:number;y:number}|null=null; touchMode=false; aimBtn:{id:number;idx:number;cx:number;cy:number}|null=null;
   joyEl:HTMLElement; knobEl:HTMLElement; fixedZone:HTMLElement;
@@ -19,13 +19,13 @@ export class Input {
     window.addEventListener('pagehide',()=>this.g.saveNow());
   }
   abilityKey(k:string){ return k==='q'||k==='1'?0:k==='e'||k==='2'?1:k==='r'||k==='3'?2:-1; }
-  kd(e:KeyboardEvent){ if((e.target as HTMLElement)?.tagName==='INPUT') return; this.audio.resume(); const k=e.key.toLowerCase(); if(e.repeat&&k!==' ') { if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault(); return; }
+  kd(e:KeyboardEvent){ if((e.target as HTMLElement)?.tagName==='INPUT') return; this.audio.resume(); const k=e.key.toLowerCase(); if(e.repeat&&k!=='f') { if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault(); return; }
     if(k==='escape'){ this.opts.onEsc(); return; }
-    if(this.opts.modalOpen()&&k!==' ') return;
+    if(this.opts.modalOpen()&&k!=='f') return;
     this.keys.add(k);
     const ai=this.abilityKey(k); if(ai>=0&&this.heldAbility===null){ this.heldAbility=ai; this.g.beginAim(ai); this.updateAimFromMouse(); e.preventDefault(); }
-    else if(k===' '){ this.g.dodge(); this.heldAbility=null; e.preventDefault(); }
-    else if(k==='f'||k==='enter'&&false) this.g.interact();
+    else if(k==='f'){ this.g.dodge(); this.heldAbility=null; e.preventDefault(); }
+    else if(k===' '||k==='enter'&&false){ this.g.interact(); e.preventDefault(); }
     else if(k==='t') this.g.townReturn();
     else if(k==='i'||k==='tab'){ this.opts.onToggleInv(); e.preventDefault(); }
     else if(k==='x') this.g.clearTarget();

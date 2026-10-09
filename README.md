@@ -28,8 +28,8 @@ node tests/bot.mjs A 900   # naive bot playthrough with build kit A/B/C (pacing 
 | Basic attack | automatic on the closest eligible enemy in range | same |
 | Manual target | click enemy (X / right-click clears) | tap enemy |
 | 3 abilities | **hold** Q/E/R (or 1/2/3) to aim at the cursor, **release** to cast | press & drag from the ability button, release to cast; drag far away to cancel |
-| Dodge | Space (one button, no direction) | big button |
-| Interact | F (explicit press, never hold) | Interact button appears near things |
+| Dodge | F (one button, no direction) | big button |
+| Interact | Space (explicit press, never hold) | Interact button appears near things |
 | Town return | T (5 s channel, interrupted by movement/damage) | “Town” button |
 | Live pack/compare | I / Tab | “Pack” |
 | Stim | H | “Stim” |
