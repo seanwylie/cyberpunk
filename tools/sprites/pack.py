@@ -17,8 +17,10 @@ def save(im,path,q=None):
 os.makedirs(OUT,exist_ok=True)
 first=Image.open(f'{RAW}/idle/{LAYERS[0]}/S_0.png'); SRC=first.width; CELL=SRC//2
 OL=(20,17,14)
+OLR=int(os.environ.get('OL_R','3')); OLA=float(os.environ.get('OL_A','0.42'))  # thin, soft edge darkening (was r=5,a=0.92 = heavy black line)
 def outline(im,r=5,a=0.92):
-    al=im.split()[3]; ol=al.filter(ImageFilter.MaxFilter(r)).filter(ImageFilter.GaussianBlur(0.6)).point(lambda v:min(255,int(v*2.2*a)))
+    r,a=OLR,OLA   # fixed thin/soft edge; call-site args kept for compatibility
+    al=im.split()[3]; ol=al.filter(ImageFilter.MaxFilter(r)).filter(ImageFilter.GaussianBlur(0.8)).point(lambda v:min(255,int(v*2.2*a)))
     dark=Image.new('RGBA',im.size,OL+(255,)); dark.putalpha(ol); return Image.alpha_composite(dark,im)
 def down(im):
     out=im.convert('RGBa').resize((CELL,CELL),Image.LANCZOS).convert('RGBA')
