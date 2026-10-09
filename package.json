@@ -1,0 +1,20 @@
+{
+  "name": "arpg-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "start": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc --noEmit",
+    "test": "node tests/smoke.mjs",
+    "shots": "node tests/screenshots.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.50.0",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0"
+  }
+}

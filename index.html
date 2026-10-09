@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<meta name="theme-color" content="#1b1c1e" />
+<link rel="icon" href="data:," />
+<link rel="manifest" href="manifest.webmanifest" />
+<title>Annex Runner – ARPG prototype</title>
+<link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+  <div id="topleft">
+    <div class="bar hp"><div id="hpfill"></div><span id="hptxt"></span></div>
+    <div class="bar heat"><div id="heatfill"></div><span id="heattxt">HEAT</span></div>
+    <div id="meta"><span id="lvl"></span> <span id="timer"></span> <span id="carry"></span></div>
+  </div>
+  <div id="topright">
+    <button id="btn-inv" class="chip-btn" title="Live inventory (I)">Pack</button>
+    <button id="btn-stim" class="chip-btn" title="Stim (H)">Stim <b id="stimn">0</b></button>
+    <button id="btn-town" class="chip-btn" title="Return to town (T)">Town</button>
+    <button id="btn-menu" class="chip-btn" title="Menu">☰</button>
+  </div>
+  <div id="support" style="display:none"></div>
+  <div id="toasts"></div>
+  <div id="banner"></div>
+  <div id="channelbar" style="display:none"><div></div><span></span></div>
+  <div id="dialog" style="display:none"></div>
+  <div id="livepanel" style="display:none"></div>
+  <div id="downpanel" style="display:none"></div>
+  <div id="joyfixed"></div>
+  <div id="joy"><div id="joyknob"></div></div>
+  <div id="controls">
+    <button id="interact" style="display:none">Interact <small>F</small></button>
+    <div id="abilities">
+      <button class="abtn" data-idx="0"><span class="aname"></span><span class="akey">Q</span><i class="cdfill"></i></button>
+      <button class="abtn" data-idx="1"><span class="aname"></span><span class="akey">E</span><i class="cdfill"></i></button>
+      <button class="abtn" data-idx="2"><span class="aname"></span><span class="akey">R</span><i class="cdfill"></i></button>
+    </div>
+    <button id="dodge">Dodge<small>Space</small><i class="cdfill"></i></button>
+  </div>
+  <div id="hint"></div>
+</div>
+<div id="modal" style="display:none"></div>
+<div id="rotate"><div>Rotate your device to landscape</div></div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
