@@ -115,13 +115,16 @@ export class PlayerAnimator {
     if(Math.hypot(fx,fy)>0.05){ const kf=ringPos(fx,fy); if(Math.abs(ringDiff(kf,this.tk))>0.5+0.18||this.tk<0) this.tk=((Math.round(kf)%8)+8)%8; }
     const snap=next==='dodge'||next==='down'||(g.dodgeT>0);
     if(snap){ this.dk=this.tk; this.stepT=0; } else if(this.dk!==this.tk){ this.stepT-=dt; if(this.stepT<=0){ const d=ringDiff(this.tk,this.dk); const bigTurn=Math.abs(d)>=3; this.dk=(((this.dk+(d>0?1:-1))%8)+8)%8; this.stepT=(next==='attack'||next==='cast'?.035:.05)*(bigTurn?.8:1); } } else this.stepT=0;
+    // ghost fix: starting a new clip (e.g. idle->run) snaps straight to the target facing; stepping through 45deg notches under a cross-fade left the old facing visible as a faint copy
+    if(next!==this.anim&&next!=='idle'){ this.dk=this.tk; this.stepT=0; }
     this.dir=ringToDir(this.dk);
     if(next!==this.anim){ this.anim=next; this.t=0; } else this.t+=dt;
     if(driven!=null) this.t=driven; else if(executed&&next==='cast') this.t=hitTime('cast'); else if(attackStart&&next==='attack') this.t=hitTime('attack');
     if(g.downed&&!this.lastDown){ this.anim='down'; this.t=0; } this.lastDown=g.downed;
     const animChanged=this.anim!==oldAnim, dirChanged=this.dir!==oldDir;
     if(this.fade<1){ this.fade=Math.min(1,this.fade+dt/this.fadeDur); if(this.prev) this.prev.t+=dt; }
-    if(animChanged||dirChanged){ this.prev={anim:oldAnim,t:oldT+dt,dir:oldDir}; this.fade=0; this.fadeDur=this.anim==='dodge'?.03:this.anim==='down'?.08:animChanged?(this.anim==='hit'?.04:this.anim==='attack'||this.anim==='cast'?.07:.13):.07; if(this.resolve(oldAnim)===this.resolve(this.anim)&&!dirChanged) this.fade=1; }
+    if(!animChanged&&dirChanged){ this.prev=null; this.fade=1; }   // pure facing notch while running/idling: no cross-fade (a chained fade always left the previous facing half-visible = ghost)
+    else if(animChanged||dirChanged){ this.prev={anim:oldAnim,t:oldT+dt,dir:oldDir}; this.fade=0; this.fadeDur=this.anim==='dodge'?.03:this.anim==='down'?.08:animChanged?(this.anim==='hit'?.04:this.anim==='attack'||this.anim==='cast'?.06:.07):.07; if(animChanged&&dirChanged&&this.fadeDur>.04) this.fadeDur=.04; /* different facing: keep the overlap to ~2 frames so no readable second silhouette */ if(this.resolve(oldAnim)===this.resolve(this.anim)&&!dirChanged) this.fade=1; }
     this.sample();
     if(executed&&next==='cast') this.impact('cast','cast'); else if(attackStart&&next==='attack') this.impact('attack','attack');
   }
