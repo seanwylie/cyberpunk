@@ -9,11 +9,13 @@ SHEETS={
  'enemies_foundry':{'teague':[95,15,335,280],'brannoch':[335,25,665,285],'ore9':[705,5,1010,285],'slaghauler':[5,315,190,535],'ladlecrew':[200,325,380,535],'cinderhound':[395,350,630,545],'slagcannon':[630,360,825,530],'quenchpriest':[810,320,1010,555]},
  'enemies_clinic':{'surgeon':[35,5,295,270],'autosurgeon':[360,0,670,270],'recovered':[700,5,925,275],'orderly':[35,315,170,500],'nursebot':[225,315,355,500],'gurneyrunner':[405,340,565,495],'sentry':[630,330,760,505],'matron':[775,310,975,520]},
  'enemies_warehouse':{'stockmgr':[125,60,265,285],'retrieval':[370,50,650,305],'reclaimer':[775,55,905,290],'picker':[45,355,150,500],'loader':[195,335,330,500],'forkbot':[380,330,500,510],'scanner':[545,340,640,510],'camgun':[690,375,810,500],'shiftlead':[860,325,1010,510]},
+ 'enemies_annex':{'worker':[100,0,260,185],'shooter':[420,0,570,190],'turret':[680,5,915,175],'sawhand':[40,175,330,375],'foreman':[390,185,590,380],'overseer':[690,180,910,385],'warden':[55,360,265,555],'enforcer':[335,365,610,570],'drone':[705,395,895,535]},
  # SKIPPED (back art is a different design than the front): ore9, slagcannon, cinderhound, forkbot, scanner.
  # BACK VIEWS (same figures seen from behind; 1024-space boxes). Heights are normalised to the matching front sprite after the cut so the renderer's height-fit keeps scale/anchor.
  'enemies_foundry_back':{'teague_back':[70,15,235,255],'brannoch_back':[270,15,460,245],'slaghauler_back':[740,40,965,250],'ladlecrew_back':[55,310,225,525],'quenchpriest_back':[770,285,910,530]},
  'enemies_clinic_back':{'surgeon_back':[25,10,245,250],'autosurgeon_back':[255,5,530,235],'nursebot_back':[555,10,740,265],'recovered_back':[785,5,955,270],'orderly_back':[55,270,205,510],'gurneyrunner_back':[255,290,515,500],'sentry_back':[525,285,760,520],'matron_back':[785,265,955,550]},
  'enemies_warehouse_back':{'stockmgr_back':[110,5,255,200],'retrieval_back':[385,5,610,200],'reclaimer_back':[700,5,880,200],'loader_back':[380,195,590,385],'picker_back':[105,195,285,360],'camgun_back':[390,380,545,540],'shiftlead_back':[760,355,900,560]},
+ 'enemies_annex_back':{'worker_back':[125,0,285,190],'shooter_back':[405,0,545,195],'turret_back':[685,5,920,165],'sawhand_back':[90,185,330,375],'foreman_back':[400,185,605,385],'overseer_back':[695,185,905,385],'warden_back':[60,365,270,560],'enforcer_back':[400,370,630,570],'drone_back':[705,395,895,545]},
 }
 EX={'teague':[[0,55,140,110]],'brannoch':[[330,55,452,112]],'slaghauler':[[0,300,110,338]],'ladlecrew':[[195,305,300,335]],'quenchpriest':[[880,300,1010,330]],'matron':[[740,318,870,334]],'forkbot':[[380,330,428,382]],'scanner':[[545,340,578,382]],'camgun':[[775,375,812,402]]}
 man={}

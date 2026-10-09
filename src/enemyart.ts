@@ -13,6 +13,9 @@ import type { Renderer } from './render';
 interface Art { spr: string; h: number; hover?: number; tint?: string; ground?: boolean; flip0?: boolean; }
 const A = (spr: string, h: number, o: Partial<Art> = {}): Art => ({ spr, h, ...o });
 export const ART: Record<string, Art> = {
+  // Reclamation Annex (original dungeon); drone = spare hover minion art
+  worker: A('worker', 1.05), shooter: A('shooter', 1.1), turret: A('turret', .85, { ground: true }), sawhand: A('sawhand', 1.5), foreman: A('foreman', 1.5),
+  overseer: A('overseer', 2.4), warden: A('warden', 2.3, { hover: .8 }), enforcer: A('enforcer', 2.4), drone: A('drone', .8, { hover: .5 }),
   // Harrow-Brandt Foundry
   slaghauler: A('slaghauler', 1.15), ladlecrew: A('ladlecrew', 1.1), cinderhound: A('cinderhound', .62), slagcannon: A('slagcannon', .85, { ground: true }),
   brakeman: A('teague', 1.45, { tint: 'rgba(60,40,50,.28)' }), quenchpriest: A('quenchpriest', 1.55),

@@ -6,6 +6,7 @@ import { AudioSys } from './audio';
 import { load, persist } from './state';
 import { newStory } from './story';
 import './dungeon_fx';
+import { ENEMIES } from './config';
 
 const save=load(); if(!save.story) save.story=newStory();
 const audio=new AudioSys(); audio.vol=save.settings.volume; audio.musicOn=save.settings.music;
@@ -21,4 +22,4 @@ else if(save.instance){ save.instance=null; persist(save); }
 let last=performance.now(); let acc=0, frames=0, fps=60, ft=0;
 function frame(now:number){ const dt=(now-last)/1000; last=now; if(!document.hidden){ input.tick(); game.update(dt); rend.draw(dt); ui.hud(); } frames++; ft+=dt; if(ft>=1){ fps=frames/ft; frames=0; ft=0; (window as any).__fps=fps; } requestAnimationFrame(frame); }
 requestAnimationFrame(frame);
-(window as any).__game=game; (window as any).__ui=ui; (window as any).__rend=rend; (window as any).__audio=audio;
+(window as any).__game=game; (window as any).__ui=ui; (window as any).__rend=rend; (window as any).__audio=audio; (window as any).__enemies=ENEMIES;
