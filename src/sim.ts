@@ -397,7 +397,7 @@ export class Game {
     // stuck detection: no real progress while trying to move => sidestep + repath
     if(rt.unstick&&rt.unstick>0){ rt.unstick-=dt; const pa=Math.atan2(my,mx)+(rt.side||1)*Math.PI/2; const lm=Math.hypot(mx,my)||1; mx=mx/lm*.5+Math.cos(pa)*.8; my=my/lm*.5+Math.sin(pa)*.8; }
     const l=Math.hypot(mx,my); if(l>0){ this.unwedge(e,def.radius*.85); this.steerMove(e,mx/l,my/l,speed,dt,def.radius*.85); rt.ang=Math.atan2(my,mx);
-      rt.sT=(rt.sT||0)+dt; if(rt.sx===undefined){ rt.sx=e.x; rt.sy=e.y; rt.sT=0; } else if(rt.sT>=.5){ const prog=dist(e.x,e.y,rt.sx,rt.sy); if(prog<speed*.5*.3&&d>1.5){ rt.unstick=.7; rt.side=-(rt.side||((e.id|0)&1?1:-1)); rt.wp=null; rt.wpT=0; } rt.sx=e.x; rt.sy=e.y; rt.sT=0; } }
+      rt.sT=(rt.sT||0)+dt; if(rt.sx===undefined){ rt.sx=e.x; rt.sy=e.y; rt.sT=0; } else if(rt.sT>=.5){ const prog=dist(e.x,e.y,rt.sx!,rt.sy!); if(prog<speed*.5*.3&&d>1.5){ rt.unstick=.7; rt.side=-(rt.side||((e.id|0)&1?1:-1)); rt.wp=null; rt.wpT=0; } rt.sx=e.x; rt.sy=e.y; rt.sT=0; } }
     else rt.ang=ang;
   }
   zoneSlow(e:En){ return false; }
