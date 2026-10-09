@@ -9,6 +9,7 @@ import numpy as np
 RAW,OUT=sys.argv[1],sys.argv[2]
 od=json.load(open(RAW+'/order.json')); LAYERS=od['layers']; DIRS=['S','SW','W','NW','N','NE','E','SE']
 FPS={k:v['fps'] for k,v in SPEC.items()}; LOOP={k:v['loop'] for k,v in SPEC.items()}; HIT={k:v['hit'] for k,v in SPEC.items() if v['hit'] is not None}; BLEND={k:v['blend'] for k,v in SPEC.items()}
+LAYERS_ONLY=bool(os.environ.get('LAYERS_ONLY'))   # variant bodies: only the per-slot layer sheets are shipped (the game composites mixed bodies at runtime)
 FMT=os.environ.get('FMT','webp'); Q=int(os.environ.get('WEBPQ','88'))
 def save(im,path,q=None):
     if FMT=='webp': im.save(path+'.webp',format='WEBP',quality=q or Q,alpha_quality=100,method=5)
@@ -39,7 +40,7 @@ for anim,rows in od['order'].items():
             comp.paste(down(outline(flat,5)),(f*CELL,di*CELL))
             for l in LAYERS: sheets[l].paste(down(outline(ims[l],3,0.8)),(f*CELL,di*CELL))
     lnames={l:save(sheets[l],f'{OUT}/{anim}_{l}',82) for l in LAYERS}
-    cname=save(comp,f'{OUT}/{anim}'); comp_all[anim]=comp
+    cname=save(comp,f'{OUT}/{anim}') if not LAYERS_ONLY else ''; comp_all[anim]=comp
     ad={'image':cname,'frames':n,'fps':FPS[anim],'loop':bool(LOOP.get(anim)),'blend':bool(BLEND.get(anim)),'dirs':8,'layers':[{'name':l,'image':lnames[l]} for l in LAYERS],'order':rows}
     if anim in HIT: ad['hitFrame']=HIT[anim]
     atlas['anims'][anim]=ad

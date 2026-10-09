@@ -327,6 +327,10 @@ for s,sx in (('L',1),('R',-1)):
         box(l,'olive',an,(0.115,0.1,0.05),(0,-0.0,anp.z+0.06),0.012,bw=3); box(l,'metal',an,(0.12,0.03,0.016),(0,-0.052,anp.z+0.1),0.003)
     foot(s,an,anp)
 SLOTS=['face','torso','armL','handL','armR','handR','legL','footL','legR','footR']
+VARIANT=os.environ.get('VARIANT')
+if VARIANT:   # alternate full-body meshes on the same rig (see variants.py); VSLOTS limits which slots are replaced
+    exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'variants.py')).read())
+    apply_variant(VARIANT,os.environ.get('VSLOTS',','.join(SLOTS)).split(','))
 # merge objects per (slot,material,joint) to cut object count
 for slot in SLOTS:
     groups={}
@@ -374,14 +378,14 @@ from anim_spec import SPEC
 P=Poser(root,body,hips,torsoP,headP,J)
 bpy.context.view_layer.update()
 def sm_(t): t=min(1,max(0,t)); return t*t*(3-2*t)
-for o in SLOTOBJ['torso']:
+for o in ([] if VARIANT else SLOTOBJ['torso']):
     mn=o.active_material.name if o.active_material else ''
     if mn=='jacket': P.register(o,lambda x,y,z: sm_((1.38-z)/0.36),'jacket')
     elif mn in ('canvas','amber','glass'): P.register(o,lambda x,y,z: (0.8 if abs(x)>0.13 and y<0.12 else 0.0)*sm_((1.2-z)/0.16),'pouch')
-for o in SLOTOBJ['face']:
+for o in ([] if VARIANT else SLOTOBJ['face']):
     if o.active_material and o.active_material.name=='jacket': P.register(o,lambda x,y,z: sm_((y+0.02)/0.14)*sm_((hb+0.14-z)/0.2)+0.0,'hood')
 elz=W(J['elL']).z
-for o in SLOTOBJ['armL']:
+for o in ([] if VARIANT else SLOTOBJ['armL']):
     if o.active_material and o.active_material.name=='metal': P.register(o,lambda x,y,z: (math.sin(math.pi*min(1,max(0,(z-(elz-0.03))/0.15))) if abs(x-W(J['shL']).x)<0.014 and -0.085<y<-0.015 and elz-0.03<z<elz+0.12 else 0.0),'hose')
 print('secondary targets',[(o.name,len(o.data.vertices)) for o,_,_,_ in P.targets],flush=True)
 def centroid(slot):
