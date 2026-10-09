@@ -1,6 +1,7 @@
 {
-  "name": "arpg-prototype",
+  "name": "warranty-void",
   "version": "0.1.0",
+  "description": "Warranty Void: isometric cyberpunk loot-ARPG prototype",
   "private": true,
   "type": "module",
   "scripts": {

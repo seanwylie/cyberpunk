@@ -4,6 +4,8 @@ Status: prototype content. All numbers are PLACEHOLDER (the specs say numerical 
 Primary Requirements v3, Dungeon & Builds, Adaptive Story, Progression & Seasons, Monetization & Inventory, the Art & Audio Style Guide and the Technical
 Selection brief (solo creator, small personal budget, scope control, no fabricated infrastructure). Anything the specs leave open is logged in section 9.
 
+> Working title: **Warranty Void** (formerly "Annex Runner"). The Reclamation Annex remains the dungeon name; manufacturer names are unchanged.
+
 ## 1. Setting: the Verge Basin
 
 The Verge Basin is a drained industrial valley sprawl under permanent haze. Three manufacturers own its hardware supply chain and, through contracts,

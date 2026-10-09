@@ -67,7 +67,7 @@ body.touch #hint{ display:none; }
 /* Big Viking Games credit: small, low opacity, never over gameplay */
 #splash{ position:fixed; inset:0; z-index:90; background:#1b1c1e; display:flex; align-items:center; justify-content:center; transition:opacity .6s; color:#d8d4c8; text-align:center; }
 #splash.out{ opacity:0; pointer-events:none; }
-#splash .st b{ display:block; font-size:28px; letter-spacing:.3em; } #splash .st small{ opacity:.6; letter-spacing:.2em; font-size:12px; }
+#splash .st b{ display:block; position:relative; font-family:"Stencil Std","Allerta Stencil","Stencil",Impact,"Arial Black",sans-serif; font-weight:900; font-size:32px; letter-spacing:.22em; text-transform:uppercase; } #splash .st b::after{ content:""; position:absolute; left:0; right:0; top:48%; height:2px; background:#1b1c1e; } #splash .st small{ display:block; margin-top:6px; opacity:.6; letter-spacing:.3em; font-size:11px; text-transform:uppercase; }
 .bvg{ display:inline-flex; align-items:center; gap:8px; opacity:.62; font-size:10px; letter-spacing:.08em; color:#cfc9b8; }
 .bvg img{ width:64px; height:auto; display:block; }
 #splash .bvg{ position:absolute; left:calc(14px + env(safe-area-inset-left)); bottom:calc(10px + env(safe-area-inset-bottom)); }

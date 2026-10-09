@@ -1,4 +1,4 @@
-# Annex Runner — isometric cyberpunk loot-ARPG prototype
+# Warranty Void — isometric cyberpunk loot-ARPG prototype
 
 First playable web prototype built from the spec set (Primary Requirements v3 as authority; handoff, UX/controls, dungeon & builds, technical brief, art, audio, inventory, progression, story docs). It is a **vertical slice for the "small first playable"**: responsive landscape-mobile + desktop combat, the **Reclamation Annex** run (yard → processing floor → junction/objective → boss), personal loot with a minimal mission inventory, and a small town with the body/locker workspace. Everything is local: **no paid services, no keys, no backend**.
 
