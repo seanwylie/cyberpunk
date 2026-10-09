@@ -1,3 +1,5 @@
+import { EXTRA_CHIPS, EXTRA_ITEMS, EXTRA_CONFLICTS } from './content/items';
+import { EXTRA_ENEMIES, EXTRA_ENEMY_DMG } from './content/enemies';
 // Editable gameplay configuration. SEPARATE from save data (see save.ts). All numbers are PLACEHOLDER
 // prototype values, not approved balance (spec: "Numerical examples are not approved balance").
 export const CONFIG_VERSION = '0.1.0-proto';
@@ -40,9 +42,9 @@ export const ABILITIES: Record<AbilityId,AbilityDef> = {
   defib:{ id:'defib', name:'Self-Defib', aim:'self', heat:0, cd:0, windup:0, range:0, desc:'Passive: revive in place once per down (hardware stays broken).' },
 };
 
-export type ChipId = 'speed'|'cutwide'|'bladepat'|'coolant'|'sustain'|'cloakdur'|'ctrldur'|'magnet'|'power'|'plating';
+export type ChipId = 'speed'|'cutwide'|'bladepat'|'coolant'|'sustain'|'cloakdur'|'ctrldur'|'magnet'|'power'|'plating'|'ablative'|'fineedge'|'quench'|'overdrive'|'gridlink';
 export interface ChipDef { id:ChipId; name:string; desc:string; stats:Partial<Stats>; mod?:{ ctrlDur?:number; cloakDur?:number; arc?:number; burstLen?:number }; rarity:Rarity; }
-export const CHIPS: Record<ChipId,ChipDef> = {
+export const CHIPS: Record<ChipId,ChipDef> = { ...EXTRA_CHIPS,
   speed:{ id:'speed', name:'Speed Chip', desc:'+15% attack speed. Rippers convert RPM into damage.', stats:{atkSpeed:.15}, rarity:'green' },
   cutwide:{ id:'cutwide', name:'Wide-Cut Pattern', desc:'Ripper/sweep arcs +25% wider.', stats:{}, mod:{arc:.25}, rarity:'blue' },
   bladepat:{ id:'bladepat', name:'Blade Pattern', desc:'Blade burst +1.5 length.', stats:{}, mod:{burstLen:1.5}, rarity:'blue' },
@@ -105,6 +107,7 @@ export const ITEMS: ItemDef[] = [
   H('pool_p_torso','AS Lattice Torso','torso','PS','purple',15,{maxHp:30,cooling:.2,dmg:.05}),
   H('pool_o_legs','HB Bastion Legs','legR','HI','orange',20,{maxHp:40,armor:5}),
 ];
+ITEMS.push(...EXTRA_ITEMS);
 export const ITEM_BY_ID: Record<string,ItemDef> = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 
 // Install cost depends on the hardware being REMOVED (spec). PLACEHOLDER curve.
@@ -117,6 +120,7 @@ export const MIX_PENALTY = { coolingPerExtraMfr: .08, reputationRankReduces: .02
 export const HARD_CONFLICTS: { a:string; b:string; reason:string }[] = [
   { a:'hi_ripper_arm', b:'ps_veil_torso', reason:'Ripper vibration defeats the Veil weave. Hard conflict (unchanged by reputation).' },
   { a:'sig_reclaimer_ripper', b:'ps_veil_torso', reason:'Ripper vibration defeats the Veil weave. Hard conflict (unchanged by reputation).' },
+  ...EXTRA_CONFLICTS,
 ];
 export const REP_RANKS = [0, 10, 30, 60]; // points for rank 0..3
 export const REP_DISCOUNT_PER_RANK = .05;
@@ -134,8 +138,9 @@ export const COMBAT = {
   stimHeal: 45,
 };
 
-export interface EnemyDef { id:string; name:string; hp:number; speed:number; radius:number; mfr:Mfr; elite?:boolean; boss?:boolean; ranged?:boolean; static?:boolean; aggro:number; xp:number; rep:number; attacks:string[]; }
+export interface EnemyDef { id:string; name:string; hp:number; speed:number; radius:number; mfr:Mfr; elite?:boolean; boss?:boolean; ranged?:boolean; static?:boolean; aggro:number; xp:number; rep:number; attacks:string[]; dmgMul?:number; summon?:string; }
 export const ENEMIES: Record<string,EnemyDef> = {
+  ...EXTRA_ENEMIES,
   worker:{ id:'worker', name:'Salvage Worker', hp:10, speed:3.0, radius:.36, mfr:'MM', aggro:7, xp:6, rep:1, attacks:['swing'] },
   shooter:{ id:'shooter', name:'Security Contractor', hp:10, speed:2.6, radius:.36, mfr:'MM', ranged:true, aggro:9, xp:8, rep:1, attacks:['shot'] },
   turret:{ id:'turret', name:'Gate Turret', hp:70, speed:0, radius:.5, mfr:'HI', static:true, ranged:true, aggro:10, xp:15, rep:2, attacks:['turretshot'] },
@@ -145,7 +150,7 @@ export const ENEMIES: Record<string,EnemyDef> = {
   warden:{ id:'warden', name:'Neural Warden', hp:1700, speed:2.4, radius:.8, mfr:'PS', boss:true, elite:true, ranged:true, aggro:30, xp:340, rep:25, attacks:['zones','volley'] },
   enforcer:{ id:'enforcer', name:'Reclamation Enforcer', hp:1900, speed:3.0, radius:.95, mfr:'HI', boss:true, elite:true, aggro:30, xp:340, rep:25, attacks:['rsweep','charge'] },
 };
-export const ENEMY_DMG: Record<string,number> = { swing:12, shot:10, turretshot:14, cleave:28, charge:34, slam:34, summon:0, zones:6, volley:16, rsweep:32 };
+export const ENEMY_DMG: Record<string,number> = { swing:12, shot:10, turretshot:14, cleave:28, charge:34, slam:34, summon:0, zones:6, volley:16, rsweep:32, ...EXTRA_ENEMY_DMG };
 
 // Progression placeholders (NOT a 100h curve; see README).
 export const PROGRESSION = { startLevel:12, maxLevel:60, xpForLevel:(l:number)=>Math.round(60*Math.pow(l,1.45)) };
