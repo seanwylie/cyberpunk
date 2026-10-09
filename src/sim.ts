@@ -133,7 +133,7 @@ export class Game {
     this.aim=null; const hadCast=!!this.cast; this.cast=null; if(this.channel&&this.channel.kind==='hack') this.channel=null; this.emit('dodgecancel'); // always cancels aiming/execution, even on cooldown
     if(this.dodgeCd>0){ if(hadCast) this.toast('Cast cancelled'); return; }
     let dx=this.inputMove.x, dy=this.inputMove.y; if(Math.hypot(dx,dy)<.1){ dx=Math.cos(this.face); dy=Math.sin(this.face); }
-    const l=Math.hypot(dx,dy)||1; this.dodgeDx=dx/l; this.dodgeDy=dy/l; this.dodgeT=COMBAT.dodge.time; this.iframes=Math.max(this.iframes,COMBAT.dodge.iframes); this.dodgeCd=COMBAT.dodge.cd; this.emit('sfx','dodge'); this.fx.push({kind:'dust',x:this.px,y:this.py,t:0,life:.4});
+    if(Math.hypot(this.inputMove.x,this.inputMove.y)>=.1){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); dx=v.x; dy=v.y; } /* input is screen-space; convert to world */ const l=Math.hypot(dx,dy)||1; this.dodgeDx=dx/l; this.dodgeDy=dy/l; this.dodgeT=COMBAT.dodge.time; this.iframes=Math.max(this.iframes,COMBAT.dodge.iframes); this.dodgeCd=COMBAT.dodge.cd; this.emit('sfx','dodge'); this.fx.push({kind:'dust',x:this.px,y:this.py,t:0,life:.4});
     if(this.channel&&this.channel.kind==='town'){ this.channel=null; this.toast('Town return interrupted'); }
   }
   interact(){ if(!this.prompt||this.downed) return; this.doInteract(this.prompt); }
