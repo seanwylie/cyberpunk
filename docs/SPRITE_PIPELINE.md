@@ -33,3 +33,12 @@ One PNG per animation: rows = directions, columns = frames, uniform cells. `dirs
 
 Total 8x(6+8+5+6+8)=264 + 5x(3+8)=55 = 319 frames at 128x128 (~21 MB raw RGBA, a few MB as PNG; use palette/quantise or WebP later).
 - Later: split into body layers (base, torso, arm L/R, weapon, head) as extra atlases in the same format for skins/hardware, drawn back to front.
+
+## Implemented: Blender layered-sprite pipeline (tools/sprites/)
+Everything is code, runs headless on Linux (`pip install bpy pillow numpy`, Python 3.13 -> bpy 5.2).
+1. `textures.py OUT` paints the material maps (jacket, pants, olive stamped panels, ivory+slate marks, skin, boot, canvas, metal, cloth, glass) with numpy; muted palette only.
+2. `build_char.py RAWDIR` builds the scavenger-mechanic from primitives, **one object group per body slot** (face, torso, armL, handL, armR, handR, legL, footL, legR, footR) on an empty-joint rig, poses it procedurally (idle, run), and renders with Cycles (CPU, ortho 2:1 iso camera, transparent film). Each slot is rendered separately with the other slots set invisible-to-camera so they still cast shadow/bounce light (consistent shading across layers). Also writes `order.json`: per anim/direction/frame the far->near draw order of the layers (depth along the view vector).
+3. `pack.py RAW OUT`: dark per-layer outline, 2x supersample -> 128 px cells, packs one sheet per layer per anim (rows = 8 dirs, cols = frames), a pre-composited sheet, `player.json`, and contact sheets.
+Render cost: ~7 min for idle+run (1120 layer renders, 256 px, 32 spp) on 8 cores.
+Atlas extension (backwards compatible): an anim may carry `layers:[{name,image}]` + `order[dir][frame]=[layer idx far->near]`; the loader draws the layers in that order, else the flat `image`. Anims not yet authored fall back (dodge->run, attack/cast/hit/down->idle); only idle and run are required.
+Swapping a limb = bake a replacement mesh on the same joints into the same slot name (e.g. `armL`) and replace that layer's PNG; the depth `order` is per body, so re-run step 2 for the new loadout (or bake per-limb variants with the same pose/order).

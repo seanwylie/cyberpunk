@@ -20,6 +20,11 @@ export interface AnimDef {
   /** 8 = rows S,SW,W,NW,N,NE,E,SE.  5 = rows S,SW,W,NW,N; SE,E,NE are mirrored from SW,W,NW. */
   dirs:5|8;
   hitFrame?:number;        // frame at which damage/effect visually lands (attack/cast), for sync
+  /** Optional modular body layers (one sheet per body slot, same grid as `image`). When present they are drawn
+   *  instead of `image`; `order[dir][frame]` lists indices into `layers` far->near (depth sorted at bake time).
+   *  Swapping a limb = replace that layer's PNG with one baked on the same rig. `image` stays as a pre-composited fallback. */
+  layers?:{name:string;image:string}[];
+  order?:number[][][];
 }
 export interface Atlas {
   version:1;
@@ -29,7 +34,9 @@ export interface Atlas {
   anims:Partial<Record<AnimName,AnimDef>>;
 }
 
-export interface LoadedAtlas { atlas:Atlas; images:Partial<Record<AnimName,HTMLImageElement>>; }
+export interface LoadedAtlas { atlas:Atlas; images:Partial<Record<AnimName,HTMLImageElement>>; layerImages:Partial<Record<AnimName,HTMLImageElement[]>>; }
+/** Anims not yet authored fall back to the closest authored one. */
+const FALLBACK:Record<AnimName,AnimName[]>={idle:[],run:['idle'],dodge:['run','idle'],attack:['idle'],cast:['idle'],hit:['idle'],down:['idle']};
 
 /** Convert world-space facing/velocity (x,y world axes) to one of 8 screen directions. */
 export function dirFromWorld(dx:number,dy:number):Dir8{
@@ -45,14 +52,15 @@ export async function loadAtlas(url='sprites/player.json'):Promise<LoadedAtlas|n
     const r=await fetch(url,{cache:'no-cache'}); if(!r.ok) return null;
     const ct=r.headers.get('content-type')||''; if(ct.includes('text/html')) return null; // SPA fallback => no atlas
     const atlas=await r.json() as Atlas; const err=validateAtlas(atlas); if(err){ console.warn('[sprites] atlas rejected:',err); return null; }
-    const base=url.slice(0,url.lastIndexOf('/')+1); const images:LoadedAtlas['images']={};
-    await Promise.all(Object.entries(atlas.anims).map(([n,a])=>new Promise<void>((res,rej)=>{ const im=new Image(); im.onload=()=>{ const need=a!.dirs; if(im.naturalWidth<atlas.frame.w*a!.frames||im.naturalHeight<atlas.frame.h*need) rej(new Error(n+' image smaller than frames*dirs*frame size')); else { images[n as AnimName]=im; res(); } }; im.onerror=()=>rej(new Error('failed '+a!.image)); im.src=base+a!.image; })));
-    return { atlas, images };
+    const base=url.slice(0,url.lastIndexOf('/')+1); const images:LoadedAtlas['images']={}; const layerImages:LoadedAtlas['layerImages']={};
+    const loadImg=(src:string,a:AnimDef,what:string)=>new Promise<HTMLImageElement>((res,rej)=>{ const im=new Image(); im.onload=()=>{ if(im.naturalWidth<atlas.frame.w*a.frames||im.naturalHeight<atlas.frame.h*a.dirs) rej(new Error(what+' image smaller than frames*dirs*frame size')); else res(im); }; im.onerror=()=>rej(new Error('failed '+src)); im.src=base+src; });
+    await Promise.all(Object.entries(atlas.anims).map(async([n,a])=>{ const d=a!; if(d.layers&&d.order){ layerImages[n as AnimName]=await Promise.all(d.layers.map(l=>loadImg(l.image,d,n+'/'+l.name))); } else images[n as AnimName]=await loadImg(d.image,d,n); }));
+    return { atlas, images, layerImages };
   }catch(e){ console.warn('[sprites] falling back to procedural character:',e); return null; }
 }
 export function validateAtlas(a:Atlas):string|null{
   if(!a||a.version!==1) return 'version must be 1'; if(!a.frame||a.frame.w<=0||a.frame.h<=0) return 'bad frame size'; if(!a.anchor) return 'no anchor';
-  for(const n of REQUIRED_ANIMS){ const d=a.anims?.[n]; if(!d) return 'missing anim '+n; if(!d.image||d.frames<1||d.fps<=0||(d.dirs!==5&&d.dirs!==8)) return 'bad anim '+n; }
+  for(const n of REQUIRED_ANIMS){ const d=a.anims?.[n]; if(!d){ if(n==='idle'||n==='run') return 'missing anim '+n; continue; } if(!d.image||d.frames<1||d.fps<=0||(d.dirs!==5&&d.dirs!==8)) return 'bad anim '+n; }
   return null;
 }
 
@@ -71,11 +79,13 @@ export class PlayerAnimator {
   }
   /** Draw with feet at (x,y) in screen px. unit = TW/64. Returns false if anim missing (caller falls back). */
   draw(c:CanvasRenderingContext2D,x:number,y:number,unit:number):boolean{
-    const a=this.loaded.atlas, d=a.anims[this.anim], im=this.loaded.images[this.anim]; if(!d||!im) return false;
+    const a=this.loaded.atlas; let an:AnimName=this.anim; if(!a.anims[an]) an=FALLBACK[an].find(k=>a.anims[k])||'idle';
+    const d=a.anims[an], im=this.loaded.images[an], lay=this.loaded.layerImages[an]; if(!d||(!im&&!lay)) return false;
     let f=Math.floor(this.t*d.fps); f=d.loop?f%d.frames:Math.min(f,d.frames-1);
     let row:number=this.dir, mirror=false; if(d.dirs===5&&this.dir>4){ row=8-this.dir; mirror=true; } // SE(7)->SW(1), E(6)->W(2), NE(5)->NW(3)
     const W=a.frame.w,H=a.frame.h,s=unit*a.scale*(48/ (H*0.6)) ; // normalise: character ~60% of cell height ≈ 48 procedural px
     c.save(); c.translate(x,y); if(mirror) c.scale(-1,1); c.imageSmoothingEnabled=true;
-    c.drawImage(im,f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); c.restore(); return true;
+    if(lay&&d.order){ for(const li of d.order[row][f]) c.drawImage(lay[li],f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); }
+    else c.drawImage(im!,f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); c.restore(); return true;
   }
 }

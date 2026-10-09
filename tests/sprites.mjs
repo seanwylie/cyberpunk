@@ -2,6 +2,8 @@
 import { execSync } from 'node:child_process'; import fs from 'node:fs';
 import { launch, sleep } from './lib.mjs';
 const dir = 'public/sprites'; fs.mkdirSync(dir, { recursive: true });
+// preserve any real art: move it aside, restore at the end
+const bak = '.sprites_backup'; fs.rmSync(bak,{recursive:true,force:true}); fs.cpSync(dir,bak,{recursive:true}); const clear=()=>{ for(const f of fs.readdirSync(dir)) fs.rmSync(dir+'/'+f,{recursive:true,force:true}); }; clear();
 const anims = { idle:[4,8,12,true], run:[8,8,16,true], dodge:[6,5,16,false], attack:[6,5,16,false], cast:[8,5,14,false], hit:[3,5,12,false], down:[6,5,10,false] };
 execSync(`python3 - <<'P'
 from PIL import Image, ImageDraw
@@ -16,14 +18,14 @@ const atlas = { version:1, frame:{w:64,h:64}, anchor:{x:32,y:58}, scale:1, anims
 fs.writeFileSync(dir+'/player.json', JSON.stringify(atlas));
 let fails=0; const ok=(c,m)=>{ console.log((c?'PASS ':'FAIL ')+m); if(!c) fails++; };
 try {
-  let { browser, page } = await launch(); await sleep(800);
+  let { browser, page } = await launch(); await sleep(1500);
   ok(await page.evaluate(()=>!!window.__rend&&true) !== false, 'page boots with atlas');
   const used = await page.evaluate(()=>{ const r=window.__rend; return r? !!r.anim : 'noexpose'; });
   console.log('anim loaded:', used); if(used!=='noexpose') ok(used===true,'atlas loaded and animator active');
   await browser.close();
-  fs.rmSync(dir,{recursive:true,force:true}); fs.mkdirSync(dir,{recursive:true});
+  clear();
   ({ browser, page } = await launch()); await sleep(800);
   const u2 = await page.evaluate(()=>{ const r=window.__rend; return r? !!r.anim : 'noexpose'; });
   if(u2!=='noexpose') ok(u2===false,'no atlas => procedural fallback'); await browser.close();
-} finally { fs.rmSync(dir,{recursive:true,force:true}); fs.mkdirSync(dir,{recursive:true}); }
+} finally { clear(); fs.cpSync(bak,dir,{recursive:true}); fs.rmSync(bak,{recursive:true,force:true}); }
 process.exit(fails?1:0);
