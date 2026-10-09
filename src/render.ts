@@ -2,6 +2,8 @@ import { Game, En } from './sim';
 import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES } from './config';
 import { installedLayout } from './build';
 import { PlayerAnimator, loadAtlas } from './sprites';
+import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
+import type { Level } from './level';
 
 export const PAL = { concrete:'#7a7c78', soot:'#1b1c1e', bone:'#cfc6b0', oxide:'#8f3b2e', metal:'#6b5a4a', slate:'#4f6578', olive:'#6b7035', skin:'#b29b84' };
 const ZCOL:Record<string,[string,string]> = { yard:['#7b7d79','#727470'], proc:['#6c6e6b','#646663'], junction:['#74777b','#6c6f73'], boss:['#5f6163','#57595b'], salvage:['#6d6b63','#656359'], corridor:['#696b69','#616361'], passage:['#55585b','#4d5053'], town:['#7c7b75','#74736d'], none:['#222','#222'] };
@@ -9,8 +11,8 @@ const hash=(x:number,y:number)=>{ let h=(x*374761393+y*668265263)|0; h=(h^(h>>>1
 
 export class Renderer {
   ctx:CanvasRenderingContext2D; w=0; h=0; dpr=1; TW=64; camx=0; camy=0; shake=0;
-  anim:PlayerAnimator|null=null; lastT=0;
-  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; loadAtlas().then(l=>{ if(l) this.anim=new PlayerAnimator(l); }); }
+  anim:PlayerAnimator|null=null; lastT=0; env:Env|null=null; private wallCache=new WeakMap<Level,Map<number,{style:'concrete'|'steel';v:number;zone:string}>>();
+  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); loadAtlas().then(l=>{ if(l) this.anim=new PlayerAnimator(l); }); }
   resize(){ this.dpr=Math.min(window.devicePixelRatio||1,2); const w=window.innerWidth,h=window.innerHeight; this.canvas.width=w*this.dpr; this.canvas.height=h*this.dpr; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
   // projection
   sx(x:number,y:number){ return (x-y)*this.TW/2 + this.w/2 - this.camx; }
@@ -28,13 +30,63 @@ export class Renderer {
   tile(x:number,y:number,col:string){ const c=this.ctx; const a=this.sx(x,y), b=this.sy(x,y); const hw=this.TW/2, hh=this.TW/4; c.fillStyle=col; c.beginPath(); c.moveTo(a,b); c.lineTo(a+hw,b+hh); c.lineTo(a,b+2*hh); c.lineTo(a-hw,b+hh); c.closePath(); c.fill(); }
   drawFloor(){
     const g=this.g, L=g.level, c=this.ctx; const R=Math.ceil(Math.max(this.w,this.h)/this.TW*1.1)+3; const x0=Math.max(0,Math.floor(g.px-R)), x1=Math.min(L.w-1,Math.ceil(g.px+R)), y0=Math.max(0,Math.floor(g.py-R)), y1=Math.min(L.h-1,Math.ceil(g.py+R));
-    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ const i=y*L.w+x; if(L.solid[i]&&!this.isDoorTile(x,y)) continue; const z=L.zoneNames[L.zone[i]]; const pal=ZCOL[z]||ZCOL.yard; const hv=hash(x,y); this.tile(x,y,pal[(x+y)&1]); if(hv>.86){ c.fillStyle='rgba(20,20,22,.16)'; const a=this.sx(x+.5,y+.5), b=this.sy(x+.5,y+.5); c.beginPath(); c.ellipse(a,b,this.TW*.12*(.5+hv),this.TW*.05*(.5+hv),0,0,7); c.fill(); }
+    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ const i=y*L.w+x; if(L.solid[i]&&!this.isDoorTile(x,y)) continue; const z=L.zoneNames[L.zone[i]]; const pal=ZCOL[z]||ZCOL.yard; const hv=hash(x,y); if(this.env){ this.floorTile(x,y,z,i); continue; } this.tile(x,y,pal[(x+y)&1]); if(hv>.86){ c.fillStyle='rgba(20,20,22,.16)'; const a=this.sx(x+.5,y+.5), b=this.sy(x+.5,y+.5); c.beginPath(); c.ellipse(a,b,this.TW*.12*(.5+hv),this.TW*.05*(.5+hv),0,0,7); c.fill(); }
       if(hv<.04){ c.strokeStyle='rgba(30,30,30,.25)'; c.lineWidth=1; c.beginPath(); c.moveTo(this.sx(x+.2,y+.3),this.sy(x+.2,y+.3)); c.lineTo(this.sx(x+.7,y+.8),this.sy(x+.7,y+.8)); c.stroke(); }
-      // hazard/oxide stripes in the yard/proc along lane edges
       if((z==='proc')&&(x%8===0)&&hv>.2){ this.tile(x,y,'rgba(143,59,46,.10)'); } }
+    if(this.env) this.drawDecals();
     for(const cp of L.checkpoints){ this.ring(cp.x,cp.y,1.1,PAL.bone,.7,true); }
     if(g.mode==='run'&&g.inst){ const f=g.inst.flags; if(!f.controller){ const it=L.interacts.find(i=>i.id==='controller')!; this.ring(it.x,it.y,.9,'#d8d2bf',.45,true); } }
   }
+  // ---- textured environment (see envtex.ts); every method is only called when this.env is set ----
+  // Baked blits: each (texture, affine, shade) is rasterised once at the current device scale into a small canvas, then drawn 1:1 per frame
+  // (no per-frame affine resampling of large textures; this is what keeps phones fast). Cache is dropped when TW/dpr change.
+  private bakeKey=''; private bakes=new Map<string,{cv:HTMLCanvasElement;mx:number;my:number;w:number;h:number}>(); private ids=new WeakMap<HTMLCanvasElement,number>(); private idN=0;
+  private tid(img:HTMLCanvasElement){ let i=this.ids.get(img); if(!i){ i=++this.idN; this.ids.set(img,i); } return i; }
+  private bakeBlit(img:HTMLCanvasElement,sx0:number,sy0:number,sw:number,sh:number,a:number,b:number,cc:number,d:number,ox:number,oy:number,shade:number,pad=.5){
+    const bk=this.TW.toFixed(2)+'|'+this.dpr; if(bk!==this.bakeKey){ this.bakeKey=bk; this.bakes.clear(); }
+    const key=`${this.tid(img)}|${sx0|0},${sy0|0},${sw|0},${sh|0}|${a.toFixed(3)},${b.toFixed(3)},${cc.toFixed(3)},${d.toFixed(3)}|${shade}`; let e=this.bakes.get(key);
+    if(!e){ const xs=[0,sw*a,sh*cc,sw*a+sh*cc], ys=[0,sw*b,sh*d,sw*b+sh*d]; const mnx=Math.min(...xs)-1, mxx=Math.max(...xs)+1, mny=Math.min(...ys)-1, mxy=Math.max(...ys)+1; const w=Math.ceil(mxx-mnx), h=Math.ceil(mxy-mny);
+      const cv=document.createElement('canvas'); cv.width=Math.ceil(w*this.dpr); cv.height=Math.ceil(h*this.dpr); const x=cv.getContext('2d')!; x.scale(this.dpr,this.dpr); x.translate(-mnx,-mny); x.transform(a,b,cc,d,0,0); x.drawImage(img,sx0,sy0,sw,sh,-pad,-pad,sw+pad*2,sh+pad*2);
+      if(shade>0){ x.globalCompositeOperation='source-atop'; x.fillStyle=`rgba(6,6,9,${shade})`; x.fillRect(-pad,-pad,sw+pad*2,sh+pad*2); } e={cv,mx:mnx,my:mny,w,h}; this.bakes.set(key,e); }
+    const q=this.dpr; this.ctx.drawImage(e.cv,Math.round((ox+e.mx)*q)/q,Math.round((oy+e.my)*q)/q,e.w,e.h); }
+  private isoTex(img:HTMLCanvasElement,x:number,y:number,z:number,w:number,d:number){ const k=this.TW/TS; this.bakeBlit(img,0,0,TS,TS,w*k/2,w*k/4,-d*k/2,d*k/4,this.sx(x,y),this.sy(x,y,z),0); }
+  /** +y facing face (screen-left) */
+  private faceY(img:HTMLCanvasElement,x:number,y:number,w:number,d:number,h:number,shade:number){ const k=this.TW/TS; const sw=Math.min(TS,w*TS), sh=Math.min(img.height,h*TS); this.bakeBlit(img,0,img.height-sh,sw,sh,k/2,k/4,0,k/2,this.sx(x,y+d),this.sy(x,y+d,h),shade,0); }
+  /** +x facing face (screen-right) */
+  private faceX(img:HTMLCanvasElement,x:number,y:number,w:number,d:number,h:number,shade:number){ const k=this.TW/TS; const sw=Math.min(TS,d*TS), sh=Math.min(img.height,h*TS); this.bakeBlit(img,0,img.height-sh,sw,sh,k/2,-k/4,0,k/2,this.sx(x+w,y+d),this.sy(x+w,y+d,h),shade,0); }
+  private texBox(x:number,y:number,w:number,d:number,h:number,side:HTMLCanvasElement,top:HTMLCanvasElement,sl=.1,sr=.34){ this.faceY(side,x,y,w,d,h,sl); this.faceX(side,x,y,w,d,h,sr); this.isoTex2(top,x,y,h,w,d); }
+  private isoTex2(img:HTMLCanvasElement,x:number,y:number,z:number,w:number,d:number){ this.isoTex(img,x,y,z,w,d); }
+  floorTile(x:number,y:number,zone:string,i:number){ const e=this.env!, L=this.g.level, W=L.w; const hv=hash(x*7+3,y*3+1); const v=[0,0,0,0,0,0,1,2,3,4,0,5][(hv*12)|0];
+    this.isoTex(e.floor(zone,v),x,y,0,1,1);
+    const sol=(xx:number,yy:number)=>xx<0||yy<0||xx>=W||yy>=L.h||!!L.solid[yy*W+xx]; if(sol(x-1,y)) this.isoTex(e.ao(0),x,y,0,1,1); if(sol(x+1,y)) this.isoTex(e.ao(1),x,y,0,1,1); if(sol(x,y-1)) this.isoTex(e.ao(2),x,y,0,1,1); if(sol(x,y+1)) this.isoTex(e.ao(3),x,y,0,1,1); void i; }
+  private wallInfo(x:number,y:number){ const L=this.g.level; let m=this.wallCache.get(L); if(!m){ m=new Map(); this.wallCache.set(L,m); } const k=y*L.w+x; let r=m.get(k); if(r) return r;
+    let zn='yard'; for(const [dx,dy] of [[0,1],[1,0],[-1,0],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]){ const nx=x+dx,ny=y+dy; if(nx>=0&&ny>=0&&nx<L.w&&ny<L.h&&!L.solid[ny*L.w+nx]){ zn=L.zoneNames[L.zone[ny*L.w+nx]]; break; } }
+    const style:'concrete'|'steel'=(zn==='yard'||zn==='town'||zn==='corridor'||zn==='salvage')?'concrete':'steel'; const h=hash(x*13+5,y*11+2); const v=h<.4?0:1+Math.min(4,Math.floor((h-.4)/.12)); r={style,v,zone:zn}; m.set(k,r); return r; }
+  wallBox(x:number,y:number){ const e=this.env!; const wi=this.wallInfo(x,y); const img=e.wall(wi.style,wi.v,wi.zone); const H=1.6; this.faceY(img,x,y,1,1,H,.06); this.faceX(img,x,y,1,1,H,.30); this.isoTex(e.cap(wi.style==='steel'?1:0),x,y,H,1,1); }
+  doorBox(x:number,y:number){ const e=this.env!; const img=e.wall('door',0,'x'); this.faceY(img,x,y,1,1,1.5,.05); this.faceX(img,x,y,1,1,1.5,.3); this.isoTex(e.cap(2),x,y,1.5,1,1); }
+  propShadow(x:number,y:number,w:number,d:number){ this.poly([[x-.08,y-.08],[x+w+.12,y-.08],[x+w+.12,y+d+.12],[x-.08,y+d+.12]],'#050506',undefined,.38); }
+  texProp(p:{x:number;y:number;kind:string;h:number}){ const e=this.env!, k=p.kind, g=this.g, L=g.level; const hv=hash(p.x*5+1,p.y*9+4); const hh=Math.round(p.h*10)/10;
+    if(k==='crate'){ const v=(hv*5)|0; const hc=hh*.9; this.propShadow(p.x+.05,p.y+.05,.9,.9); this.texBox(p.x+.05,p.y+.05,.9,.9,hc,e.crateFace('crate',v,hc),e.top('crate',v)); return; }
+    this.propShadow(p.x,p.y,1,1); const v=k==='machine'?((hv*3)|0):0;
+    if(k==='conveyor'){ const isC=(xx:number,yy:number)=>L.props.some(q=>q.kind==='conveyor'&&q.x===xx&&q.y===yy); const ax=isC(p.x-1,p.y)||isC(p.x+1,p.y); const side=e.crateFace('conveyor',0,hh); this.faceY(side,p.x,p.y,1,1,hh,.1); this.faceX(side,p.x,p.y,1,1,hh,.34);
+      const ph=Math.floor(((g.time*.55)%1)*6)%6; const bt=e.belt(ph), kk=this.TW/TS; if(ax) this.bakeBlit(bt,0,0,TS,TS,kk/2,kk/4,-kk/2,kk/4,this.sx(p.x,p.y),this.sy(p.x,p.y,hh),0); else this.bakeBlit(bt,0,0,TS,TS,-kk/2,kk/4,kk/2,kk/4,this.sx(p.x,p.y),this.sy(p.x,p.y,hh),0); return; }
+    this.texBox(p.x+(k==='pillar'?.1:0),p.y+(k==='pillar'?.1:0),k==='pillar'?.8:1,k==='pillar'?.8:1,hh,e.crateFace(k,v,hh),e.top(k,v)); }
+  /** large painted floor markings in world space (cheap vector ops under an isometric transform) */
+  drawDecals(){ const g=this.g, L=g.level, c=this.ctx; const k=this.TW/2; const near=(x:number,y:number,r:number)=>Math.hypot(g.px-x,g.py-y)<r;
+    const iso=()=>{ c.save(); c.transform(k,k/2,-k,k/2,this.sx(0,0),this.sy(0,0)); };
+    const dash=(x0:number,y0:number,x1:number,y1:number,col:string,w=.06,d=[.5,.4])=>{ c.strokeStyle=col; c.lineWidth=w; c.setLineDash(d); c.beginPath(); c.moveTo(x0,y0); c.lineTo(x1,y1); c.stroke(); c.setLineDash([]); };
+    const stripes=(x:number,y:number,w:number,h:number,al=.4)=>{ c.save(); c.beginPath(); c.rect(x,y,w,h); c.clip(); c.fillStyle=`rgba(20,20,20,${al+.2})`; c.fillRect(x,y,w,h); c.fillStyle=`rgba(176,150,70,${al})`; const st=.35; for(let i=-h;i<w+h;i+=st*2){ c.beginPath(); c.moveTo(x+i,y+h); c.lineTo(x+i+st,y+h); c.lineTo(x+i+st+h,y); c.lineTo(x+i+h,y); c.fill(); } c.restore(); };
+    const text=(t:string,x:number,y:number,sz:number,col:string,rot=0)=>{ c.save(); c.translate(x,y); c.rotate(rot); c.font=`bold ${sz}px "Arial Narrow",Impact,sans-serif`; c.textAlign='center'; c.textBaseline='middle'; c.fillStyle=col; c.fillText(t,0,0); c.restore(); };
+    if(L.w===88){
+      if(near(12,19,22)){ iso(); dash(3,19.5,21,19.5,'rgba(207,198,176,.22)',.07,[.6,.5]); stripes(21,17,.5,5,.3); stripes(22.6,17,.5,5,.3); text('CAUTION',13,22.2,1.15,'rgba(143,59,46,.38)'); text('STAND CLEAR',13,23.4,.55,'rgba(143,59,46,.34)'); text('LOADING ONLY',6.5,14.3,.5,'rgba(207,198,176,.2)'); for(const [tx,ty] of [[22,14],[22,25]]){ c.strokeStyle='rgba(143,59,46,.3)'; c.lineWidth=.08; c.beginPath(); c.arc(tx+.5,ty+.5,2.4,0,7); c.stroke(); } c.restore(); }
+      if(near(37,19,24)){ iso(); dash(27,19.5,47,19.5,'rgba(207,198,176,.18)',.08,[.7,.6]); text('→ LINE 3 →',33,19.5,.5,'rgba(207,198,176,.2)'); stripes(26.2,17.6,.35,3.8,.25); stripes(46.5,17.6,.35,3.8,.25); for(const yy of [11.45,13.1,25.45,27.1]) stripes(30,yy,8,.22,.3); text('PLATFORM 2',36,30.2,.5,'rgba(207,198,176,.18)'); c.restore(); }
+      if(near(57,19,18)){ iso(); c.strokeStyle='rgba(79,101,120,.4)'; c.lineWidth=.09; c.strokeRect(55.2,16.4,5.6,5.2); for(const [bx,by,sx2,sy2] of [[55.2,16.4,1,1],[60.8,16.4,-1,1],[55.2,21.6,1,-1],[60.8,21.6,-1,-1]]){ c.strokeStyle='rgba(207,198,176,.3)'; c.lineWidth=.12; c.beginPath(); c.moveTo(bx+sx2*.9,by); c.lineTo(bx,by); c.lineTo(bx,by+sy2*.9); c.stroke(); } text('INTEGRATION CONTROLLER',57.5,15.6,.4,'rgba(207,198,176,.22)'); dash(51,19.5,56,19.5,'rgba(79,101,120,.35)',.08,[.5,.4]); c.restore(); }
+      if(near(75,19.5,26)){ iso(); const cx=75.2,cy=19.5; for(const [r,col,w] of [[8.6,'rgba(143,59,46,.28)',.14],[6.2,'rgba(207,198,176,.14)',.05],[3.6,'rgba(143,59,46,.30)',.1],[1.8,'rgba(207,198,176,.18)',.06]] as [number,string,number][]){ c.strokeStyle=col; c.lineWidth=w; c.beginPath(); c.arc(cx,cy,r,0,7); c.stroke(); }
+        c.save(); c.strokeStyle='rgba(8,8,10,.32)'; c.lineWidth=.18; for(let a=0;a<8;a++){ const an=a*Math.PI/4+Math.PI/8; c.beginPath(); c.moveTo(cx+Math.cos(an)*1.9,cy+Math.sin(an)*1.9); c.lineTo(cx+Math.cos(an)*8.5,cy+Math.sin(an)*8.5); c.stroke(); } c.restore(); c.strokeStyle='rgba(176,150,70,.22)'; c.lineWidth=.22; c.setLineDash([.45,.45]); c.beginPath(); c.arc(cx,cy,9.7,0,7); c.stroke(); c.setLineDash([]); text('RECLAMATION BAY',cx,cy-10.9,.5,'rgba(207,198,176,.2)'); c.restore(); }
+      if(near(11,37,16)){ iso(); stripes(4.2,41.2,15.6,.35,.28); text('SALVAGE — SORT / STRIP / SCRAP',11.5,32.8,.42,'rgba(207,198,176,.2)'); c.restore(); }
+    } else if(L.w===30){ iso(); c.fillStyle='rgba(79,101,120,.13)'; c.fillRect(21,6.2,5.6,3.6); c.fillStyle='rgba(143,59,46,.13)'; c.fillRect(12.4,3.6,5,3.2); c.fillStyle='rgba(107,112,53,.13)'; c.fillRect(3.4,6.4,4.4,3.4); c.fillStyle='rgba(176,150,70,.09)'; c.fillRect(3.4,13,4.4,3.6);
+      c.strokeStyle='rgba(207,198,176,.16)'; c.lineWidth=.07; c.setLineDash([.5,.5]); c.strokeRect(9.5,7.5,10,7); c.setLineDash([]); text('SAFE ZONE',14.5,11,.5,'rgba(207,198,176,.18)'); stripes(21.4,13.4,4.6,.35,.3); stripes(21.4,17.4,4.6,.35,.3); text('ANNEX GATE',23.7,16,.4,'rgba(207,198,176,.2)'); text('REPAIR MARKET',14.5,17.6,.5,'rgba(143,59,46,.26)'); c.restore(); }
+    void L; }
   isDoorTile(x:number,y:number){ return this.g.level.doors.some(d=>d.tiles.some(t=>t[0]===x&&t[1]===y)); }
   ring(x:number,y:number,r:number,col:string,alpha=1,filled=false){ const c=this.ctx; c.save(); c.globalAlpha=alpha; c.strokeStyle=col; c.fillStyle=col; c.lineWidth=2; c.beginPath(); c.ellipse(this.sx(x,y),this.sy(x,y),r*this.TW/2*Math.SQRT2*.7,r*this.TW/4*Math.SQRT2*.7,0,0,7); if(filled){ c.globalAlpha=alpha*.25; c.fill(); c.globalAlpha=alpha; } c.stroke(); c.restore(); }
   poly(pts:[number,number][],fill?:string,stroke?:string,alpha=1,lw=2){ const c=this.ctx; c.save(); c.globalAlpha=alpha; c.beginPath(); pts.forEach(([x,y],i)=>{ const a=this.sx(x,y), b=this.sy(x,y); i?c.lineTo(a,b):c.moveTo(a,b); }); c.closePath(); if(fill){ c.fillStyle=fill; c.fill(); } if(stroke){ c.strokeStyle=stroke; c.lineWidth=lw; c.stroke(); } c.restore(); }
@@ -54,7 +106,7 @@ export class Renderer {
       if(pr){ items.push({d:x+y+.5,f:()=>{ const dd=(x+y)-(g.px+g.py), sd=(x-g.px)-(y-g.py); const fade=dd>0&&dd<4.5&&Math.abs(sd)<2.2&&pr.h>1.2; c.save(); if(fade) c.globalAlpha=.4; this.drawProp(pr); c.restore(); }}); continue; }
       let near=false; for(let dy=-1;dy<=1&&!near;dy++)for(let dx=-1;dx<=1;dx++){ const nx=x+dx,ny=y+dy; if(nx>=0&&ny>=0&&nx<L.w&&ny<L.h&&!L.solid[ny*L.w+nx]){ near=true; break; } }
       if(!near) continue; const door=L.doors.find(d=>d.tiles.some(t=>t[0]===x&&t[1]===y));
-      items.push({d:x+y+.5,f:()=>{ const dd=(x+y)-(g.px+g.py), sd=(x-g.px)-(y-g.py); const fade=dd>0&&dd<4.5&&Math.abs(sd)<2.8; c.save(); if(fade) c.globalAlpha=.3; if(door){ this.box(x,y,1,1,1.5,'#4a4c4e','#3a3c3e','#2d2f31'); this.hazard(x,y); } else this.box(x,y,1,1,1.6,'#46484a','#303234','#232426'); c.restore(); }}); }
+      items.push({d:x+y+.5,f:()=>{ const dd=(x+y)-(g.px+g.py), sd=(x-g.px)-(y-g.py); const fade=dd>0&&dd<4.5&&Math.abs(sd)<2.8; c.save(); if(fade) c.globalAlpha=.3; if(this.env){ if(door) this.doorBox(x,y); else this.wallBox(x,y); } else if(door){ this.box(x,y,1,1,1.5,'#4a4c4e','#3a3c3e','#2d2f31'); this.hazard(x,y); } else this.box(x,y,1,1,1.6,'#46484a','#303234','#232426'); c.restore(); }}); }
     for(const it of L.interacts){ if(!this.interactVisible(it.id)) continue; items.push({d:it.x+it.y,f:()=>this.drawInteract(it)}); }
     for(const dr of (g.inst&&g.mode==='run'?g.inst.drops:[])) items.push({d:dr.x+dr.y,f:()=>this.drawDrop(dr)});
     for(const e of g.enemies){ if(e.dead){ continue; } items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); }
@@ -67,7 +119,7 @@ export class Renderer {
   }
   interactVisible(id:string){ const g=this.g; if(g.mode!=='run'||!g.inst) return true; const f=g.inst.flags; if(id==='controller') return false; if(id==='hackproc') return !f.lock2; return true; }
   hazard(x:number,y:number){ const c=this.ctx; c.save(); c.strokeStyle=PAL.oxide; c.lineWidth=3; c.globalAlpha=.8; const a=this.sx(x+.5,y+.5), b=this.sy(x+.5,y+.5,.8); c.beginPath(); c.moveTo(a-this.TW*.25,b-this.TW*.1); c.lineTo(a+this.TW*.25,b+this.TW*.1); c.moveTo(a-this.TW*.25,b+this.TW*.1); c.lineTo(a+this.TW*.25,b-this.TW*.1); c.stroke(); c.restore(); }
-  drawProp(p:{x:number;y:number;kind:string;h:number}){ const k=p.kind; if(k==='crate') this.box(p.x+.05,p.y+.05,.9,.9,p.h*.9,'#8a6b4e','#6b5239','#554230'); else if(k==='conveyor') this.box(p.x,p.y,1,1,p.h,'#4f5256','#3d4043','#2f3235'); else if(k==='machine') this.box(p.x,p.y,1,1,p.h,'#5f666b','#464c50','#383d41'); else if(k==='rack') this.box(p.x,p.y,1,1,p.h,'#574f47','#443d37','#352f2a'); else this.box(p.x+.1,p.y+.1,.8,.8,p.h,'#7b7c79','#5d5e5c','#49494a');
+  drawProp(p:{x:number;y:number;kind:string;h:number}){ if(this.env){ this.texProp(p); return; } const k=p.kind; if(k==='crate') this.box(p.x+.05,p.y+.05,.9,.9,p.h*.9,'#8a6b4e','#6b5239','#554230'); else if(k==='conveyor') this.box(p.x,p.y,1,1,p.h,'#4f5256','#3d4043','#2f3235'); else if(k==='machine') this.box(p.x,p.y,1,1,p.h,'#5f666b','#464c50','#383d41'); else if(k==='rack') this.box(p.x,p.y,1,1,p.h,'#574f47','#443d37','#352f2a'); else this.box(p.x+.1,p.y+.1,.8,.8,p.h,'#7b7c79','#5d5e5c','#49494a');
     if(k==='conveyor'){ const c=this.ctx; c.fillStyle='rgba(168,150,90,.5)'; const a=this.sx(p.x+.5,p.y+.5), b=this.sy(p.x+.5,p.y+.5,p.h); c.fillRect(a-3,b-2,6,3); } }
   drawInteract(it:{id:string;x:number;y:number;kind:string;label:string}){ const c=this.ctx; const a=this.sx(it.x,it.y), b=this.sy(it.x,it.y); const s=this.TW/64;
     if(it.id==='annex'){ this.box(it.x-1,it.y-1,2,2,.12,'#5a5d5f','#444','#333'); }
