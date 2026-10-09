@@ -34,7 +34,7 @@ for (const [name, o] of [['desktop', {}], ['mobile', { viewport: { width: 844, h
   if (name === 'desktop') { const c = await ev(() => { const r = document.querySelectorAll('.abtn')[0].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }); await page.mouse.move(c[0], c[1]); await sleep(200); }
   else { const c = await ev(() => { const r = document.querySelectorAll('.abtn')[0].getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; }); const cdp = await page.context().newCDPSession(page); await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: c[0], y: c[1], id: 3 }] }); await sleep(700); }
   const tip = await ev(() => { const t = document.getElementById('abtip'); return t.style.display !== 'none' && t.textContent.length > 20; }); ok(tip, name + ': tooltip with description (' + (name === 'desktop' ? 'hover' : 'long-press') + ')');
-  await page.screenshot({ path: `docs/art/abilities/test_${name}.png` });
+  await page.screenshot({ path: `/tmp/ability_test_${name}.png` });
   ok(errors.length === 0, name + ': no console errors ' + errors.join(';')); await browser.close();
 }
 if (fails) { console.log(fails + ' FAILED'); process.exit(1); } console.log('ability ui ok');
