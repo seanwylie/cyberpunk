@@ -12,7 +12,7 @@ export interface Zone { x:number; y:number; r:number; t:number; life:number; dps
 export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; }
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
 export interface Rt { // enemy transient runtime fields
-  st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; dashed:boolean; strafe:number; chained?:boolean;
+  st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; wpT?:number; wp?:{x:number;y:number}|null; sx?:number; sy?:number; sT?:number; unstick?:number; side?:number; dashed:boolean; strafe:number; chained?:boolean;
 }
 export type En = EnemyState & { _rt:Rt };
 
@@ -30,7 +30,7 @@ export class Game {
   slideT=0; slideFx=0; slideFy=0; channel:{ kind:'town'|'hack'; t:number; dur:number; cb:()=>void }|null=null;
   inputMove={x:0,y:0}; build!:BuildResult; moving=false; prompt:Interact|null=null; musicState='traversal'; combatHold=0; toastQ:string[]=[];
   dbg={god:false,oneShot:false};
-  flow:Int16Array|null=null; flowT=0; kills=0; saveT=0; sensorFlag=false; lastRoute='';
+  flow:Int16Array|null=null; flows:(Int16Array|null)[]=[null,null,null]; clr:(Uint8Array|null)[]=[null,null,null]; clrLevel:Level|null=null; q:Int32Array|null=null; frame=0; flowT=0; kills=0; saveT=0; sensorFlag=false; lastRoute='';
   constructor(save:Save, emit:Emit){ this.save=save; this.emit=emit; this.level=buildTown(); this.recompute(); this.enterTown(true); }
 
   // ---------- build / stats ----------
@@ -100,7 +100,11 @@ export class Game {
   // ---------- helpers ----------
   solidAt(x:number,y:number){ const L=this.level; const ix=Math.floor(x), iy=Math.floor(y); if(ix<0||iy<0||ix>=L.w||iy>=L.h) return true; return L.solid[iy*L.w+ix]===1; }
   moveCircle(x:number,y:number,dx:number,dy:number,r:number){ let nx=x+dx, ny=y; if(this.circleHits(nx,ny,r)) nx=x; ny=y+dy; if(this.circleHits(nx,ny,r)) ny=y; return {x:nx,y:ny}; }
-  circleHits(x:number,y:number,r:number){ return this.solidAt(x-r,y-r)||this.solidAt(x+r,y-r)||this.solidAt(x-r,y+r)||this.solidAt(x+r,y+r); }
+  circleHits(x:number,y:number,r:number){ const x0=Math.floor(x-r), x1=Math.floor(x+r), y0=Math.floor(y-r), y1=Math.floor(y+r); for(let iy=y0;iy<=y1;iy++)for(let ix=x0;ix<=x1;ix++){ if(!this.solidAt(ix+.5,iy+.5)) continue; const cx=clamp(x,ix,ix+1), cy=clamp(y,iy,iy+1); const dx=x-cx, dy=y-cy; if(dx*dx+dy*dy<r*r-1e-6) return true; } return false; }
+  /** Swept circle clearance between two points (used for wide-LOS and path smoothing). */
+  clearFor(ax:number,ay:number,bx:number,by:number,r:number){ const d=dist(ax,ay,bx,by); const n=Math.max(1,Math.ceil(d/.3)); for(let i=1;i<=n;i++){ const t=i/n; if(this.circleHits(ax+(bx-ax)*t,ay+(by-ay)*t,r)) return false; } return true; }
+  /** Push an entity out of any collider it ended up inside (dash end, knockback, spawn). */
+  unwedge(o:{x:number;y:number},r:number){ if(!this.circleHits(o.x,o.y,r)) return; for(let ring=1;ring<=12;ring++){ const rr=ring*.15; for(let k=0;k<8;k++){ const a=k*Math.PI/4; const nx=o.x+Math.cos(a)*rr, ny=o.y+Math.sin(a)*rr; if(!this.circleHits(nx,ny,r)){ o.x=nx; o.y=ny; return; } } } }
   los(ax:number,ay:number,bx:number,by:number){ const d=dist(ax,ay,bx,by); const n=Math.ceil(d/.4); for(let i=1;i<n;i++){ const t=i/n; if(this.solidAt(ax+(bx-ax)*t,ay+(by-ay)*t)) return false; } return true; }
   zoneAt(x:number,y:number){ const L=this.level; const ix=Math.floor(x), iy=Math.floor(y); if(ix<0||iy<0||ix>=L.w||iy>=L.h) return 'none'; return L.zoneNames[L.zone[iy*L.w+ix]]; }
   stat(){ return this.build.stats; }
@@ -331,16 +335,30 @@ export class Game {
     if(this.prompt?.id!==best?.id) this.prompt=best; }
 
   // ---------- enemies ----------
-  flowField(){ const L=this.level; if(!this.flow||this.flow.length!==L.w*L.h) this.flow=new Int16Array(L.w*L.h); const fl=this.flow; fl.fill(-1); const sx=clamp(Math.floor(this.px),0,L.w-1), sy=clamp(Math.floor(this.py),0,L.h-1); const q=new Int32Array(L.w*L.h); let h=0,tl=0; q[tl++]=sy*L.w+sx; fl[sy*L.w+sx]=0;
-    while(h<tl){ const c=q[h++]; const cx=c%L.w, cy=(c/L.w)|0; const d=fl[c]; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=cx+dx, ny=cy+dy; if(nx<0||ny<0||nx>=L.w||ny>=L.h) continue; const ni=ny*L.w+nx; if(fl[ni]>=0||L.solid[ni]) continue; fl[ni]=d+1; q[tl++]=ni; } } }
-  flowDir(e:En):{x:number;y:number}|null{ const L=this.level; const fl=this.flow; if(!fl) return null; const cx=Math.floor(e.x), cy=Math.floor(e.y); let best=fl[cy*L.w+cx]; if(best<0) return null; let bx=cx,by=cy;
-    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ if(!dx&&!dy) continue; const nx=cx+dx,ny=cy+dy; if(nx<0||ny<0||nx>=L.w||ny>=L.h) continue; const ni=ny*L.w+nx; if(L.solid[ni]||fl[ni]<0) continue; if(dx&&dy&&(L.solid[cy*L.w+nx]||L.solid[ny*L.w+cx])) continue; if(fl[ni]<best){ best=fl[ni]; bx=nx; by=ny; } }
-    if(bx===cx&&by===cy) return null; return { x:bx+.5, y:by+.5 }; }
+  /** Flow field toward the player on the tile grid. cls 0 = plain walkable tiles; 1/2 = tiles with clearance for radius .7 / 1.1 (so wide bosses path around pillars instead of wedging). */
+  static FLOW_R=[0,.7,1.1];
+  flowCls(r:number){ return r<=.5?0:r<=.72?1:2; }
+  flowField(cls=0){ const L=this.level; const n=L.w*L.h; if(!this.flows[cls]||this.flows[cls]!.length!==n) this.flows[cls]=new Int16Array(n); const fl=this.flows[cls]!; fl.fill(-1); const R=Game.FLOW_R[cls]; if(cls===0) this.flow=fl;
+    if(!this.clr[cls]||this.clr[cls]!.length!==n||this.clrLevel!==L){ if(this.clrLevel!==L){ this.clrLevel=L; this.clr=[null,null,null]; } const m=new Uint8Array(n); for(let y=0;y<L.h;y++)for(let x=0;x<L.w;x++) m[y*L.w+x]=(!L.solid[y*L.w+x]&&(R===0||!this.circleHits(x+.5,y+.5,R)))?1:0; this.clr[cls]=m; }
+    const ok=this.clr[cls]!; const sx=clamp(Math.floor(this.px),0,L.w-1), sy=clamp(Math.floor(this.py),0,L.h-1); if(!this.q||this.q.length!==n) this.q=new Int32Array(n); const q=this.q; let h=0,tl=0; q[tl++]=sy*L.w+sx; fl[sy*L.w+sx]=0;
+    while(h<tl){ const c=q[h++]; const cx=c%L.w, cy=(c/L.w)|0; const d=fl[c]; for(let k=0;k<4;k++){ const nx=cx+(k===0?1:k===1?-1:0), ny=cy+(k===2?1:k===3?-1:0); if(nx<0||ny<0||nx>=L.w||ny>=L.h) continue; const ni=ny*L.w+nx; if(fl[ni]>=0||L.solid[ni]) continue; if(!ok[ni]&&!(Math.abs(nx-sx)<=2&&Math.abs(ny-sy)<=2)) continue; fl[ni]=d+1; q[tl++]=ni; } } }
+  flowDir(e:En,cls=0):{x:number;y:number}|null{ const L=this.level; const fl=this.flows[cls]; if(!fl) return null; const r=ENEMIES[e.type].radius*.85; let cx=clamp(Math.floor(e.x),0,L.w-1), cy=clamp(Math.floor(e.y),0,L.h-1); const val=(x:number,y:number)=>fl[y*L.w+x];
+    // step greedily down the field, keeping the farthest waypoint that is still swept-clear for this radius
+    let best=val(cx,cy); let wp:{x:number;y:number}|null=null; let lastClear:{x:number;y:number}|null=null;
+    for(let step=0;step<8;step++){ let bx=cx,by=cy,bv=best<0?1e9:best; for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){ if(!dx&&!dy) continue; const nx=cx+dx,ny=cy+dy; if(nx<0||ny<0||nx>=L.w||ny>=L.h) continue; const v=val(nx,ny); if(v<0||L.solid[ny*L.w+nx]) continue; if(dx&&dy&&(L.solid[cy*L.w+nx]||L.solid[ny*L.w+cx])) continue; if(v<bv){ bv=v; bx=nx; by=ny; } }
+      if(bx===cx&&by===cy) break; cx=bx; cy=by; best=bv; wp={x:cx+.5,y:cy+.5}; if(step===0||this.clearFor(e.x,e.y,wp.x,wp.y,r)) lastClear=wp; else break; if(best===0) break; }
+    if(!lastClear&&best<0&&!wp){ // inside a clearance-blocked tile: look two rings out for any field cell
+      let bv=1e9,bp:{x:number;y:number}|null=null; const ex=Math.floor(e.x), ey=Math.floor(e.y); for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){ const nx=ex+dx,ny=ey+dy; if(nx<0||ny<0||nx>=L.w||ny>=L.h) continue; const v=val(nx,ny); if(v>=0&&v<bv&&!L.solid[ny*L.w+nx]){ bv=v; bp={x:nx+.5,y:ny+.5}; } } return bp; }
+    return lastClear; }
+  /** Move with obstacle-avoidance: try the desired heading, then fan out +-45/90/135 degrees; returns distance moved. */
+  steerMove(e:En,mx:number,my:number,speed:number,dt:number,r:number){ const step=speed*dt; const ox=e.x, oy=e.y; const base=Math.atan2(my,mx);
+    for(const off of [0,.6,-.6,1.2,-1.2,1.9,-1.9]){ const a=base+(off*(((e.id|0)&1)?1:-1)); const p=this.moveCircle(e.x,e.y,Math.cos(a)*step,Math.sin(a)*step,r); const mv=dist(p.x,p.y,ox,oy); if(mv>=step*.6||off===1.9){ e.x=p.x; e.y=p.y; return mv; } }
+    return 0; }
   opponents(faction:'enemy'|'ally'):{x:number;y:number;r:number;hurt:(d:number,sx:number,sy:number)=>void}[]{
     if(faction==='enemy'){ const out:any[]=[]; if(!this.downed) out.push({x:this.px,y:this.py,r:COMBAT.playerRadius,hurt:(d:number,sx:number,sy:number)=>this.hurtPlayer(d,sx,sy)}); for(const a of this.enemies) if(a.faction==='ally'&&!a.dead) out.push({x:a.x,y:a.y,r:ENEMIES[a.type].radius,hurt:(d:number,sx:number,sy:number)=>this.hurtEnemy(a,d*.7,sx,sy)}); return out; }
     return this.enemies.filter(e=>e.faction==='enemy'&&!e.dead&&e._rt.reveal<=0).map(e=>({x:e.x,y:e.y,r:ENEMIES[e.type].radius,hurt:(d:number,sx:number,sy:number)=>this.hurtEnemy(e,d,sx,sy,.4)})); }
   updateEnemies(dt:number){
-    this.flowT-=dt; if(this.flowT<=0){ this.flowT=.35; this.flowField(); }
+    this.frame++; this.flowT-=dt; if(this.flowT<=0){ this.flowT=.35; const need=[false,false,false]; for(const e of this.enemies){ if(!e.dead&&e.faction==='enemy'&&e.alert&&!ENEMIES[e.type].static) need[this.flowCls(ENEMIES[e.type].radius)]=true; } need[0]=true; for(let c=0;c<3;c++){ if(need[c]) this.flowField(c); } }
     const alive=this.enemies.filter(e=>!e.dead);
     for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.reveal>0) continue; this.updateEnemy(e,dt); }
     // separation
@@ -375,8 +393,11 @@ export class Game {
     if(e.faction==='ally'&&d<1.2) return;
     if(wantKeep&&d<wantKeep-1&&this.los(e.x,e.y,tx,ty)){ mx=-Math.cos(ang); my=-Math.sin(ang); const sd=rt.strafe; mx+= -Math.sin(ang)*sd*.5; my+= Math.cos(ang)*sd*.5; }
     else if(wantKeep&&d<wantKeep+1.5&&this.los(e.x,e.y,tx,ty)){ mx=-Math.sin(ang)*rt.strafe*.4; my=Math.cos(ang)*rt.strafe*.4; }
-    else if(d>(def.ranged?wantKeep:1.0)){ if(this.los(e.x,e.y,tx,ty)||d<3||!tgtIsPlayer){ mx=Math.cos(ang); my=Math.sin(ang); } else { const fd=this.flowDir(e); if(fd){ const a2=Math.atan2(fd.y-e.y,fd.x-e.x); mx=Math.cos(a2); my=Math.sin(a2); } else { mx=Math.cos(ang); my=Math.sin(ang); } } }
-    const l=Math.hypot(mx,my); if(l>0){ const p=this.moveCircle(e.x,e.y,mx/l*speed*dt,my/l*speed*dt,def.radius*.85); e.x=p.x; e.y=p.y; rt.ang=Math.atan2(my,mx); }
+    else if(d>(def.ranged?wantKeep:1.0)){ const rr=def.radius*.85; if(d<2.2&&this.clearFor(e.x,e.y,tx,ty,rr)||!tgtIsPlayer&&this.clearFor(e.x,e.y,tx,ty,rr)||this.clearFor(e.x,e.y,tx,ty,rr)&&d<14){ mx=Math.cos(ang); my=Math.sin(ang); rt.wp=null; } else { rt.wpT=(rt.wpT||0)-dt; if(rt.wpT<=0||!rt.wp){ rt.wpT=.15+((e.id|0)%4)*.03; rt.wp=this.flowDir(e,this.flowCls(def.radius)); } const w=rt.wp; if(w){ const a2=Math.atan2(w.y-e.y,w.x-e.x); mx=Math.cos(a2); my=Math.sin(a2); if(dist(e.x,e.y,w.x,w.y)<.35) rt.wpT=0; } else { mx=Math.cos(ang); my=Math.sin(ang); } } }
+    // stuck detection: no real progress while trying to move => sidestep + repath
+    if(rt.unstick&&rt.unstick>0){ rt.unstick-=dt; const pa=Math.atan2(my,mx)+(rt.side||1)*Math.PI/2; const lm=Math.hypot(mx,my)||1; mx=mx/lm*.5+Math.cos(pa)*.8; my=my/lm*.5+Math.sin(pa)*.8; }
+    const l=Math.hypot(mx,my); if(l>0){ this.unwedge(e,def.radius*.85); this.steerMove(e,mx/l,my/l,speed,dt,def.radius*.85); rt.ang=Math.atan2(my,mx);
+      rt.sT=(rt.sT||0)+dt; if(rt.sx===undefined){ rt.sx=e.x; rt.sy=e.y; rt.sT=0; } else if(rt.sT>=.5){ const prog=dist(e.x,e.y,rt.sx,rt.sy); if(prog<speed*.5*.3&&d>1.5){ rt.unstick=.7; rt.side=-(rt.side||((e.id|0)&1?1:-1)); rt.wp=null; rt.wpT=0; } rt.sx=e.x; rt.sy=e.y; rt.sT=0; } }
     else rt.ang=ang;
   }
   zoneSlow(e:En){ return false; }
@@ -415,14 +436,17 @@ export class Game {
       case 'slagshot': proj(Math.atan2(ty-e.y,tx-e.x),10); break; case 'dart': proj(Math.atan2(ty-e.y,tx-e.x),12); break;
       case 'scalpelfan': for(const o of [-.4,-.2,0,.2,.4]) proj(rt.ang+o,12); break;
       case 'slagpool': case 'gasvent': case 'ringpools': case 'sawlanes': case 'cratefall': break; // zone patterns spawn at telegraph start
-      case 'blink': { const fa=fac==='enemy'?this.face:Math.atan2(ty-e.y,tx-e.x); for(const dd of [2.2,1.5,1]){ const nx=tx-Math.cos(fa)*dd, ny=ty-Math.sin(fa)*dd; if(!this.solidAt(nx,ny)){ this.fx.push({kind:'dust',x:e.x,y:e.y,t:0,life:.4}); e.x=nx; e.y=ny; break; } } rt.ang=Math.atan2(ty-e.y,tx-e.x); rt.chained=true; rt.st='tele'; rt.atk='riposte'; rt.t=0; this.emit('sfx','slam'); return; }
+      case 'blink': { const fa=fac==='enemy'?this.face:Math.atan2(ty-e.y,tx-e.x); for(const dd of [2.2,1.5,1]){ const nx=tx-Math.cos(fa)*dd, ny=ty-Math.sin(fa)*dd; if(!this.circleHits(nx,ny,def.radius*.85)){ this.fx.push({kind:'dust',x:e.x,y:e.y,t:0,life:.4}); e.x=nx; e.y=ny; break; } } rt.ang=Math.atan2(ty-e.y,tx-e.x); rt.chained=true; rt.st='tele'; rt.atk='riposte'; rt.t=0; this.emit('sfx','slam'); return; }
       case 'charge': rt.st='dash'; rt.t=0; rt.dashed=false; rt.hit=0; (rt as any).hitP=false; return;
     }
   }
   dashStep(e:En,dt:number){
-    const def=ENEMIES[e.type]; const rt=e._rt; const sp=17; const dx=Math.cos(rt.ang)*sp*dt, dy=Math.sin(rt.ang)*sp*dt; const p=this.moveCircle(e.x,e.y,dx,dy,def.radius*.8); const moved=dist(p.x,p.y,e.x,e.y); e.x=p.x; e.y=p.y; rt.t+=dt;
+    const def=ENEMIES[e.type]; const rt=e._rt; const sp=17; const R=def.radius*.8; const want=sp*dt; const n=Math.max(1,Math.ceil(want/.25)); let moved=0;
+    for(let i=0;i<n;i++){ const sdt=dt/n; const dx=Math.cos(rt.ang)*sp*sdt, dy=Math.sin(rt.ang)*sp*sdt; // full-vector move only: a charge stops at a collider instead of sliding/wedging along it
+      if(this.circleHits(e.x+dx,e.y+dy,R)) break; e.x+=dx; e.y+=dy; moved+=Math.hypot(dx,dy); }
+    rt.t+=dt;
     for(const o of this.opponents(e.faction)){ if(dist(e.x,e.y,o.x,o.y)<def.radius+o.r+.2&&!(rt as any).hitP){ (rt as any).hitP=true; o.hurt(ENEMY_DMG.charge,e.x,e.y); } }
-    if(moved<sp*dt*.5||rt.t>.6){ rt.st='rec'; rt.atk='charge'; rt.t=0; rt.vuln=def.boss?2.8:1.8; this.fx.push({kind:'dust',x:e.x,y:e.y,t:0,life:.5}); this.emit('sfx','slam'); }
+    if(moved<want*.95||rt.t>.6){ this.unwedge(e,R); rt.sx=undefined; rt.unstick=0; rt.st='rec'; rt.atk='charge'; rt.t=0; rt.vuln=def.boss?2.8:1.8; this.fx.push({kind:'dust',x:e.x,y:e.y,t:0,life:.5}); this.emit('sfx','slam'); }
   }
   updateProjs(dt:number){
     for(const p of this.projs){ p.life-=dt; const nx=p.x+p.vx*dt, ny=p.y+p.vy*dt; if(this.solidAt(nx,ny)){ p.life=0; this.fx.push({kind:'spark',x:p.x,y:p.y,t:0,life:.2}); continue; } p.x=nx; p.y=ny;
