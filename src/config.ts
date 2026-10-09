@@ -1,4 +1,5 @@
 import { EXTRA_CHIPS, EXTRA_ITEMS, EXTRA_CONFLICTS } from './content/items';
+import { WEAPON_ITEMS } from './content/weapons';
 import { EXTRA_ENEMIES, EXTRA_ENEMY_DMG } from './content/enemies';
 // Editable gameplay configuration. SEPARATE from save data (see save.ts). All numbers are PLACEHOLDER
 // prototype values, not approved balance (spec: "Numerical examples are not approved balance").
@@ -57,13 +58,20 @@ export const CHIPS: Record<ChipId,ChipDef> = { ...EXTRA_CHIPS,
   plating:{ id:'plating', name:'Plating Chip', desc:'+3 armor (flat damage reduction).', stats:{armor:3}, rarity:'green' },
 };
 
-export type WeaponKind = 'fist'|'ripper'|'blade'|'slug';
-export interface WeaponDef { kind:WeaponKind; dmg:number; rate:number; range:number; arc:number; heat:number; stationary?:boolean; proj?:boolean; }
+export type WeaponKind = 'fist'|'ripper'|'blade'|'slug'|'popper'|'autopistol'|'burst'|'shard'|'arc';
+export interface WeaponDef { kind:WeaponKind; dmg:number; rate:number; range:number; arc:number; heat:number; stationary?:boolean; proj?:boolean; /** ranged extras */ burst?:number; burstGap?:number; pellets?:number; spread?:number; pspeed?:number; plife?:number; chain?:number; chainR?:number; label?:string; }
+export const WEAPON_RARITY_MUL:Record<Rarity,number> = { grey:1, green:1.1, blue:1.25, purple:1.45, orange:1.75 };
 export const WEAPONS: Record<WeaponKind,WeaponDef> = {
   fist:{ kind:'fist', dmg:10, rate:1.6, range:1.5, arc:Math.PI*.8, heat:1.0 },
   ripper:{ kind:'ripper', dmg:16, rate:1.8, range:2.0, arc:Math.PI*.9, heat:2.0 },
   blade:{ kind:'blade', dmg:12, rate:3.0, range:1.8, arc:Math.PI*.6, heat:1.6 },
-  slug:{ kind:'slug', dmg:30, rate:1.5, range:8.5, arc:0, heat:3.4, stationary:true, proj:true },
+  slug:{ kind:'slug', dmg:30, rate:1.5, range:8.5, arc:0, heat:3.4, stationary:true, proj:true, label:'Slug driver (stand still)' },
+  // Ranged: all fire while moving (only the slug driver is stationary). Auto-targeted like every auto attack.
+  popper:{ kind:'popper', dmg:6, rate:1.7, range:5, arc:0, heat:.5, proj:true, pspeed:15, plife:.5, label:'Pop pistol (starter)' },
+  autopistol:{ kind:'autopistol', dmg:7.5, rate:3.2, range:6.5, arc:0, heat:.9, proj:true, pspeed:19, plife:.45, label:'Auto-pistol' },
+  burst:{ kind:'burst', dmg:9, rate:.95, range:9, arc:0, heat:1.0, proj:true, burst:3, burstGap:.07, pspeed:26, plife:.5, label:'Burst rifle (3-round)' },
+  shard:{ kind:'shard', dmg:5.5, rate:1.15, range:5.5, arc:0, heat:2.6, proj:true, pellets:5, spread:.5, pspeed:17, plife:.38, label:'Shard thrower (scatter)' },
+  arc:{ kind:'arc', dmg:11, rate:1.5, range:6.5, arc:0, heat:2.4, chain:3, chainR:3.2, label:'Chain-arc caster (hitscan chain)' },
 };
 
 export type ItemKind = 'hardware';
@@ -71,7 +79,7 @@ export interface ItemDef { id:string; name:string; slot:Slot; mfr:Mfr; rarity:Ra
 const H = (id:string,name:string,slot:Slot,mfr:Mfr,rarity:Rarity,lvl:number,stats:Partial<Stats>,x:Partial<ItemDef>={}):ItemDef=>({id,name,slot,mfr,rarity,lvl,stats,...x});
 export const ITEMS: ItemDef[] = [
   // --- Stock baseline hardware (grey), one per slot: "baseline hardware, not empty slots" ---
-  ...SLOTS.map(s=>H('stock_'+s, 'Standard Issue '+SLOT_LABEL[s], s, 'MM','grey',1,{ maxHp: s==='torso'?10:2 }, s==='handR'?{weapon:'fist'}:{})),
+  ...SLOTS.map(s=>H('stock_'+s, 'Standard Issue '+SLOT_LABEL[s], s, 'MM','grey',1,{ maxHp: s==='torso'?10:2 }, s==='handR'?{weapon:'popper'}:{})),
   // --- Heavy industrial (ripper + cooling) ---
   H('hi_ripper_arm','HB-40 Ripper Arm','armR','HI','blue',10,{dmg:.08,armor:2},{abilities:['sweep'],caps:['force'],blurb:'Shoulder-mounted saw assembly. Opens armory shutters.'}),
   H('hi_cutting_head','HB-12 Cutting Head','handR','HI','blue',10,{atkSpeed:.05},{weapon:'ripper',blurb:'Attachment-convention test: separate cutting head on the arm.'}),
@@ -107,7 +115,7 @@ export const ITEMS: ItemDef[] = [
   H('pool_p_torso','AS Lattice Torso','torso','PS','purple',15,{maxHp:30,cooling:.2,dmg:.05}),
   H('pool_o_legs','HB Bastion Legs','legR','HI','orange',20,{maxHp:40,armor:5}),
 ];
-ITEMS.push(...EXTRA_ITEMS);
+ITEMS.push(...EXTRA_ITEMS, ...WEAPON_ITEMS);
 export const ITEM_BY_ID: Record<string,ItemDef> = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 
 // Install cost depends on the hardware being REMOVED (spec). PLACEHOLDER curve.
@@ -164,12 +172,12 @@ export const LOOT = {
   ordinary: { chance:.16, credits:[2,9] as [number,number], pool:[
     {item:'pool_g_torso',w:6},{item:'pool_g_legs',w:6},{item:'pool_gr_face',w:5},{item:'hi_torso_green',w:3},{item:'hi_legs_l',w:3},{item:'hi_legs_r',w:3},
     {chip:'speed',w:5},{chip:'coolant',w:5},{chip:'sustain',w:5},{chip:'magnet',w:4},{chip:'power',w:4},{chip:'plating',w:4},{stim:true,w:8},
-    {item:'pool_b_foot',w:1.2},{item:'pool_b_arm',w:1.2},{item:'pool_p_hand',w:.3},{item:'pool_o_legs',w:.05} ] as LootEntry[] },
+    {item:'mm_autopistol',w:1.2},{item:'pool_b_foot',w:1.2},{item:'pool_b_arm',w:1.2},{item:'pool_p_hand',w:.3},{item:'pool_o_legs',w:.05} ] as LootEntry[] },
   elite: { chance:1, credits:[30,60] as [number,number], pool:[
-    {item:'hi_ripper_arm',w:2},{item:'ps_blade_arm',w:2},{item:'ps_veil_torso',w:2},{item:'ps_brain',w:2},{item:'ps_legs_l',w:2},{item:'hi_cutting_head',w:2},
+    {item:'hi_ripper_arm',w:2},{item:'ps_blade_arm',w:2},{item:'ps_veil_torso',w:2},{item:'ps_brain',w:2},{item:'ps_legs_l',w:2},{item:'hi_cutting_head',w:2},{item:'ps_needle_rifle',w:1.2},{item:'hi_shard_arm',w:1.2},{item:'mm_shocktack',w:1.2},
     {chip:'cutwide',w:3},{chip:'bladepat',w:3},{chip:'cloakdur',w:3},{chip:'ctrldur',w:3},{chip:'speed',w:3},{item:'pool_p_hand',w:.8},{item:'pool_p_torso',w:.6},{item:'pool_o_legs',w:.1},{stim:true,w:3} ] as LootEntry[] },
   boss: { chance:1, rolls:3, credits:[120,200] as [number,number], pool:[
-    {item:'hi_torso_cool',w:3},{item:'mm_slug_hand',w:2},{item:'mm_arm_l',w:2},{item:'mm_torso_defib',w:2},{item:'ps_blade_hand_r',w:2},{item:'ps_blade_hand_l',w:2},
+    {item:'hi_torso_cool',w:3},{item:'mm_slug_hand',w:2},{item:'ps_needle_rifle',w:1},{item:'hi_shard_arm',w:1},{item:'mm_arm_l',w:2},{item:'mm_torso_defib',w:2},{item:'ps_blade_hand_r',w:2},{item:'ps_blade_hand_l',w:2},
     {chip:'cutwide',w:2},{chip:'ctrldur',w:2},{chip:'bladepat',w:2},{chip:'cloakdur',w:2},{chip:'coolant',w:2},{item:'pool_p_torso',w:1},{stim:true,w:3} ] as LootEntry[] },
   signature: { warden:{ item:'sig_audit_core', chance:.12 }, enforcer:{ item:'sig_reclaimer_ripper', chance:.12 } } as Record<string,{item:string;chance:number}>,
 };

@@ -62,3 +62,11 @@ body.touch #hint{ display:none; }
 #rotate{ display:none; position:fixed; inset:0; z-index:99; background:#1b1c1e; align-items:center; justify-content:center; text-align:center; font-size:18px; }
 @media (orientation:portrait) and (max-width:900px){ body.touch #rotate{ display:flex; } }
 @media (max-height:480px){ .toast{ font-size:11px; } #topleft{ width:30vw; } .win .body{ flex-direction:column; } .col.narrow{ flex:1; } #dialog{ top:8%; } }
+
+/* dungeon guidance */
+#objective{ position:absolute; top:calc(8px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); max-width:42vw; text-align:center; font-size:12px; padding:4px 12px; background:rgba(14,14,15,.62); border:1px solid #5a5148; border-left:3px solid #8f3b2e; pointer-events:none; text-shadow:0 0 3px #000; }
+#objective b{ display:block; font-size:9px; letter-spacing:.2em; text-transform:uppercase; opacity:.6; font-weight:normal; }
+#objective span{ opacity:.95; }
+#minimap{ position:absolute; right:calc(10px + env(safe-area-inset-right)); top:calc(46px + env(safe-area-inset-top)); width:160px; height:100px; background:rgba(10,10,11,.55); border:1px solid #5a5148; pointer-events:none; image-rendering:pixelated; }
+@media (max-height:420px){ #minimap{ width:120px; height:75px; } #objective{ max-width:34vw; font-size:11px; } }
+.sumgrid{ display:grid; grid-template-columns:1fr 1fr; gap:4px 18px; margin:6px 0; }

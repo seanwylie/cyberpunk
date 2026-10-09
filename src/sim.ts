@@ -7,7 +7,7 @@ import { Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, reten
 import { record, newStory, EventKind } from './story';
 
 export type Emit = (type:string, payload?:any)=>void;
-export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:number; life:number; faction:'enemy'|'ally'; kind:'bolt'|'slug'; }
+export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:number; life:number; faction:'enemy'|'ally'; kind:'bolt'|'slug'|'pop'|'pistol'|'needle'|'shard'; c?:string; }
 export interface Zone { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }
 export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; }
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
@@ -63,7 +63,7 @@ export class Game {
   }
   resumeInstance(fresh=false){
     const inst=this.inst!; this.mode='run'; this.level=dungeonOf(inst.dungeon).build(); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.downed=false; this.revealing=false;
-    this.applyDoors(); this.enemies=inst.enemies.map(e=>this.wrap(e));
+    this.lastZone=''; this.pathWp=null; this.applyDoors(); this.enemies=inst.enemies.map(e=>this.wrap(e));
     // Boss attempts always replay the full reveal: reset a living boss on (re)entry.
     this.resetBossIfAlive();
     const cp=this.level.checkpoints[0]; this.px=fresh?this.level.spawn.x:cp.x; this.py=fresh?this.level.spawn.y:cp.y;
@@ -75,6 +75,21 @@ export class Game {
   }
   wrap(e:EnemyState):En{ const x=e as En; x._rt={ st:'idle',t:0,atk:'',acd:{},ang:0,tx:0,ty:0,lost:0,vuln:0,reveal:0,bornT:0,fire:0,shots:[],hit:0,dashed:false,strafe:Math.random()<.5?1:-1 }; return x; }
   expireInstance(){ const s=this.save; s.instance=null; this.inst=null; this.toast('The instance expired. Leftover loot and state are gone.'); this.emit('expired'); persist(s); }
+  /** What a reset would do and whether the spec allows it. Spec (Instances & lockouts): entry alone never consumes the daily clear; boss completion does, and a completed instance never grants a new boss kill. So an unfinished instance can be reset freely; a completed one only with the clearly-labelled prototype toggle (Settings). */
+  resetInfo(){ const inst=this.save.instance; if(!inst||inst.expiresAt<=this.now()) return {has:false,allowed:false,dev:false,completed:false,id:'',lost:0,why:'No live instance.'};
+    const id=inst.dungeon||'annex'; const completed=!!inst.flags.rewardsGranted||this.dailyLocked(id)&&inst.flags.completed; const devOn=!!this.save.settings.devFreeReset; const lost=inst.drops.length+inst.carried.items.length+Object.keys(inst.carried.chips).length;
+    if(!completed) return {has:true,allowed:true,dev:false,completed:false,id,lost,why:'Unfinished instance: no clear has been consumed, so a fresh run is free.'};
+    if(devOn) return {has:true,allowed:true,dev:true,completed:true,id,lost,why:'PROTOTYPE reset: this clear is already consumed. Resetting also refunds today\'s lockout (not allowed in the real game).'};
+    return {has:true,allowed:false,dev:false,completed:true,id,lost,why:'Boss clear already consumed today\'s lockout; a completed instance cannot grant a new boss kill. Enable "Prototype: allow resetting cleared dungeons" in Settings to bypass for testing, or abandon it to give up its loot.'}; }
+  /** Abandon the live instance and (when in a run) immediately start a fresh one. Carried-but-not-unloaded loot is lost; carried stims are refunded; the repair bill is kept. */
+  resetInstance(){ const info=this.resetInfo(); if(!info.has||!info.allowed){ this.toast(info.why); return false; } const s=this.save, inst=s.instance!; const wasRun=this.mode==='run';
+    s.stims+=inst.carried.stims; inst.carried.stims=0; if(info.dev) setLockDay(s,info.id,null);
+    s.instance=null; this.inst=null; persist(s); this.toast('Instance reset'+(info.lost?' ('+info.lost+' uncollected item(s) discarded)':'')+'.');
+    if(wasRun){ if(!this.startRun(info.id)) this.enterTown(); } return true; }
+  /** Dev: wipe the instance and any lockout for the dungeon and restart immediately from the entry point. */
+  devRestartFromStart(){ const id=this.inst?.dungeon||this.save.instance?.dungeon||'annex'; const s=this.save; if(s.instance){ s.stims+=s.instance.carried.stims; } s.instance=null; this.inst=null; setLockDay(s,id,null); persist(s); this.toast('[dev] restart from start'); if(this.mode==='run') this.enterTown(true); return this.startRun(id); }
+  /** Voluntary: go back to the last checkpoint (no hardware restore, no state wipe). */
+  restartFromCheckpoint(){ if(this.mode!=='run'||!this.inst) return false; const inst=this.inst; this.channel=null; this.cast=null; this.aim=null; this.downed=false; this.px=inst.checkpoint.x; this.py=inst.checkpoint.y; this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.iframes=1.5; this.resetBossIfAlive(); this.projs=[]; this.zones=this.envZones(); this.toast('Back at checkpoint: '+(this.level.checkpoints.find(c=>c.id===inst.checkpoint.id)?.label||'start')+'. Enemies and loot are unchanged.'); this.saveNow(); return true; }
   abandonInstance(){ this.save.instance=null; this.inst=null; persist(this.save); this.toast('Instance abandoned.'); }
   applyDoors(){ const inst=this.inst!; const f=inst.flags; const open:Record<string,boolean>={ gate1:f.gate1, lock2:f.lock2, armory:f.armory, boss:f.controller }; for(const d of this.level.doors){ if(open[d.id]) for(const [x,y] of d.tiles) this.level.solid[y*this.level.w+x]=0; } }
   openDoor(id:string){ const d=this.level.doors.find(d=>d.id===id); if(!d) return; for(const [x,y] of d.tiles) this.level.solid[y*this.level.w+x]=0; this.emit('sfx','door'); }
@@ -159,7 +174,7 @@ export class Game {
     if(this.aim){ this.face=Math.atan2(this.aim.wy-this.py,this.aim.wx-this.px); }
     // cast
     if(this.cast){ const c=this.cast; c.t+=dt; if(this.aim==null||true){ /* aim keeps tracking only while held */ } if(c.t>=c.ab.windup){ this.cast=null; this.executeAbility(c); } }
-    this.autoAttack(dt);
+    this.updateBurst(dt); this.autoAttack(dt);
   }
   // ---------- auto attack ----------
   pickTarget():En|null{
@@ -176,12 +191,27 @@ export class Game {
     if(w.stationary&&this.moving) return; if(this.atkCd>0) return; if(this.aim) return;
     const st=this.stat(); const rate=w.rate*st.atkSpeed*(this.overheated?.5:1); this.atkCd=1/rate;
     this.face=Math.atan2(t.y-this.py,t.x-this.px);
-    let dmg=w.dmg*st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1); if(w.kind==='ripper') dmg*=1+(st.atkSpeed-1)*.6;
+    let dmg=w.dmg*this.build.weaponMul*st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1); if(w.kind==='ripper') dmg*=1+(st.atkSpeed-1)*.6;
     if(this.cloakT>0){ dmg*=2; this.cloakT=0; this.toast('Cloak broken: first strike'); }
     this.heat+=w.heat; this.emit('sfx','atk_'+w.kind);
-    if(w.proj){ this.projs.push({x:this.px,y:this.py,vx:Math.cos(this.face)*18,vy:Math.sin(this.face)*18,dmg,r:.25,life:.6,faction:'ally',kind:'slug'}); this.fx.push({kind:'spark',x:this.px+Math.cos(this.face)*.6,y:this.py+Math.sin(this.face)*.6,t:0,life:.15}); }
+    if(w.kind==='arc') this.fireArc(t,w,dmg);
+    else if(w.proj){ this.fireProj(w,dmg,this.face); if(w.burst){ this.burstLeft=w.burst-1; this.burstT=w.burstGap||.07; this.burstDmg=dmg; this.atkCd+=(w.burst-1)*(w.burstGap||.07); } }
     else { this.fx.push({kind:'slash',x:this.px,y:this.py,a:this.face,r:w.range,t:0,life:.18,w:w.arc}); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const dd=dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius; if(dd<=w.range&&Math.abs(angDiff(Math.atan2(e.y-this.py,e.x-this.px),this.face))<=w.arc/2&&this.los(this.px,this.py,e.x,e.y)) this.hurtEnemy(e,dmg,this.px,this.py,.6); } }
   }
+  burstLeft=0; burstT=0; burstDmg=0;
+  weaponColor():string{ const m=this.build.weaponMfr; return m==='HI'?'#d0623a':m==='PS'?'#bfe0ea':m==='MM'?'#c4cf7a':'#d8d2bf'; }
+  fireProj(w:WeaponDef,dmg:number,ang:number){
+    const n=w.pellets||1, sp=w.spread||0, kind:Proj['kind']=w.kind==='slug'?'slug':w.kind==='popper'?'pop':w.kind==='autopistol'?'pistol':w.kind==='burst'?'needle':w.kind==='shard'?'shard':'slug';
+    const v=w.pspeed||18, c=this.weaponColor();
+    for(let i=0;i<n;i++){ const a=ang+(n>1?(i/(n-1)-.5)*sp:0)+(n===1&&w.kind!=='slug'?(Math.random()-.5)*.04:0); this.projs.push({x:this.px,y:this.py,vx:Math.cos(a)*v,vy:Math.sin(a)*v,dmg:dmg/(n>1?n*.6:1)*(n>1?1:1),r:.25,life:w.plife||.6,faction:'ally',kind,c}); }
+    this.fx.push({kind:'spark',x:this.px+Math.cos(ang)*.6,y:this.py+Math.sin(ang)*.6,t:0,life:.15,c});
+  }
+  fireArc(t:En,w:WeaponDef,dmg:number){
+    const c=this.weaponColor(); const hit=new Set<number>(); let cur:{x:number;y:number}={x:this.px,y:this.py}; let tgt:En|null=t; let d=dmg;
+    for(let i=0;i<(w.chain||1)&&tgt;i++){ hit.add(tgt.id); const a=Math.atan2(tgt.y-cur.y,tgt.x-cur.x), L=dist(cur.x,cur.y,tgt.x,tgt.y); this.fx.push({kind:'line',x:cur.x,y:cur.y,a,len:L,w:.12,t:0,life:.16,c}); this.fx.push({kind:'spark',x:tgt.x,y:tgt.y,t:0,life:.2,c}); this.hurtEnemy(tgt,d,cur.x,cur.y,.3); d*=.7; cur={x:tgt.x,y:tgt.y};
+      let best:En|null=null,bd=w.chainR||3; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0||hit.has(e.id)) continue; const dd=dist(cur.x,cur.y,e.x,e.y); if(dd<bd&&this.los(cur.x,cur.y,e.x,e.y)){ bd=dd; best=e; } } tgt=best; }
+  }
+  updateBurst(dt:number){ if(this.burstLeft<=0) return; if(this.mode!=='run'||this.cast||this.dodgeT>0||this.revealing||this.downed){ this.burstLeft=0; return; } this.burstT-=dt; if(this.burstT<=0){ const w=this.build.weapon; this.burstLeft--; this.burstT=w.burstGap||.07; const t=this.pickTarget(); if(t) this.face=Math.atan2(t.y-this.py,t.x-this.px); this.heat+=w.heat; this.emit('sfx','atk_'+w.kind); this.fireProj(w,this.burstDmg,this.face); } }
   // ---------- abilities ----------
   executeAbility(c:{ idx:number; aim:AimState; ab:AbilityDef }){
     const def=c.ab; const st=this.stat(); const m=this.build.mods;
@@ -233,8 +263,10 @@ export class Game {
   updateRun(dt:number){
     const inst=this.inst!; const f=inst.flags; const L=this.level;
     // checkpoints
-    for(const cp of L.checkpoints){ if(dist(this.px,this.py,cp.x,cp.y)<1.8){ if(inst.checkpoint.id!==cp.id){ inst.checkpoint={id:cp.id,x:cp.x,y:cp.y}; this.toast('Checkpoint: '+cp.label); this.saveNow(); }
+    for(const cp of L.checkpoints){ if(dist(this.px,this.py,cp.x,cp.y)<1.8){ inst.reached=inst.reached||[]; const first=!inst.reached.includes(cp.id); if(first&&!this.downed){ inst.reached.push(cp.id); this.hp=Math.min(this.maxHp,this.hp+this.maxHp*.4); this.heat=0; this.overheated=false; this.emit('checkpoint',cp.label); this.fx.push({kind:'ring',x:cp.x,y:cp.y,r:1.1,t:0,life:.8}); }
+      if(inst.checkpoint.id!==cp.id){ inst.checkpoint={id:cp.id,x:cp.x,y:cp.y}; this.toast('CHECKPOINT: '+cp.label+(first?' · +40% HP, heat vented. Downed? you return here. Menu: Restart from checkpoint.':' · respawn point set.')); this.saveNow(); }
       if(inst.broken.length&&!this.downed){ for(const s of inst.broken) inst.protectedSlots.push(s); inst.broken=[]; this.recompute(); this.toast('Checkpoint restored your hardware (repair bill kept).'); } } }
+    { const zn=this.zoneAt(this.px,this.py); if(zn!==this.lastZone){ const lab=(this.dd.zoneLabels as any)[zn]; if(lab&&this.lastZone!==''&&zn!=='none') this.emit('zone',{label:lab,zone:zn,hint:this.objective()?.text||''}); this.lastZone=zn; } this.seenT-=dt; if(this.seenT<=0){ this.seenT=.25; this.markSeen(); } }
     // sensors (cloak route)
     const sn=L.sensors; if(this.px>=sn.x0&&this.px<=sn.x1+1&&this.py>=sn.y0&&this.py<=sn.y1+1){ if(this.cloakT<=0&&!f.alarm){ f.alarm=true; this.toast('SENSOR ALARM: security responding'); this.emit('sfx','alarm'); for(let i=0;i<4;i++){ const e=this.spawnEnemy(this.dd.alarmType,this.px+(i<2?-3:3)+(i%2)*.6,this.py+.5+(i%2)*.7); e.alert=true; } } else if(this.cloakT>0&&!this.sensorFlag){ this.sensorFlag=true; this.note('route_used','cloak'); } }
     // zone based doors
@@ -444,7 +476,20 @@ export class Game {
     if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Collect loot; the instance persists until it expires.'); }
     this.emit('boss-dead'); this.resPending=5; this.saveNow();
   }
-  resPending=0;
+  resPending=0; lastZone=''; seenT=0; seen:Uint8Array|null=null; seenFor:Level|null=null; pathT=0; pathWp:{x:number;y:number}|null=null; pathLen=0;
+  markSeen(){ const L=this.level; if(this.seenFor!==L||!this.seen){ this.seen=new Uint8Array(L.w*L.h); this.seenFor=L; } const R=9; const px=Math.floor(this.px), py=Math.floor(this.py); for(let y=Math.max(0,py-R);y<=Math.min(L.h-1,py+R);y++) for(let x=Math.max(0,px-R);x<=Math.min(L.w-1,px+R);x++) if((x-px)**2+(y-py)**2<=R*R) this.seen[y*L.w+x]=1; }
+  /** Current dungeon objective (text + world target) derived from instance flags; used by the HUD arrow, minimap and zone banners. */
+  objective():{text:string;x:number;y:number;kind:string}|null{ const inst=this.inst; if(this.mode!=='run'||!inst) return null; const f=inst.flags, L=this.level, dd=this.dd; const it=(id:string)=>L.interacts.find(i=>i.id===id);
+    if(f.bossDead){ let best:Drop|null=null,bd=1e9; for(const d of inst.drops){ const k=dist(this.px,this.py,d.x,d.y); if(k<bd){ bd=k; best=d; } } if(best) return {text:'Collect loot ('+inst.drops.length+' on the ground), then return to town (T)',x:best.x,y:best.y,kind:'loot'}; return {text:'Run complete. Return to town (T) and unload loot',x:L.spawn.x,y:L.spawn.y,kind:'exit'}; }
+    if(f.bossSpawned&&!f.bossDead){ const b=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead); return {text:'Defeat the boss',x:b?b.x:L.bossSpawn.x,y:b?b.y:L.bossSpawn.y,kind:'boss'}; }
+    if(f.controller){ return {text:'Boss chamber is open: enter it',x:L.bossSpawn.x-6,y:L.bossSpawn.y,kind:'boss'}; }
+    const c=it('controller'); if(c) return {text:'Secure the '+dd.objectiveLabel+(f.lock2?'':' (break through the locked gate)'),x:c.x,y:c.y,kind:'controller'}; return null; }
+  /** BFS next-waypoint toward a world target so the arrow follows walkable routes rather than pointing through walls. */
+  guidance(){ const o=this.objective(); if(!o) return null; this.pathT-=1/60; if(this.pathT<=0||!this.pathWp){ this.pathT=.4; const L=this.level, w=L.w, h=L.h; const sx0=Math.floor(this.px), sy0=Math.floor(this.py), tx=Math.floor(o.x), ty=Math.floor(o.y); const prev=new Int32Array(w*h).fill(-1); const q=[sy0*w+sx0]; prev[sy0*w+sx0]=sy0*w+sx0; let found=-1; for(let qi=0;qi<q.length;qi++){ const cur=q[qi], cx=cur%w, cy=(cur/w)|0; if(Math.abs(cx-tx)<=1&&Math.abs(cy-ty)<=1){ found=cur; break; } for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=cx+dx, ny=cy+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; const ni=ny*w+nx; if(prev[ni]>=0||L.solid[ni]) continue; prev[ni]=cur; q.push(ni); } }
+      if(found<0){ this.pathWp={x:o.x,y:o.y}; this.pathLen=dist(this.px,this.py,o.x,o.y); } else { const path:number[]=[]; let c=found; while(c!==sy0*w+sx0){ path.push(c); c=prev[c]; } path.reverse(); this.pathLen=path.length; const wp=path[Math.min(path.length-1,5)]; this.pathWp=path.length?{x:(wp%w)+.5,y:((wp/w)|0)+.5}:{x:o.x,y:o.y}; } }
+    return {obj:o,wp:this.pathWp!,dist:this.pathLen}; }
+  runSummary(){ const inst=this.inst; if(!inst) return null; const dd=this.dd; const byR:Record<string,number>={}; for(const d of inst.drops) if(d.inst){ const r=ITEM_BY_ID[d.inst.def].rarity; byR[r]=(byR[r]||0)+1; }
+    return { dungeon:dd.name, id:dd.id, cleared:inst.flags.bossDead, boss:inst.flags.bossKey?ENEMIES[inst.flags.bossKey]?.name:null, time:inst.elapsed, kills:Object.values(inst.kills).reduce((a,b)=>a+b,0), killTypes:inst.kills, xp:inst.xpEarned, credits:inst.carried.credits, repair:inst.repairAdded, carried:inst.carried.items.map(i=>({name:ITEM_BY_ID[i.def].name,rarity:ITEM_BY_ID[i.def].rarity})), chips:{...inst.carried.chips}, stims:inst.carried.stims, ground:inst.drops.length, groundByRarity:byR, route:inst.flags.cond||'combat' }; }
   updateMusic(dt:number){
     let st='traversal'; if(this.combatHold>0) this.combatHold-=dt; const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal<=0&&this.inst!.flags.bossSpawned);
     const bossRev=this.enemies.some(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal>0);

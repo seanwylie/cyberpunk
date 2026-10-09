@@ -47,12 +47,17 @@ export class AudioSys {
     const m=[55,65.4,49,77.8]; m.forEach((f,i)=>{ const tt=t+1.6+i*1.25; this.osc('sawtooth',f*2,tt,1.1,.12,B,500); this.osc('sine',f,tt,1.3,.2,B); this.noiseAt(tt,.12,.1,900,B); });
     this.osc('sawtooth',220,t+7.4,1.4,.1,B,800,60); this.hit(1.1); }
   // --- sfx ---
-  sfx(name:string){ const c=this.ctx; if(!c||c.state!=='running') return; const now=c.currentTime; const gap:Record<string,number>={ hit:.05,enemy_swing:.08,pickup:.05,coin:.05,atk_ripper:.09,atk_blade:.06,atk_fist:.08,atk_slug:.1,death_MM:.05,death_HI:.06,death_PS:.06,telegraph_basic:.15,hurt:.1,enemy_shot:.08,alert:.2 }; const g=gap[name]??.02; if(this.last[name]&&now-this.last[name]<g) return; this.last[name]=now; if(this.playing>14) return; const B=this.sfxBus; const t=now; this.playing++; setTimeout(()=>this.playing--,300);
+  sfx(name:string){ const c=this.ctx; if(!c||c.state!=='running') return; const now=c.currentTime; const gap:Record<string,number>={ hit:.05,enemy_swing:.08,pickup:.05,coin:.05,atk_ripper:.09,atk_blade:.06,atk_fist:.08,atk_slug:.1,atk_popper:.05,atk_autopistol:.04,atk_burst:.03,atk_shard:.08,atk_arc:.08,death_MM:.05,death_HI:.06,death_PS:.06,telegraph_basic:.15,hurt:.1,enemy_shot:.08,alert:.2 }; const g=gap[name]??.02; if(this.last[name]&&now-this.last[name]<g) return; this.last[name]=now; if(this.playing>14) return; const B=this.sfxBus; const t=now; this.playing++; setTimeout(()=>this.playing--,300);
     switch(name){
       case 'hit': this.noiseAt(t,.06,.2,2400,B); this.osc('sine',140,t,.1,.25,B,undefined,60); break;
       case 'atk_ripper': this.noiseAt(t,.14,.16,1400,B,'bandpass',4); this.osc('sawtooth',95,t,.14,.1,B,500,70); break;
       case 'atk_blade': this.noiseAt(t,.09,.12,6500,B,'highpass'); this.osc('triangle',1800,t,.08,.05,B,undefined,900); break;
       case 'atk_fist': this.noiseAt(t,.06,.12,900,B); break;
+      case 'atk_popper': this.osc('square',520,t,.05,.1,B,undefined,260); break;
+      case 'atk_autopistol': this.noiseAt(t,.04,.14,2600,B,'bandpass',3); this.osc('square',300,t,.04,.1,B,undefined,120); break;
+      case 'atk_burst': this.osc('sawtooth',900,t,.04,.09,B,undefined,500); this.noiseAt(t,.03,.08,5000,B,'highpass'); break;
+      case 'atk_shard': this.noiseAt(t,.12,.2,3200,B,'bandpass',2); this.osc('triangle',240,t,.1,.2,B,undefined,90); break;
+      case 'atk_arc': this.noiseAt(t,.12,.14,4200,B,'highpass'); this.osc('sawtooth',700,t,.12,.12,B,undefined,160); break;
       case 'atk_slug': this.osc('sine',180,t,.16,.35,B,undefined,50); this.noiseAt(t,.1,.2,1800,B); break;
       case 'enemy_swing': this.noiseAt(t,.12,.1,1100,B); break;
       case 'enemy_shot': this.osc('square',420,t,.1,.06,B,1200,200); break;

@@ -2,14 +2,14 @@ import { Slot, ChipId, SLOTS, STARTING, PROGRESSION, ITEM_BY_ID, Mfr, INSTANCE_R
 import type { StoryState } from './story';
 
 export interface Inst { uid:string; def:string; chips:ChipId[]; }
-export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolean; damageNumbers:boolean; reducedFx:boolean; volume:number; music:boolean; llm:{ enabled:boolean; url:string; key:string; model:string } }
+export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolean; damageNumbers:boolean; reducedFx:boolean; devFreeReset?:boolean; volume:number; music:boolean; llm:{ enabled:boolean; url:string; key:string; model:string } }
 export interface Carried { items:Inst[]; chips:Partial<Record<ChipId,number>>; stims:number; credits:number; }
 export interface EnemyState { id:number; type:string; x:number; y:number; hp:number; maxHp:number; alert:boolean; dead:boolean; home:{x:number;y:number}; group:number; faction:'enemy'|'ally'; ctrlT:number; stunT:number; name?:string; }
 export interface Drop { id:number; x:number; y:number; kind:'item'|'chip'|'stim'|'credits'; inst?:Inst; chip?:ChipId; amount:number; marker?:boolean; }
 export interface Flags { gate1:boolean; lock2:boolean; passageSeen:boolean; controller:boolean; armory:boolean; cond:null|'A'|'B'; bossKey:string|null; bossRevealed:boolean; bossSpawned:boolean; bossDead:boolean; completed:boolean; rewardsGranted:boolean; alarm:boolean; salvageForeman:boolean; }
 export interface InstanceState {
   id:string; dungeon?:string; createdAt:number; expiresAt:number; seed:number; enemies:EnemyState[]; drops:Drop[]; carried:Carried; flags:Flags;
-  checkpoint:{ id:number; x:number; y:number }; px:number; py:number; hp:number; broken:Slot[]; protectedSlots:Slot[]; repairAdded:number; nextId:number; xpEarned:number; warned:boolean; kills:Record<string,number>; claimed:string[]; elapsed:number;
+  checkpoint:{ id:number; x:number; y:number }; px:number; py:number; hp:number; broken:Slot[]; protectedSlots:Slot[]; repairAdded:number; nextId:number; xpEarned:number; warned:boolean; kills:Record<string,number>; claimed:string[]; elapsed:number; reached?:number[]; shots?:{fired:number;hits:number};
 }
 export interface Save {
   version:number; level:number; xp:number; credits:number; repairBill:number; rep:Record<Mfr,number>;
