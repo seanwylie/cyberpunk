@@ -98,5 +98,85 @@
  "shiftlead": {
   "w": 183,
   "h": 229
+ },
+ "teague_back": {
+  "w": 204,
+  "h": 328
+ },
+ "brannoch_back": {
+  "w": 240,
+  "h": 320
+ },
+ "slaghauler_back": {
+  "w": 271,
+  "h": 271
+ },
+ "ladlecrew_back": {
+  "w": 191,
+  "h": 257
+ },
+ "quenchpriest_back": {
+  "w": 146,
+  "h": 285
+ },
+ "surgeon_back": {
+  "w": 290,
+  "h": 329
+ },
+ "autosurgeon_back": {
+  "w": 411,
+  "h": 333
+ },
+ "nursebot_back": {
+  "w": 156,
+  "h": 230
+ },
+ "recovered_back": {
+  "w": 218,
+  "h": 334
+ },
+ "orderly_back": {
+  "w": 141,
+  "h": 230
+ },
+ "gurneyrunner_back": {
+  "w": 232,
+  "h": 190
+ },
+ "sentry_back": {
+  "w": 210,
+  "h": 216
+ },
+ "matron_back": {
+  "w": 152,
+  "h": 259
+ },
+ "stockmgr_back": {
+  "w": 185,
+  "h": 269
+ },
+ "retrieval_back": {
+  "w": 312,
+  "h": 302
+ },
+ "reclaimer_back": {
+  "w": 240,
+  "h": 289
+ },
+ "loader_back": {
+  "w": 225,
+  "h": 205
+ },
+ "picker_back": {
+  "w": 174,
+  "h": 176
+ },
+ "camgun_back": {
+  "w": 133,
+  "h": 140
+ },
+ "shiftlead_back": {
+  "w": 137,
+  "h": 229
  }
 }

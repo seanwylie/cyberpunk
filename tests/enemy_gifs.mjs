@@ -1,12 +1,14 @@
 // In-game animation previews for every dungeon enemy/boss: approach/idle/attack/hit then death collapse -> /tmp/gif_<id>/NN.png (assembled into docs/art/dungeons/anim/<id>.gif by tools/dungeons/make_gifs.py)
 import { launch, sleep } from './lib.mjs'; import fs from 'fs';
 const ids = (process.env.IDS || 'slaghauler,ladlecrew,cinderhound,slagcannon,brakeman,quenchpriest,teague,brannoch,ore9,orderly,nursebot,gurneyrunner,sentry,matron,anesthetist,surgeon,autosurgeon,recovered,picker,loader,forkbot,scanner,camgun,shiftlead,hobbs,stockmgr,retrieval,reclaimer').split(',');
+const SIDE = process.env.SIDE || 'front'; const SG = SIDE === 'back' ? -1 : 1;
 const BIG = new Set(['teague', 'brannoch', 'ore9', 'surgeon', 'autosurgeon', 'recovered', 'stockmgr', 'retrieval', 'reclaimer']);
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } }); const ev = (f, a) => page.evaluate(f, a);
 await ev(() => { const g = window.__game; g.save.level = 34; g.dbg.god = true; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.startRun('foundry'); }); await sleep(800);
 for (const id of ids) {
-  const dir = `/tmp/gif_${id}`; fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
-  await ev(([id]) => { const g = window.__game; for (const o of g.enemies) { if (!o._parked) { o._parked = 1; o.x += 300; o.y += 300; o.alert = false; } } g.inst.flags.bossSpawned = true; g.inst.flags.bossRevealed = true; const B = g.level.bossSpawn; g.px = B.x - 3.5; g.py = B.y + 1.5; const e = g.spawnEnemy(id, B.x + 1, B.y); window.__e = e; e.alert = true; e.hp = e.maxHp = 1e7; g.dbg.oneShot = false; e._parked = 1; window.__ui.closeAll?.(); }, [id]); await sleep(1500);
+  const dir = `/tmp/gif_${id}_${SIDE}`; fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+  await ev(([id, SG]) => { const g = window.__game; for (const o of g.enemies) { if (!o._parked) { o._parked = 1; o.x += 300; o.y += 300; o.alert = false; } } g.inst.flags.bossSpawned = true; g.inst.flags.bossRevealed = true; const B = g.level.bossSpawn; const SGN = SG; g.px = B.x + 3 * SGN; g.py = B.y + 3 * SGN; const e = g.spawnEnemy(id, B.x, B.y); window.__e = e; e.alert = true; e.hp = e.maxHp = 1e7; g.dbg.oneShot = false; e._parked = 1; window.__ui.closeAll?.(); }, [id, SG]); await sleep(1500);
+  console.log(id, SIDE, 'away=', await ev(() => { const r = window.__rend, e = window.__e; return r.eart.st.get(e.id)?.away; }));
   const big = BIG.has(id); const W = big ? 460 : 300, H = big ? 400 : 280;
   for (let i = 0; i < 40; i++) {
     if (i === 20) await ev(() => { const e = window.__e; e._rt.hit = .12; });
