@@ -187,4 +187,6 @@ export const LOOT = {
   signature: { warden:{ item:'sig_audit_core', chance:.12 }, enforcer:{ item:'sig_reclaimer_ripper', chance:.12 } } as Record<string,{item:string;chance:number}>,
 };
 
+/** Baseline abilities when no installed hardware provides any (stock Standard Issue body), so a fresh character can act. */
+export const STARTER_ABILITIES:AbilityId[]=['sweep','brace','reposition'];
 export const STARTING = { credits:600, chips:{ speed:2, coolant:2, sustain:2, power:1 } as Partial<Record<ChipId,number>>, lockerSlots:60, lockerPerPurchase:20 };

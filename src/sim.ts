@@ -114,7 +114,9 @@ export class Game {
   beginAim(idx:number){ if(this.downed||this.mode!=='run'&&this.mode!=='town') return; const ab=this.build.abilities[idx]; if(!ab) return; this.aim={ idx, wx:this.px+Math.cos(this.face), wy:this.py+Math.sin(this.face), hasDir:false }; }
   updateAim(wx:number,wy:number,hasDir:boolean){ if(this.aim){ this.aim.wx=wx; this.aim.wy=wy; this.aim.hasDir=hasDir; } }
   cancelAim(){ this.aim=null; }
-  releaseAim(){ const a=this.aim; this.aim=null; if(!a||this.downed) return; const id=this.build.abilities[a.idx]; if(!id) return; const def=ABILITIES[id];
+  /** Tap / click without dragging: aim at the current target or nearest enemy, else along facing, so a plain press still casts. */
+  quickAim(a:AimState){ if(a.hasDir) return; const t=this.pickTarget(); if(t){ a.wx=t.x; a.wy=t.y; } else { a.wx=this.px+Math.cos(this.face)*3; a.wy=this.py+Math.sin(this.face)*3; } a.hasDir=true; }
+  releaseAim(){ const a=this.aim; this.aim=null; if(!a||this.downed) return; const id=this.build.abilities[a.idx]; if(!id) return; const def=ABILITIES[id]; if(def.aim!=='self') this.quickAim(a);
     const v=this.validateAim(def,a); if(!v.valid){ this.emit('sfx','cancel'); this.toast('Cancelled: '+v.why); return; }
     if(this.overheated){ this.toast('Overheated: abilities offline'); this.emit('sfx','deny'); return; }
     if(this.abCd[a.idx]>0){ this.toast(def.name+' is cooling down'); return; }

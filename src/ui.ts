@@ -98,7 +98,7 @@ export class UI {
   bindAbilityTips(){
     const tip=$('abtip'); const show=(btn:HTMLElement)=>{ const i=+(btn.dataset.idx??-1); const id=btn.id==='dodge'?null:this.g.build.abilities[i]; const d=id?ABILITIES[id]:null;
       if(btn.id==='dodge') tip.innerHTML=`<b>Dodge</b> <i style="color:${ABILITY_TYPE_COLOR.mobility}">Mobility</i><br>Quick roll with brief invulnerability. Cooldown ${COMBAT.dodge.cd}s.`;
-      else if(d) tip.innerHTML=`<b>${esc(d.name)}</b> <i style="color:${ABILITY_TYPE_COLOR[d.type]}">${ABILITY_TYPE_LABEL[d.type]}</i><br>${esc(d.desc)}<br><span class="mut">Heat ${d.heat} · Cooldown ${d.cd}s${d.range?' · Range '+d.range:''}</span>`; else return;
+      else if(d) tip.innerHTML=`<b>${esc(d.name)}</b> <i style="color:${ABILITY_TYPE_COLOR[d.type]}">${ABILITY_TYPE_LABEL[d.type]}</i><br>${esc(d.desc)}<br><span class="mut">Heat ${d.heat} · Cooldown ${d.cd}s${d.range?' · Range '+d.range:''}</span>`; else tip.innerHTML=`<b>Empty ability slot</b><br>Abilities come from installed hardware. Equip arms, torso, legs or brain with abilities in the Body workspace.`;
       const r=btn.getBoundingClientRect(); tip.style.display='block'; tip.style.setProperty('--tc',d?ABILITY_TYPE_COLOR[d.type]:ABILITY_TYPE_COLOR.mobility); const w=tip.offsetWidth; tip.style.left=Math.max(6,Math.min(innerWidth-w-6,r.left+r.width/2-w/2))+'px'; tip.style.bottom=(innerHeight-r.top+8)+'px'; };
     const hide=()=>{ tip.style.display='none'; };
     document.querySelectorAll<HTMLElement>('.abtn,#dodge').forEach(btn=>{ let timer=0,sx=0,sy=0;

@@ -1,4 +1,4 @@
-import { ABILITY_SLOT_ORDER, ABILITIES, AbilityId, BASE_STATS, BASE_STATS as B0, CHIPS, ITEM_BY_ID, MIX_PENALTY, REP_RANKS, SLOTS, Slot, Stats, WEAPONS, WEAPON_RARITY_MUL, WeaponDef, Mfr, ChipId, SLOT_SOCKETS, ItemDef, PROGRESSION } from './config';
+import { ABILITY_SLOT_ORDER, STARTER_ABILITIES, ABILITIES, AbilityId, BASE_STATS, BASE_STATS as B0, CHIPS, ITEM_BY_ID, MIX_PENALTY, REP_RANKS, SLOTS, Slot, Stats, WEAPONS, WEAPON_RARITY_MUL, WeaponDef, Mfr, ChipId, SLOT_SOCKETS, ItemDef, PROGRESSION } from './config';
 import type { Inst, Save } from './state';
 
 export interface BuildResult { stats:Stats; abilities:AbilityId[]; passives:AbilityId[]; weapon:WeaponDef; caps:Set<string>; mix:{ mfrs:Mfr[]; coolingPenalty:number }; mods:{ ctrlDur:number; cloakDur:number; arc:number; burstLen:number }; conflicts:string[]; weaponMul:number; weaponMfr:Mfr|null; weaponName:string; extraAbilities:AbilityId[]; }
@@ -22,7 +22,7 @@ export function computeBuild(L:Layout, level:number, rep:Record<Mfr,number>, bro
     if(d.weapon && (sl==='handR'||sl==='armR')){ const rk=sl==='handR'?(d.id.startsWith('stock_')?1:3):2; if(rk>wRank){ wRank=rk; weaponKind=WEAPONS[d.weapon]; wMul=WEAPON_RARITY_MUL[d.rarity]; wMfr=d.id.startsWith('stock_')?null:d.mfr; wName=d.name; } }
   }
   // dedupe abilities preserving order
-  const ab=[...new Set(abilities)];
+  const ab=[...new Set(abilities)]; if(!ab.length) ab.push(...STARTER_ABILITIES);
   // Mixed manufacturer soft penalty
   const mf=[...mfrs]; let pen=0; if(mf.length>1){ pen=(mf.length-1)*MIX_PENALTY.coolingPerExtraMfr; const best=Math.max(...mf.map(m=>repRank(rep[m]))); pen=Math.max(0,pen-best*MIX_PENALTY.reputationRankReduces); }
   stats.cooling = Math.max(.3, stats.cooling - pen);

@@ -10,7 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
-    "test": "node tests/smoke.mjs && node tests/dungeons.mjs && node tests/ux.mjs && node tests/dodge_dirs.mjs && node tests/enemy_art.mjs && node tests/facing.mjs && node tests/enemy_atlas.mjs && node tests/brand.mjs && node tests/loot3d.mjs && node tests/pathing.mjs && node tests/enemy_death.mjs && node tests/ability_ui.mjs",
+    "test": "node tests/smoke.mjs && node tests/dungeons.mjs && node tests/ux.mjs && node tests/dodge_dirs.mjs && node tests/enemy_art.mjs && node tests/facing.mjs && node tests/enemy_atlas.mjs && node tests/brand.mjs && node tests/loot3d.mjs && node tests/pathing.mjs && node tests/enemy_death.mjs && node tests/ability_ui.mjs && node tests/ability_e2e.mjs",
     "test:dungeons": "node tests/dungeons.mjs",
     "test:music": "node tests/music.mjs",
     "test:sprites": "node tests/sprites.mjs",
