@@ -4,16 +4,18 @@ import { installedLayout } from './build';
 import { PlayerAnimator, loadAtlas } from './sprites';
 import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
 import type { Level } from './level';
+import { TownArt, GP, decorDepth } from './town';
+import { Organic } from './organic';
 
 export const PAL = { concrete:'#7a7c78', soot:'#1b1c1e', bone:'#cfc6b0', oxide:'#8f3b2e', metal:'#6b5a4a', slate:'#4f6578', olive:'#6b7035', skin:'#b29b84' };
 const ZCOL:Record<string,[string,string]> = { yard:['#7b7d79','#727470'], proc:['#6c6e6b','#646663'], junction:['#74777b','#6c6f73'], boss:['#5f6163','#57595b'], salvage:['#6d6b63','#656359'], corridor:['#696b69','#616361'], passage:['#55585b','#4d5053'], town:['#7c7b75','#74736d'], none:['#222','#222'] };
 const hash=(x:number,y:number)=>{ let h=(x*374761393+y*668265263)|0; h=(h^(h>>>13))*1274126177|0; return ((h^(h>>>16))>>>0)/4294967295; };
 
 export class Renderer {
-  ctx:CanvasRenderingContext2D; w=0; h=0; dpr=1; TW=64; camx=0; camy=0; shake=0;
-  anim:PlayerAnimator|null=null; lastT=0; env:Env|null=null; private wallCache=new WeakMap<Level,Map<number,{style:'concrete'|'steel';v:number;zone:string}>>();
-  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); loadAtlas().then(l=>{ if(l){ this.anim=new PlayerAnimator(l); this.anim.onImpact=k=>this.impact(k); } }); }
-  resize(){ this.dpr=Math.min(window.devicePixelRatio||1,2); const w=window.innerWidth,h=window.innerHeight; this.canvas.width=w*this.dpr; this.canvas.height=h*this.dpr; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
+  ctx:CanvasRenderingContext2D; w=0; h=0; dpr=1; TW=64; baseTW=64; camx=0; camy=0; shake=0;
+  anim:PlayerAnimator|null=null; lastT=0; env:Env|null=null; town:TownArt|null=null; org=new Organic(); private wallCache=new WeakMap<Level,Map<number,{style:'concrete'|'steel';v:number;zone:string}>>();
+  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); if(this.env) this.town=new TownArt(); loadAtlas().then(l=>{ if(l){ this.anim=new PlayerAnimator(l); this.anim.onImpact=k=>this.impact(k); } }); }
+  resize(){ this.dpr=Math.min(window.devicePixelRatio||1,2); const w=window.innerWidth,h=window.innerHeight; this.canvas.width=w*this.dpr; this.canvas.height=h*this.dpr; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=this.baseTW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
   // projection
   sx(x:number,y:number){ return (x-y)*this.TW/2 + this.w/2 - this.camx; }
   sy(x:number,y:number,z=0){ return (x+y)*this.TW/4 + this.h/2 - this.camy - z*this.TW/2; }
@@ -25,7 +27,7 @@ export class Renderer {
   screenVecToWorld(dx:number,dy:number){ const a=dx/(this.TW/2), b=dy/(this.TW/4); return { x:(a+b)/2, y:(b-a)/2 }; }
 
   draw(dt:number){
-    const g=this.g, c=this.ctx; c.setTransform(this.dpr,0,0,this.dpr,0,0); if(!this.anim) this.fallbackImpacts(); const sh=this.shake>0?this.shake*7:0; if(sh) c.translate((Math.random()*2-1)*sh,(Math.random()*2-1)*sh);
+    const g=this.g, c=this.ctx; this.TW=this.baseTW*(g.level.kind==='town'?.74:1); c.setTransform(this.dpr,0,0,this.dpr,0,0); if(!this.anim) this.fallbackImpacts(); const sh=this.shake>0?this.shake*7:0; if(sh) c.translate((Math.random()*2-1)*sh,(Math.random()*2-1)*sh);
     const tx=(g.px-g.py)*this.TW/2, ty=(g.px+g.py)*this.TW/4; this.camx+= (tx-this.camx)*Math.min(1,dt*8); this.camy+=(ty-this.camy)*Math.min(1,dt*8);
     if(this.shake>0) this.shake=Math.max(0,this.shake-dt*3);
     c.fillStyle=PAL.soot; c.fillRect(0,0,this.w,this.h);
@@ -33,11 +35,12 @@ export class Renderer {
   }
   tile(x:number,y:number,col:string){ const c=this.ctx; const a=this.sx(x,y), b=this.sy(x,y); const hw=this.TW/2, hh=this.TW/4; c.fillStyle=col; c.beginPath(); c.moveTo(a,b); c.lineTo(a+hw,b+hh); c.lineTo(a,b+2*hh); c.lineTo(a-hw,b+hh); c.closePath(); c.fill(); }
   drawFloor(){
-    const g=this.g, L=g.level, c=this.ctx; const R=Math.ceil(Math.max(this.w,this.h)/this.TW*1.1)+3; const x0=Math.max(0,Math.floor(g.px-R)), x1=Math.min(L.w-1,Math.ceil(g.px+R)), y0=Math.max(0,Math.floor(g.py-R)), y1=Math.min(L.h-1,Math.ceil(g.py+R));
+    const g=this.g, L=g.level, c=this.ctx; if(L.kind==='town'&&this.town?.ready){ this.drawTownGround(); return; }
+    const R=Math.ceil(Math.max(this.w,this.h)/this.TW*1.1)+3; const x0=Math.max(0,Math.floor(g.px-R)), x1=Math.min(L.w-1,Math.ceil(g.px+R)), y0=Math.max(0,Math.floor(g.py-R)), y1=Math.min(L.h-1,Math.ceil(g.py+R));
     for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ const i=y*L.w+x; if(L.solid[i]&&!this.isDoorTile(x,y)) continue; const z=L.zoneNames[L.zone[i]]; const pal=ZCOL[z]||ZCOL.yard; const hv=hash(x,y); if(this.env){ this.floorTile(x,y,z,i); continue; } this.tile(x,y,pal[(x+y)&1]); if(hv>.86){ c.fillStyle='rgba(20,20,22,.16)'; const a=this.sx(x+.5,y+.5), b=this.sy(x+.5,y+.5); c.beginPath(); c.ellipse(a,b,this.TW*.12*(.5+hv),this.TW*.05*(.5+hv),0,0,7); c.fill(); }
       if(hv<.04){ c.strokeStyle='rgba(30,30,30,.25)'; c.lineWidth=1; c.beginPath(); c.moveTo(this.sx(x+.2,y+.3),this.sy(x+.2,y+.3)); c.lineTo(this.sx(x+.7,y+.8),this.sy(x+.7,y+.8)); c.stroke(); }
       if((z==='proc')&&(x%8===0)&&hv>.2){ this.tile(x,y,'rgba(143,59,46,.10)'); } }
-    if(this.env) this.drawDecals();
+    if(this.env){ this.drawDecals(); this.org.drawFloorOverlay(this,L); }
     for(const cp of L.checkpoints){ this.ring(cp.x,cp.y,1.1,PAL.bone,.7,true); }
     if(g.mode==='run'&&g.inst){ const f=g.inst.flags; if(!f.controller){ const it=L.interacts.find(i=>i.id==='controller')!; this.ring(it.x,it.y,.9,'#d8d2bf',.45,true); } }
   }
@@ -46,7 +49,7 @@ export class Renderer {
   // (no per-frame affine resampling of large textures; this is what keeps phones fast). Cache is dropped when TW/dpr change.
   private bakeKey=''; private bakes=new Map<string,{cv:HTMLCanvasElement;mx:number;my:number;w:number;h:number}>(); private ids=new WeakMap<HTMLCanvasElement,number>(); private idN=0;
   private tid(img:HTMLCanvasElement){ let i=this.ids.get(img); if(!i){ i=++this.idN; this.ids.set(img,i); } return i; }
-  private bakeBlit(img:HTMLCanvasElement,sx0:number,sy0:number,sw:number,sh:number,a:number,b:number,cc:number,d:number,ox:number,oy:number,shade:number,pad=.5){
+  bakeBlit(img:HTMLCanvasElement,sx0:number,sy0:number,sw:number,sh:number,a:number,b:number,cc:number,d:number,ox:number,oy:number,shade:number,pad=.5){
     const bk=this.TW.toFixed(2)+'|'+this.dpr; if(bk!==this.bakeKey){ this.bakeKey=bk; this.bakes.clear(); }
     const key=`${this.tid(img)}|${sx0|0},${sy0|0},${sw|0},${sh|0}|${a.toFixed(3)},${b.toFixed(3)},${cc.toFixed(3)},${d.toFixed(3)}|${shade}`; let e=this.bakes.get(key);
     if(!e){ const xs=[0,sw*a,sh*cc,sw*a+sh*cc], ys=[0,sw*b,sh*d,sw*b+sh*d]; const mnx=Math.min(...xs)-1, mxx=Math.max(...xs)+1, mny=Math.min(...ys)-1, mxy=Math.max(...ys)+1; const w=Math.ceil(mxx-mnx), h=Math.ceil(mxy-mny);
@@ -66,7 +69,14 @@ export class Renderer {
   private wallInfo(x:number,y:number){ const L=this.g.level; let m=this.wallCache.get(L); if(!m){ m=new Map(); this.wallCache.set(L,m); } const k=y*L.w+x; let r=m.get(k); if(r) return r;
     let zn='yard'; for(const [dx,dy] of [[0,1],[1,0],[-1,0],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]]){ const nx=x+dx,ny=y+dy; if(nx>=0&&ny>=0&&nx<L.w&&ny<L.h&&!L.solid[ny*L.w+nx]){ zn=L.zoneNames[L.zone[ny*L.w+nx]]; break; } }
     const style:'concrete'|'steel'=(zn==='yard'||zn==='town'||zn==='corridor'||zn==='salvage')?'concrete':'steel'; const h=hash(x*13+5,y*11+2); const v=h<.4?0:1+Math.min(4,Math.floor((h-.4)/.12)); r={style,v,zone:zn}; m.set(k,r); return r; }
-  wallBox(x:number,y:number){ const e=this.env!; const wi=this.wallInfo(x,y); const img=e.wall(wi.style,wi.v,wi.zone); const H=1.6; this.faceY(img,x,y,1,1,H,.06); this.faceX(img,x,y,1,1,H,.30); this.isoTex(e.cap(wi.style==='steel'?1:0),x,y,H,1,1); }
+  wallBox(x:number,y:number){ const e=this.env!; const wi=this.wallInfo(x,y); const img=e.wall(wi.style,wi.v,wi.zone); const L=this.g.level; const town=L.kind==='town';
+    // varying wall heights (smooth noise) + chamfered/caved-in corners so the room outline stops reading as a rectangle
+    const o=this.org.wallShape(L,x,y); if(o.rubble){ this.org.drawRubble(this,x,y,o.rubble); return; }
+    const H=o.h; const sh0=town?.62:0; this.faceStretch(img,x,y+1,0,H,.06+sh0,false); this.faceStretch(img,x,y,1,H,.30+sh0,true); this.isoTex(e.cap(wi.style==='steel'?1:0),x,y,H,1,1); if(o.broken&&!town) this.org.drawBreak(this,x,y,H); }
+  /** like faceY/faceX but stretches the full texture height to H world units (so walls can vary in height) */
+  private faceStretch(img:HTMLCanvasElement,x:number,yy:number,d:number,H:number,shade:number,xface:boolean){ const k=this.TW/TS; const sy=H/ (img.height/TS);
+    if(!xface) this.bakeBlit(img,0,0,TS,img.height,k/2,k/4,0,k/2*sy,this.sx(x,yy),this.sy(x,yy,H),shade,0);
+    else this.bakeBlit(img,0,0,TS,img.height,k/2,-k/4,0,k/2*sy,this.sx(x+1,yy+d),this.sy(x+1,yy+d,H),shade,0); }
   doorBox(x:number,y:number){ const e=this.env!; const img=e.wall('door',0,'x'); this.faceY(img,x,y,1,1,1.5,.05); this.faceX(img,x,y,1,1,1.5,.3); this.isoTex(e.cap(2),x,y,1.5,1,1); }
   propShadow(x:number,y:number,w:number,d:number){ this.poly([[x-.08,y-.08],[x+w+.12,y-.08],[x+w+.12,y+d+.12],[x-.08,y+d+.12]],'#050506',undefined,.38); }
   texProp(p:{x:number;y:number;kind:string;h:number}){ const e=this.env!, k=p.kind, g=this.g, L=g.level; const hv=hash(p.x*5+1,p.y*9+4); const hh=Math.round(p.h*10)/10;
@@ -106,11 +116,12 @@ export class Renderer {
     const g=this.g, L=g.level, c=this.ctx; const items:{d:number;f:()=>void}[]=[]; const R=Math.ceil(Math.max(this.w,this.h)/this.TW*1.1)+3;
     const x0=Math.max(0,Math.floor(g.px-R)), x1=Math.min(L.w-1,Math.ceil(g.px+R)), y0=Math.max(0,Math.floor(g.py-R)), y1=Math.min(L.h-1,Math.ceil(g.py+R));
     const propAt=new Map<number,typeof L.props[0]>(); for(const p of L.props) propAt.set(p.y*L.w+p.x,p);
-    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ const i=y*L.w+x; if(!L.solid[i]) continue; const pr=propAt.get(i);
+    for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ const i=y*L.w+x; if(!L.solid[i]) continue; if(L.hide&&L.hide[i]) continue; const pr=propAt.get(i);
       if(pr){ items.push({d:x+y+.5,f:()=>{ const dd=(x+y)-(g.px+g.py), sd=(x-g.px)-(y-g.py); const fade=dd>0&&dd<4.5&&Math.abs(sd)<2.2&&pr.h>1.2; c.save(); if(fade) c.globalAlpha=.4; this.drawProp(pr); c.restore(); }}); continue; }
       let near=false; for(let dy=-1;dy<=1&&!near;dy++)for(let dx=-1;dx<=1;dx++){ const nx=x+dx,ny=y+dy; if(nx>=0&&ny>=0&&nx<L.w&&ny<L.h&&!L.solid[ny*L.w+nx]){ near=true; break; } }
       if(!near) continue; const door=L.doors.find(d=>d.tiles.some(t=>t[0]===x&&t[1]===y));
       items.push({d:x+y+.5,f:()=>{ const dd=(x+y)-(g.px+g.py), sd=(x-g.px)-(y-g.py); const fade=dd>0&&dd<4.5&&Math.abs(sd)<2.8; c.save(); if(fade) c.globalAlpha=.3; if(this.env){ if(door) this.doorBox(x,y); else this.wallBox(x,y); } else if(door){ this.box(x,y,1,1,1.5,'#4a4c4e','#3a3c3e','#2d2f31'); this.hazard(x,y); } else this.box(x,y,1,1,1.6,'#46484a','#303234','#232426'); c.restore(); }}); }
+    if(L.kind==='town'&&this.town?.ready) this.townItems(items);
     for(const it of L.interacts){ if(!this.interactVisible(it.id)) continue; items.push({d:it.x+it.y,f:()=>this.drawInteract(it)}); }
     for(const dr of (g.inst&&g.mode==='run'?g.inst.drops:[])) items.push({d:dr.x+dr.y,f:()=>this.drawDrop(dr)});
     for(const e of g.enemies){ if(e.dead){ continue; } items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); }
@@ -119,13 +130,14 @@ export class Renderer {
     // ground-level telegraphs/zones go under actors
     this.drawGroundFx();
     for(const it of items) it.f();
-    this.drawProjAndFx();
+    this.drawProjAndFx(); if(L.kind==='town'&&this.town?.ready) this.drawTownAmbient();
   }
   interactVisible(id:string){ const g=this.g; if(g.mode!=='run'||!g.inst) return true; const f=g.inst.flags; if(id==='controller') return false; if(id==='hackproc') return !f.lock2; return true; }
   hazard(x:number,y:number){ const c=this.ctx; c.save(); c.strokeStyle=PAL.oxide; c.lineWidth=3; c.globalAlpha=.8; const a=this.sx(x+.5,y+.5), b=this.sy(x+.5,y+.5,.8); c.beginPath(); c.moveTo(a-this.TW*.25,b-this.TW*.1); c.lineTo(a+this.TW*.25,b+this.TW*.1); c.moveTo(a-this.TW*.25,b+this.TW*.1); c.lineTo(a+this.TW*.25,b-this.TW*.1); c.stroke(); c.restore(); }
   drawProp(p:{x:number;y:number;kind:string;h:number}){ if(this.env){ this.texProp(p); return; } const k=p.kind; if(k==='crate') this.box(p.x+.05,p.y+.05,.9,.9,p.h*.9,'#8a6b4e','#6b5239','#554230'); else if(k==='conveyor') this.box(p.x,p.y,1,1,p.h,'#4f5256','#3d4043','#2f3235'); else if(k==='machine') this.box(p.x,p.y,1,1,p.h,'#5f666b','#464c50','#383d41'); else if(k==='rack') this.box(p.x,p.y,1,1,p.h,'#574f47','#443d37','#352f2a'); else this.box(p.x+.1,p.y+.1,.8,.8,p.h,'#7b7c79','#5d5e5c','#49494a');
     if(k==='conveyor'){ const c=this.ctx; c.fillStyle='rgba(168,150,90,.5)'; const a=this.sx(p.x+.5,p.y+.5), b=this.sy(p.x+.5,p.y+.5,p.h); c.fillRect(a-3,b-2,6,3); } }
   drawInteract(it:{id:string;x:number;y:number;kind:string;label:string}){ const c=this.ctx; const a=this.sx(it.x,it.y), b=this.sy(it.x,it.y); const s=this.TW/64;
+    if(this.g.level.kind==='town'&&this.town?.ready){ this.townMarker(it,a,b,s); return; }
     if(it.id==='annex'){ this.box(it.x-1,it.y-1,2,2,.12,'#5a5d5f','#444','#333'); }
     c.save(); c.fillStyle='#3a3d40'; c.fillRect(a-9*s,b-22*s,18*s,22*s); c.fillStyle='#cfc6b0'; c.globalAlpha=.8; c.fillRect(a-6*s,b-19*s,12*s,8*s); c.globalAlpha=1; c.fillStyle=it.kind==='hack'||it.kind==='terminal'?PAL.slate:PAL.oxide; c.fillRect(a-9*s,b-5*s,18*s,3*s); c.restore();
     if(Math.hypot(this.g.px-it.x,this.g.py-it.y)<7){ c.save(); c.font=`${Math.max(10,11*s*1.3)}px system-ui,sans-serif`; c.textAlign='center'; c.fillStyle='rgba(15,15,16,.7)'; const tw=c.measureText(it.label).width; c.fillRect(a-tw/2-4,b-44*s,tw+8,15*s*1.3); c.fillStyle='#d8d2bf'; c.fillText(it.label,a,b-32*s); c.restore(); } }
@@ -228,7 +240,31 @@ export class Renderer {
         case 'text': c.fillStyle=f.c||'#d8d2bf'; c.font=`bold ${12*s*1.2}px system-ui`; c.textAlign='center'; c.globalAlpha=1-k; c.fillText(f.text||'',a,b-30*s-k*20); c.globalAlpha=1; break;
       } }
   }
-  drawOverlay(){ const c=this.ctx; const gr=c.createRadialGradient(this.w/2,this.h/2,Math.min(this.w,this.h)*.35,this.w/2,this.h/2,Math.max(this.w,this.h)*.75); gr.addColorStop(0,'rgba(10,10,12,0)'); gr.addColorStop(1,'rgba(10,10,12,.5)'); c.fillStyle=gr; c.fillRect(0,0,this.w,this.h); }
+
+  // ---------- illustrated town ----------
+  private groundBuilt:HTMLCanvasElement|null=null;
+  private drawTownGround(){ const t=this.town!, L=this.g.level; if(!t.ground) t.buildGround(L); const gr=t.ground!; const CH=5, kk=this.TW/GP; const R=Math.ceil(Math.max(this.w,this.h)/this.TW*1.1)+4; const g=this.g;
+    const cx0=Math.max(0,Math.floor((g.px-R)/CH)), cx1=Math.min(Math.ceil(L.w/CH)-1,Math.floor((g.px+R)/CH)), cy0=Math.max(0,Math.floor((g.py-R)/CH)), cy1=Math.min(Math.ceil(L.h/CH)-1,Math.floor((g.py+R)/CH));
+    for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){ const sw=Math.min(CH*GP,gr.width-cx*CH*GP), sh=Math.min(CH*GP,gr.height-cy*CH*GP); if(sw<=0||sh<=0) continue; this.bakeBlit(gr,cx*CH*GP,cy*CH*GP,sw,sh,kk/2,kk/4,-kk/2,kk/4,this.sx(cx*CH,cy*CH),this.sy(cx*CH,cy*CH),0,1); } }
+  private townItems(items:{d:number;f:()=>void}[]){ const t=this.town!, L=this.g.level, c=this.ctx, g=this.g; t.update(Math.min(.1,Math.max(0,g.time-this.tLast)||0),L,g.time,g.px,g.py); this.tLast=g.time;
+    for(const d of L.decor||[]){ items.push({d:decorDepth(d),f:()=>{ const w=d.sw*this.TW; const sp=t.scaled(d.spr,w,this.dpr); if(!sp) return; const cx=this.sx(d.x+d.fw/2,d.y+d.fd/2); const base=this.sy(d.x+d.fw,d.y+d.fd); const ay=d.ay??.9; const X=cx-sp.w/2, Y=base-sp.h*ay;
+        let al=1; const pa=this.sx(g.px,g.py), pb=this.sy(g.px,g.py); if(g.px+g.py<decorDepth(d)-.2&&pa>X&&pa<X+sp.w&&pb>Y&&pb<Y+sp.h*.9&&d.spr!=='lamp'&&sp.h>this.TW*1.6) al=.5;
+        c.save(); c.globalAlpha=al; c.drawImage(sp.cv,Math.round(X*this.dpr)/this.dpr,Math.round(Y*this.dpr)/this.dpr,sp.w,sp.h); c.restore(); }}); }
+    (L.npcs||[]).forEach((n,i)=>{ const s=t.npcPos[i]||{x:n.x,y:n.y,flip:false,moving:false}; items.push({d:s.x+s.y,f:()=>this.drawNpc(n,s)}); }); }
+  private tLast=0;
+  private drawNpc(n:{spr:string;ph:number;h?:number},s:{x:number;y:number;flip:boolean;moving:boolean}){ const t=this.town!, c=this.ctx, g=this.g; const im=t.img[n.spr]; if(!im) return; const hpx=this.TW*(n.h??1.25); const wpx=hpx*im.width/im.height; const sp=t.scaled(n.spr,wpx,this.dpr); if(!sp) return;
+    const a=this.sx(s.x,s.y), b=this.sy(s.x,s.y); const T=g.time+n.ph*3; const breathe=Math.sin(T*1.7)*.012, sway=Math.sin(T*.7)*.015, step=s.moving?Math.abs(Math.sin(T*5))*this.TW*.035:0;
+    c.save(); c.fillStyle='rgba(0,0,0,.4)'; c.beginPath(); c.ellipse(a,b,sp.w*.32,sp.w*.11,0,0,7); c.fill();
+    c.translate(a,b-step); if(s.flip) c.scale(-1,1); c.transform(1,0,sway+(s.moving?Math.sin(T*5)*.03:0),1+breathe,0,0); c.drawImage(sp.cv,-sp.w/2,-sp.h*.97,sp.w,sp.h); c.restore(); }
+  private townMarker(it:{id:string;x:number;y:number;label:string},a:number,b:number,s:number){ const c=this.ctx, g=this.g; const near=Math.hypot(g.px-it.x,g.py-it.y)<7; const bob=Math.sin(g.time*2.2+it.x)*2*s; const lift=(it.id==='annex'?64:it.id==='locker'?44:52)*s;
+    c.save(); c.globalAlpha=near?.95:.55; c.fillStyle='#cfc6b0'; c.strokeStyle='rgba(10,10,12,.7)'; c.lineWidth=1.5; c.beginPath(); c.moveTo(a,b-lift+8*s+bob); c.lineTo(a-6*s,b-lift+bob); c.lineTo(a+6*s,b-lift+bob); c.closePath(); c.fill(); c.stroke(); c.restore();
+    if(near){ c.save(); c.font=`${Math.max(10,11*s*1.3)}px system-ui,sans-serif`; c.textAlign='center'; c.fillStyle='rgba(15,15,16,.72)'; const tw=c.measureText(it.label).width; c.fillRect(a-tw/2-5,b-lift-22*s,tw+10,16*s*1.3); c.fillStyle='#d8d2bf'; c.fillText(it.label,a,b-lift-9*s); c.restore(); } }
+  private drawTownAmbient(){ const t=this.town!, L=this.g.level, c=this.ctx, g=this.g; const T=g.time; const red=g.save.settings.reducedFx;
+    // particles (steam/embers/dust)
+    for(const p of t.parts){ const k=p.t/p.life; const a=this.sx(p.x,p.y), b=this.sy(p.x,p.y,p.z); if(p.k==='steam'){ const r=p.s*this.TW; c.globalAlpha=.3*(1-k)*Math.min(1,p.t*2); c.drawImage(t.glows.puff,a-r*1.4,b-r*1.4,r*2.8,r*2.8); c.globalAlpha=1; } else if(p.k==='ember'){ c.fillStyle=`rgba(255,150,70,${1-k})`; c.fillRect(a,b,2,2); } else if(!red){ c.fillStyle=`rgba(200,190,170,${.25*Math.sin(Math.PI*k)})`; c.fillRect(a,b,1.6,1.6); } }
+    // additive light pools with flicker
+    c.save(); c.globalCompositeOperation='lighter'; for(let i=0;i<(L.lights||[]).length;i++){ const l=L.lights![i]; const a=this.sx(l.x,l.y), b=this.sy(l.x,l.y,l.z); if(a<-300||a>this.w+300||b<-300||b>this.h+300) continue; const fl=l.flick?1+Math.sin(T*(9+i)+i*2.1)*l.flick*.6+Math.sin(T*23+i*5)*l.flick*.4:1; const r=l.r*this.TW*.5*(l.c==='cool'?1:.9+fl*.1); c.globalAlpha=Math.max(0,l.a*fl*(l.c==='cool'?1:.8)); c.drawImage(t.glows[l.c],a-r,b-r*.62,r*2,r*1.24); } c.restore(); }
+  drawOverlay(){ const c=this.ctx; if(this.g.level.kind==='town'){ c.fillStyle='rgba(10,12,20,.2)'; c.fillRect(0,0,this.w,this.h); } else if(this.env) this.org.drawFogAndVignette(this); const gr=c.createRadialGradient(this.w/2,this.h/2,Math.min(this.w,this.h)*.35,this.w/2,this.h/2,Math.max(this.w,this.h)*.75); gr.addColorStop(0,'rgba(10,10,12,0)'); gr.addColorStop(1,this.g.level.kind==='town'?'rgba(6,7,10,.72)':'rgba(10,10,12,.6)'); c.fillStyle=gr; c.fillRect(0,0,this.w,this.h); }
 }
 export const ATKD:Record<string,{shape:'cone'|'circle'|'line'|'fan'|'aim';r:number;arc:number;w:number;w_?:number}&{w:number}> = {} as any;
 // telegraph geometry mirrors ATK/resolveAttack in sim.ts

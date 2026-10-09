@@ -1,0 +1,6 @@
+{
+  "note": "Town art manifest. Props are RGBA PNGs keyed out of AI-generated sheets (tools/town/cut.py); any file can be replaced by dropping a PNG with the same name into public/town/props/. Ground JPGs in public/town/ground/ come from tools/town/ground.py. Missing files are skipped; if the base cobble or <9 props are missing the game falls back to the old procedural town. Placement/sizes live in src/level.ts buildTown() (Decor.sw is the on-screen width in tiles-widths).",
+  "props": ["stall_a","stall_clothes","stall_goods","stall_vendor_sign","fixer_booth","gate_arch","scaffold","steam_drums","npc1","npc2","npc3","npc4","lockers","fence","poster_wall","sign_fixer","stall_vendor","workbench","stall_awning","crates","barrels","lamp","cables","bench","junk","grate","vending","noticeboard","barrel_fire"],
+  "ground": ["cobble","planks","debris","plaza"],
+  "sources": ["source/town_hub_scene.jpg","source/town_props_sheet.jpg","source/town_props_sheet2.jpg","source/town_ground_tiles.jpg"]
+}
