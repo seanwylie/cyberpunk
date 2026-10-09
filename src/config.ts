@@ -29,18 +29,23 @@ export const BASE_STATS: Stats = { maxHp:100, dmg:1, atkSpeed:1, cooling:1, move
 
 export type AbilityId = 'sweep'|'brace'|'forcedcool'|'cloak'|'bladeburst'|'reposition'|'control'|'pulse'|'revive'|'defib';
 export type AimType = 'self'|'direction'|'ground'|'target'|'ally';
-export interface AbilityDef { id:AbilityId; name:string; aim:AimType; heat:number; cd:number; windup:number; range:number; desc:string; }
+export type AbilityType='attack'|'defense'|'hacking'|'mobility';
+/** Muted per-type UI colours (oxide red / dirty bone-steel / slate blue / olive; no neon). */
+export const ABILITY_TYPE_COLOR: Record<AbilityType,string> = { attack:'#a8483a', defense:'#a39e8a', hacking:'#5f7f9e', mobility:'#7d8a52' };
+export const ABILITY_TYPE_LABEL: Record<AbilityType,string> = { attack:'Attack', defense:'Defense', hacking:'Hacking', mobility:'Mobility' };
+export const ABILITY_TYPE: Record<AbilityId,AbilityType> = { sweep:'attack', bladeburst:'attack', brace:'defense', forcedcool:'defense', defib:'defense', revive:'defense', control:'hacking', pulse:'hacking', cloak:'mobility', reposition:'mobility' };
+export interface AbilityDef { id:AbilityId; type:AbilityType; name:string; aim:AimType; heat:number; cd:number; windup:number; range:number; desc:string; }
 export const ABILITIES: Record<AbilityId,AbilityDef> = {
-  sweep:{ id:'sweep', name:'Powered Sweep', aim:'direction', heat:24, cd:4, windup:.25, range:3.2, desc:'Wide ripper arc; damages and shoves everything in front.' },
-  brace:{ id:'brace', name:'Bracing', aim:'self', heat:14, cd:9, windup:.1, range:0, desc:'Lock the frame: 60% less damage for 3s, no movement penalty.' },
-  forcedcool:{ id:'forcedcool', name:'Forced Cooling', aim:'self', heat:0, cd:10, windup:.15, range:0, desc:'Vent 70 heat. Weapons are offline for 2s.' },
-  cloak:{ id:'cloak', name:'Cloak', aim:'self', heat:20, cd:10, windup:.1, range:0, desc:'Enemies lose you for 5s. First strike hits 2x and breaks cloak.' },
-  bladeburst:{ id:'bladeburst', name:'Blade Burst', aim:'direction', heat:22, cd:5, windup:.2, range:5.5, desc:'Lunge in a line, cutting through everything.' },
-  reposition:{ id:'reposition', name:'Reposition', aim:'ground', heat:12, cd:6, windup:.1, range:6.5, desc:'Short displacement to an open ground point.' },
-  control:{ id:'control', name:'Enemy Control', aim:'target', heat:30, cd:12, windup:.3, range:9, desc:'Turn an enemy against its squad for 8s. Elites resist (stun only).' },
-  pulse:{ id:'pulse', name:'Disruption Pulse', aim:'ground', heat:20, cd:6, windup:.25, range:8, desc:'Ground burst: damage and 1.2s stun.' },
-  revive:{ id:'revive', name:'Team Revival', aim:'ally', heat:18, cd:6, windup:.3, range:7, desc:'Revive a downed teammate (needs a party; inactive solo).' },
-  defib:{ id:'defib', name:'Self-Defib', aim:'self', heat:0, cd:0, windup:0, range:0, desc:'Passive: revive in place once per down (hardware stays broken).' },
+  sweep:{ id:'sweep', type:'attack', name:'Powered Sweep', aim:'direction', heat:24, cd:4, windup:.25, range:3.2, desc:'Wide ripper arc; damages and shoves everything in front.' },
+  brace:{ id:'brace', type:'defense', name:'Bracing', aim:'self', heat:14, cd:9, windup:.1, range:0, desc:'Lock the frame: 60% less damage for 3s, no movement penalty.' },
+  forcedcool:{ id:'forcedcool', type:'defense', name:'Forced Cooling', aim:'self', heat:0, cd:10, windup:.15, range:0, desc:'Vent 70 heat. Weapons are offline for 2s.' },
+  cloak:{ id:'cloak', type:'mobility', name:'Cloak', aim:'self', heat:20, cd:10, windup:.1, range:0, desc:'Enemies lose you for 5s. First strike hits 2x and breaks cloak.' },
+  bladeburst:{ id:'bladeburst', type:'attack', name:'Blade Burst', aim:'direction', heat:22, cd:5, windup:.2, range:5.5, desc:'Lunge in a line, cutting through everything.' },
+  reposition:{ id:'reposition', type:'mobility', name:'Reposition', aim:'ground', heat:12, cd:6, windup:.1, range:6.5, desc:'Short displacement to an open ground point.' },
+  control:{ id:'control', type:'hacking', name:'Enemy Control', aim:'target', heat:30, cd:12, windup:.3, range:9, desc:'Turn an enemy against its squad for 8s. Elites resist (stun only).' },
+  pulse:{ id:'pulse', type:'hacking', name:'Disruption Pulse', aim:'ground', heat:20, cd:6, windup:.25, range:8, desc:'Ground burst: damage and 1.2s stun.' },
+  revive:{ id:'revive', type:'defense', name:'Team Revival', aim:'ally', heat:18, cd:6, windup:.3, range:7, desc:'Revive a downed teammate (needs a party; inactive solo).' },
+  defib:{ id:'defib', type:'defense', name:'Self-Defib', aim:'self', heat:0, cd:0, windup:0, range:0, desc:'Passive: revive in place once per down (hardware stays broken).' },
 };
 
 export type ChipId = 'speed'|'cutwide'|'bladepat'|'coolant'|'sustain'|'cloakdur'|'ctrldur'|'magnet'|'power'|'plating'|'ablative'|'fineedge'|'quench'|'overdrive'|'gridlink';

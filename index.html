@@ -39,11 +39,12 @@
   <div id="controls">
     <button id="interact" style="display:none">Interact <small>F</small></button>
     <div id="abilities">
-      <button class="abtn" data-idx="0"><span class="aname"></span><span class="akey">Q</span><i class="cdfill"></i></button>
-      <button class="abtn" data-idx="1"><span class="aname"></span><span class="akey">E</span><i class="cdfill"></i></button>
-      <button class="abtn" data-idx="2"><span class="aname"></span><span class="akey">R</span><i class="cdfill"></i></button>
+      <button class="abtn empty" data-idx="0"><img class="aicon" alt="" draggable="false"><i class="cdsweep"></i><span class="heatpips"></span><span class="mark"></span><span class="akey">Q</span><span class="aname"></span></button>
+      <button class="abtn empty" data-idx="1"><img class="aicon" alt="" draggable="false"><i class="cdsweep"></i><span class="heatpips"></span><span class="mark"></span><span class="akey">E</span><span class="aname"></span></button>
+      <button class="abtn empty" data-idx="2"><img class="aicon" alt="" draggable="false"><i class="cdsweep"></i><span class="heatpips"></span><span class="mark"></span><span class="akey">R</span><span class="aname"></span></button>
     </div>
-    <button id="dodge">Dodge<small>Space</small><i class="cdfill"></i></button>
+    <button id="dodge" class="atype-mobility"><img class="aicon" src="abilities/dodge.webp" alt="" draggable="false"><i class="cdsweep"></i><span class="akey">Space</span><span class="aname">Dodge</span></button>
+    <div id="abtip" style="display:none"></div>
   </div>
   <div id="hint"></div>
 </div>

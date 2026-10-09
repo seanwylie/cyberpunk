@@ -1,5 +1,5 @@
 import { Game, En } from './sim';
-import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, RARITY_RANK } from './config';
+import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, ABILITY_TYPE_COLOR, RARITY_RANK } from './config';
 import { installedLayout } from './build';
 import { PlayerAnimator, loadAtlas } from './sprites';
 import { bodyOf } from './bodyvariants';
@@ -240,7 +240,7 @@ export class Renderer {
       else if(A.shape==='aim'){ this.poly(this.rect(e.x,e.y,rt.ang,A.r,.12+.1*p),fill,edge,.45+.3*p,1); }
       void def; }
     // aim preview
-    const aim=g.aim; if(aim){ const idx=aim.idx; const id=g.build.abilities[idx]; if(id){ const def=ABILITIES[id]; const v=g.validateAim(def,aim); const col=v.valid?'#d8d2bf':'#a0443a'; const ang=Math.atan2(aim.wy-g.py,aim.wx-g.px); const al=v.valid?.8:.55;
+    const aim=g.aim; if(aim){ const idx=aim.idx; const id=g.build.abilities[idx]; if(id){ const def=ABILITIES[id]; const v=g.validateAim(def,aim); const col=v.valid?ABILITY_TYPE_COLOR[def.type]:'#7a706a'; const ang=Math.atan2(aim.wy-g.py,aim.wx-g.px); const al=v.valid?.8:.55;
       if(def.aim==='direction'){ if(aim.hasDir){ if(def.id==='sweep') this.poly(this.sector(g.px,g.py,ang,def.range,Math.PI*.75*(1+g.build.mods.arc)),col,col,.18,2); else this.poly(this.rect(g.px,g.py,ang,def.range+g.build.mods.burstLen,.9),col,col,.2,2); } else this.ring(g.px,g.py,1,col,.5); }
       else if(def.aim==='ground'){ this.ring(g.px,g.py,def.range*.7,col,.2); if(v.tx!==undefined){ this.poly(this.circle(v.tx,v.ty!,def.id==='pulse'?2.8:.7),col,col,.2,2); } else this.ring(aim.wx,aim.wy,.6,col,.5); }
       else if(def.aim==='target'){ this.ring(g.px,g.py,def.range*.7,col,.15); if(v.target) this.ring(v.target.x,v.target.y,1.1,col,.95); else this.ring(aim.wx,aim.wy,.8,col,.5); }

@@ -1,0 +1,17 @@
+{
+ "size": 128,
+ "icons": {
+  "sweep": "abilities/sweep.webp",
+  "brace": "abilities/brace.webp",
+  "forcedcool": "abilities/forcedcool.webp",
+  "cloak": "abilities/cloak.webp",
+  "bladeburst": "abilities/bladeburst.webp",
+  "reposition": "abilities/reposition.webp",
+  "control": "abilities/control.webp",
+  "pulse": "abilities/pulse.webp",
+  "revive": "abilities/revive.webp",
+  "defib": "abilities/defib.webp",
+  "dodge": "abilities/dodge.webp",
+  "shard": "abilities/shard.webp"
+ }
+}

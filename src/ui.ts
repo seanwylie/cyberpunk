@@ -1,6 +1,6 @@
 import { Game } from './sim';
 import { AudioSys } from './audio';
-import { ABILITIES, CHIPS, ChipId, COMBAT, ENEMIES, INSTALL_COST, ITEM_BY_ID, ITEMS, MFR, RARITY_COLOR, REP_DISCOUNT_PER_RANK, SELL_VALUE, SLOT_LABEL, SLOT_SOCKETS, SLOTS, Slot, Stats, REPAIR_COST, RARITIES, STARTING, PROGRESSION, ItemDef, WEAPONS, WEAPON_RARITY_MUL } from './config';
+import { ABILITIES, ABILITY_TYPE_COLOR, ABILITY_TYPE_LABEL, CHIPS, ChipId, COMBAT, ENEMIES, INSTALL_COST, ITEM_BY_ID, ITEMS, MFR, RARITY_COLOR, REP_DISCOUNT_PER_RANK, SELL_VALUE, SLOT_LABEL, SLOT_SOCKETS, SLOTS, Slot, Stats, REPAIR_COST, RARITIES, STARTING, PROGRESSION, ItemDef, WEAPONS, WEAPON_RARITY_MUL } from './config';
 import { Layout, cloneLayout, computeBuild, hardConflicts, installedLayout, repRank, wouldConflict } from './build';
 import { Inst, capacityUsed, lockerItems, mkInst, persist, wipe, todayStr, newSave } from './state';
 import { makeProvider, runStoryStep, newStory, MockProvider, record } from './story';
@@ -9,6 +9,11 @@ import { CONTACTS, CONTACT_BY_ID, CONTRACT_BY_ID, MAX_ACTIVE_CONTRACTS, Contract
 import { EXTRA_ITEMS } from './content/items';
 import { WEAPON_ITEMS } from './content/weapons';
 import { lockDay, contractState } from './state';
+
+export const abIconUrl=(id:string)=>'abilities/'+id+'.webp';
+const abChip=(id:keyof typeof ABILITIES)=>{ const d=ABILITIES[id]; return `<span class="abchip" style="--tc:${ABILITY_TYPE_COLOR[d.type]}" title="${esc(ABILITY_TYPE_LABEL[d.type])}: ${esc(d.desc)}"><img src="${abIconUrl(id)}" alt="">${esc(d.name)}</span>`; };
+const abChips=(ids:(keyof typeof ABILITIES)[],sep=' ')=>ids.map(abChip).join(sep);
+
 
 const $=(id:string)=>document.getElementById(id)!;
 const esc=(s:string)=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
@@ -25,6 +30,7 @@ const BVG='<span class="bvg"><span>With Big Viking Games</span><img src="/brand/
 export class UI {
   modal:string|null=null; draft:Layout|null=null; sel:Slot='torso'; search=''; confirm:any=null; msg=''; liveOpen=false; bannerT=0; toastCount=0; storyBusy=false; devOpen=false; lastKey=''; showAll=false; resetAsk=false; contactSel='odalys_vane';
   constructor(private g:Game, private audio:AudioSys){
+    this.bindAbilityTips();
     $('modal').addEventListener('click',e=>this.click(e)); $('modal').addEventListener('input',e=>this.input(e)); $('modal').addEventListener('change',e=>this.input(e));
     document.getElementById('btn-menu')!.addEventListener('pointerdown',e=>{ e.preventDefault(); this.open('settings'); });
     document.getElementById('downpanel')!.addEventListener('click',e=>{ const a=(e.target as HTMLElement).dataset.act; if(a==='cp') g.returnToCheckpoint(); if(a==='defib') g.defibInPlace(); });
@@ -67,6 +73,41 @@ export class UI {
   resetDraft(){ this.draft=cloneLayout(installedLayout(this.g.save)); }
 
   // ================= HUD =================
+  private abPrev:number[]=[0,0,0]; private abKey=['','',''];
+  /** Round medallion ability buttons: type ring, radial cooldown sweep, heat pips, ready pulse, state marks. */
+  abilityButtons(){
+    const g=this.g, HMAX=COMBAT.heat.max; document.body.classList.toggle('reducefx',!!g.save.settings.reducedFx);
+    document.querySelectorAll<HTMLElement>('.abtn').forEach(btn=>{
+      const i=+btn.dataset.idx!; const id=g.build.abilities[i]; const def=id?ABILITIES[id]:null; btn.classList.toggle('empty',!def);
+      const img=btn.querySelector('.aicon') as HTMLImageElement, nm=btn.querySelector('.aname') as HTMLElement;
+      if(this.abKey[i]!==(id||'')){ this.abKey[i]=id||''; if(def){ img.src=abIconUrl(def.id); btn.style.setProperty('--tc',ABILITY_TYPE_COLOR[def.type]); btn.dataset.type=def.type; btn.querySelector('.heatpips')!.innerHTML='<b></b>'.repeat(Math.min(6,Math.max(0,Math.ceil(def.heat/10)))); } else { img.removeAttribute('src'); delete btn.dataset.type; } nm.textContent=def?def.name:''; }
+      if(!def){ return; }
+      const cdn=Math.max(0,g.abCd[i]/def.cd); (btn.querySelector('.cdsweep') as HTMLElement).style.setProperty('--cd',(cdn*360).toFixed(1)+'deg');
+      if(this.abPrev[i]>0&&g.abCd[i]<=0){ btn.classList.remove('ready'); void btn.offsetWidth; btn.classList.add('ready'); setTimeout(()=>btn.classList.remove('ready'),700); }
+      this.abPrev[i]=g.abCd[i];
+      const offline=g.overheated, short=!offline&&def.heat>0&&g.heat+def.heat>HMAX;
+      btn.classList.toggle('off',offline); btn.classList.toggle('hot',short); btn.classList.toggle('cd',g.abCd[i]>0);
+      (btn.querySelector('.mark') as HTMLElement).textContent=offline?'\u2715':short?'!':'';
+      (btn.querySelector('.mark') as HTMLElement).title=offline?'Offline: overheated':short?'Would overheat':'';
+    });
+    const dd=$('dodge'); (dd.querySelector('.cdsweep') as HTMLElement).style.setProperty('--cd',(Math.max(0,g.dodgeCd/COMBAT.dodge.cd)*360).toFixed(1)+'deg'); dd.classList.toggle('cd',g.dodgeCd>0);
+    if(this.dodgePrev>0&&g.dodgeCd<=0){ dd.classList.remove('ready'); void dd.offsetWidth; dd.classList.add('ready'); setTimeout(()=>dd.classList.remove('ready'),700); } this.dodgePrev=g.dodgeCd;
+  }
+  private dodgePrev=0;
+  /** Hover (desktop) / long-press (touch) tooltip for HUD ability buttons. */
+  bindAbilityTips(){
+    const tip=$('abtip'); const show=(btn:HTMLElement)=>{ const i=+(btn.dataset.idx??-1); const id=btn.id==='dodge'?null:this.g.build.abilities[i]; const d=id?ABILITIES[id]:null;
+      if(btn.id==='dodge') tip.innerHTML=`<b>Dodge</b> <i style="color:${ABILITY_TYPE_COLOR.mobility}">Mobility</i><br>Quick roll with brief invulnerability. Cooldown ${COMBAT.dodge.cd}s.`;
+      else if(d) tip.innerHTML=`<b>${esc(d.name)}</b> <i style="color:${ABILITY_TYPE_COLOR[d.type]}">${ABILITY_TYPE_LABEL[d.type]}</i><br>${esc(d.desc)}<br><span class="mut">Heat ${d.heat} · Cooldown ${d.cd}s${d.range?' · Range '+d.range:''}</span>`; else return;
+      const r=btn.getBoundingClientRect(); tip.style.display='block'; tip.style.setProperty('--tc',d?ABILITY_TYPE_COLOR[d.type]:ABILITY_TYPE_COLOR.mobility); const w=tip.offsetWidth; tip.style.left=Math.max(6,Math.min(innerWidth-w-6,r.left+r.width/2-w/2))+'px'; tip.style.bottom=(innerHeight-r.top+8)+'px'; };
+    const hide=()=>{ tip.style.display='none'; };
+    document.querySelectorAll<HTMLElement>('.abtn,#dodge').forEach(btn=>{ let timer=0,sx=0,sy=0;
+      btn.addEventListener('pointerenter',e=>{ if(e.pointerType==='mouse') show(btn); }); btn.addEventListener('pointerleave',()=>{ clearTimeout(timer); hide(); });
+      btn.addEventListener('pointerdown',e=>{ sx=e.clientX; sy=e.clientY; if(e.pointerType!=='mouse'){ clearTimeout(timer); timer=window.setTimeout(()=>show(btn),450); } else hide(); });
+      btn.addEventListener('pointermove',e=>{ if(timer&&Math.hypot(e.clientX-sx,e.clientY-sy)>10){ clearTimeout(timer); timer=0; } });
+      const up=()=>{ clearTimeout(timer); timer=0; setTimeout(hide,1400); }; btn.addEventListener('pointerup',up); btn.addEventListener('pointercancel',()=>{ clearTimeout(timer); hide(); }); });
+  }
+
   hud(){
     const g=this.g, st=g.build.stats; $('hpfill').style.width=Math.max(0,g.hp/g.maxHp*100)+'%'; $('hptxt').textContent=Math.ceil(Math.max(0,g.hp))+' / '+Math.round(g.maxHp);
     $('heatfill').style.width=Math.min(100,g.heat)+'%'; document.querySelector('.bar.heat')!.classList.toggle('over',g.overheated); $('heattxt').textContent=g.overheated?'OVERHEATED':'HEAT';
@@ -74,8 +115,7 @@ export class UI {
     const inst=g.inst; if(g.mode==='run'&&inst){ const rem=Math.max(0,inst.expiresAt-Date.now()); const h=Math.floor(rem/3600000), m=Math.floor(rem%3600000/60000); $('timer').textContent='Instance '+h+'h'+String(m).padStart(2,'0')+'m'+(rem<1800000?' ⚠':''); $('carry').textContent=`Pack ${g.carriedCount()}/${COMBAT.missionSlots} · +${inst.carried.credits}c`; $('stimn').textContent=String(inst.carried.stims); } else { $('timer').textContent=g.hasLiveInstance()?'Instance live':''; $('carry').textContent=''; $('stimn').textContent=String(s.stims); }
     this.guideHud();
     const run=g.mode==='run'; $('btn-town').style.display=run?'':'none'; $('btn-inv').style.display=run?'':'none';
-    document.querySelectorAll<HTMLElement>('.abtn').forEach(btn=>{ const i=+btn.dataset.idx!; const id=g.build.abilities[i]; const def=id?ABILITIES[id]:null; btn.classList.toggle('empty',!def); (btn.querySelector('.aname') as HTMLElement).textContent=def?def.name:'—'; const fill=btn.querySelector('.cdfill') as HTMLElement; const cd=def?Math.max(0,g.abCd[i]/def.cd):0; fill.style.height=(g.overheated&&def?100:cd*100)+'%'; btn.classList.toggle('off',!!def&&g.overheated); });
-    const dd=$('dodge'); (dd.querySelector('.cdfill') as HTMLElement).style.height=Math.max(0,g.dodgeCd/COMBAT.dodge.cd*100)+'%'; dd.classList.toggle('cd',g.dodgeCd>0);
+    this.abilityButtons();
     const pr=g.prompt; const ib=$('interact'); ib.style.display=pr&&!this.modal&&!g.downed?'':'none'; if(pr) ib.innerHTML=esc(pr.label.length>26?pr.label.slice(0,24)+'…':pr.label)+' <small>F</small>';
     const ch=$('channelbar'); if(g.channel){ ch.style.display='block'; (ch.firstElementChild as HTMLElement).style.width=g.channel.t/g.channel.dur*100+'%'; ch.querySelector('span')!.textContent=g.channel.kind==='town'?'Returning to town…':'Hacking…'; } else ch.style.display='none';
     // conditional support panel: only when relevant ability equipped
@@ -87,7 +127,7 @@ export class UI {
   renderLive(){ const el=$('livepanel'); if(!this.liveOpen||this.g.mode!=='run'){ el.style.display='none'; return; } const g=this.g, c=g.inst!.carried; el.style.display='block'; const L=installedLayout(g.save);
     let h=`<h4>Pack (live: combat continues) ${g.carriedCount()}/${COMBAT.missionSlots}</h4><div class="mut">Hardware and chips are locked mid-run. Compare, then return to town to install. Items stay on the ground until the instance expires.</div>`;
     for(const it of c.items){ const d=ITEM_BY_ID[it.def]; const cur=L[d.slot]?ITEM_BY_ID[L[d.slot]!.def]:null; const bl=computeBuild(this.layoutWith(L,d.slot,it),g.save.level,g.save.rep).stats, b0=g.build.stats;
-      h+=`<div class="lp-item" style="border-color:${rc(d.rarity)}"><b style="color:${rc(d.rarity)}">${esc(d.name)}</b> <span class="tag">${SLOT_LABEL[d.slot]}</span><small>${MFR[d.mfr].short} · req Lv ${d.lvl}${d.lvl>g.save.level?' <span class="bad">(too high)</span>':''}${d.abilities?' · '+d.abilities.map(a=>ABILITIES[a].name).join(', '):''}</small><small>vs ${cur?esc(cur.name):'empty'}: HP ${diff(b0.maxHp,bl.maxHp,n=>n.toFixed(0))} DMG ${diff(b0.dmg,bl.dmg)} ATK ${diff(b0.atkSpeed,bl.atkSpeed)} COOL ${diff(b0.cooling,bl.cooling)}</small></div>`; }
+      h+=`<div class="lp-item" style="border-color:${rc(d.rarity)}"><b style="color:${rc(d.rarity)}">${esc(d.name)}</b> <span class="tag">${SLOT_LABEL[d.slot]}</span><small>${MFR[d.mfr].short} · req Lv ${d.lvl}${d.lvl>g.save.level?' <span class="bad">(too high)</span>':''}${d.abilities?' · '+abChips(d.abilities):''}</small><small>vs ${cur?esc(cur.name):'empty'}: HP ${diff(b0.maxHp,bl.maxHp,n=>n.toFixed(0))} DMG ${diff(b0.dmg,bl.dmg)} ATK ${diff(b0.atkSpeed,bl.atkSpeed)} COOL ${diff(b0.cooling,bl.cooling)}</small></div>`; }
     for(const [k,v] of Object.entries(c.chips)) if(v) h+=`<div class="lp-item"><b>${CHIPS[k as ChipId].name}</b> ×${v}<small>${CHIPS[k as ChipId].desc}</small></div>`;
     if(c.stims) h+=`<div class="lp-item"><b>Stim</b> ×${c.stims}</div>`; if(!c.items.length&&!Object.keys(c.chips).length&&!c.stims) h+='<div class="mut" style="margin-top:6px">Empty. Loot is picked up by proximity.</div>';
     el.innerHTML=h; }
@@ -111,7 +151,7 @@ export class UI {
     const chipPick=(this as any).chipPick===true; let chipList=''; if(chipPick){ chipList='<h3>Choose chip</h3><div class="list">'+(Object.keys(CHIPS) as ChipId[]).map(c=>{ const av=owned(c)-used(c); return `<div class="row" data-act="addchip" data-chip="${c}" style="${av<=0?'opacity:.4':''}"><span><b>${CHIPS[c].name}</b> <span class="mut">${CHIPS[c].desc}</span></span><span>×${av}</span></div>`; }).join('')+'</div>'; }
     const q=this.search.toLowerCase(); const storage=lockerItems(s).filter(i=>!q||ITEM_BY_ID[i.def].name.toLowerCase().includes(q)||SLOT_LABEL[ITEM_BY_ID[i.def].slot].toLowerCase().includes(q)).sort((a,b)=>RARITIES.indexOf(ITEM_BY_ID[b.def].rarity)-RARITIES.indexOf(ITEM_BY_ID[a.def].rarity));
     const cap=s.lockerCap+s.purchases.lockerBlocks*STARTING.lockerPerPurchase;
-    const rows=storage.map(i=>{ const d=ITEM_BY_ID[i.def]; const fits=d.slot===sl; return `<div class="row" style="border-color:${rc(d.rarity)};${fits?'':'opacity:.78'}"><span><b style="color:${rc(d.rarity)}">${esc(d.name)}</b><span class="tag">${SLOT_LABEL[d.slot]}</span><span class="tag">${MFR[d.mfr].short}</span><span class="tag">Lv ${d.lvl}</span>${d.abilities?`<span class="tag">${d.abilities.map(a=>ABILITIES[a].name).join('+')}</span>`:''}</span>${fits?`<button class="btn" data-act="replace" data-uid="${i.uid}">Replace…</button>`:`<button class="btn" data-act="gosel" data-slot="${d.slot}">Go to slot</button>`}</div>`; }).join('')||'<div class="row mut">Storage empty</div>';
+    const rows=storage.map(i=>{ const d=ITEM_BY_ID[i.def]; const fits=d.slot===sl; return `<div class="row" style="border-color:${rc(d.rarity)};${fits?'':'opacity:.78'}"><span><b style="color:${rc(d.rarity)}">${esc(d.name)}</b><span class="tag">${SLOT_LABEL[d.slot]}</span><span class="tag">${MFR[d.mfr].short}</span><span class="tag">Lv ${d.lvl}</span>${d.abilities?`<span class="tag">${abChips(d.abilities,'')}</span>`:''}</span>${fits?`<button class="btn" data-act="replace" data-uid="${i.uid}">Replace…</button>`:`<button class="btn" data-act="gosel" data-slot="${d.slot}">Go to slot</button>`}</div>`; }).join('')||'<div class="row mut">Storage empty</div>';
     const chipStock=(Object.keys(CHIPS) as ChipId[]).filter(c=>(s.lockerChips[c]||0)>0).map(c=>`${CHIPS[c].name} ×${s.lockerChips[c]}`).join(' · ')||'none';
     const abNow=cur.abilities.map(a=>ABILITIES[a].name), abPrev=prev.abilities.map(a=>ABILITIES[a].name);
     const carried=g.inst?.carried; const hasCarry=!!carried&&(carried.items.length||Object.keys(carried.chips).length||carried.stims||carried.credits);
@@ -121,7 +161,7 @@ export class UI {
       ${hasCarry?`<div class="draftbar">Mission pack: ${carried!.items.length} items, ${Object.values(carried!.chips).reduce((a,b)=>a+(b||0),0)} chips, ${carried!.stims} stims, ${carried!.credits}c <button class="btn primary" data-act="unload">Unload into locker</button></div>`:''}
       ${conf}
       <h3>${SLOT_LABEL[sl]}: ${dd?esc(dd.name):'empty'} ${dd?`<span class="tag" style="border-color:${rc(dd.rarity)}">${dd.rarity}</span>`:''}</h3>
-      ${dd?`<div class="mut">${MFR[dd.mfr].name} · req Lv ${dd.lvl}${dd.abilities?' · abilities: '+dd.abilities.map(a=>ABILITIES[a].name).join(', '):''}${dd.weapon?' · weapon: '+(WEAPONS[dd.weapon]?.label||dd.weapon)+' ('+WEAPONS[dd.weapon].dmg+' dmg ×'+WEAPON_RARITY_MUL[dd.rarity]+', range '+WEAPONS[dd.weapon].range+', heat '+WEAPONS[dd.weapon].heat+')':''}${dd.caps?' · capability: '+dd.caps.join(', '):''}</div><div class="mut">${esc(dd.blurb||'')}</div>`:''}
+      ${dd?`<div class="mut">${MFR[dd.mfr].name} · req Lv ${dd.lvl}${dd.abilities?' · abilities: '+abChips(dd.abilities):''}${dd.weapon?' · weapon: '+(WEAPONS[dd.weapon]?.label||dd.weapon)+' ('+WEAPONS[dd.weapon].dmg+' dmg ×'+WEAPON_RARITY_MUL[dd.rarity]+', range '+WEAPONS[dd.weapon].range+', heat '+WEAPONS[dd.weapon].heat+')':''}${dd.caps?' · capability: '+dd.caps.join(', '):''}</div><div class="mut">${esc(dd.blurb||'')}</div>`:''}
       <div>${socks}</div>${chipList}
       <h3>Storage ${capacityUsed(s)}/${cap}</h3><input type="search" placeholder="Search storage (name, slot)…" value="${esc(this.search)}" data-in="search" /><div class="mut">Chips in stock: ${chipStock}</div>
       <div class="list">${rows}</div>
@@ -129,7 +169,7 @@ export class UI {
     <div class="col"><div class="draftbar"><b>${dirty?'DRAFT (unapplied)':'No staged changes'}</b> ${dirty?'<span class="warn">Leaving the workspace or entering a mission discards it.</span>':''}<div><button class="btn primary" data-act="apply" ${dirty?'':'disabled'}>Apply chip configuration</button><button class="btn" data-act="discard" ${dirty?'':'disabled'}>Discard</button></div></div>
       <h3>Preview</h3><div>${fmtStats(prev.stats)}</div><div class="mut" style="margin-top:4px">Installed: ${fmtStats(cur.stats)}</div>
       <div style="margin-top:6px">Abilities: <b>${abPrev.join(', ')||'none'}</b>${abPrev.join()!==abNow.join()?` <span class="mut">(installed: ${abNow.join(', ')||'none'})</span>`:''}</div>
-      ${prev.extraAbilities.length?`<div class="warn">Only 3 abilities are bound (by slot priority). Unbound: ${prev.extraAbilities.map(a=>ABILITIES[a].name).join(', ')}</div>`:''}<div>Capabilities: ${[...prev.caps].join(', ')||'none'} · Basic attack: <b>${prev.weapon.kind}</b>${prev.weapon.stationary?' (stationary)':''}</div>
+      ${prev.extraAbilities.length?`<div class="warn">Only 3 abilities are bound (by slot priority). Unbound: ${abChips(prev.extraAbilities)}</div>`:''}<div>Capabilities: ${[...prev.caps].join(', ')||'none'} · Basic attack: <b>${prev.weapon.kind}</b>${prev.weapon.stationary?' (stationary)':''}</div>
       <div>Heat: cooling ×${prev.stats.cooling.toFixed(2)} (${(9*prev.stats.cooling).toFixed(1)}/s passive); ability heat ${prev.abilities.map(a=>ABILITIES[a].heat).join(' / ')||'-'}</div>
       <div class="${prev.mix.coolingPenalty>0?'warn':'mut'}">Manufacturers: ${prev.mix.mfrs.map(m=>MFR[m].short).join(' + ')||'baseline'}${prev.mix.coolingPenalty>0?' · mixing penalty −'+(prev.mix.coolingPenalty*100).toFixed(0)+'% cooling (reduced by reputation rank)':''}</div>
       ${prev.conflicts.map(c=>`<div class="bad">Hard conflict: ${esc(c)}</div>`).join('')}
