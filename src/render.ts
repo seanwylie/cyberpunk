@@ -2,6 +2,7 @@ import { Game, En } from './sim';
 import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES } from './config';
 import { installedLayout } from './build';
 import { PlayerAnimator, loadAtlas } from './sprites';
+import { bodyOf } from './bodyvariants';
 import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
 import type { Level } from './level';
 import { TownArt, GP, decorDepth } from './town';
@@ -154,7 +155,7 @@ export class Renderer {
   drawPlayer(){
     const g=this.g, c=this.ctx; const s=this.TW/64; const a=this.sx(g.px,g.py), b=this.sy(g.px,g.py); const L=installedLayout(g.save); const broken=g.inst?.broken||[];
     c.save(); c.fillStyle='rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(a,b,13*s,6*s,0,0,7); c.fill();
-    if(this.anim){ const now=g.time, dtp=Math.min(.1,Math.max(0,now-this.lastT)); this.lastT=now; this.anim.update(g as any,dtp); if(g.cloakT>0) c.globalAlpha=.32; else if(g.iframes>0&&g.dodgeT>0) c.globalAlpha=.55; if(this.anim.draw(c,a,b,s)){ c.restore(); if(g.save.settings.reducedFx===false&&g.braceT>0) this.ring(g.px,g.py,.7,'#d8d2bf',.8); return; } }
+    if(this.anim){ const now=g.time, dtp=Math.min(.1,Math.max(0,now-this.lastT)); this.lastT=now; this.anim.setBody(bodyOf(g.save)); this.anim.update(g as any,dtp); if(g.cloakT>0) c.globalAlpha=.32; else if(g.iframes>0&&g.dodgeT>0) c.globalAlpha=.55; if(this.anim.draw(c,a,b,s)){ c.restore(); if(g.save.settings.reducedFx===false&&g.braceT>0) this.ring(g.px,g.py,.7,'#d8d2bf',.8); return; } }
     if(g.downed){ c.translate(a,b-6*s); c.rotate(-1.4); }
     else { c.translate(a,b); }
     if(g.cloakT>0) c.globalAlpha=.32; if(g.iframes>0&&g.dodgeT>0) c.globalAlpha=.55;

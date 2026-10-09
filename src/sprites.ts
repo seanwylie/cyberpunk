@@ -1,4 +1,5 @@
 import { COMBAT } from './config';
+import type { Variant } from './bodyvariants';
 /**
  * Sprite-sheet character animation (optional layer over the procedural character).
  * Drop-in: put public/sprites/player.json (+ PNGs it references) and the game uses it automatically.
@@ -37,7 +38,7 @@ export interface Atlas {
   anims:Partial<Record<AnimName,AnimDef>>;
 }
 
-export interface LoadedAtlas { atlas:Atlas; images:Partial<Record<AnimName,HTMLImageElement>>; layerImages:Partial<Record<AnimName,HTMLImageElement[]>>; }
+export interface LoadedAtlas { base?:string; atlas:Atlas; images:Partial<Record<AnimName,HTMLImageElement>>; layerImages:Partial<Record<AnimName,HTMLImageElement[]>>; }
 /** Anims not yet authored fall back to the closest authored one. */
 const FALLBACK:Record<AnimName,AnimName[]>={idle:[],run:['idle'],dodge:['run','idle'],attack:['idle'],cast:['idle'],hit:['idle'],down:['idle']};
 
@@ -59,7 +60,7 @@ export async function loadAtlas(url='sprites/player.json'):Promise<LoadedAtlas|n
     const base=url.slice(0,url.lastIndexOf('/')+1); const images:LoadedAtlas['images']={}; const layerImages:LoadedAtlas['layerImages']={};
     const loadImg=(src:string,a:AnimDef,what:string)=>new Promise<HTMLImageElement>((res,rej)=>{ const im=new Image(); im.onload=()=>{ if(im.naturalWidth<atlas.frame.w*a.frames||im.naturalHeight<atlas.frame.h*a.dirs) rej(new Error(what+' image smaller than frames*dirs*frame size')); else res(im); }; im.onerror=()=>rej(new Error('failed '+src)); im.src=base+src; });
     await Promise.all(Object.entries(atlas.anims).map(async([n,a])=>{ const d=a!; if(wantLayers&&d.layers&&d.order){ layerImages[n as AnimName]=await Promise.all(d.layers.map(l=>loadImg(l.image,d,n+'/'+l.name))); } else images[n as AnimName]=await loadImg(d.image,d,n); }));
-    return { atlas, images, layerImages };
+    return { base, atlas, images, layerImages };
   }catch(e){ console.warn('[sprites] falling back to procedural character:',e); return null; }
 }
 export function validateAtlas(a:Atlas):string|null{
@@ -74,6 +75,8 @@ export type ImpactKind='attack'|'cast';
 interface PlayState { anim:AnimName; f:number; nf:number; frac:number; dir:Dir8; }
 /** Continuous direction index in the iso ring (E=0,SE=1,S=2,SW=3,W=4,NW=5,N=6,NE=7), from a world vector. */
 function ringPos(dx:number,dy:number):number{ const sx=dx-dy, sy=(dx+dy)/2; return Math.atan2(sy,sx)/(Math.PI/4); }
+/** inputMove is SCREEN-space (W = screen up). Same transform as sim's ISO.vec, so sprite facing follows the on-screen movement direction (W/S/A/D face N/S/W/E; the 8 baked directions are screen-aligned). */
+const screenToWorld=(dx:number,dy:number)=>{ const a=dx,b=dy*2; return { x:(a+b)/2, y:(b-a)/2 }; };
 const ringToDir=(k:number):Dir8=>((((k-2)%8)+8)%8) as Dir8;
 const ringDiff=(a:number,b:number)=>{ let d=((a-b)%8+8)%8; return d>4?d-8:d; };
 export class PlayerAnimator {
@@ -108,7 +111,7 @@ export class PlayerAnimator {
     // remember what was on screen so the change can be cross-faded instead of popping
     const oldAnim=this.anim, oldT=this.t, oldDir=this.dir;
     // facing: target direction with hysteresis; displayed direction walks the ring one notch at a time (snaps for dodge / down)
-    const fx=next==='dodge'?g.dodgeDx:g.moving&&next==='run'?g.inputMove.x:Math.cos(g.face), fy=next==='dodge'?g.dodgeDy:g.moving&&next==='run'?g.inputMove.y:Math.sin(g.face);
+    const fx=next==='dodge'?g.dodgeDx:g.moving&&next==='run'?screenToWorld(g.inputMove.x,g.inputMove.y).x:Math.cos(g.face), fy=next==='dodge'?g.dodgeDy:g.moving&&next==='run'?screenToWorld(g.inputMove.x,g.inputMove.y).y:Math.sin(g.face);
     if(Math.hypot(fx,fy)>0.05){ const kf=ringPos(fx,fy); if(Math.abs(ringDiff(kf,this.tk))>0.5+0.18||this.tk<0) this.tk=((Math.round(kf)%8)+8)%8; }
     const snap=next==='dodge'||next==='down'||(g.dodgeT>0);
     if(snap){ this.dk=this.tk; this.stepT=0; } else if(this.dk!==this.tk){ this.stepT-=dt; if(this.stepT<=0){ const d=ringDiff(this.tk,this.dk); const bigTurn=Math.abs(d)>=3; this.dk=(((this.dk+(d>0?1:-1))%8)+8)%8; this.stepT=(next==='attack'||next==='cast'?.035:.05)*(bigTurn?.8:1); } } else this.stepT=0;
@@ -122,17 +125,47 @@ export class PlayerAnimator {
     this.sample();
     if(executed&&next==='cast') this.impact('cast','cast'); else if(attackStart&&next==='attack') this.impact('attack','attack');
   }
+  // ---- body variants: per-slot alternate layer sets composited into one flat sheet per anim (lazy, cached, memory-bounded) ----
+  private bodySig='base'; private bodyCur:Partial<Record<AnimName,HTMLCanvasElement>>|null=null; private bodyCache=new Map<string,Partial<Record<AnimName,HTMLCanvasElement>>>();
+  /** signature -> true once every anim has been composited */ bodyReady=new Set<string>(); bodyStats={composites:0,ms:0,loaded:0};
+  get bodyKey(){ return this.bodySig; }
+  /** Select which variant each body slot uses. Cheap to call every frame (no-ops while unchanged). All-base uses the original flat sheets. */
+  setBody(b:Record<string,Variant>){
+    const names=this.loaded.atlas.anims.idle?.layers?.map(l=>l.name); if(!names||!this.loaded.base) return;
+    const sig=names.map(n=>b[n]||'base').join(','); if(sig===this.bodySig) return; this.bodySig=sig;
+    if(names.every(n=>(b[n]||'base')==='base')){ this.bodyCur=null; return; }
+    let c=this.bodyCache.get(sig);
+    if(!c){ c={}; this.bodyCache.set(sig,c); while(this.bodyCache.size>2){ const k=this.bodyCache.keys().next().value as string; if(k===sig) break; this.bodyCache.delete(k); } void this.composeBody(sig,names,names.map(n=>b[n]||'base'),c); }
+    this.bodyCur=c;
+  }
+  private async composeBody(sig:string,names:string[],vars:string[],out:Partial<Record<AnimName,HTMLCanvasElement>>){
+    const A=this.loaded.atlas, base=this.loaded.base!, W=A.frame.w, H=A.frame.h; const t0=performance.now();
+    const order:AnimName[]=['idle','run','attack','dodge','cast','hit','down'];
+    const load=(src:string)=>new Promise<HTMLImageElement|null>(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src; });
+    for(const an of order){
+      const d=A.anims[an]; if(!d||!d.layers||!d.order) continue; if(this.bodySig!==sig&&!this.bodyCache.has(sig)) return;
+      const ims=await Promise.all(d.layers.map(async(l,i)=>{ const v=vars[names.indexOf(l.name)]||'base'; let im:HTMLImageElement|null=null;
+        if(v!=='base'){ const ext=l.image.slice(l.image.lastIndexOf('.')); im=await load(`${base}v/${v}/${an}_${l.name}${ext}`); if(im) this.bodyStats.loaded++; }
+        return im||await load(base+l.image); }));
+      if(ims.some(i=>!i)) continue;
+      const cv=document.createElement('canvas'); cv.width=W*d.frames; cv.height=H*d.dirs; const x=cv.getContext('2d')!;
+      for(let row=0;row<d.dirs;row++) for(let f=0;f<d.frames;f++) for(const li of d.order[row][f]) x.drawImage(ims[li]!,f*W,row*H,W,H,f*W,row*H,W,H);
+      out[an]=cv; this.bodyStats.composites++;
+      await new Promise(r=>setTimeout(r,0));
+    }
+    this.bodyStats.ms=Math.round(performance.now()-t0); this.bodyReady.add(sig);
+  }
   private blit(c:CanvasRenderingContext2D,st:PlayState,alpha:number,s:number){
-    const a=this.loaded.atlas; const an=this.resolve(st.anim); const d=a.anims[an], im=this.loaded.images[an], lay=this.loaded.layerImages[an]; if(!d||(!im&&!lay)||alpha<=0) return;
+    const a=this.loaded.atlas; const an=this.resolve(st.anim); const bi=this.bodyCur?.[an]; const d=a.anims[an], im:CanvasImageSource|undefined=bi||this.loaded.images[an], lay=bi?undefined:this.loaded.layerImages[an]; if(!d||(!im&&!lay)||alpha<=0) return;
     let row:number=st.dir, mirror=false; if(d.dirs===5&&st.dir>4){ row=8-st.dir; mirror=true; } // SE(7)->SW(1), E(6)->W(2), NE(5)->NW(3)
     const W=a.frame.w,H=a.frame.h; c.save(); if(mirror) c.scale(-1,1);
-    const one=(f:number,al:number)=>{ c.globalAlpha=al; if(lay&&d.order){ for(const li of d.order[row][f]) c.drawImage(lay[li],f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); } else c.drawImage(im!,f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); };
+    const one=(f:number,al:number)=>{ c.globalAlpha=al; if(lay&&d.order){ for(const li of d.order[row][f]) c.drawImage(lay[li],f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); } else c.drawImage(im as CanvasImageSource,f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); };
     const g0=c.globalAlpha; one(st.f,g0*alpha); if(st.frac>0) one(st.nf,g0*alpha*st.frac); c.restore();
   }
   /** Draw with feet at (x,y) in screen px. unit = TW/64. Returns false if anim missing (caller falls back). */
   draw(c:CanvasRenderingContext2D,x:number,y:number,unit:number):boolean{
     const a=this.loaded.atlas; const an=this.resolve(this.anim);
-    const d=a.anims[an], im=this.loaded.images[an], lay=this.loaded.layerImages[an]; if(!d||(!im&&!lay)) return false;
+    const bi=this.bodyCur?.[an]; const d=a.anims[an], im:CanvasImageSource|undefined=bi||this.loaded.images[an], lay=bi?undefined:this.loaded.layerImages[an]; if(!d||(!im&&!lay)) return false;
     this.sample(); const W=a.frame.w,H=a.frame.h,s=unit*a.scale*(48/ (H*0.6)) ; // normalise: character ~60% of cell height ≈ 48 procedural px
     c.save(); c.translate(x,y); c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high';
     const cur:PlayState={anim:this.anim,f:this.frame,nf:0,frac:this.frac,dir:this.dir}; { const p=this.pos(this.anim,this.t); cur.nf=p.nf; }
