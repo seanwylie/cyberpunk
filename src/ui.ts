@@ -21,6 +21,7 @@ const fmtStats=(s:Stats)=>`HP ${Math.round(s.maxHp)} · DMG ×${s.dmg.toFixed(2)
 const diff=(a:number,b:number,f=(n:number)=>n.toFixed(2))=>{ const d=b-a; if(Math.abs(d)<1e-6) return ''; return `<span class="${d>0?'up':'dn'}">${d>0?'+':''}${f(d)}</span>`; };
 const rc=(r:string)=>RARITY_COLOR[r as keyof typeof RARITY_COLOR];
 
+const BVG='<span class="bvg"><span>With Big Viking Games</span><img src="/brand/bvg_logo_bone.png" alt="Big Viking Games" width="64"></span>';
 export class UI {
   modal:string|null=null; draft:Layout|null=null; sel:Slot='torso'; search=''; confirm:any=null; msg=''; liveOpen=false; bannerT=0; toastCount=0; storyBusy=false; devOpen=false; lastKey=''; showAll=false; resetAsk=false; contactSel='odalys_vane';
   constructor(private g:Game, private audio:AudioSys){
@@ -96,7 +97,7 @@ export class UI {
   render(){ const m=$('modal'); if(!this.modal){ m.style.display='none'; m.innerHTML=''; return; } m.style.display='flex'; const g=this.g;
     const body=this.modal==='locker'?this.locker():this.modal==='vendor'?this.vendor():this.modal==='gate'?this.gate():this.modal==='fixer'?this.fixer():this.modal==='contacts'?this.contacts():this.modal==='store'?this.store():this.modal==='settings'?this.settings():this.modal==='dev'?this.dev():this.modal==='summary'?this.summary():'';
     const titles:Record<string,string>={locker:'Body workspace & locker',vendor:'Vendor & repair',gate:'Dungeon select',contacts:'Contacts & contracts',fixer:'Fixer: Odalys Vane',store:'Outfitter (simulated purchases)',settings:'Settings',dev:'DEV tools (prototype only)',summary:'Run summary'};
-    m.innerHTML=`<div class="win"><header><span>${titles[this.modal]||''}</span><span><button data-act="close">Close</button></span></header><div class="body">${body}</div></div>`; void g; }
+    m.innerHTML=`<div class="win"><header><span>${titles[this.modal]||''}</span><span><button data-act="close">Close</button></span></header><div class="body">${body}</div><footer class="bvgf">${BVG}</footer></div>`; void g; }
   // ----- Locker -----
   locker():string{
     const g=this.g, s=g.save; if(!this.draft) this.resetDraft(); const D=this.draft!; const inst=installedLayout(s);
@@ -203,7 +204,7 @@ export class UI {
     <div style="margin-top:8px"><b>Locker capacity</b>: ${s.lockerCap+s.purchases.lockerBlocks*STARTING.lockerPerPurchase} slots (bought blocks: ${s.purchases.lockerBlocks})<br><button class="btn primary" data-act="buylocker">Buy +${STARTING.lockerPerPurchase} slots (simulated)</button></div>
     <h3>Skins</h3>${skins.map(([id,n])=>`<div class="row"><span>${n} ${s.purchases.skins.includes(id)?'<span class="tag good">owned</span>':''}</span>${s.purchases.skins.includes(id)?`<button class="btn" data-act="skin" data-id="${id}">${s.purchases.equippedSkin===id?'Unequip':'Equip'}</button>`:`<button class="btn" data-act="buyskin" data-id="${id}">Buy (simulated)</button>`}</div>`).join('')}<div class="mut">Skins are entitlement records only in this prototype (no skin art yet).</div></div>`; }
   // ----- Settings -----
-  settings():string{ const g0=this.g; const t=this.g.save.settings; return `<div class="col"><h3>Display & feel</h3>
+  settings():string{ const g0=this.g; const t=this.g.save.settings; return `<div class="col"><h3>About</h3><div class="mut">Annex Runner, an ARPG prototype.</div><div class="about">${BVG}</div><h3>Display & feel</h3>
     <label>Gore <select data-in="gore"><option value="off" ${t.gore==='off'?'selected':''}>Off</option><option value="standard" ${t.gore==='standard'?'selected':''}>Standard</option><option value="bloody" ${t.gore==='bloody'?'selected':''}>Bloody Mess</option></select></label>
     <label><input type="checkbox" data-in="dmgnum" ${t.damageNumbers?'checked':''}/> Damage numbers (default off)</label><br><label>Loot labels <select data-in="lootlabels"><option value="off" ${t.lootLabels==='off'?'selected':''}>Off</option><option value="near" ${t.lootLabels==='near'?'selected':''}>Near / hover</option><option value="all" ${t.lootLabels==='all'?'selected':''}>All</option></select></label> <label>Show loot from <select data-in="lootmin">${(['grey','green','blue','purple','orange'] as const).map(r=>`<option value="${r}" ${t.lootMin===r?'selected':''}>${r}</option>`).join('')}</select></label><br><label><input type="checkbox" data-in="reduced" ${t.reducedFx?'checked':''}/> Reduced incidental effects</label><br><label><input type="checkbox" data-in="joyfixed" ${t.joystickFixed?'checked':''}/> Fixed joystick (default floating)</label><br>
     <label><input type="checkbox" data-in="music" ${t.music?'checked':''}/> Music</label><label>Volume <input type="range" min="0" max="1" step=".05" value="${t.volume}" data-in="vol"/></label>

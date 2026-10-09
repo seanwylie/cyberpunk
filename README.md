@@ -115,3 +115,8 @@ Lore bible, factions, recurring cast, districts, season-1 framing, MMO roadmap a
 * **Dev tools** (backtick): "Grant all dungeon-pack hardware", level presets (12/20/26/30/34), reset lockouts. To see the orange rules in action set level 34, then farm or call `__game.dropEntry({item:'sig_anvil_arm',w:1},__game.px,__game.py)`.
 * Data lives in `src/content/` (`dungeons.ts`, `enemies.ts`, `items.ts`, `npcs.ts`); adding a dungeon is a layout builder plus a registry entry.
 * Tests: `npm test` runs `tests/smoke.mjs` and `tests/dungeons.mjs`. `node tests/dungeon_shots.mjs` captures screenshots into `shots/dungeons/`.
+
+
+## Credits
+
+With Big Viking Games. The Big Viking Games logo (`public/brand/`, original from bigvikinggames.com plus an unaltered light-tint version for dark UI) is a mark of its owner and appears as a neutral credit only; it implies no endorsement.

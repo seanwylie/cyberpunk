@@ -10,7 +10,9 @@
 <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
+<div id="splash" aria-hidden="true"><div class="st"><b>ANNEX RUNNER</b><small>ARPG prototype</small></div><div class="bvg"><span>With Big Viking Games</span><img src="/brand/bvg_logo_bone.png" alt="Big Viking Games" width="64"></div></div>
 <canvas id="game"></canvas>
+<img id="bvgmark" src="/brand/bvg_logo_bone.png" alt="" aria-hidden="true" draggable="false" width="60">
 <div id="hud">
   <div id="topleft">
     <div class="bar hp"><div id="hpfill"></div><span id="hptxt"></span></div>
@@ -48,5 +50,6 @@
 <div id="modal" style="display:none"></div>
 <div id="rotate"><div>Rotate your device to landscape</div></div>
 <script type="module" src="/src/main.ts"></script>
+<script>window.addEventListener('load',function(){if(/[?&]splash=hold/.test(location.search))return;setTimeout(function(){var e=document.getElementById('splash');if(!e)return;e.classList.add('out');setTimeout(function(){e.remove()},700)},1800)});</script>
 </body>
 </html>
