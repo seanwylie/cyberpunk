@@ -198,6 +198,7 @@ export class Renderer {
   drawEnemy(e:En){
     const g=this.g, c=this.ctx; const def=ENEMIES[e.type]; const s=this.TW/64*(def.boss?1.8:def.elite?1.35:1); const a=this.sx(e.x,e.y), b=this.sy(e.x,e.y); const rt=e._rt; const mf=MFR[def.mfr];
     const art=this.eart.draw(this,e,def,rt,a,b);
+    if(!art&&e.dead&&this.eart.has(e.type)) return; // finished death collapse: draw NOTHING (never fall back to the pale procedural humanoid for a corpse)
     if(!art){
     const rev=rt.reveal>0?Math.max(0,1-rt.reveal/COMBAT.bossRevealSeconds):1; if(rt.reveal>0){ c.save(); c.beginPath(); c.rect(a-80*s,b-120*s,160*s,120*s+2); c.clip(); }
     c.save(); c.fillStyle='rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(a,b,13*s,6*s,0,0,7); c.fill();
