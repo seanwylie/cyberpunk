@@ -124,6 +124,9 @@ export class EnemyArt {
     const sprW = H * this.img[art.spr].width / this.img[art.spr].height; const shK = 1 / (1 + hov / (TW * 2)); const sw = Math.min(sprW * .62, TW * (boss ? 2.4 : 1.5)) * shK * (e.dead ? 1 - .3 * Math.min(1, age / dur) : 1);
     c.save(); c.globalAlpha = (art.hover ? .55 : .9) * (e.dead ? alpha : 1); c.drawImage(this.shadow, a - sw, b - sw * .26, sw * 2, sw * .52); c.restore();
     // --- sprite ---
+    // A type that HAS a 3D atlas never shows the legacy front/back pair: while its sheets decode (or if a fetch fails and the old art is the only option left) we draw
+    // nothing but the shadow for the first moments instead of flashing a wrongly-facing flat sprite.
+    if (!at && this.a3.has(e.type) && this.atl.get(e.type)?.state !== 'fail') return { top: H + hov + 6 };
     if (at && at.meta) { const m = at.meta; const hitT = (an: string) => { const d = m.anims[an]; return d && d.hit != null ? d.hit / d.fps : 0; };
       let an = 'idle', tt = T * (m.anims.idle?.fps || 6); const A1 = ATK[rt.atk];
       if (e.dead) { an = 'death'; tt = Math.min(1, age / dur) * ((m.anims.death?.frames || 2) - 1); }

@@ -90,6 +90,12 @@ def weapon(kind,j,s):
         box(j,(.16,.2,.5),(0,-.25,.1),'dark')
     elif kind=='fist':
         box(j,(.2,.24,.2),(0,-.1,0),'dark',bevel=.03)
+    elif kind=='ladle':   # long-handled slag ladle / bowl
+        cyl(j,.04,1.1,(0,-.5,0),'metal',(90,0,0),v=8); sph(j,.24,(0,-1.1,-.05),'dark',(1,1,.7)); sph(j,.16,(0,-1.1,.0),'glow',(1,1,.3))
+    elif kind=='baton':
+        cyl(j,.04,.7,(0,-.3,0),'dark',(90,0,0),v=8); cyl(j,.055,.12,(0,-.68,0),'glow',(90,0,0),v=8)
+    elif kind=='scalpel':
+        box(j,(.05,.3,.07),(0,-.1,0),'dark'); box(j,(.012,.62,.1),(0,-.6,0),'metal',bevel=.003); box(j,(.012,.2,.06),(0,-.98,-.02),'metal',(0,0,0),bevel=.003)
     elif kind=='none': pass
 # ---------------- archetypes ----------------
 class Rig: pass
@@ -158,7 +164,62 @@ def hover(spec):
     for side,sx in (('L',-1),('R',1)):
         hp=joint('hp'+side,h,(sx*.2,0,-.35)); kn=joint('kn'+side,hp,(0,0,-.4)); setattr(R,'hp'+side,hp); setattr(R,'kn'+side,kn); box(hp,(.14,.14,.42),(0,0,-.2),'white',bevel=.03); box(kn,(.12,.12,.5),(0,0,-.24),'metal',bevel=.03); box(kn,(.16,.3,.08),(0,-.06,-.5),'dark',bevel=.02)
     R.hipH=1.0*s; R.height=2.2*s; return R
-ARCH={'humanoid':lambda sp:humanoid(sp,False),'bruiser':lambda sp:humanoid(sp,True),'turret':turret,'hover':hover}
+
+def extras(R,spec):
+    ex=spec.get('extras',()); t=R.torso; hd=R.head; br=R.kind=='bruiser'; fy=-.3 if br else -.22; by=.3 if br else .22; tw=.8 if br else .62; th=.78 if br else .62
+    for e in ex:
+        if e=='tank': cyl(t,.12,.6,(.18,by+.1,th*.6),'metal',v=12); cyl(t,.12,.6,(-.18,by+.1,th*.6),'accent',v=12); cyl(t,.03,.4,(0,by-.02,th*.5),'dark',(0,90,0),v=6)
+        elif e=='robe': box(R.hips,(tw*.95,.5,.62),(0,0,-.34),'cloth',bevel=.05); box(R.hips,(tw*.8,.1,.62),(0,-.26,-.36),'accent',bevel=.02)
+        elif e=='apron': box(t,(tw*.8,.06,th*.95),(0,fy-.04,th*.5),'white',bevel=.02); box(t,(tw*.6,.07,.1),(0,fy-.06,th*.55),'dark',bevel=.01)
+        elif e=='cross': box(t,(.3,.05,.08),(0,fy-.06,th*.65),'glow'); box(t,(.08,.05,.3),(0,fy-.06,th*.65),'glow')
+        elif e=='hat': cyl(hd,.3,.1,(0,0,.46),'accent',v=20); cyl(hd,.2,.16,(0,0,.52),'main',v=20)
+        elif e=='cone': cyl(hd,.28,.38,(0,0,.58),'accent',v=18,r2=.04)
+        elif e=='mask': box(hd,(.34,.14,.22),(0,-.24,.2),'white',bevel=.04); cyl(hd,.07,.2,(0,-.34,.16),'dark',(90,0,0),v=10)
+        elif e=='hivis':
+            for z in (.28,.5): box(t,(tw*1.04,torD_(br)*1.04,.07),(0,0,th*z+.1),'glow')
+        elif e=='plate': box(t,(tw*.9,.1,th*.8),(0,fy-.06,th*.55),'dark',bevel=.04); box(t,(tw*.5,.1,.12),(0,fy-.08,th*.8),'accent')
+        elif e=='horns':
+            for sx in (-1,1): cyl(hd,.05,.4,(sx*.22,0,.5),'metal',(0,sx*-35,0),v=8,r2=.01)
+        elif e=='visor': box(hd,(.5,.08,.1),(0,-.25,.26),'glow')
+def torD_(br): return .5 if br else .36
+
+def hum2(sp,b):
+    R=humanoid(sp,b); extras(R,sp); return R
+def hover2(sp):
+    R=hover(sp); return R
+def quad(spec):
+    R=Rig(); R.kind='quad'; s=spec.get('scale',1.0); R.root=joint('root'); R.hips=joint('hips',R.root,(0,0,.5*s)); R.hips.scale=(s,s,s); h=R.hips
+    R.torso=joint('torso',h,(0,0,0)); t=R.torso
+    box(t,(.5,.95,.42),(0,0,.1),'main',bevel=.07); box(t,(.54,.5,.3),(0,-.1,.2),'accent',bevel=.05); box(t,(.4,.5,.12),(0,.1,.36),'dark',bevel=.03)
+    for i in range(5): box(t,(.06,.1,.12),(0,.3-i*.16,.42),'metal',bevel=.01)
+    R.head=joint('head',t,(0,-.55,.2)); hd=R.head; box(hd,(.32,.4,.26),(0,-.1,0),'main',bevel=.05); box(hd,(.2,.24,.1),(0,-.32,-.04),'dark',bevel=.03); sph(hd,.045,(.1,-.28,.08),'glow'); sph(hd,.045,(-.1,-.28,.08),'glow')
+    R.jaw=joint('jaw',hd,(0,-.2,-.1)); box(R.jaw,(.2,.3,.06),(0,-.14,0),'dark',bevel=.015)
+    for sx in (-1,1): cyl(hd,.05,.2,(sx*.12,.0,.2),'metal',(0,sx*-12,0),v=6,r2=.01)
+    R.tail=joint('tail',t,(0,.5,.2)); cyl(R.tail,.05,.6,(0,.3,.04),'metal',(-75,0,0),v=8,r2=.02); sph(R.tail,.07,(0,.62,.1),'glow')
+    R.legs=[]
+    for (nm,x,y) in (('FL',-.3,-.35),('FR',.3,-.35),('BL',-.3,.35),('BR',.3,.35)):
+        hp=joint('hp'+nm,h,(x,y,.0)); kn=joint('kn'+nm,hp,(0,0,-.25)); setattr(R,'hp'+nm,hp); setattr(R,'kn'+nm,kn); R.legs.append((hp,kn))
+        box(hp,(.15,.17,.28),(0,0,-.12),'main',bevel=.04); box(kn,(.11,.13,.3),(0,0,-.13),'dark',bevel=.03); box(kn,(.14,.24,.07),(0,-.04,-.27),'metal',bevel=.02)
+    R.hipH=.5*s; R.height=.9*s; return R
+def cart(spec):
+    R=Rig(); R.kind='cart'; s=spec.get('scale',1.0); R.root=joint('root'); R.hips=joint('hips',R.root,(0,0,.3*s)); R.hips.scale=(s,s,s); h=R.hips; fork=spec.get('fork',False)
+    R.torso=joint('torso',h,(0,0,0)); t=R.torso
+    box(t,(.8,1.3,.16),(0,0,.1),'dark',bevel=.04)
+    R.wheels=[]
+    for x,y in ((-.45,-.5),(.45,-.5),(-.45,.5),(.45,.5)):
+        w=joint('wh',h,(x,y,0)); R.wheels.append(w); cyl(w,.28,.14,(0,0,0),'dark',(0,90,0),v=18); cyl(w,.13,.16,(0,0,0),'metal',(0,90,0),v=10)
+    if fork:
+        box(t,(.8,.7,.6),(0,.35,.5),'main',bevel=.05); box(t,(.82,.4,.3),(0,.45,.9),'accent',bevel=.04); box(t,(.5,.06,.3),(0,.0,.95),'glow'); cyl(t,.025,.8,(.3,.6,1.2),'metal',v=6)
+        R.head=joint('head',t,(0,0,1.0)); sph(R.head,.2,(0,.45,.1),'dark',(1,1,.8)); sph(R.head,.045,(.08,.27,.12),'glow'); sph(R.head,.045,(-.08,.27,.12),'glow')
+        R.mast=joint('mast',t,(0,-.45,.2)); box(R.mast,(.1,.08,1.2),(.25,0,.6),'metal'); box(R.mast,(.1,.08,1.2),(-.25,0,.6),'metal'); box(R.mast,(.7,.1,.1),(0,0,1.15),'dark')
+        R.forks=joint('forks',R.mast,(0,0,.1)); box(R.forks,(.1,.8,.06),(.2,-.45,0),'metal',bevel=.01); box(R.forks,(.1,.8,.06),(-.2,-.45,0),'metal',bevel=.01); box(R.forks,(.6,.06,.5),(0,-.02,.3),'dark')
+        R.height=1.6*s
+    else:  # gurney with a strapped-in runner torso
+        box(t,(.7,1.45,.12),(0,0,.5),'white',bevel=.04); box(t,(.64,1.3,.1),(0,0,.6),'accent',bevel=.04); box(t,(.1,1.4,.1),(.38,0,.7),'metal'); box(t,(.1,1.4,.1),(-.38,0,.7),'metal')
+        R.head=joint('head',t,(0,.5,.8)); sph(R.head,.2,(0,0,.14),'white',(1,1,1.1)); box(R.head,(.28,.1,.1),(0,-.15,.16),'glow'); box(t,(.5,.5,.5),(0,.3,.95),'main',bevel=.05); cyl(t,.025,1.2,(.3,.6,1.3),'metal',v=6); box(t,(.18,.1,.3),(.3,.6,1.9),'glow')
+        R.height=1.6*s
+    R.hipH=.3*s; return R
+ARCH={'humanoid':lambda sp:hum2(sp,False),'bruiser':lambda sp:hum2(sp,True),'turret':turret,'hover':hover2,'quad':quad,'cart':cart}
 # ---------------- animation (procedural, per archetype) ----------------
 def sm(t): t=min(1,max(0,t)); return t*t*(3-2*t)
 def rx(j,d): j.rotation_euler=(math.radians(d),j.rotation_euler[1],j.rotation_euler[2])
@@ -178,6 +239,38 @@ def pose(R,spec,anim,f,n):
             R.gun.rotation_euler=(0,0,(u*math.tau*3 if u<.7 else 0))
         elif anim=='hit': r=math.sin(u*math.pi); R.torso.location.y=r*.1; setr(R.torso,r*4,0,r*3)
         elif anim=='death': r=sm(u); setr(R.torso,r*28,0,r*14); R.torso.location.z=.55-r*.28; R.torso.location.y=r*.1; R.root.location.z=-r*.04
+        return
+    if k=='quad':
+        s1=math.sin(ph); s2=math.sin(ph+math.pi); a=34
+        if anim=='idle':
+            R.hips.location.z=hip0+math.sin(ph)*.012; setr(R.head,math.sin(ph)*3,0,math.sin(ph*.5)*4); setr(R.tail,0,0,math.sin(ph)*14); setr(R.jaw,3)
+            for (hp,kn) in R.legs: setr(kn,6)
+        elif anim=='walk':
+            R.hips.location.z=hip0-abs(math.sin(ph))*.05; setr(R.torso,math.sin(ph*2)*3); setr(R.tail,0,0,s1*25); setr(R.head,-math.sin(ph*2)*4,0,s1*3)
+            for i,(hp,kn) in enumerate(R.legs):
+                sg=s1 if i in (0,3) else s2; setr(hp,sg*a); setr(kn,max(0,-sg)*a*1.2+8)
+        elif anim=='attack':
+            w=.42; r=sm(u/w) if u<w else 1.0-sm((u-w)/(1-w)); wind=sm(u/.3)-sm((u-.3)/.12) if u<.42 else 0
+            R.root.location.y=-.5*r; setr(R.torso,-wind*14+r*10); setr(R.head,r*18-wind*8); setr(R.jaw,wind*10+(55*r if r>.5 else 0)); setr(R.tail,0,0,r*30)
+            for i,(hp,kn) in enumerate(R.legs): setr(hp,(-1 if i<2 else 1)*r*28); setr(kn,r*16+8)
+        elif anim=='hit':
+            r=math.sin(min(1,u*1.3)*math.pi); R.root.location.y=r*.2; setr(R.torso,-r*12,0,r*6); setr(R.head,r*14); setr(R.jaw,r*25)
+        elif anim=='death':
+            r=sm(u); R.hips.location.z=hip0-r*.28; R.root.rotation_euler=(math.radians(0),math.radians(r*85),0); setr(R.jaw,r*40); setr(R.tail,0,0,r*40)
+            for (hp,kn) in R.legs: setr(hp,r*50); setr(kn,r*40)
+        return
+    if k=='cart':
+        if anim=='idle': R.hips.location.z=hip0+math.sin(ph)*.008; setr(R.head,0,0,math.sin(ph)*5)
+        elif anim=='walk':
+            for w in R.wheels: setr(w,-u*360*2)
+            R.hips.location.z=hip0+abs(math.sin(ph*2))*.02; setr(R.torso,math.sin(ph*2)*1.2,0,math.sin(ph)*1.5)
+        elif anim=='attack':
+            w=.42; r=sm(u/w) if u<w else 1.0-sm((u-w)/(1-w)); wind=sm(u/.3)-sm((u-.3)/.12) if u<.42 else 0
+            R.root.location.y=-.7*r+.15*wind; setr(R.torso,-r*5+wind*6); setr(R.head,0,0,r*12)
+            for ww in R.wheels: setr(ww,-r*300)
+            if hasattr(R,'forks'): R.forks.location.z=.1+r*.35; setr(R.mast,-wind*4)
+        elif anim=='hit': r=math.sin(min(1,u*1.3)*math.pi); R.root.location.y=r*.2; setr(R.torso,-r*10,0,r*6)
+        elif anim=='death': r=sm(u); R.root.rotation_euler=(0,math.radians(r*70),0); R.root.location.z=-r*.0; setr(R.head,r*20)
         return
     sw=spec.get('swing',1.0)
     if anim=='idle':
