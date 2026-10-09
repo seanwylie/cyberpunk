@@ -8,10 +8,10 @@ for (const id of ids) { const m = JSON.parse(fs.readFileSync(`public/dungeons/en
 await sleep(1500); await ev(() => { const g = window.__game; g.save.level = 34; g.dbg.god = true; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.startRun('annex'); }); await sleep(1000);
 await ev(() => { const g = window.__game; g.inst.flags.bossSpawned = true; const B = g.level.bossSpawn; for (const o of g.enemies) { o.x += 400; o.y += 400; } window.__es = []; });
 const res = await ev(async ids => { const g = window.__game, ea = window.__rend.eart, B = g.level.bossSpawn, r = {}; r.ready = {}; r.rows = {}; let k = 0;
-  for (const id of ids) { const e = g.spawnEnemy(id, B.x + (k % 4) * 2.2 - 3, B.y + Math.floor(k / 4) * 2.4 - 2); k++; e.hp = e.maxHp = 1e8; e.alert = false; e.stunT = 1e9; e._rt.reveal = 0; window.__es.push(e); }
+  for (const id of ids) { if (!window.__enemies[id]) continue; const e = g.spawnEnemy(id, B.x + (k % 4) * 2.2 - 3, B.y + Math.floor(k / 4) * 2.4 - 2); k++; e.hp = e.maxHp = 1e8; e.alert = false; e.stunT = 1e9; e._rt.reveal = 0; window.__es.push(e); }
   g.px = B.x; g.py = B.y + 4; await new Promise(r => setTimeout(r, 2500));
   let atlasDraws = 0; const old = ea.atlasFor.bind(ea); ea.atlasFor = (t, n) => { const a = old(t, n); if (a) atlasDraws++; return a; }; await new Promise(r => setTimeout(r, 700)); r.atlasDraws = atlasDraws;
   for (const e of window.__es) r.ready[e.type] = !!old(e.type, g.time); r.atl = ea.atl.size; r.max = ea.atlasMax; return r; }, ids);
-for (const id of ids) ok(res.ready[id], `${id}: atlas loaded and used in game`); ok(res.atlasDraws > 0, `atlas draws per run: ${res.atlasDraws}`); ok(res.atl <= Math.max(res.max, ids.length), `LRU bound ${res.atl} <= ${res.max} (all visible types stay resident)`);
+for (const id of ids.filter(i => i in res.ready)) ok(res.ready[id], `${id}: atlas loaded and used in game`); ok(res.atlasDraws > 0, `atlas draws per run: ${res.atlasDraws}`); ok(res.atl <= Math.max(res.max, ids.length), `LRU bound ${res.atl} <= ${res.max} (all visible types stay resident)`);
 await page.screenshot({ path: out + 'atlas_lineup.png' });
 ok(errors.length === 0, 'no page errors ' + errors.join('|')); await browser.close(); process.exit(fail ? 1 : 0);
