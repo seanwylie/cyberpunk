@@ -10,6 +10,7 @@
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit",
     "test": "node tests/smoke.mjs",
+    "test:music": "node tests/music.mjs",
     "test:sprites": "node tests/sprites.mjs",
     "shots": "node tests/screenshots.mjs"
   },

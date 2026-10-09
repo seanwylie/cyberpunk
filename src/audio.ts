@@ -1,14 +1,17 @@
-// Fully procedural WebAudio: original synthesis only (no samples, no reference audio copied).
+import { MusicManager, type MState } from './music';
+// Procedural WebAudio fallback + file-based music manager (music.ts). Fully procedural WebAudio: original synthesis only (no samples, no reference audio copied).
 // Music states: town, traversal (lo-fi trance/techno), combat (drum & bass), bossreveal (breather + motif), bosscombat, resolution.
 export class AudioSys {
-  ctx:AudioContext|null=null; master!:GainNode; musicBus!:GainNode; sfxBus!:GainNode; noiseBuf!:AudioBuffer; state='town'; pending='town'; step=0; nextT=0; timer:any=null; vol=.6; musicOn=true; last:Record<string,number>={}; barCount=0; revealT=0; playing=0; stateStart=0;
-  init(){ if(this.ctx) return; try{ const AC=(window as any).AudioContext||(window as any).webkitAudioContext; if(!AC) return; this.ctx=new AC(); const c=this.ctx!; this.master=c.createGain(); this.master.gain.value=this.vol; const comp=c.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=5; this.master.connect(comp); comp.connect(c.destination); this.musicBus=c.createGain(); this.musicBus.gain.value=.55; this.musicBus.connect(this.master); this.sfxBus=c.createGain(); this.sfxBus.gain.value=.8; this.sfxBus.connect(this.master);
+  ctx:AudioContext|null=null; master!:GainNode; musicBus!:GainNode; sfxBus!:GainNode; noiseBuf!:AudioBuffer; state='town'; pending='town'; step=0; nextT=0; timer:any=null; vol=.6; musicOn=true; last:Record<string,number>={}; barCount=0; revealT=0; playing=0; stateStart=0; fileBus!:GainNode; music:MusicManager|null=null; useFiles=false; musicBase='audio/music/';
+  init(){ if(this.ctx) return; try{ const AC=(window as any).AudioContext||(window as any).webkitAudioContext; if(!AC) return; this.ctx=new AC(); const c=this.ctx!; this.master=c.createGain(); this.master.gain.value=this.vol; const comp=c.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=5; this.master.connect(comp); comp.connect(c.destination); this.musicBus=c.createGain(); this.musicBus.gain.value=.55; this.musicBus.connect(this.master); this.fileBus=c.createGain(); this.fileBus.gain.value=.6; this.fileBus.connect(this.master); this.sfxBus=c.createGain(); this.sfxBus.gain.value=.8; this.sfxBus.connect(this.master);
       const n=c.sampleRate*1; this.noiseBuf=c.createBuffer(1,n,c.sampleRate); const d=this.noiseBuf.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1;
-      this.nextT=c.currentTime+.1; this.timer=setInterval(()=>this.schedule(),25); }catch(e){ console.warn('audio init failed',e); } }
+      this.nextT=c.currentTime+.1; this.timer=setInterval(()=>this.schedule(),25); this.music=new MusicManager(c,this.fileBus,this.musicBase); this.music.onReady=()=>{ this.useFiles=true; this.applyBus(); this.music!.setState(this.pending as MState); }; this.applyBus(); this.music.load(); }catch(e){ console.warn('audio init failed',e); } }
   resume(){ this.init(); if(this.ctx&&this.ctx.state==='suspended') this.ctx.resume(); }
   setVolume(v:number){ this.vol=v; if(this.master) this.master.gain.value=v; }
-  setMusicOn(on:boolean){ this.musicOn=on; if(this.musicBus) this.musicBus.gain.value=on?.55:0; }
-  setState(s:string){ if(s===this.pending) return; this.pending=s; if(!this.ctx) return; if(s==='bossreveal'){ this.state='bossreveal'; this.stateStart=this.ctx.currentTime; this.step=0; this.nextT=this.ctx.currentTime+.05; this.revealMotif(); }
+  applyBus(){ if(!this.musicBus) return; const c=this.ctx!, t=c.currentTime; const f=this.useFiles&&this.musicOn?.6:0, p=!this.useFiles&&this.musicOn?.55:0; this.fileBus.gain.setTargetAtTime(f*this.musicVol,t,.3); this.musicBus.gain.setTargetAtTime(p*this.musicVol,t,.3); }
+  musicVol=1; setMusicVolume(v:number){ this.musicVol=v; this.applyBus(); } // music-only volume hook (0..1), independent of master
+  setMusicOn(on:boolean){ this.musicOn=on; this.applyBus(); }
+  setState(s:string){ if(s===this.pending) return; this.pending=s; if(!this.ctx) return; if(this.useFiles){ this.music!.setState(s as MState); return; } if(s==='bossreveal'){ this.state='bossreveal'; this.stateStart=this.ctx.currentTime; this.step=0; this.nextT=this.ctx.currentTime+.05; this.revealMotif(); }
     else if(this.state==='bossreveal'&&s==='bosscombat'){ this.state='bosscombat'; this.step=0; this.nextT=this.ctx.currentTime+.05; this.hit(.9); }
     else if(s==='combat'||s==='bosscombat'){ // punctuated transition: brief dropout + mechanical accent, then new arrangement
       this.state=s; this.step=0; this.nextT=this.ctx.currentTime+.25; this.thunk(70,.5); this.noise(.25,.2,1800,.35); }
@@ -21,7 +24,7 @@ export class AudioSys {
   thunk(f:number,g:number){ if(!this.ctx) return; this.osc('sine',f*2.2,this.ctx.currentTime,.3,g,this.sfxBus,undefined,f); }
   hit(g:number){ if(!this.ctx) return; const t=this.ctx.currentTime; this.osc('sine',160,t,.3,g*.9,this.musicBus,undefined,38); this.noiseAt(t,.2,g*.3,2500,this.musicBus); }
   // --- music scheduler ---
-  schedule(){ const c=this.ctx; if(!c||c.state!=='running') return; const spb=(s:string)=>s==='combat'||s==='bosscombat'?60/174/4:60/112/4; while(this.nextT<c.currentTime+.12){ this.playStep(this.nextT,this.step); this.nextT+=spb(this.state); this.step++; } }
+  schedule(){ const c=this.ctx; if(!c||c.state!=="running"||this.useFiles) return; const spb=(s:string)=>s==='combat'||s==='bosscombat'?60/174/4:60/112/4; while(this.nextT<c.currentTime+.12){ this.playStep(this.nextT,this.step); this.nextT+=spb(this.state); this.step++; } }
   playStep(t:number,st:number){
     const c=this.ctx!; const B=this.musicBus; const s=this.state; const bar=Math.floor(st/16), p=st%16;
     const A=55; const note=(semi:number,oct=0)=>A*Math.pow(2,(semi)/12+oct);
