@@ -72,6 +72,9 @@ export class AudioSys {
       case 'overheat': this.noiseAt(t,.8,.2,3500,B,'highpass'); this.osc('square',240,t,.5,.08,B,undefined,120); break;
       case 'cooled': this.osc('sine',520,t,.2,.08,B); break;
       case 'pickup': this.osc('triangle',900,t,.06,.07,B); break;
+      case 'pickup_blue': this.osc('sine',660,t,.18,.05,B); break;
+      case 'pickup_purple': this.osc('sine',784,t,.3,.06,B); this.osc('sine',1175,t+.06,.3,.04,B); break;
+      case 'pickup_orange': [523,784,1047].forEach((f,i)=>this.osc('triangle',f,t+i*.05,.45,.05,B)); this.osc('sine',131,t,.5,.1,B); break;
       case 'coin': this.osc('triangle',1300,t,.05,.05,B); break;
       case 'select': this.osc('triangle',600,t,.06,.07,B); break;
       case 'cancel': this.osc('triangle',300,t,.12,.07,B,undefined,200); break;

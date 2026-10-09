@@ -2,10 +2,10 @@ import { Slot, ChipId, SLOTS, STARTING, PROGRESSION, ITEM_BY_ID, Mfr, INSTANCE_R
 import type { StoryState } from './story';
 
 export interface Inst { uid:string; def:string; chips:ChipId[]; }
-export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolean; damageNumbers:boolean; reducedFx:boolean; devFreeReset?:boolean; volume:number; music:boolean; llm:{ enabled:boolean; url:string; key:string; model:string } }
+export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolean; damageNumbers:boolean; reducedFx:boolean; lootLabels:'off'|'near'|'all'; lootMin:import('./config').Rarity; devFreeReset?:boolean; volume:number; music:boolean; llm:{ enabled:boolean; url:string; key:string; model:string } }
 export interface Carried { items:Inst[]; chips:Partial<Record<ChipId,number>>; stims:number; credits:number; }
 export interface EnemyState { id:number; type:string; x:number; y:number; hp:number; maxHp:number; alert:boolean; dead:boolean; home:{x:number;y:number}; group:number; faction:'enemy'|'ally'; ctrlT:number; stunT:number; name?:string; }
-export interface Drop { id:number; x:number; y:number; kind:'item'|'chip'|'stim'|'credits'; inst?:Inst; chip?:ChipId; amount:number; marker?:boolean; }
+export interface Drop { id:number; x:number; y:number; kind:'item'|'chip'|'stim'|'credits'; inst?:Inst; chip?:ChipId; amount:number; marker?:boolean; born?:number; }
 export interface Flags { gate1:boolean; lock2:boolean; passageSeen:boolean; controller:boolean; armory:boolean; cond:null|'A'|'B'; bossKey:string|null; bossRevealed:boolean; bossSpawned:boolean; bossDead:boolean; completed:boolean; rewardsGranted:boolean; alarm:boolean; salvageForeman:boolean; }
 export interface InstanceState {
   id:string; dungeon?:string; createdAt:number; expiresAt:number; seed:number; enemies:EnemyState[]; drops:Drop[]; carried:Carried; flags:Flags;
@@ -25,7 +25,7 @@ export const todayStr = (t=Date.now())=>{ const d=new Date(t); return d.getFullY
 export function newSave():Save {
   const s:Save = { version:1, level:PROGRESSION.startLevel, xp:0, credits:STARTING.credits, repairBill:0, rep:{HI:0,PS:0,MM:0},
     items:[], installed:{}, lockerChips:{...STARTING.chips}, stims:2, lockerCap:STARTING.lockerSlots,
-    settings:{ gore:'standard', joystickFixed:false, damageNumbers:false, reducedFx:false, volume:.6, music:true, llm:{enabled:false,url:'',key:'',model:''} },
+    settings:{ gore:'standard', joystickFixed:false, damageNumbers:false, reducedFx:false, lootLabels:'near', lootMin:'grey', volume:.6, music:true, llm:{enabled:false,url:'',key:'',model:''} },
     purchases:{ lockerBlocks:0, skins:[], equippedSkin:null }, lastClearDay:null, instance:null, story:null, uidN:1, stats:{runs:0,clears:0,kills:0}, lockouts:{}, contracts:{active:{},done:[],doneDay:{}} };
   for (const sl of SLOTS) { const it = mkInst(s,'stock_'+sl); s.items.push(it); s.installed[sl]=it.uid; }
   return s;

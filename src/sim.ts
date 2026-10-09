@@ -23,7 +23,7 @@ export const ISO = { toWorld(sx:number,sy:number,tw:number){ const a=sx/(tw/2), 
 
 export class Game {
   save:Save; level:Level; mode:'town'|'run'='town'; inst:InstanceState|null=null; emit:Emit;
-  enemies:En[]=[]; projs:Proj[]=[]; zones:Zone[]=[]; fx:Fx[]=[]; time=0;
+  enemies:En[]=[]; projs:Proj[]=[]; zones:Zone[]=[]; fx:Fx[]=[]; time=0; pickFx:{id:number;x:number;y:number;kind:Drop['kind'];inst?:Drop['inst'];chip?:Drop['chip'];amount:number;t0:number}[]=[];
   // player
   px=0; py=0; face=0; hp=100; heat=0; overheated=false; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; downed=false; downT=0; defibCd=0; revealing=false;
   abCd:number[]=[0,0,0]; cast:{ idx:number; t:number; aim:AimState; ab:AbilityDef }|null=null; aim:AimState|null=null; target:number|null=null; lungeT=0; lungeDx=0; lungeDy=0; lungeHit:Set<number>=new Set();
@@ -458,17 +458,17 @@ export class Game {
     if(en.item){ const d=ITEM_BY_ID[en.item]; if(d.lvl>this.save.level||d.lvl>this.dd.tierCap){ this.emit('filtered',d.name); return; } this.addDrop(x,y,{kind:'item',inst:mkInst(this.save,en.item),amount:1}); }
     else if(en.chip) this.addDrop(x,y,{kind:'chip',chip:en.chip,amount:1}); else if(en.stim) this.addDrop(x,y,{kind:'stim',amount:1});
   }
-  addDrop(x:number,y:number,d:Partial<Drop>&{kind:Drop['kind']}){ const inst=this.inst!; const a=Math.random()*6.28, r=.3+Math.random()*.8; let px=x+Math.cos(a)*r, py=y+Math.sin(a)*r; if(this.solidAt(px,py)){ px=x; py=y; } const dr:Drop={ id:inst.nextId++, x:px, y:py, kind:d.kind, inst:d.inst, chip:d.chip, amount:d.amount||1 }; inst.drops.push(dr); const rar=this.dropRarity(dr); if(RARITY_RANK[rar]>=3) this.emit('sfx','loot_'+rar); return dr; }
+  addDrop(x:number,y:number,d:Partial<Drop>&{kind:Drop['kind']}){ const inst=this.inst!; const a=Math.random()*6.28, r=.3+Math.random()*.8; let px=x+Math.cos(a)*r, py=y+Math.sin(a)*r; if(this.solidAt(px,py)){ px=x; py=y; } const dr:Drop={ id:inst.nextId++, x:px, y:py, kind:d.kind, inst:d.inst, chip:d.chip, amount:d.amount||1, born:this.time }; inst.drops.push(dr); const rar=this.dropRarity(dr); if(RARITY_RANK[rar]>=3) this.emit('sfx','loot_'+rar); return dr; }
   dropRarity(d:Drop):Rarity{ if(d.kind==='item') return ITEM_BY_ID[d.inst!.def].rarity; if(d.kind==='chip') return CHIPS[d.chip!].rarity; if(d.kind==='stim') return 'green'; return 'grey'; }
   carriedCount(){ const c=this.inst!.carried; return c.items.length+Object.values(c.chips).filter(v=>v&&v>0).length+(c.stims>0?1:0); }
   autoPickup(){
     const inst=this.inst!; if(this.downed) return; const rad=COMBAT.pickupRadius+this.stat().pickup; const near=inst.drops.filter(d=>dist(d.x,d.y,this.px,this.py)<rad);
     near.sort((a,b)=>RARITY_RANK[this.dropRarity(b)]-RARITY_RANK[this.dropRarity(a)]); const c=inst.carried;
-    for(const d of near){ if(d.kind==='credits'){ c.credits+=d.amount; this.rm(d); this.emit('sfx','coin'); continue; }
+    for(const d of near){ this.pickFx.push({id:d.id,x:d.x,y:d.y,kind:d.kind,inst:d.inst,chip:d.chip,amount:d.amount,t0:this.time}); if(this.pickFx.length>24) this.pickFx.shift(); if(d.kind==='credits'){ c.credits+=d.amount; this.rm(d); this.emit('sfx','coin'); continue; }
       const stacksOk=(d.kind==='chip'&&(c.chips[d.chip!]||0)>0)||(d.kind==='stim'&&c.stims>0); const fits=stacksOk||this.carriedCount()<COMBAT.missionSlots;
       if(!fits){ if(!d.marker){ d.marker=true; this.toast('Inventory full: item left on the ground (marked).'); } continue; }
       if(d.kind==='item') c.items.push(d.inst!); else if(d.kind==='chip') c.chips[d.chip!]=(c.chips[d.chip!]||0)+1; else if(d.kind==='stim') c.stims++;
-      this.rm(d); this.contractEvent('pickup',''); this.emit('pickup',d); this.emit('sfx','pickup'); }
+      this.rm(d); this.contractEvent('pickup',''); this.emit('pickup',d); this.emit('sfx','pickup'); { const pr=this.dropRarity(d); if(RARITY_RANK[pr]>=2) this.emit('sfx','pickup_'+pr); } }
   }
   rm(d:Drop){ const inst=this.inst!; inst.drops=inst.drops.filter(x=>x.id!==d.id); }
   onBossDead(e:En){

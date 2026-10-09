@@ -1,5 +1,5 @@
 import { Game, En } from './sim';
-import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES } from './config';
+import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, RARITY_RANK } from './config';
 import { installedLayout } from './build';
 import { PlayerAnimator, loadAtlas } from './sprites';
 import { bodyOf } from './bodyvariants';
@@ -9,6 +9,7 @@ import { TownArt, GP, decorDepth } from './town';
 import { Organic } from './organic';
 import { DungeonArt, themeOf } from './dungeon_env';
 import { EnemyArt } from './enemyart';
+import { specOf, drawLoot, drawPickup, drawLabel, visibleAt, PICK_T, LootSpec } from './lootart';
 
 export const PAL = { concrete:'#7a7c78', soot:'#1b1c1e', bone:'#cfc6b0', oxide:'#8f3b2e', metal:'#6b5a4a', slate:'#4f6578', olive:'#6b7035', skin:'#b29b84' };
 const ZCOL:Record<string,[string,string]> = { yard:['#7b7d79','#727470'], proc:['#6c6e6b','#646663'], junction:['#74777b','#6c6f73'], boss:['#5f6163','#57595b'], salvage:['#6d6b63','#656359'], corridor:['#696b69','#616361'], passage:['#55585b','#4d5053'], town:['#7c7b75','#74736d'], none:['#222','#222'] };
@@ -34,7 +35,7 @@ export class Renderer {
     const tx=(g.px-g.py)*this.TW/2, ty=(g.px+g.py)*this.TW/4; this.camx+= (tx-this.camx)*Math.min(1,dt*8); this.camy+=(ty-this.camy)*Math.min(1,dt*8);
     if(this.shake>0) this.shake=Math.max(0,this.shake-dt*3);
     c.fillStyle=PAL.soot; c.fillRect(0,0,this.w,this.h);
-    this.drawFloor(); this.drawWorld(); this.drawOverlay();
+    this.drawFloor(); this.drawWorld(); this.flushLoot(); this.drawOverlay();
   }
   tile(x:number,y:number,col:string){ const c=this.ctx; const a=this.sx(x,y), b=this.sy(x,y); const hw=this.TW/2, hh=this.TW/4; c.fillStyle=col; c.beginPath(); c.moveTo(a,b); c.lineTo(a+hw,b+hh); c.lineTo(a,b+2*hh); c.lineTo(a-hw,b+hh); c.closePath(); c.fill(); }
   drawFloor(){
@@ -144,14 +145,26 @@ export class Renderer {
     if(it.id==='annex'){ this.box(it.x-1,it.y-1,2,2,.12,'#5a5d5f','#444','#333'); }
     c.save(); c.fillStyle='#3a3d40'; c.fillRect(a-9*s,b-22*s,18*s,22*s); c.fillStyle='#cfc6b0'; c.globalAlpha=.8; c.fillRect(a-6*s,b-19*s,12*s,8*s); c.globalAlpha=1; c.fillStyle=it.kind==='hack'||it.kind==='terminal'?PAL.slate:PAL.oxide; c.fillRect(a-9*s,b-5*s,18*s,3*s); c.restore();
     if(Math.hypot(this.g.px-it.x,this.g.py-it.y)<7){ c.save(); c.font=`${Math.max(10,11*s*1.3)}px system-ui,sans-serif`; c.textAlign='center'; c.fillStyle='rgba(15,15,16,.7)'; const tw=c.measureText(it.label).width; c.fillRect(a-tw/2-4,b-44*s,tw+8,15*s*1.3); c.fillStyle='#d8d2bf'; c.fillText(it.label,a,b-32*s); c.restore(); } }
-  drawDrop(d:import('./state').Drop){ const g=this.g; const c=this.ctx; const a=this.sx(d.x,d.y), b=this.sy(d.x,d.y); const s=this.TW/64; let col='#cfc6b0'; let rar='grey'; if(d.kind==='item'){ rar=ITEM_BY_ID[d.inst!.def].rarity; col=RARITY_COLOR[rar as keyof typeof RARITY_COLOR]; } else if(d.kind==='chip'){ col=RARITY_COLOR[CHIPS[d.chip!].rarity]; rar=CHIPS[d.chip!].rarity; } else if(d.kind==='stim'){ col='#8fae7f'; } else col='#b8a46a';
-    const t=g.time; c.save(); c.fillStyle='rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(a,b,9*s,4.5*s,0,0,7); c.fill();
-    if(rar==='orange'){ c.strokeStyle=col; c.lineWidth=2; for(let k=0;k<2;k++){ c.beginPath(); c.ellipse(a,b-8*s,(11+k*4)*s,(5+k*2)*s,0,t*(k?-1.5:2),t*(k?-1.5:2)+4.2); c.stroke(); } }
-    else if(rar==='purple'){ c.strokeStyle=col; c.globalAlpha=.7; c.lineWidth=1.5; c.beginPath(); c.ellipse(a,b-8*s,12*s,5.5*s,0,t,t+4); c.stroke(); c.globalAlpha=1; }
-    else if(rar==='blue'||rar==='green'){ c.strokeStyle=col; c.globalAlpha=rar==='blue'?.5:.3; c.beginPath(); c.moveTo(a,b-2); c.lineTo(a,b-24*s); c.stroke(); c.globalAlpha=1; }
-    const bob=Math.sin(t*3+d.id)*1.5*s; c.fillStyle=col; if(d.kind==='item'){ c.fillRect(a-7*s,b-14*s+bob,14*s,10*s); c.fillStyle='#222'; c.fillRect(a-4*s,b-11*s+bob,8*s,4*s); } else if(d.kind==='chip'){ c.fillRect(a-5*s,b-11*s+bob,10*s,7*s); c.fillStyle='#222'; c.fillRect(a-2*s,b-9*s+bob,4*s,3*s); } else if(d.kind==='stim'){ c.fillRect(a-3*s,b-13*s+bob,6*s,10*s); } else { c.beginPath(); c.arc(a,b-7*s+bob,4*s,0,7); c.fill(); }
-    if(d.marker){ c.fillStyle='#d8d2bf'; c.beginPath(); c.moveTo(a,b-28*s); c.lineTo(a-5*s,b-35*s); c.lineTo(a+5*s,b-35*s); c.fill(); }
-    c.restore(); }
+  // ---- loot drops (see lootart.ts / docs/LOOT_ART.md) ----
+  private lootLabels:{x:number;y:number;spec:LootSpec;strong:boolean;rk:number}[]=[]; private lootBudget=0; private mouseX=-1e5; private mouseY=-1e5; private mouseHook=false;
+  drawDrop(d:import('./state').Drop){ const g=this.g; const st=g.save.settings; if(!this.mouseHook){ this.mouseHook=true; window.addEventListener('mousemove',e=>{ this.mouseX=e.clientX; this.mouseY=e.clientY; }); }
+    const a=this.sx(d.x,d.y), b=this.sy(d.x,d.y); const s=this.TW/64; const spec=specOf(d as any); const t=g.time; const rk=RARITY_RANK[spec.rar];
+    const dim=!visibleAt(spec,st.lootMin||'grey'); const pd=Math.hypot(d.x-g.px,d.y-g.py); const age=d.born===undefined||d.born>t?99:t-d.born;
+    // budget: full animation for the nearest/most-valuable few; Reduced FX = static trims; far = icon only
+    let fx:0|1|2=2; if(st.reducedFx) fx=1; else if(pd>9||this.lootBudget>=14&&rk<3||this.lootBudget>=22) fx=0; if(fx===2&&rk>=1) this.lootBudget++;
+    if(a<-80||a>this.w+80||b<-120||b>this.h+80) return;
+    drawLoot(this.ctx,a,b,s,t,spec,d.id*7919,{age,reduced:st.reducedFx,fx,dim});
+    if(d.marker){ const c=this.ctx; c.fillStyle='#d8d2bf'; c.beginPath(); c.moveTo(a,b-34*s); c.lineTo(a-5*s,b-42*s); c.lineTo(a+5*s,b-42*s); c.fill(); }
+    const mode=st.lootLabels||'near'; if(mode==='off'||dim||age<.5) return;
+    const near=pd<(rk>=3?7:3.4); const hov=Math.hypot(a-this.mouseX,(b-14*s)-this.mouseY)<22*s; if(mode==='all'||near||hov) this.lootLabels.push({x:a,y:b-(34+(rk===4?12:0))*s,spec,strong:hov||pd<2.2,rk});
+  }
+  /** after the world pass: pickup fly-ins, then de-overlapped labels */
+  flushLoot(){ const g=this.g, c=this.ctx; const s=this.TW/64; const t=g.time; const px=this.sx(g.px,g.py), py=this.sy(g.px,g.py); this.lootBudget=0;
+    for(let i=g.pickFx.length-1;i>=0;i--){ const f=g.pickFx[i]; const p=(t-f.t0)/PICK_T; if(p>1.5||p<0){ g.pickFx.splice(i,1); continue; } const spec=specOf(f as any);
+      drawPickup(c,this.sx(f.x,f.y),this.sy(f.x,f.y),px,py,s,p,spec,f.id,!!g.save.settings.reducedFx); }
+    const L=this.lootLabels; this.lootLabels=[]; if(!L.length) return; L.sort((p,q)=>p.y-q.y||q.rk-p.rk); const placed:{x0:number;x1:number;y0:number;y1:number}[]=[]; let n=0;
+    for(const l of L){ if(n>=8) break; let y=l.y; const w=Math.max(60,l.spec.name.length*6.4+12), h=18*Math.max(.9,s); for(let k=0;k<6;k++){ const hit=placed.find(r=>l.x+w/2>r.x0&&l.x-w/2<r.x1&&y>r.y0&&y-h<r.y1); if(!hit) break; y=hit.y0-2; }
+      const m=drawLabel(c,l.x,y,s,l.spec,l.strong); placed.push({x0:l.x-m.w/2,x1:l.x+m.w/2,y0:y-m.h,y1:y}); n++; } }
   // ----- actors -----
   limb(x1:number,y1:number,x2:number,y2:number,w:number,col:string){ const c=this.ctx; c.strokeStyle=col; c.lineWidth=w; c.lineCap='round'; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
   drawPlayer(){
