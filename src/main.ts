@@ -5,6 +5,7 @@ import { UI } from './ui';
 import { AudioSys } from './audio';
 import { load, persist } from './state';
 import { newStory } from './story';
+import './dungeon_fx';
 
 const save=load(); if(!save.story) save.story=newStory();
 const audio=new AudioSys(); audio.vol=save.settings.volume; audio.musicOn=save.settings.music;

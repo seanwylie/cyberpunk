@@ -4,6 +4,10 @@ import { ABILITIES, CHIPS, ChipId, COMBAT, ENEMIES, INSTALL_COST, ITEM_BY_ID, IT
 import { Layout, cloneLayout, computeBuild, hardConflicts, installedLayout, repRank, wouldConflict } from './build';
 import { Inst, capacityUsed, lockerItems, mkInst, persist, wipe, todayStr, newSave } from './state';
 import { makeProvider, runStoryStep, newStory, MockProvider, record } from './story';
+import { DUNGEON_LIST, DUNGEONS, dungeonOf, inBand } from './content/dungeons';
+import { CONTACTS, CONTACT_BY_ID, CONTRACT_BY_ID, MAX_ACTIVE_CONTRACTS, ContractDef } from './content/npcs';
+import { EXTRA_ITEMS } from './content/items';
+import { lockDay, contractState } from './state';
 
 const $=(id:string)=>document.getElementById(id)!;
 const esc=(s:string)=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
@@ -17,17 +21,17 @@ const diff=(a:number,b:number,f=(n:number)=>n.toFixed(2))=>{ const d=b-a; if(Mat
 const rc=(r:string)=>RARITY_COLOR[r as keyof typeof RARITY_COLOR];
 
 export class UI {
-  modal:string|null=null; draft:Layout|null=null; sel:Slot='torso'; search=''; confirm:any=null; msg=''; liveOpen=false; bannerT=0; toastCount=0; storyBusy=false; devOpen=false; lastKey='';
+  modal:string|null=null; draft:Layout|null=null; sel:Slot='torso'; search=''; confirm:any=null; msg=''; liveOpen=false; bannerT=0; toastCount=0; storyBusy=false; devOpen=false; lastKey=''; showAll=false; contactSel='odalys_vane';
   constructor(private g:Game, private audio:AudioSys){
     $('modal').addEventListener('click',e=>this.click(e)); $('modal').addEventListener('input',e=>this.input(e)); $('modal').addEventListener('change',e=>this.input(e));
     document.getElementById('btn-menu')!.addEventListener('pointerdown',e=>{ e.preventDefault(); this.open('settings'); });
     document.getElementById('downpanel')!.addEventListener('click',e=>{ const a=(e.target as HTMLElement).dataset.act; if(a==='cp') g.returnToCheckpoint(); if(a==='defib') g.defibInPlace(); });
-    window.addEventListener('keydown',e=>{ if(e.key==='`'){ this.devOpen=!this.devOpen; this.open(this.devOpen?'dev':null); } });
+    window.addEventListener('keydown',e=>{ if(e.key==='`'){ this.devOpen=!this.devOpen; this.open(this.devOpen?'dev':null); } else if((e.key==='c'||e.key==='C')&&g.mode==='town'&&!this.modal&&(e.target as HTMLElement)?.tagName!=='INPUT'){ this.open('contacts'); } });
   }
   modalOpen(){ return !!this.modal; }
   handle(type:string,p:any){
     const g=this.g;
-    if(type==='toast') this.toast(p); else if(type==='dialog') this.showDialog(p); else if(type==='open') this.open(p==='annex'?'gate':p==='locker'?'locker':p==='vendor'?'vendor':p==='fixer'?'fixer':p==='store'?'store':null);
+    if(type==='toast') this.toast(p); else if(type==='dialog') this.showDialog(p); else if(type==='open'){ const pid=String(p); if(pid.startsWith('npc_')||pid==='contacts'){ if(pid.startsWith('npc_')&&CONTACT_BY_ID[pid.slice(4)]) this.contactSel=pid.slice(4); this.open('contacts'); } else this.open(pid==='annex'||pid==='gate'||pid.startsWith('dungeon')?'gate':pid==='locker'?'locker':pid==='vendor'?'vendor':pid==='fixer'?'fixer':pid==='store'?'store':null); }
     else if(type==='reveal') this.banner(p.name, 'Damage-free emergence. Movement is available.'); else if(type==='reveal-end') this.hideBanner();
     else if(type==='boss-dead') this.banner('Mission complete','Boss defeated. Personal loot remains until the instance expires.',4);
     else if(type==='down'){ this.showDown(p); } else if(type==='revived'){ $('downpanel').style.display='none'; }
@@ -42,7 +46,7 @@ export class UI {
   hideBanner(){ $('banner').classList.remove('show'); }
   showDialog(d:{title:string;body:string;options:{label:string;cb?:()=>void}[]}){ const el=$('dialog'); el.style.display='block'; el.innerHTML=`<h4>${esc(d.title)}</h4><div>${esc(d.body)}</div>`; d.options.forEach(o=>{ const b=document.createElement('button'); b.textContent=o.label; b.onclick=()=>{ el.style.display='none'; o.cb?.(); }; el.appendChild(b); }); }
   showDown(p:{broke:string|null;defib:boolean}){ const el=$('downpanel'); el.style.display='block'; el.innerHTML=`<b>DOWN</b><div class="mut" style="margin:6px 0">${p.broke?'Hardware damaged: <b>'+esc(p.broke)+'</b> (benefits and ability offline until a checkpoint).':'No hardware could be damaged.'} Repair bill: ${this.g.save.repairBill}c</div><button data-act="cp">Return to checkpoint (restores hardware, keeps repair bill)</button>${p.defib?'<button data-act="defib">Self-defib here (hardware stays broken)</button>':''}`; }
-  open(m:string|null){ if(m==='locker'||m==='vendor'||m==='gate'||m==='fixer'||m==='store'){ if(this.g.mode!=='town'){ return; } } if(m==='locker'&&!this.draft) this.resetDraft(); this.modal=m; this.confirm=null; this.render(); }
+  open(m:string|null){ if(m==='locker'||m==='vendor'||m==='gate'||m==='fixer'||m==='store'||m==='contacts'){ if(this.g.mode!=='town'){ return; } } if(m==='locker'&&!this.draft) this.resetDraft(); this.modal=m; this.confirm=null; this.render(); }
   close(){ this.modal=null; this.confirm=null; if(this.g.mode==='town'||true) this.draft=null; this.render(); }
   toggleLive(){ if(this.g.mode!=='run') return; this.liveOpen=!this.liveOpen; this.renderLive(); }
   esc(){ if(this.modal){ this.close(); } else if(this.liveOpen){ this.liveOpen=false; this.renderLive(); } else this.g.clearTarget(); }
@@ -62,7 +66,7 @@ export class UI {
     // conditional support panel: only when relevant ability equipped
     const sup=g.build.abilities.includes('revive'); const sp=$('support'); sp.style.display=sup&&g.mode==='run'?'flex':'none'; if(sup&&!sp.innerHTML) sp.innerHTML='<span class="mut">Support</span><div class="portrait">P1</div><div class="portrait">P2</div><div class="portrait">P3</div><div class="portrait">P4</div><div class="portrait guest">G5</div><span class="mut">no teammates (solo)</span>'; if(!sup) sp.innerHTML='';
     if(this.bannerT>0){ this.bannerT-=1/60; if(this.bannerT<=0) this.hideBanner(); }
-    if(g.mode==='town') $('hint').textContent='WASD move · F interact · Space dodge'; else $('hint').textContent='WASD move · hold Q/E/R aim, release to cast · Space dodge · click enemy to target · F interact · T town · I pack · H stim';
+    if(g.mode==='town') $('hint').textContent='WASD move · F interact · C contacts · Space dodge'; else $('hint').textContent='WASD move · hold Q/E/R aim, release to cast · Space dodge · click enemy to target · F interact · T town · I pack · H stim';
     if(this.liveOpen&&g.mode==='run'){ const k=g.inst!.carried.items.length+':'+JSON.stringify(g.inst!.carried.chips)+g.inst!.carried.stims; if(k!==this.lastKey){ this.lastKey=k; this.renderLive(); } }
   }
   renderLive(){ const el=$('livepanel'); if(!this.liveOpen||this.g.mode!=='run'){ el.style.display='none'; return; } const g=this.g, c=g.inst!.carried; el.style.display='block'; const L=installedLayout(g.save);
@@ -76,8 +80,8 @@ export class UI {
 
   // ================= modals =================
   render(){ const m=$('modal'); if(!this.modal){ m.style.display='none'; m.innerHTML=''; return; } m.style.display='flex'; const g=this.g;
-    const body=this.modal==='locker'?this.locker():this.modal==='vendor'?this.vendor():this.modal==='gate'?this.gate():this.modal==='fixer'?this.fixer():this.modal==='store'?this.store():this.modal==='settings'?this.settings():this.modal==='dev'?this.dev():'';
-    const titles:Record<string,string>={locker:'Body workspace & locker',vendor:'Vendor & repair',gate:'Reclamation Annex gate',fixer:'Fixer: Odalys Vane',store:'Outfitter (simulated purchases)',settings:'Settings',dev:'DEV tools (prototype only)'};
+    const body=this.modal==='locker'?this.locker():this.modal==='vendor'?this.vendor():this.modal==='gate'?this.gate():this.modal==='fixer'?this.fixer():this.modal==='contacts'?this.contacts():this.modal==='store'?this.store():this.modal==='settings'?this.settings():this.modal==='dev'?this.dev():'';
+    const titles:Record<string,string>={locker:'Body workspace & locker',vendor:'Vendor & repair',gate:'Dungeon select',contacts:'Contacts & contracts',fixer:'Fixer: Odalys Vane',store:'Outfitter (simulated purchases)',settings:'Settings',dev:'DEV tools (prototype only)'};
     m.innerHTML=`<div class="win"><header><span>${titles[this.modal]||''}</span><span><button data-act="close">Close</button></span></header><div class="body">${body}</div></div>`; void g; }
   // ----- Locker -----
   locker():string{
@@ -133,16 +137,35 @@ export class UI {
       <div class="mut">Downs add random hardware damage and a repair bill; checkpoints restore function but the bill stays until paid here.</div><h3>Consumables</h3><button class="btn" data-act="buystim" ${s.credits>=30?'':'disabled'}>Buy stim (30c)</button> Locker stims: ${s.stims}</div>
       <div class="col"><h3>Sell hardware from storage</h3><div class="list">${items.map(i=>{ const d=ITEM_BY_ID[i.def]; return `<div class="row" style="border-color:${rc(d.rarity)}"><span>${esc(d.name)} <span class="tag">${d.rarity}</span></span><button class="btn" data-act="sell" data-uid="${i.uid}">Sell ${SELL_VALUE[d.rarity]}c</button></div>`; }).join('')||'<div class="row mut">Nothing to sell</div>'}</div><div class="mut">Convenience sales are storage-only (no remote vendor mid-run).</div></div>`; }
   // ----- Gate -----
-  gate():string{ const g=this.g, inst=g.save.instance; const live=!!inst&&inst.expiresAt>Date.now(); const rem=live?Math.max(0,inst!.expiresAt-Date.now()):0; const locked=g.dailyLocked();
-    let h='<div class="col"><h3>Reclamation Annex</h3><div>Steal the sealed integration controller and defeat the boss. Yard → processing floor → control junction → boss chamber. Hardware is locked once you enter.</div>';
-    if(live){ const f=inst!.flags; h+=`<div class="draftbar" style="margin-top:8px"><b>Existing instance</b> · expires in ${Math.floor(rem/3600000)}h ${Math.floor(rem%3600000/60000)}m<br>Boss: ${f.bossDead?'defeated':f.bossSpawned?'alive':'not yet met'} · Controller: ${f.controller?'secured':'not secured'} · Uncollected loot on ground: ${inst!.drops.length} · Selected boss: ${f.bossKey?ENEMIES[f.bossKey].name:'none yet'}<br>You re-enter at the entry and must run back through surviving enemies.</div><button class="btn primary" data-act="enter">${f.completed?'Re-enter to retrieve loot':'Re-enter instance'}</button><button class="btn" data-act="abandon">Abandon instance</button>`; }
-    else h+=`<div style="margin-top:8px">${locked?'<span class="warn">Daily clear already used. A fresh run unlocks at tomorrow\'s reset (local midnight; timer anchor is an open spec decision). Existing instances can still be re-entered until they expire.</span>':'Daily clear available.'}</div><button class="btn primary" data-act="enter" ${locked?'disabled':''}>Start fresh run</button>`;
-    h+=`<div class="mut" style="margin-top:8px">Party, QR/code fifth guest and co-op networking are not implemented in this prototype (see README).</div></div>`; return h; }
+  gate():string{ const g=this.g, s=g.save, inst=s.instance; const live=!!inst&&inst.expiresAt>Date.now(); const cur=live?(inst!.dungeon||'annex'):null;
+    const all=DUNGEON_LIST; const shown=all.filter(d=>this.showAll||inBand(d,s.level)||cur===d.id);
+    let h=`<div class="col wide"><h3>Dungeon select</h3><div class="mut">Level ${s.level}. Each dungeon has its own daily clear (boss completion consumes it; entry alone does not). One live instance at a time. Hardware is locked once you enter.</div>
+      <label><input type="checkbox" data-in="dshowall" ${this.showAll?'checked':''}/> Show all dungeons (${all.length-all.filter(d=>inBand(d,s.level)).length} outside your level band)</label>`;
+    if(!shown.length) h+='<div class="row mut">No dungeons in your level band. Tick "Show all".</div>';
+    for(const d of shown){ const locked=g.dailyLocked(d.id); const isLive=cur===d.id; const lowL=s.level<d.minLevel, hiL=s.level>d.maxLevel; const mf=MFR[d.mfr];
+      h+=`<div class="draftbar" style="margin-top:8px;border-color:${mf.accent}"><b>${esc(d.name)}</b> <span class="tag" style="border-color:${mf.accent}">${mf.short}</span> <span class="tag">${esc(d.district)}</span> <span class="tag">Lv ${d.minLevel}–${d.maxLevel}</span> <span class="tag">~${d.estMinutes[0]}–${d.estMinutes[1]} min</span>
+        <div>${esc(d.blurb)}</div><div class="mut">Areas: ${Object.entries(d.zoneLabels).filter(([k])=>!['passage','salvage'].includes(k)).map(([,v])=>esc(v)).join(' → ')} · item level cap ${d.tierCap}</div>
+        ${lowL?'<div class="warn">Under-level: gear above your level will not drop (no downward reroll). XP is the main reward.</div>':''}${hiL?'<div class="mut">Above this dungeon\'s recommended band.</div>':''}`;
+      if(isLive){ const f=inst!.flags; const rem=Math.max(0,inst!.expiresAt-Date.now()); h+=`<div style="margin-top:6px"><b>Existing instance</b> · expires in ${Math.floor(rem/3600000)}h ${Math.floor(rem%3600000/60000)}m<br>Boss: ${f.bossDead?'defeated':f.bossSpawned?'alive':'not yet met'} · Objective: ${f.controller?'secured':'not secured'} · Loot on ground: ${inst!.drops.length} · Selected boss: ${f.bossKey?esc(ENEMIES[f.bossKey].name):'none yet'}<br>You re-enter at the entry and must run back through surviving enemies.</div><button class="btn primary" data-act="enter" data-id="${d.id}">${f.completed?'Re-enter to retrieve loot':'Re-enter instance'}</button><button class="btn" data-act="abandon">Abandon instance</button>`; }
+      else h+=`<div style="margin-top:6px">${locked?'<span class="warn">Daily clear already used. A fresh run unlocks at tomorrow\'s reset (local midnight; timer anchor is an open spec decision).</span>':'Daily clear available.'}</div><button class="btn primary" data-act="enter" data-id="${d.id}" ${locked||cur?'disabled':''}>${cur?'Finish or abandon your other instance first':'Start fresh run'}</button>`;
+      h+='</div>'; }
+    h+=`<div class="mut" style="margin-top:8px">Party, QR/code fifth guest and co-op networking are not implemented in this prototype (see README and docs/UNIVERSE.md roadmap).</div></div>`; return h; }
+  // ----- Contacts & contracts -----
+  contractRow(k:ContractDef):string{ const s=this.g.save, cs=contractState(s); const act=k.id in cs.active; const prog=cs.active[k.id]||0; const doneOnce=cs.done.includes(k.id), doneToday=cs.doneDay[k.id]===todayStr(); const low=s.level<k.minLevel;
+    const rw=`${k.reward.credits}c${k.reward.rep?' · rep '+Object.entries(k.reward.rep).map(([m,v])=>MFR[m as 'HI'].short.split(' ')[0]+' +'+v).join(', '):''}`;
+    let btn=''; if(doneOnce) btn='<span class="tag good">completed</span>'; else if(doneToday) btn='<span class="tag good">done today</span>'; else if(act){ btn=prog>=k.goal.n?`<button class="btn primary" data-act="claim" data-id="${k.id}">Claim ${k.reward.credits}c</button>`:`<span class="tag">${prog}/${k.goal.n}</span> <button class="btn" data-act="dropk" data-id="${k.id}">Drop</button>`; } else btn=`<button class="btn" data-act="accept" data-id="${k.id}" ${low||Object.keys(cs.active).length>=MAX_ACTIVE_CONTRACTS?'disabled':''}>Accept</button>`;
+    return `<div class="row"><span><b>${esc(k.title)}</b> <span class="tag">${k.repeat}</span> <span class="tag">Lv ${k.minLevel}+</span><br><span class="mut">${esc(k.text)} Reward: ${rw}.</span>${low?'<br><span class="warn">Requires level '+k.minLevel+'.</span>':''}</span><span>${btn}</span></div>`; }
+  contacts():string{ const s=this.g.save, cs=contractState(s); const c=CONTACT_BY_ID[this.contactSel]||CONTACTS[0];
+    const list=CONTACTS.map(x=>`<button class="slot ${x.id===c.id?'sel':''}" data-act="dsel" data-id="${x.id}" style="width:100%;text-align:left"><b>${esc(x.name)}</b> <span class="mut">${x.role} · ${x.faction==='independent'?'independent':MFR[x.faction].short}</span></button>`).join('');
+    return `<div class="col narrow"><h3>Contacts</h3>${list}<div class="mut" style="margin-top:6px">Active contracts ${Object.keys(cs.active).length}/${MAX_ACTIVE_CONTRACTS}. Portraits need art; contacts are shown as text.</div></div>
+      <div class="col"><h3>${esc(c.name)}</h3><div class="mut">${c.role} · ${c.faction==='independent'?'independent':esc(MFR[c.faction].name)} · ${esc(c.district)}</div><div style="margin:6px 0">${esc(c.bio)}</div><div><i>${esc(c.greeting)}</i></div>
+      ${c.id==='odalys_vane'?'<button class="btn" data-act="openstory">Open story board (Odalys)</button>':''}
+      <h3>Contracts</h3><div class="mut">Fixed goals and fixed credit/reputation rewards. Contracts are never generated by the story system.</div>${c.contracts.map(k=>this.contractRow(k)).join('')}</div>`; }
   // ----- Fixer / story -----
   fixer():string{ const g=this.g; const st=g.story(); const clue=st.clues; const t=st.town;
     return `<div class="col"><h3>Odalys Vane</h3><div>${t?esc(t.text):'"Run the Annex and I will know. Come back with news."'}</div>${t?t.options.map(o=>`<button class="btn primary" data-act="townchoice" data-id="${o.id}" data-boost="${o.boosts}">${esc(o.label)}</button>`).join(''):''}
       <h3>Known clues</h3><div class="mut">Terminal/armory clue (hack): ${esc(clue.A||'—')}<br><br>Force clue: ${esc(clue.B||'—')}<br><br>General: ${esc(clue.general||'—')}</div>
-      <h3>Story development</h3><button class="btn" data-act="story" ${this.storyBusy?'disabled':''}>${this.storyBusy?'Requesting…':'Ask for a story update'}</button> <div class="mut">Provider: ${makeProvider(g.save.settings.llm).name}. Runs outside combat; invalid or failed output keeps the previous story. Bosses, drops and access never depend on it.</div><div id="storymsg">${esc(this.msg)}</div></div>
+      <h3>Dungeon clues</h3><div class="mut">${Object.entries(st.dclues||{}).map(([d,v])=>esc(DUNGEONS[d]?.short||d)+': '+esc([v.A,v.B,v.general].filter(Boolean).join(' / '))).join('<br><br>')||'none yet'}</div><h3>Story development</h3><button class="btn" data-act="story" ${this.storyBusy?'disabled':''}>${this.storyBusy?'Requesting…':'Ask for a story update'}</button> <div class="mut">Provider: ${makeProvider(g.save.settings.llm).name}. Runs outside combat; invalid or failed output keeps the previous story. Bosses, drops and access never depend on it.</div><div id="storymsg">${esc(this.msg)}</div></div>
       <div class="col"><h3>Relationship graph</h3>${st.edges.map(e=>`<div class="mut">${e.from} → ${e.to} [${e.roles.join(', ')}] weight ${e.w}</div>`).join('')}<h3>Recorded events (since last proposal)</h3>${st.events.filter(e=>e.id>st.lastProposalEvent).slice(-8).map(e=>`<div class="mut">#${e.id} ${e.kind}:${e.key} ×${e.n}</div>`).join('')||'<div class="mut">none</div>'}<h3>Generation log</h3>${st.log.slice(-6).reverse().map(l=>`<div class="${l.ok?'good':'bad'}">${l.provider} ${l.ok?'ok':'fail'} ${l.ms}ms — ${esc(l.note)}</div>`).join('')||'<div class="mut">none</div>'}</div>`; }
   // ----- Store -----
   store():string{ const s=this.g.save; const skins=[['salvage_grey','Salvage Grey finish'],['ivory_ward','Ivory Ward finish'],['oxide_work','Oxide Workwear']]; return `<div class="col"><h3>Simulated entitlements</h3><div class="mut">No real checkout. Only skins and permanent account-wide locker capacity are sold. Purchases persist across seasons.</div>
@@ -159,12 +182,13 @@ export class UI {
     <h3>Controls</h3><div class="mut">Desktop: WASD move · hold Q/E/R (or 1/2/3) to aim toward cursor, release to cast (release on invalid aim cancels, no heat/cooldown) · Space dodge (also cancels aiming/casting, even on cooldown) · click enemy to target (X / right-click clears) · F interact · T town return channel · I live pack · H stim.<br>Touch (landscape): floating joystick on left; hold &amp; drag ability buttons to aim, release to cast, drag far away to cancel; tap an enemy to target.</div></div>`; }
   dev():string{ return `<div class="col"><h3>Prototype helpers</h3><div class="mut">Grants items into the locker for testing the three example builds. These are test shortcuts, not saved loadout presets.</div>
     ${Object.entries(BUILD_KITS).map(([k,b])=>`<div class="row"><span>Build ${k}: ${b.name}</span><span><button class="btn" data-act="kit" data-k="${k}">Grant kit</button><button class="btn" data-act="equipkit" data-k="${k}">Grant + equip (free)</button></span></div>`).join('')}
-    <h3>State</h3><button class="btn" data-act="lvl" data-d="-6">Level −6</button><button class="btn" data-act="lvl" data-d="6">Level +6</button><button class="btn" data-act="credits">+1000c</button><button class="btn" data-act="resetlock">Reset daily lockout</button><button class="btn" data-act="expire">Expire instance now</button><button class="btn" data-act="rep">+30 rep all</button></div>
+    <h3>State</h3><button class="btn" data-act="lvl" data-d="-6">Level −6</button><button class="btn" data-act="lvl" data-d="6">Level +6</button><button class="btn" data-act="credits">+1000c</button><button class="btn" data-act="resetlock">Reset daily lockout</button><button class="btn" data-act="expire">Expire instance now</button><button class="btn" data-act="rep">+30 rep all</button><br><button class="btn" data-act="grantnew">Grant all dungeon-pack hardware (incl. orange)</button> Set level: ${[12,20,26,30,34].map(l=>`<button class="btn" data-act="setlvl" data-d="${l}">${l}</button>`).join('')}</div>
     <div class="col"><h3>Current</h3><div>Level ${this.g.save.level} · ${this.g.save.credits}c · repair ${this.g.save.repairBill}c · lockout day: ${this.g.save.lastClearDay||'none'} (today ${todayStr()})</div><div class="mut">Press ${'`'} to toggle this panel.</div></div>`; }
 
   // ================= events =================
   input(e:Event){ const t=e.target as HTMLInputElement; const k=t.dataset.in; if(!k) return; const s=this.g.save, st=s.settings;
     if(k==='search'){ this.search=t.value; this.render(); const el=document.querySelector<HTMLInputElement>('[data-in=search]'); el?.focus(); el?.setSelectionRange(t.value.length,t.value.length); return; }
+    if(k==='dshowall'){ this.showAll=t.checked; this.render(); return; }
     if(k==='gore') st.gore=t.value as any; else if(k==='dmgnum') st.damageNumbers=t.checked; else if(k==='reduced') st.reducedFx=t.checked; else if(k==='joyfixed'){ st.joystickFixed=t.checked; }
     else if(k==='music'){ st.music=t.checked; this.audio.setMusicOn(t.checked); } else if(k==='vol'){ st.volume=+t.value; this.audio.setVolume(st.volume); }
     else if(k==='llmon') st.llm.enabled=t.checked; else if(k==='llmurl') st.llm.url=t.value; else if(k==='llmkey') st.llm.key=t.value; else if(k==='llmmodel') st.llm.model=t.value; persist(s); }
@@ -183,7 +207,13 @@ export class UI {
       case 'repair': { const pay=Math.min(s.credits,s.repairBill); s.credits-=pay; s.repairBill-=pay; persist(s); this.render(); return; }
       case 'buystim': if(s.credits>=30){ s.credits-=30; s.stims++; persist(s); } this.render(); return;
       case 'sell': { const i=s.items.find(x=>x.uid===el.dataset.uid); if(i&&!Object.values(s.installed).includes(i.uid)){ s.credits+=SELL_VALUE[ITEM_BY_ID[i.def].rarity]; for(const c of i.chips) s.lockerChips[c]=(s.lockerChips[c]||0)+1; s.items=s.items.filter(x=>x!==i); persist(s); } this.render(); return; }
-      case 'enter': { if(g.startRun()){ this.close(); } else this.render(); return; }
+      case 'enter': { if(g.startRun(el.dataset.id||'annex')){ this.close(); } else this.render(); return; }
+      case 'dsel': this.contactSel=el.dataset.id!; this.render(); return; case 'openstory': this.open('fixer'); return;
+      case 'accept': { const k=CONTRACT_BY_ID[el.dataset.id!]; const cs=contractState(s); if(k&&s.level>=k.minLevel&&Object.keys(cs.active).length<MAX_ACTIVE_CONTRACTS&&!cs.done.includes(k.id)&&cs.doneDay[k.id]!==todayStr()){ cs.active[k.id]=0; persist(s); } this.render(); return; }
+      case 'dropk': { const cs=contractState(s); delete cs.active[el.dataset.id!]; persist(s); this.render(); return; }
+      case 'claim': { const k=CONTRACT_BY_ID[el.dataset.id!]; const cs=contractState(s); if(k&&(cs.active[k.id]||0)>=k.goal.n){ s.credits+=k.reward.credits; for(const [m,v] of Object.entries(k.reward.rep||{})) s.rep[m as 'HI']+=v as number; delete cs.active[k.id]; if(k.repeat==='once') cs.done.push(k.id); else cs.doneDay[k.id]=todayStr(); record(g.story(),'contract_done',k.id); g.toast('Contract complete: '+k.title+' (+'+k.reward.credits+'c)'); persist(s); } this.render(); return; }
+      case 'setlvl': s.level=Math.max(1,Math.min(PROGRESSION.maxLevel,+el.dataset.d!)); g.recompute(); persist(s); this.render(); return;
+      case 'grantnew': { for(const d of EXTRA_ITEMS){ if(!s.items.some(i=>i.def===d.id)) s.items.push(mkInst(s,d.id)); } for(const c of ['ablative','fineedge','quench','overdrive','gridlink'] as ChipId[]) s.lockerChips[c]=(s.lockerChips[c]||0)+3; s.lockerCap=Math.max(s.lockerCap,120); persist(s); g.toast('Granted all dungeon-pack hardware (dev)'); this.render(); return; }
       case 'abandon': g.abandonInstance(); this.render(); return;
       case 'townchoice': { const st=g.story(); record(st,'town_choice',el.dataset.boost!); st.arc=el.dataset.boost!; const ed=st.edges.find(x=>x.from==='player'&&x.to==='odalys_vane'); if(ed) ed.w+=1; st.town=null; persist(s); this.msg='Odalys will push the "'+el.dataset.boost+'" lead.'; this.render(); return; }
       case 'story': this.runStory(); return;
@@ -191,7 +221,7 @@ export class UI {
       case 'wipe': wipe(); location.reload(); return; case 'dev': this.open('dev'); return;
       case 'kit': case 'equipkit': this.kit(el.dataset.k!,a==='equipkit'); this.render(); return;
       case 'lvl': s.level=Math.max(1,Math.min(PROGRESSION.maxLevel,s.level+ +el.dataset.d!)); g.recompute(); persist(s); this.render(); return;
-      case 'credits': s.credits+=1000; persist(s); this.render(); return; case 'resetlock': s.lastClearDay=null; persist(s); this.render(); return;
+      case 'credits': s.credits+=1000; persist(s); this.render(); return; case 'resetlock': s.lastClearDay=null; s.lockouts={}; persist(s); this.render(); return;
       case 'expire': if(s.instance){ s.instance.expiresAt=Date.now()-1; } g.inst=s.instance; if(g.mode==='town'){ s.instance=null; g.inst=null; } persist(s); this.render(); return; case 'rep': s.rep.HI+=30; s.rep.PS+=30; s.rep.MM+=30; persist(s); this.render(); return;
     } }
   unload(){ const g=this.g,s=g.save,c=g.inst?.carried; if(!c) return; const cap=s.lockerCap+s.purchases.lockerBlocks*STARTING.lockerPerPurchase; s.credits+=c.credits; c.credits=0; const rest:Inst[]=[]; for(const it of c.items){ if(capacityUsed(s)<cap) s.items.push(it); else rest.push(it); } c.items=rest;

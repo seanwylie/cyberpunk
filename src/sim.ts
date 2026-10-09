@@ -1,16 +1,18 @@
 import { ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES } from './config';
 import { computeBuild, installedLayout, BuildResult } from './build';
-import { buildAnnex, buildTown, Level, Interact } from './level';
-import { Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst } from './state';
-import { record, newStory } from './story';
+import { buildTown, Level, Interact } from './level';
+import { dungeonOf, DungeonDef } from './content/dungeons';
+import { CONTRACT_BY_ID, Goal } from './content/npcs';
+import { Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState } from './state';
+import { record, newStory, EventKind } from './story';
 
 export type Emit = (type:string, payload?:any)=>void;
 export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:number; life:number; faction:'enemy'|'ally'; kind:'bolt'|'slug'; }
-export interface Zone { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; }
+export interface Zone { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }
 export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; }
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
 export interface Rt { // enemy transient runtime fields
-  st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; dashed:boolean; strafe:number;
+  st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; dashed:boolean; strafe:number; chained?:boolean;
 }
 export type En = EnemyState & { _rt:Rt };
 
@@ -43,14 +45,16 @@ export class Game {
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.');
   }
   hasLiveInstance(){ return !!this.inst && this.inst.expiresAt>this.now(); }
-  dailyLocked(){ return this.save.lastClearDay===todayStr(); }
-  startRun(){
+  dailyLocked(id='annex'){ return lockDay(this.save,id)===todayStr(); }
+  get dd():DungeonDef{ return dungeonOf(this.inst?.dungeon); }
+  envZones():Zone[]{ return this.mode==='run'?this.dd.hazards.map(h=>({x:h.x,y:h.y,r:h.r,t:0,life:1e9,dps:h.dps,heat:h.heat,windup:0,env:true})):[]; }
+  startRun(id='annex'){
     const s=this.save;
-    if(this.save.instance && this.save.instance.expiresAt<=this.now()){ this.expireInstance(); }
-    if(this.save.instance){ this.inst=this.save.instance; this.resumeInstance(); return true; }
-    if(this.dailyLocked()){ this.toast('Daily clear used. A fresh run unlocks tomorrow (dev panel can reset).'); return false; }
-    const seed=(Math.random()*1e9)|0; const lv=buildAnnex();
-    const inst:InstanceState={ id:'inst-'+seed, createdAt:this.now(), expiresAt:this.now()+retentionMs, seed, enemies:[], drops:[], carried:{items:[],chips:{},stims:0,credits:0},
+    if(s.instance && s.instance.expiresAt<=this.now()){ this.expireInstance(); }
+    if(s.instance){ const cur=s.instance.dungeon||'annex'; if(cur!==id){ this.toast('You have a live instance in '+dungeonOf(cur).name+'. Re-enter or abandon it before starting another.'); return false; } this.inst=s.instance; this.resumeInstance(); return true; }
+    if(this.dailyLocked(id)){ this.toast('Daily clear used for '+dungeonOf(id).name+'. A fresh run unlocks tomorrow (dev panel can reset).'); return false; }
+    const dd=dungeonOf(id); const seed=(Math.random()*1e9)|0; const lv=dd.build();
+    const inst:InstanceState={ id:'inst-'+seed, dungeon:id, createdAt:this.now(), expiresAt:this.now()+retentionMs, seed, enemies:[], drops:[], carried:{items:[],chips:{},stims:0,credits:0},
       flags:{gate1:false,lock2:false,passageSeen:false,controller:false,armory:false,cond:null,bossKey:null,bossRevealed:false,bossSpawned:false,bossDead:false,completed:false,rewardsGranted:false,alarm:false,salvageForeman:false},
       checkpoint:{id:1,x:lv.checkpoints[0].x,y:lv.checkpoints[0].y}, px:lv.spawn.x, py:lv.spawn.y, hp:0, broken:[], protectedSlots:[], repairAdded:0, nextId:1, xpEarned:0, warned:false, kills:{}, claimed:[], elapsed:0 };
     for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp, maxHp:ENEMIES[sp.type].hp, alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0 }); }
@@ -58,7 +62,7 @@ export class Game {
     s.instance=inst; this.inst=inst; s.stats.runs++; this.resumeInstance(true); return true;
   }
   resumeInstance(fresh=false){
-    const inst=this.inst!; this.mode='run'; this.level=buildAnnex(); this.projs=[]; this.zones=[]; this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.downed=false; this.revealing=false;
+    const inst=this.inst!; this.mode='run'; this.level=dungeonOf(inst.dungeon).build(); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.downed=false; this.revealing=false;
     this.applyDoors(); this.enemies=inst.enemies.map(e=>this.wrap(e));
     // Boss attempts always replay the full reveal: reset a living boss on (re)entry.
     this.resetBossIfAlive();
@@ -67,7 +71,7 @@ export class Game {
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.braceT=0; this.defibCd=0; this.abCd=[0,0,0]; this.dodgeCd=0;
     this.musicSet('traversal'); this.emit('mode','run'); this.saveNow();
     if(this.save.story && !this.save.story) {}
-    this.toast(fresh?'Reclamation Annex: steal the controller, defeat the boss.':'Re-entered existing instance. Surviving enemies and loot remain.');
+    this.toast(fresh?this.dd.intro:'Re-entered existing instance. Surviving enemies and loot remain.');
   }
   wrap(e:EnemyState):En{ const x=e as En; x._rt={ st:'idle',t:0,atk:'',acd:{},ang:0,tx:0,ty:0,lost:0,vuln:0,reveal:0,bornT:0,fire:0,shots:[],hit:0,dashed:false,strafe:Math.random()<.5?1:-1 }; return x; }
   expireInstance(){ const s=this.save; s.instance=null; this.inst=null; this.toast('The instance expired. Leftover loot and state are gone.'); this.emit('expired'); persist(s); }
@@ -232,24 +236,36 @@ export class Game {
     for(const cp of L.checkpoints){ if(dist(this.px,this.py,cp.x,cp.y)<1.8){ if(inst.checkpoint.id!==cp.id){ inst.checkpoint={id:cp.id,x:cp.x,y:cp.y}; this.toast('Checkpoint: '+cp.label); this.saveNow(); }
       if(inst.broken.length&&!this.downed){ for(const s of inst.broken) inst.protectedSlots.push(s); inst.broken=[]; this.recompute(); this.toast('Checkpoint restored your hardware (repair bill kept).'); } } }
     // sensors (cloak route)
-    const sn=L.sensors; if(this.px>=sn.x0&&this.px<=sn.x1+1&&this.py>=sn.y0&&this.py<=sn.y1+1){ if(this.cloakT<=0&&!f.alarm){ f.alarm=true; this.toast('SENSOR ALARM: security responding'); this.emit('sfx','alarm'); for(let i=0;i<4;i++){ const e=this.spawnEnemy('worker',this.px+(i<2?-3:3)+(i%2)*.6,this.py+.5+(i%2)*.7); e.alert=true; } } else if(this.cloakT>0&&!this.sensorFlag){ this.sensorFlag=true; record(this.story(),'route_used','cloak'); } }
+    const sn=L.sensors; if(this.px>=sn.x0&&this.px<=sn.x1+1&&this.py>=sn.y0&&this.py<=sn.y1+1){ if(this.cloakT<=0&&!f.alarm){ f.alarm=true; this.toast('SENSOR ALARM: security responding'); this.emit('sfx','alarm'); for(let i=0;i<4;i++){ const e=this.spawnEnemy(this.dd.alarmType,this.px+(i<2?-3:3)+(i%2)*.6,this.py+.5+(i%2)*.7); e.alert=true; } } else if(this.cloakT>0&&!this.sensorFlag){ this.sensorFlag=true; this.note('route_used','cloak'); } }
     // zone based doors
-    if(!f.gate1&&this.enemies.filter(e=>e.type==='turret'&&!e.dead).length===0){ f.gate1=true; this.openDoor('gate1'); this.toast('Security gate released'); }
+    if(!f.gate1&&this.enemies.filter(e=>e.type===this.dd.gateGuard&&!e.dead).length===0){ f.gate1=true; this.openDoor('gate1'); this.toast('Security gate released'); }
     // boss reveal trigger
     if(f.controller&&!f.bossSpawned&&!f.bossDead&&this.px>=L.revealX&&this.zoneAt(this.px,this.py)==='boss') this.spawnBoss();
     // reveal timer
     const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead);
-    if(boss&&boss._rt.reveal>0){ boss._rt.reveal-=dt; this.revealing=true; this.projs=[]; this.zones=this.zones.filter(z=>false); if(boss._rt.reveal<=0){ boss._rt.reveal=0; this.revealing=false; boss.alert=true; this.emit('reveal-end'); this.toast('Fight!'); } }
+    if(boss&&boss._rt.reveal>0){ boss._rt.reveal-=dt; this.revealing=true; this.projs=[]; this.zones=this.zones.filter(z=>z.env); if(boss._rt.reveal<=0){ boss._rt.reveal=0; this.revealing=false; boss.alert=true; this.emit('reveal-end'); this.toast('Fight!'); } }
     else if(!boss) this.revealing=false;
     // boss leash: reset if player left the boss room for >6s
     if(boss&&!this.revealing){ if(this.zoneAt(this.px,this.py)!=='boss'){ boss._rt.lost+=dt; if(boss._rt.lost>6){ this.resetBossIfAlive(); this.toast('Boss reset. It will emerge again.'); } } else boss._rt.lost=0; }
     // ally expiry
     for(const e of this.enemies){ if(e.faction==='ally'){ e.ctrlT-=dt; if(e.ctrlT<=0){ e.faction='enemy'; } } if(e.stunT>0) e.stunT-=dt; }
   }
+  /** Record a story event (dungeon-prefixed outside the Annex) and advance matching contracts. */
+  note(kind:EventKind,key:string){ const id=this.inst?.dungeon||'annex'; record(this.story(),kind,id==='annex'?key:id+':'+key); this.contractEvent(kind,key); }
+  contractEvent(kind:string,key:string){ const cs=contractState(this.save); const did=this.inst?.dungeon||'annex';
+    for(const id of Object.keys(cs.active)){ const c=CONTRACT_BY_ID[id]; if(!c) continue; const g:Goal=c.goal; if(g.dungeon&&g.dungeon!==did) continue;
+      const ok=(g.kind==='kill_mfr'&&kind==='kill_mfr'&&g.key===key)||(g.kind==='kill_type'&&kind==='kill_type'&&g.key===key)||(g.kind==='clear'&&kind==='run_cleared')||(g.kind==='condition'&&kind==='condition_used'&&(!g.key||g.key===key))||(g.kind==='route'&&kind==='route_used'&&g.key===key)||(g.kind==='pickup'&&kind==='pickup')||(g.kind==='boss'&&kind==='boss_defeated'&&g.key===key);
+      if(ok) cs.active[id]=Math.min(g.n,(cs.active[id]||0)+1); } }
+  /** Dungeon-specific replacement-boss interaction (augment-gated). The first confirmed condition wins; the other selector locks. */
+  doCond(id:'A'|'B'){ const dd=this.dd, f=this.inst!.flags, c=dd.conds.find(x=>x.id===id); if(!c) return; const story=this.story(); const dc=story.dclues?.[dd.id]; const clue=dc?.[id]||dc?.general||dd.generalClue;
+    if(f.cond){ this.emit('dialog',{ title:c.title, body:'Boss selection is locked: '+ENEMIES[f.bossKey!].name+'. Conflicting selectors are disabled.', options:[{label:'Close'}] }); return; }
+    if(!this.build.caps.has(c.cap)){ this.emit('sfx','deny'); this.emit('dialog',{ title:c.title, body:c.denied+'\n\n'+clue, options:[{label:'Close'}] }); return; }
+    this.emit('dialog',{ title:c.title, body:clue+'\n\n'+c.body+' Combat continues while this is open.', options:[
+      { label:c.confirm, cb:()=>{ if(f.cond) return; this.channel={kind:'hack',t:0,dur:1.5,cb:()=>{ if(f.cond) return; f.cond=id; f.bossKey=c.boss; this.note('condition_used',id); this.note('route_used',c.cap); this.toast(c.toast); this.saveNow(); }}; }},{label:'Cancel'} ] }); }
   story(){ if(!this.save.story) this.save.story=newStory(); return this.save.story; }
   spawnEnemy(type:string,x:number,y:number):En{ const inst=this.inst!; const d=ENEMIES[type]; const e=this.wrap({ id:inst.nextId++,type,x,y,hp:d.hp,maxHp:d.hp,alert:false,dead:false,home:{x,y},group:99,faction:'enemy',ctrlT:0,stunT:0 }); inst.enemies.push(e); this.enemies.push(e); return e; }
   spawnBoss(){
-    const inst=this.inst!; const f=inst.flags; if(!f.bossKey){ f.bossKey='overseer'; } // arbitration: first confirmed condition wins; none => Overseer
+    const inst=this.inst!; const f=inst.flags; if(!f.bossKey){ f.bossKey=this.dd.defaultBoss; } // arbitration: first confirmed condition wins; none => Overseer
     f.bossSpawned=true; f.bossRevealed=true; const b=this.spawnEnemy(f.bossKey!,this.level.bossSpawn.x,this.level.bossSpawn.y); b._rt.reveal=COMBAT.bossRevealSeconds; b.alert=false; this.revealing=true; this.projs=[]; this.emit('reveal',{ key:f.bossKey, name:ENEMIES[f.bossKey!].name }); this.toast(ENEMIES[f.bossKey!].name+' emerges. You are safe during the reveal.'); this.emit('sfx','boss_reveal');
     for(const e of this.enemies){ if(e!==b&&!e.dead&&this.zoneAt(e.x,e.y)==='boss') e.dead=true; }
   }
@@ -260,20 +276,21 @@ export class Game {
     const need=(cap:string,msg:string)=>{ if(!b.caps.has(cap)){ this.toast(msg); this.emit('sfx','deny'); return false; } return true; };
     switch(it.id){
       case 'hackproc': if(f.lock2){ this.toast('Locks already rerouted.'); return; } if(!need('hack','Locked relay. Needs hacking hardware (a combat route is always available).')) return;
-        this.channel={kind:'hack',t:0,dur:1.5,cb:()=>{ f.lock2=true; this.openDoor('lock2'); this.toast('Security rerouted: junction lock open'); record(this.story(),'route_used','hack'); }}; this.toast('Hacking relay... (vulnerable; damage or dodge interrupts)'); break;
+        this.channel={kind:'hack',t:0,dur:1.5,cb:()=>{ f.lock2=true; this.openDoor('lock2'); this.toast('Security rerouted: junction lock open'); this.note('route_used','hack'); }}; this.toast('Hacking relay... (vulnerable; damage or dodge interrupts)'); break;
       case 'terminal': {
         const story=this.story(); const clue=story.clues.A||story.clues.general||'Terminal records: audit logs, nothing actionable.';
         if(f.cond){ this.emit('dialog',{ title:'Annex security terminal', body:'Boss selection is locked: '+ENEMIES[f.bossKey!].name+'. Conflicting selectors are disabled.', options:[{label:'Close'}] }); return; }
         if(!b.caps.has('hack')){ this.emit('dialog',{ title:'Annex security terminal', body:'ACCESS DENIED. Requires hacking hardware.\n\n'+clue, options:[{label:'Close'}] }); return; }
         this.emit('dialog',{ title:'Annex security terminal', body:clue+'\n\nIssue the audit command? Selects the Neural Warden as the boss for this run (disruption zones, ranged pressure). Combat continues while this is open.', options:[
-          {label:'Issue audit command (Neural Warden)', cb:()=>{ if(f.cond) return; this.channel={kind:'hack',t:0,dur:1.5,cb:()=>{ if(f.cond) return; f.cond='A'; f.bossKey='warden'; record(this.story(),'condition_used','A'); record(this.story(),'route_used','hack'); this.toast('Audit command confirmed: Neural Warden selected'); this.saveNow(); }}; }},
+          {label:'Issue audit command (Neural Warden)', cb:()=>{ if(f.cond) return; this.channel={kind:'hack',t:0,dur:1.5,cb:()=>{ if(f.cond) return; f.cond='A'; f.bossKey='warden'; this.note('condition_used','A'); this.note('route_used','hack'); this.toast('Audit command confirmed: Neural Warden selected'); this.saveNow(); }}; }},
           {label:'Cancel'} ] }); break; }
-      case 'armorydoor': if(f.armory){ this.toast('Shutter already open.'); return; } if(!need('force','Sealed shutter. Needs force hardware (e.g. a ripper arm).')) return; f.armory=true; this.openDoor('armory'); record(this.story(),'route_used','force'); this.toast('Armory shutter forced open'); break;
+      case 'armorydoor': if(f.armory){ this.toast('Shutter already open.'); return; } if(!need('force','Sealed shutter. Needs force hardware (e.g. a ripper arm).')) return; f.armory=true; this.openDoor('armory'); this.note('route_used','force'); this.toast('Armory shutter forced open'); break;
       case 'armoryfuse': { const story=this.story(); if(f.cond){ this.emit('dialog',{title:'Command fuse',body:'Boss selection is locked: '+ENEMIES[f.bossKey!].name+'.',options:[{label:'Close'}]}); return; }
         this.emit('dialog',{ title:'Sealed armory: command fuse', body:(story.clues.B?story.clues.B+'\n\n':'Replacement-part markings line the rack.\n\n')+'Remove the command fuse? Selects the Reclamation Enforcer (ripper sweep, charge, recovery openings).', options:[
-          {label:'Remove fuse (Reclamation Enforcer)', cb:()=>{ if(f.cond) return; f.cond='B'; f.bossKey='enforcer'; record(this.story(),'condition_used','B'); this.toast('Fuse removed: Reclamation Enforcer selected'); this.saveNow(); }},{label:'Cancel'} ] }); break; }
-      case 'controller': if(f.controller){ this.toast('Controller already secured.'); return; } f.controller=true; this.openDoor('boss'); this.toast('Integration controller secured. Boss chamber door open.'); this.emit('sfx','objective'); this.saveNow(); break;
-      case 'cratechip': if(f.salvageForeman||inst.claimed.includes('cratechip')){ this.toast('Cache already looted.'); return; } inst.claimed.push('cratechip'); this.addDrop(it.x,it.y+.8,{kind:'chip',chip:'cutwide',amount:1}); this.addDrop(it.x+.8,it.y+.6,{kind:'chip',chip:'ctrldur',amount:1}); this.toast('Chip cache opened'); break;
+          {label:'Remove fuse (Reclamation Enforcer)', cb:()=>{ if(f.cond) return; f.cond='B'; f.bossKey='enforcer'; this.note('condition_used','B'); this.toast('Fuse removed: Reclamation Enforcer selected'); this.saveNow(); }},{label:'Cancel'} ] }); break; }
+      case 'controller': if(f.controller){ this.toast('Controller already secured.'); return; } f.controller=true; this.openDoor('boss'); this.toast(this.dd.objectiveToast); this.emit('sfx','objective'); this.saveNow(); break;
+      case 'cond_A': case 'cond_B': this.doCond(it.id==='cond_A'?'A':'B'); break;
+      case 'cratechip': if(f.salvageForeman||inst.claimed.includes('cratechip')){ this.toast('Cache already looted.'); return; } inst.claimed.push('cratechip'); this.addDrop(it.x,it.y+.8,{kind:'chip',chip:this.dd.cache.chips[0],amount:1}); this.addDrop(it.x+.8,it.y+.6,{kind:'chip',chip:this.dd.cache.chips[1],amount:1}); this.toast('Chip cache opened'); break;
     }
   }
   updatePrompt(){ const L=this.level; const inst=this.inst; const f=inst?.flags; let best:Interact|null=null,bd=1e9;
@@ -311,7 +328,7 @@ export class Game {
     const speed=def.speed*(this.zoneSlow(e)?.7:1);
     const ang=Math.atan2(ty-e.y,tx-e.x);
     // state machine
-    if(rt.st==='tele'){ rt.t+=dt; const A=ATK[rt.atk]; if(rt.t<A.w*.6||!A.lock) rt.ang=ang; if(rt.t>=A.w){ this.resolveAttack(e,rt.atk,tx,ty); if(rt.st==='tele'){ rt.st='rec'; rt.t=0; } } return; }
+    if(rt.st==='tele'){ rt.t+=dt; const A=ATK[rt.atk]; if(rt.t<A.w*.6||!A.lock) rt.ang=ang; if(rt.t>=A.w){ this.resolveAttack(e,rt.atk,tx,ty); if(rt.st==='tele'&&!rt.chained){ rt.st='rec'; rt.t=0; } rt.chained=false; } return; }
     if(rt.st==='rec'){ rt.t+=dt; if(rt.t>=(ATK[rt.atk]?.rec??.5)) rt.st='chase'; return; }
     if(rt.st==='dash'){ this.dashStep(e,dt); return; }
     rt.st='chase';
@@ -333,12 +350,26 @@ export class Game {
   zoneSlow(e:En){ return false; }
   beginAttack(e:En,a:string,ang:number,tx:number,ty:number){
     const rt=e._rt; const A=ATK[a]; rt.st='tele'; rt.atk=a; rt.t=0; rt.ang=ang; rt.acd[a]=A.cd*(.85+Math.random()*.3); rt.shots=[]; this.emit('sfx','telegraph_'+(ENEMIES[e.type].elite?'elite':'basic'));
+    const zp=this.zonePattern(e,a,tx,ty); if(zp) rt.shots=zp;
     if(a==='zones'){ // three ground zones around the player's position (readable, lingering)
       for(let i=0;i<3;i++){ const aa=Math.random()*Math.PI*2, rr=i===0?0:2.4+Math.random()*1.6; const zx=tx+Math.cos(aa)*rr, zy=ty+Math.sin(aa)*rr; if(!this.solidAt(zx,zy)){ rt.shots.push({x:zx,y:zy}); this.zones.push({x:zx,y:zy,r:2.1,t:0,life:6,dps:ENEMY_DMG.zones,heat:12,windup:1.5}); } }
     }
   }
+  /** Boss/elite ground-pattern attacks added by dungeon content. Reuses the lingering-zone system (telegraphed windup, then damaging). */
+  zonePattern(e:En,a:string,tx:number,ty:number):{x:number;y:number}[]|null{
+    const def=ENEMIES[e.type]; const dps=(ENEMY_DMG[a]||0)*(def.dmgMul||1); const out:{x:number;y:number}[]=[]; const aim=Math.atan2(ty-e.y,tx-e.x);
+    const add=(x:number,y:number,r:number,windup:number,life:number,heat:number)=>{ if(this.solidAt(x,y)) return; out.push({x,y}); this.zones.push({x,y,r,t:0,life,dps,heat,windup}); };
+    switch(a){
+      case 'slagpool': for(let i=0;i<4;i++) add(e.x+Math.cos(aim)*(3+i*2),e.y+Math.sin(aim)*(3+i*2),1.6,1.2,7,14); break;
+      case 'gasvent': for(let i=0;i<3;i++){ const aa=Math.random()*6.28, rr=i===0?0:2.6; add(tx+Math.cos(aa)*rr,ty+Math.sin(aa)*rr,2.3,1.3,8,22); } break;
+      case 'ringpools': { const g=Math.floor(Math.random()*10); for(let i=0;i<10;i++){ if(i===g||i===(g+1)%10) continue; const aa=i/10*Math.PI*2; add(e.x+Math.cos(aa)*5.5,e.y+Math.sin(aa)*5.5,1.5,1.6,7,14); } break; }
+      case 'sawlanes': for(let lane=0;lane<2;lane++){ const cx=tx+Math.cos(aim)*lane*3.6, cy=ty+Math.sin(aim)*lane*3.6; for(let i=-3;i<=3;i++){ if(i===(lane?2:0)) continue; add(cx-Math.sin(aim)*i*2.2,cy+Math.cos(aim)*i*2.2,1.2,1.5,5,12); } } break;
+      case 'cratefall': add(tx,ty,1.7,1.3,1.9,8); for(let i=0;i<6;i++){ const aa=Math.random()*6.28, rr=1.5+Math.random()*4; add(tx+Math.cos(aa)*rr,ty+Math.sin(aa)*rr,1.7,1.3,1.9,8); } break;
+      default: return null;
+    }
+    return out; }
   resolveAttack(e:En,a:string,tx:number,ty:number){
-    const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg=ENEMY_DMG[a]*(fac==='ally'?1.2:1);
+    const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1);
     const cone=(r:number,arc:number)=>{ this.fx.push({kind:'slash',x:e.x,y:e.y,a:ang,r,t:0,life:.25,w:arc,c:'#b8b09a'}); for(const o of this.opponents(fac)){ if(dist(e.x,e.y,o.x,o.y)-o.r<=r&&Math.abs(angDiff(Math.atan2(o.y-e.y,o.x-e.x),ang))<=arc/2) o.hurt(dmg,e.x,e.y); } this.emit('sfx','enemy_swing'); };
     const proj=(aa:number,speed:number)=>{ this.projs.push({x:e.x+Math.cos(aa)*.6,y:e.y+Math.sin(aa)*.6,vx:Math.cos(aa)*speed,vy:Math.sin(aa)*speed,dmg,r:.22,life:1.6,faction:fac==='ally'?'ally':'enemy',kind:'bolt'}); this.emit('sfx','enemy_shot'); };
     switch(a){
@@ -346,8 +377,13 @@ export class Game {
       case 'slam': this.fx.push({kind:'ring',x:e.x,y:e.y,r:3.4,t:0,life:.4,c:'#b8b09a'}); for(const o of this.opponents(fac)) if(dist(e.x,e.y,o.x,o.y)-o.r<=3.4) o.hurt(dmg,e.x,e.y); this.emit('sfx','slam'); break;
       case 'shot': case 'turretshot': proj(Math.atan2(ty-e.y,tx-e.x),a==='shot'?11:13); break;
       case 'volley': for(const o of [-.25,0,.25]) proj(rt.ang+o,10); break;
-      case 'summon': for(let i=0;i<3;i++){ const aa=Math.random()*6.28; const p={x:e.x+Math.cos(aa)*2.5,y:e.y+Math.sin(aa)*2.5}; if(!this.solidAt(p.x,p.y)){ const w=this.spawnEnemy('worker',p.x,p.y); w.alert=true; } } this.fx.push({kind:'ring',x:e.x,y:e.y,r:2.5,t:0,life:.5,c:'#8f8a74'}); break;
+      case 'summon': for(let i=0;i<3;i++){ const aa=Math.random()*6.28; const p={x:e.x+Math.cos(aa)*2.5,y:e.y+Math.sin(aa)*2.5}; if(!this.solidAt(p.x,p.y)){ const w=this.spawnEnemy(def.summon||'worker',p.x,p.y); w.alert=true; } } this.fx.push({kind:'ring',x:e.x,y:e.y,r:2.5,t:0,life:.5,c:'#8f8a74'}); break;
       case 'zones': break;
+      case 'bite': cone(1.3,Math.PI*.5); break; case 'chainsweep': cone(4.6,Math.PI*.95); break; case 'riposte': cone(2.4,Math.PI*.7); break;
+      case 'slagshot': proj(Math.atan2(ty-e.y,tx-e.x),10); break; case 'dart': proj(Math.atan2(ty-e.y,tx-e.x),12); break;
+      case 'scalpelfan': for(const o of [-.4,-.2,0,.2,.4]) proj(rt.ang+o,12); break;
+      case 'slagpool': case 'gasvent': case 'ringpools': case 'sawlanes': case 'cratefall': break; // zone patterns spawn at telegraph start
+      case 'blink': { const fa=fac==='enemy'?this.face:Math.atan2(ty-e.y,tx-e.x); for(const dd of [2.2,1.5,1]){ const nx=tx-Math.cos(fa)*dd, ny=ty-Math.sin(fa)*dd; if(!this.solidAt(nx,ny)){ this.fx.push({kind:'dust',x:e.x,y:e.y,t:0,life:.4}); e.x=nx; e.y=ny; break; } } rt.ang=Math.atan2(ty-e.y,tx-e.x); rt.chained=true; rt.st='tele'; rt.atk='riposte'; rt.t=0; this.emit('sfx','slam'); return; }
       case 'charge': rt.st='dash'; rt.t=0; rt.dashed=false; rt.hit=0; (rt as any).hitP=false; return;
     }
   }
@@ -372,22 +408,22 @@ export class Game {
     for(let i=0;i<n;i++){ const a=Math.random()*6.28,s=1+Math.random()*(gore==='bloody'?5:2.5); this.fx.push({kind:'blood',x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:0,life:.5+Math.random()*.5,c:def.mfr==='PS'?'#8a8f94':'#6e2a22'}); }
     this.fx.push({kind:'burst',x:e.x,y:e.y,t:0,life:.3});
     if(e.faction==='ally') { return; }
-    this.addXp(def.xp); inst.xpEarned+=def.xp; this.save.rep[def.mfr]+=def.rep; record(this.story(),'kill_mfr',def.mfr);
+    this.addXp(def.xp); inst.xpEarned+=def.xp; this.save.rep[def.mfr]+=def.rep; record(this.story(),'kill_mfr',def.mfr); this.contractEvent('kill_mfr',def.mfr); this.contractEvent('kill_type',e.type);
     this.rollLoot(e);
-    if(e.type==='sawhand'&&!inst.flags.lock2){ inst.flags.lock2=true; this.openDoor('lock2'); this.toast('Sawhand down: junction lock released'); }
+    if(e.type===this.dd.lockElite&&!inst.flags.lock2){ inst.flags.lock2=true; this.openDoor('lock2'); this.toast(def.name+' down: lock released'); }
     if(def.boss) this.onBossDead(e);
   }
   addXp(n:number){ const s=this.save; s.xp+=n; while(s.level<PROGRESSION.maxLevel&&s.xp>=PROGRESSION.xpForLevel(s.level)){ s.xp-=PROGRESSION.xpForLevel(s.level); s.level++; this.toast('Level up! Level '+s.level); this.recompute(); } }
   pickEntry(pool:LootEntry[]):LootEntry{ const tot=pool.reduce((a,b)=>a+b.w,0); let r=Math.random()*tot; for(const e of pool){ r-=e.w; if(r<=0) return e; } return pool[0]; }
   rollLoot(e:En){
-    const def=ENEMIES[e.type]; const inst=this.inst!; const T=def.boss?LOOT.boss:def.elite?LOOT.elite:LOOT.ordinary; const rolls=def.boss?LOOT.boss.rolls:def.elite?2:1;
-    const cr=T.credits; if(Math.random()<(def.boss||def.elite?1:.5)) this.addDrop(e.x,e.y,{kind:'credits',amount:Math.round(cr[0]+Math.random()*(cr[1]-cr[0]))});
-    for(let i=0;i<rolls;i++){ if(Math.random()>T.chance) continue; this.dropEntry(this.pickEntry(T.pool),e.x,e.y); }
-    const sig=def.boss?LOOT.signature[e.type]:null; if(sig&&Math.random()<sig.chance) this.dropEntry({item:sig.item,w:1},e.x,e.y);
+    const def=ENEMIES[e.type]; const inst=this.inst!; const tier=def.boss?'boss':def.elite?'elite':'ordinary'; const T=LOOT[tier]; const pool=this.dd.loot?this.dd.loot[tier]:T.pool; const rolls=def.boss?LOOT.boss.rolls:def.elite?2:1;
+    const cr=T.credits.map(c=>c*this.dd.creditMul) as [number,number]; if(Math.random()<(def.boss||def.elite?1:.5)) this.addDrop(e.x,e.y,{kind:'credits',amount:Math.round(cr[0]+Math.random()*(cr[1]-cr[0]))});
+    for(let i=0;i<rolls;i++){ if(Math.random()>T.chance) continue; this.dropEntry(this.pickEntry(pool),e.x,e.y); }
+    const sig=def.boss?(this.dd.id==='annex'?LOOT.signature[e.type]:this.dd.signature?.[e.type]):null; if(sig&&Math.random()<sig.chance) this.dropEntry({item:sig.item,w:1},e.x,e.y);
   }
   /** Personal loot, filtered against the recipient level. Ineligible items are NOT rerolled downward (spec). */
   dropEntry(en:LootEntry,x:number,y:number){
-    if(en.item){ const d=ITEM_BY_ID[en.item]; if(d.lvl>this.save.level||d.lvl>DUNGEON_TIER_MAX_ITEM_LEVEL){ this.emit('filtered',d.name); return; } this.addDrop(x,y,{kind:'item',inst:mkInst(this.save,en.item),amount:1}); }
+    if(en.item){ const d=ITEM_BY_ID[en.item]; if(d.lvl>this.save.level||d.lvl>this.dd.tierCap){ this.emit('filtered',d.name); return; } this.addDrop(x,y,{kind:'item',inst:mkInst(this.save,en.item),amount:1}); }
     else if(en.chip) this.addDrop(x,y,{kind:'chip',chip:en.chip,amount:1}); else if(en.stim) this.addDrop(x,y,{kind:'stim',amount:1});
   }
   addDrop(x:number,y:number,d:Partial<Drop>&{kind:Drop['kind']}){ const inst=this.inst!; const a=Math.random()*6.28, r=.3+Math.random()*.8; let px=x+Math.cos(a)*r, py=y+Math.sin(a)*r; if(this.solidAt(px,py)){ px=x; py=y; } const dr:Drop={ id:inst.nextId++, x:px, y:py, kind:d.kind, inst:d.inst, chip:d.chip, amount:d.amount||1 }; inst.drops.push(dr); const rar=this.dropRarity(dr); if(RARITY_RANK[rar]>=3) this.emit('sfx','loot_'+rar); return dr; }
@@ -400,12 +436,12 @@ export class Game {
       const stacksOk=(d.kind==='chip'&&(c.chips[d.chip!]||0)>0)||(d.kind==='stim'&&c.stims>0); const fits=stacksOk||this.carriedCount()<COMBAT.missionSlots;
       if(!fits){ if(!d.marker){ d.marker=true; this.toast('Inventory full: item left on the ground (marked).'); } continue; }
       if(d.kind==='item') c.items.push(d.inst!); else if(d.kind==='chip') c.chips[d.chip!]=(c.chips[d.chip!]||0)+1; else if(d.kind==='stim') c.stims++;
-      this.rm(d); this.emit('pickup',d); this.emit('sfx','pickup'); }
+      this.rm(d); this.contractEvent('pickup',''); this.emit('pickup',d); this.emit('sfx','pickup'); }
   }
   rm(d:Drop){ const inst=this.inst!; inst.drops=inst.drops.filter(x=>x.id!==d.id); }
   onBossDead(e:En){
     const inst=this.inst!; const f=inst.flags; if(f.bossDead) return; f.bossDead=true; f.completed=true; this.projs=[]; this.zones=[];
-    if(!f.rewardsGranted){ f.rewardsGranted=true; this.save.lastClearDay=todayStr(); this.save.stats.clears++; this.addXp(250); record(this.story(),'boss_defeated',e.type); record(this.story(),'run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE. Daily clear consumed. Collect loot; the instance persists until it expires.'); }
+    if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Collect loot; the instance persists until it expires.'); }
     this.emit('boss-dead'); this.resPending=5; this.saveNow();
   }
   resPending=0;
@@ -420,5 +456,6 @@ export interface AtkDef { w:number; rec:number; cd:number; min:number; max:numbe
 export const ATK:Record<string,AtkDef> = {
   swing:{w:.55,rec:.5,cd:1.1,min:0,max:1.4}, shot:{w:.8,rec:.6,cd:2.6,min:0,max:9,lock:true,ranged:true}, turretshot:{w:1.1,rec:.4,cd:2.8,min:0,max:10,lock:true,ranged:true},
   cleave:{w:.9,rec:.7,cd:2.2,min:0,max:2.6}, charge:{w:1.1,rec:1.4,cd:7,min:3.2,max:10,lock:true}, slam:{w:1.1,rec:.9,cd:5,min:0,max:3.4}, summon:{w:.9,rec:.8,cd:26,min:0,max:40},
+  bite:{w:.4,rec:.4,cd:1.0,min:0,max:1.3}, slagshot:{w:.9,rec:.6,cd:2.8,min:0,max:10,lock:true,ranged:true}, dart:{w:.7,rec:.5,cd:2.0,min:0,max:10,lock:true,ranged:true}, scalpelfan:{w:.9,rec:.8,cd:3.2,min:2,max:12,lock:true,ranged:true}, chainsweep:{w:1.1,rec:1.0,cd:3.5,min:0,max:4.6}, blink:{w:.8,rec:.2,cd:6.5,min:2.5,max:14}, riposte:{w:.55,rec:.9,cd:0,min:0,max:99}, slagpool:{w:.8,rec:.9,cd:7,min:0,max:16,ranged:true}, gasvent:{w:.8,rec:.9,cd:8,min:0,max:14,ranged:true}, ringpools:{w:1.0,rec:1.0,cd:10,min:0,max:16}, sawlanes:{w:1.0,rec:1.0,cd:9,min:0,max:16,ranged:true}, cratefall:{w:.8,rec:.9,cd:7,min:0,max:16,ranged:true},
   zones:{w:.7,rec:.9,cd:8,min:0,max:16,ranged:true}, volley:{w:1.0,rec:.8,cd:3.4,min:3,max:13,lock:true,ranged:true}, rsweep:{w:1.0,rec:.9,cd:3,min:0,max:3.8},
 };

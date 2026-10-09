@@ -6,9 +6,9 @@ export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolea
 export interface Carried { items:Inst[]; chips:Partial<Record<ChipId,number>>; stims:number; credits:number; }
 export interface EnemyState { id:number; type:string; x:number; y:number; hp:number; maxHp:number; alert:boolean; dead:boolean; home:{x:number;y:number}; group:number; faction:'enemy'|'ally'; ctrlT:number; stunT:number; name?:string; }
 export interface Drop { id:number; x:number; y:number; kind:'item'|'chip'|'stim'|'credits'; inst?:Inst; chip?:ChipId; amount:number; marker?:boolean; }
-export interface Flags { gate1:boolean; lock2:boolean; passageSeen:boolean; controller:boolean; armory:boolean; cond:null|'A'|'B'; bossKey:'overseer'|'warden'|'enforcer'|null; bossRevealed:boolean; bossSpawned:boolean; bossDead:boolean; completed:boolean; rewardsGranted:boolean; alarm:boolean; salvageForeman:boolean; }
+export interface Flags { gate1:boolean; lock2:boolean; passageSeen:boolean; controller:boolean; armory:boolean; cond:null|'A'|'B'; bossKey:string|null; bossRevealed:boolean; bossSpawned:boolean; bossDead:boolean; completed:boolean; rewardsGranted:boolean; alarm:boolean; salvageForeman:boolean; }
 export interface InstanceState {
-  id:string; createdAt:number; expiresAt:number; seed:number; enemies:EnemyState[]; drops:Drop[]; carried:Carried; flags:Flags;
+  id:string; dungeon?:string; createdAt:number; expiresAt:number; seed:number; enemies:EnemyState[]; drops:Drop[]; carried:Carried; flags:Flags;
   checkpoint:{ id:number; x:number; y:number }; px:number; py:number; hp:number; broken:Slot[]; protectedSlots:Slot[]; repairAdded:number; nextId:number; xpEarned:number; warned:boolean; kills:Record<string,number>; claimed:string[]; elapsed:number;
 }
 export interface Save {
@@ -16,6 +16,8 @@ export interface Save {
   items:Inst[]; installed:Partial<Record<Slot,string>>; lockerChips:Partial<Record<ChipId,number>>; stims:number; lockerCap:number;
   settings:Settings; purchases:{ lockerBlocks:number; skins:string[]; equippedSkin:string|null }; lastClearDay:string|null;
   instance:InstanceState|null; story:StoryState|null; uidN:number; stats:{ runs:number; clears:number; kills:number };
+  /** Per-dungeon daily lockout days (annex keeps using lastClearDay for backward compatibility). */ lockouts?:Record<string,string>;
+  /** Contracts: active progress by id, once-only completions, daily completion day by id. */ contracts?:{ active:Record<string,number>; done:string[]; doneDay:Record<string,string> };
 }
 const KEY = 'arpg-proto-save-v1';
 export const todayStr = (t=Date.now())=>{ const d=new Date(t); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
@@ -24,13 +26,13 @@ export function newSave():Save {
   const s:Save = { version:1, level:PROGRESSION.startLevel, xp:0, credits:STARTING.credits, repairBill:0, rep:{HI:0,PS:0,MM:0},
     items:[], installed:{}, lockerChips:{...STARTING.chips}, stims:2, lockerCap:STARTING.lockerSlots,
     settings:{ gore:'standard', joystickFixed:false, damageNumbers:false, reducedFx:false, volume:.6, music:true, llm:{enabled:false,url:'',key:'',model:''} },
-    purchases:{ lockerBlocks:0, skins:[], equippedSkin:null }, lastClearDay:null, instance:null, story:null, uidN:1, stats:{runs:0,clears:0,kills:0} };
+    purchases:{ lockerBlocks:0, skins:[], equippedSkin:null }, lastClearDay:null, instance:null, story:null, uidN:1, stats:{runs:0,clears:0,kills:0}, lockouts:{}, contracts:{active:{},done:[],doneDay:{}} };
   for (const sl of SLOTS) { const it = mkInst(s,'stock_'+sl); s.items.push(it); s.installed[sl]=it.uid; }
   return s;
 }
 export function mkInst(s:{uidN:number}, def:string):Inst { if(!ITEM_BY_ID[def]) throw new Error('unknown item '+def); return { uid:'u'+(s.uidN++), def, chips:[] }; }
 export function load():Save {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw) as Save; if (s.version===1) { s.settings = { ...newSave().settings, ...s.settings }; return s; } } } catch (e) { console.warn('load failed', e); }
+  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw) as Save; if (s.version===1) { s.settings = { ...newSave().settings, ...s.settings }; s.lockouts=s.lockouts||{}; s.contracts=s.contracts||{active:{},done:[],doneDay:{}}; return s; } } } catch (e) { console.warn('load failed', e); }
   return newSave();
 }
 export function persist(s:Save) { try { localStorage.setItem(KEY, JSON.stringify(s, (k,v)=>k.startsWith('_')?undefined:v)); } catch(e){ console.warn('save failed',e); } }
@@ -38,3 +40,7 @@ export function wipe() { localStorage.removeItem(KEY); }
 export function capacityUsed(s:Save){ return s.items.filter(i=>!Object.values(s.installed).includes(i.uid)).length + Object.values(s.lockerChips).filter(v=>v&&v>0).length; }
 export function lockerItems(s:Save){ const inst = new Set(Object.values(s.installed)); return s.items.filter(i=>!inst.has(i.uid)); }
 export const retentionMs = INSTANCE_RETENTION_HOURS*3600*1000;
+
+export function lockDay(s:Save,id:string):string|null{ return id==='annex'?s.lastClearDay:(s.lockouts?.[id]??null); }
+export function setLockDay(s:Save,id:string,d:string|null){ if(id==='annex') s.lastClearDay=d; else { s.lockouts=s.lockouts||{}; if(d) s.lockouts[id]=d; else delete s.lockouts[id]; } }
+export function contractState(s:Save){ if(!s.contracts) s.contracts={active:{},done:[],doneDay:{}}; return s.contracts; }
