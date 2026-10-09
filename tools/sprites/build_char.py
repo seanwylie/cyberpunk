@@ -366,66 +366,24 @@ sc.render.engine='CYCLES'; sc.cycles.device='CPU'; sc.cycles.samples=SAMPLES; sc
 sc.cycles.use_adaptive_sampling=True; sc.cycles.adaptive_threshold=0.02
 sc.render.resolution_x=RES; sc.render.resolution_y=RES; sc.render.resolution_percentage=100; sc.render.film_transparent=True; sc.view_settings.view_transform='Standard'
 sc.render.image_settings.file_format='PNG'; sc.render.image_settings.color_mode='RGBA'; sc.render.threads=int(os.environ.get('THREADS','8'))
-sc.render.use_persistent_data=True
-# ===================== poses =====================
-Rg=lambda x:x
-def zero():
-    for j in [hips,torsoP,headP,body]+list(J.values()): j.rotation_euler=(0,0,0)
-    body.location=(0,0,0.9); hips.location=(0,0,0.06)
-def S2(t): return t*t*(3-2*t)
-def pose(anim,f,n):
-    zero(); p=f/n; t=f/max(1,n-1); s=math.sin(2*math.pi*p); c=math.cos(2*math.pi*p)
-    A=lambda k:J[k]
-    def arms(shx,elx,shy=0.0,sg=(1,1)):
-        for k,sx in (('L',1),('R',-1)): A('sh'+k).rotation_euler=(shx if not isinstance(shx,tuple) else shx[0 if k=='L' else 1],-shy*sx,0); A('el'+k).rotation_euler=(elx if not isinstance(elx,tuple) else elx[0 if k=='L' else 1],0,0)
-    if anim=='idle':
-        body.location.z=0.9-0.012*(1-math.cos(2*math.pi*p))
-        torsoP.rotation_euler=(0.03+0.012*s,0,0.02*s); headP.rotation_euler=(-0.03-0.01*s,0,-0.025*s)
-        for k,sx in (('L',1),('R',-1)):
-            A('sh'+k).rotation_euler=(0.06+0.03*s*sx,0.1*sx*-1,0); A('el'+k).rotation_euler=(-0.4-0.06*s,0,0)
-            A('hp'+k).rotation_euler=(-0.03*sx,0,0.0); A('kn'+k).rotation_euler=(0.07,0,0); A('an'+k).rotation_euler=(-0.04,0,0)
-        A('hpR').rotation_euler=(0.02,0,0)
-    elif anim=='run':
-        body.location.z=0.9-0.03*abs(math.sin(2*math.pi*p))
-        torsoP.rotation_euler=(0.2,0,-0.12*s); headP.rotation_euler=(-0.18,0,0.1*s); hips.rotation_euler=(0,0,0.1*s)
-        for k,ph in (('L',0.0),('R',0.5)):
-            q=2*math.pi*(p+ph); ss=math.sin(q); cc=math.cos(q); sx=1 if k=='L' else -1
-            A('hp'+k).rotation_euler=(-0.95*ss,0,0); A('kn'+k).rotation_euler=(0.35+1.05*max(0.0,cc)**1.3,0,0); A('an'+k).rotation_euler=(0.95*ss*0.55-0.25*max(0,cc),0,0)
-            A('sh'+k).rotation_euler=(0.95*ss,0.1*-sx,0); A('el'+k).rotation_euler=(-1.15-0.35*ss,0,0)
-    elif anim=='dodge':
-        th=[0.5,1.8,3.5,5.0,6.28][f]; body.rotation_euler=(th,0,0); body.location=(0,0,[0.85,0.8,0.72,0.74,0.85][f])
-        tuck=[0.3,0.8,1.0,0.8,0.2][f]
-        torsoP.rotation_euler=(0.15+0.5*tuck,0,0); headP.rotation_euler=(-0.1-0.2*tuck,0,0)
-        for k in 'LR':
-            A('hp'+k).rotation_euler=(-0.5-1.2*tuck,0,0); A('kn'+k).rotation_euler=(0.5+1.5*tuck,0,0); A('an'+k).rotation_euler=(0.3*tuck,0,0)
-            A('sh'+k).rotation_euler=(-0.5-0.7*tuck,0,0); A('el'+k).rotation_euler=(-0.9-0.9*tuck,0,0)
-    elif anim=='attack':   # left ivory arm hook strike, impact on frame 2
-        tw=[0.55,0.7,-0.5,-0.7,-0.4,0.0][f]; lean=[0.05,0.0,0.3,0.3,0.2,0.08][f]
-        torsoP.rotation_euler=(lean,0,tw); headP.rotation_euler=(-lean*0.5,0,-tw*0.5); hips.rotation_euler=(0,0,tw*0.4)
-        step=[0.0,0.2,0.9,0.7,0.35,0.0][f]; body.location.z=0.9-0.06*step
-        A('hpL').rotation_euler=(-0.55*step,0,0); A('kn'+'L').rotation_euler=(0.45*step+0.05,0,0); A('hpR').rotation_euler=(0.35*step,0,0); A('knR').rotation_euler=(0.2+0.3*step,0,0)
-        Lsh=[(0.7,0.0),(0.9,0.0),(-1.55,0.0),(-1.3,0.0),(-0.7,0.0),(0.0,0.0)][f]; Lel=[-1.7,-1.9,-0.1,-0.35,-0.8,-0.5][f]
-        A('shL').rotation_euler=(Lsh[0],0.2,0); A('elL').rotation_euler=(Lel,0,0)
-        A('shR').rotation_euler=(-0.3,0.2,0); A('elR').rotation_euler=(-1.4,0,0)
-    elif anim=='cast':     # draw both arms back/up, thrust forward on release (frame 3)
-        ph=[0,0.35,0.7,1.0,1.0,0.9,0.5,0.15][f]; rel=[0,0,0,1,1,1,0.5,0.1][f]
-        torsoP.rotation_euler=(0.05-0.15*ph+0.3*rel,0,0.0); headP.rotation_euler=(-0.1*rel,0,0); body.location.z=0.9-0.04*rel
-        for k,sx in (('L',1),('R',-1)):
-            back=-0.4+0.0; A('sh'+k).rotation_euler=((0.6*ph*(1-rel) if rel<0.5 else 0)+(-1.55*rel)+(-0.2 if f==1 else 0),-0.5*ph*sx*(1-rel)*-1*-1,0)
-            A('el'+k).rotation_euler=(-1.9*ph*(1-rel)-0.2*rel,0,0)
-            A('hp'+k).rotation_euler=((-0.5 if k=='L' else 0.35)*rel,0,0); A('kn'+k).rotation_euler=(0.3*rel+0.1,0,0)
-    elif anim=='hit':
-        k0=[0.6,1.0,0.4][f]
-        torsoP.rotation_euler=(-0.4*k0,0,0.15*k0); headP.rotation_euler=(-0.35*k0,0,0.2*k0); body.location.z=0.9-0.05*k0; body.location.y=0.04*k0; hips.rotation_euler=(0,0,-0.1*k0)
-        for k,sx in (('L',1),('R',-1)): A('sh'+k).rotation_euler=(0.5*k0,-0.55*sx*-1*k0*-1,0); A('el'+k).rotation_euler=(-0.5*k0,0,0); A('hp'+k).rotation_euler=(-0.15*k0*sx,0,0); A('kn'+k).rotation_euler=(0.3*k0,0,0)
-    elif anim=='down':
-        kn=[0.4,0.9,1.4,1.6,1.7,1.8,1.8,1.8][f]; fall=[0,0,0.05,0.35,0.8,1.15,1.35,1.45][f]
-        body.rotation_euler=(-fall,0,0); body.location.z=0.9-[0.04,0.2,0.4,0.45,0.5,0.62,0.74,0.77][f]*1.0
-        for k,sx in (('L',1),('R',-1)):
-            A('hp'+k).rotation_euler=(-0.4*min(1,kn)-0.5*(1-min(1,fall*1.2))*0,0,0); A('kn'+k).rotation_euler=(kn*(1-0.5*min(1,fall*1.4)),0,0); A('an'+k).rotation_euler=(0.5*min(1,fall),0,0)
-            A('sh'+k).rotation_euler=(0.3+0.3*fall,-0.2*sx*-1-0.7*fall*sx*-1*-1*0,0); A('el'+k).rotation_euler=(-0.3-0.3*(1-fall),0,0)
-        A('shL').rotation_euler=(0.3+0.2*fall,-0.4-0.5*fall,0); A('shR').rotation_euler=(0.3+0.2*fall,0.4+0.5*fall,0)
-        torsoP.rotation_euler=(0.5*(1-min(1,fall*2))*[1,1,0.6,0.3,0,0,0,0][f],0,0.0); headP.rotation_euler=(0.3*min(1,fall)+(-0.2 if f<3 else 0),0,0.1*fall)
+sc.render.use_persistent_data=not os.environ.get('NOPERSIST')
+# ===================== poses (see poses.py: keyframe curves + overlap + IK feet + spring secondary motion) =====================
+sys.path.insert(0,os.path.dirname(os.path.abspath(__file__)))
+from poses import Poser
+from anim_spec import SPEC
+P=Poser(root,body,hips,torsoP,headP,J)
+bpy.context.view_layer.update()
+def sm_(t): t=min(1,max(0,t)); return t*t*(3-2*t)
+for o in SLOTOBJ['torso']:
+    mn=o.active_material.name if o.active_material else ''
+    if mn=='jacket': P.register(o,lambda x,y,z: sm_((1.38-z)/0.36),'jacket')
+    elif mn in ('canvas','amber','glass'): P.register(o,lambda x,y,z: (0.8 if abs(x)>0.13 and y<0.12 else 0.0)*sm_((1.2-z)/0.16),'pouch')
+for o in SLOTOBJ['face']:
+    if o.active_material and o.active_material.name=='jacket': P.register(o,lambda x,y,z: sm_((y+0.02)/0.14)*sm_((hb+0.14-z)/0.2)+0.0,'hood')
+elz=W(J['elL']).z
+for o in SLOTOBJ['armL']:
+    if o.active_material and o.active_material.name=='metal': P.register(o,lambda x,y,z: (math.sin(math.pi*min(1,max(0,(z-(elz-0.03))/0.15))) if abs(x-W(J['shL']).x)<0.014 and -0.085<y<-0.015 and elz-0.03<z<elz+0.12 else 0.0),'hose')
+print('secondary targets',[(o.name,len(o.data.vertices)) for o,_,_,_ in P.targets],flush=True)
 def centroid(slot):
     pts=[]
     for o in SLOTOBJ[slot]:
@@ -442,7 +400,7 @@ def slot_border(slot,m=0.03):
     return max(0,x0),min(1,x1),max(0,y0),min(1,y1)
 DIRS=['S','SW','W','NW','N','NE','E','SE']
 FACE={'S':(0,-1),'SW':(-1,-1),'W':(-1,0),'NW':(-1,1),'N':(0,1),'NE':(1,1),'E':(1,0),'SE':(1,-1)}
-ALLA={'idle':6,'run':8,'dodge':5,'attack':6,'cast':8,'hit':3,'down':8}
+ALLA={k:v['n'] for k,v in SPEC.items()}
 want=os.environ.get('ANIMS',','.join(ALLA)).split(',')
 ANIMS={k:ALLA[k] for k in want}
 dsel=os.environ.get('DIRS'); DSEL=dsel.split(',') if dsel else DIRS
@@ -458,9 +416,12 @@ for anim,n in ANIMS.items():
         di=DIRS.index(d); fx,fy=FACE[d]; root.rotation_euler=(0,0,math.atan2(fy,fx)+math.pi/2)
         for f in range(n):
             if FSEL and f not in FSEL: continue
-            pose(anim,f,n); bpy.context.view_layer.update()
+            P.set(anim,f); bpy.context.view_layer.update(); (None if os.environ.get('NODEFORM') else P.deform(anim,f))
             cs={s:centroid(s) for s in SLOTS}
             order[anim][di][f]=sorted(range(len(SLOTS)),key=lambda i:-cs[SLOTS[i]].dot(viewdir))
+            if os.environ.get('PREVIEW'):
+                for o in ALLOBJ: o.hide_render=False; o.visible_camera=True; o.visible_shadow=True
+                sc.render.use_border=False; sc.render.filepath=f'{OUT}/{anim}/all/{d}_{f}.png'; bpy.ops.render.render(write_still=True); cnt+=1; continue
             for s in ([] if os.environ.get('ORDERONLY') else SLR):
                 for o in ALLOBJ: o.hide_render=False; o.visible_camera=False; o.visible_shadow=False
                 for o in SLOTOBJ[s]: o.visible_camera=True; o.visible_shadow=True

@@ -52,3 +52,35 @@ Swapping a limb = bake a replacement mesh on the same joints into the same slot 
 - `pack.py RAW OUT`: premultiplied-alpha downsample (no dark fringes), silhouette outline on the composite, thin per-layer outlines, light unsharp. `SCALE=` sets the atlas draw scale.
 - All 7 anims, all 8 directions (hit/down too, since the character is asymmetric: ivory L arm / olive R leg). `hitFrame` is written for attack (2) and cast (3) and exposed as `PlayerAnimator.frame / hitFrame / atHitFrame`.
 - Loader: the flat composite sheet is used by default; the per-slot layer sheets are only loaded with `?layers=1` (they would cost ~10x decoded memory on phones). Limb-swap tooling should enable that mode.
+
+
+## v3 smooth-motion pass
+Goal: much smoother character motion at the same mobile budget.
+
+**Frame counts / playback** (single source of truth: `tools/sprites/anim_spec.py`, read by the renderer and the packer)
+
+| anim | frames | fps | loop | hitFrame | blend |
+|---|---|---|---|---|---|
+| idle | 12 | 7 | yes | - | yes |
+| run | 16 | 34 | yes | - | yes |
+| dodge | 10 | 45 (=0.22 s) | no | - | no (fast roll) |
+| attack | 12 | 30 | no | 5 | yes |
+| cast | 12 | 20 | no | 5 | yes |
+| hit | 6 | 24 | no | - | yes |
+| down | 12 | 14 | no | - | yes |
+
+**Animation authoring** (`tools/sprites/poses.py`)
+- Idle and run are procedural loops built from phase-shifted sines. Run uses 3D two-bone **IK feet**: stance foot moves back linearly at a fixed contact height (no foot skating inside the cycle), swing foot lifts on a curve, ankle pitch for heel strike / toe-off, pelvis bob lowest at mid-stance, pelvis roll/yaw, counter-rotating torso, stabilised head.
+- Attack, cast, hit, dodge, down are **keyframed** (anticipation -> strike/release -> overshoot -> settle) and evaluated with Catmull-Rom Hermite curves (mild overshoot = follow-through, zero slope at ends). Each joint trails its parent by a few ms (head, shoulder, elbow, ankle) for overlap. Feet use IK in idle/run/attack/cast/hit (weight shift, lunge step with lift and plant) and blend IK->FK (`ikw`) for the dodge tuck and the fall.
+- **Secondary motion**: a spring-damper simulation is driven by the pose kinematics (accelerations of torso, head, arm points; simulated at 240 Hz, 3 loops for cycles) and displaces vertex groups per frame: jacket hem, belt pouches/vials, hood back, (arm hose weight is registered but may match no verts).
+- Hit frames: `hitFrame` is the key pose of the strike/release (u = 5/11 of the clip); arm lag is reduced for attack/cast so the arm is already extended on that frame.
+
+**Loader** (`src/sprites.ts`)
+- Sub-frame interpolation: for anims with `blend:true` the next frame is cross-faded in by the fractional frame position, so 7-34 fps source animations play smoothly at 60+ fps. Exactly on `hitFrame` the fraction is 0 (no ghosting on impact).
+- Anim transitions (idle<->run<->attack...) cross-fade the outgoing sprite (40-130 ms by pair).
+- Direction changes: target direction has hysteresis (no flicker on boundaries) and the displayed direction walks around the ring one 45 deg notch every 35-50 ms, each notch cross-faded, so a 180 deg turn is a short turn instead of a pop. Dodge/down snap.
+- `PlayerAnimator.frac` exposes the sub-frame fraction; `frame`/`hitFrame`/`atHitFrame` semantics unchanged.
+
+**Size / memory**: 160 px cells, sheets packed as **lossy WebP with lossless alpha** (`FMT=png` for PNG, `WEBPQ=` quality). Decoded flat sheets ~ 640 cells x 100 KB = ~65 MB GPU/RAM on a phone (was ~36 MB); layer sheets stay opt-in via `?layers=1`.
+
+Run: `ANIMS=... SAMPLES=48 RES=320 python tools/sprites/build_char.py RAW` then `PREVIEWS=docs/art/anim SCALE=1.4 python tools/sprites/pack.py RAW public/sprites`. `PREVIEW=1` renders single composite frames (fast pose checks, no layers).

@@ -20,6 +20,8 @@ export interface AnimDef {
   loop:boolean;            // idle/run loop; others play once (down holds last frame)
   /** 8 = rows S,SW,W,NW,N,NE,E,SE.  5 = rows S,SW,W,NW,N; SE,E,NE are mirrored from SW,W,NW. */
   dirs:5|8;
+  /** Loader cross-fades neighbouring frames (sub-frame interpolation) so playback is smoother than the baked frame rate. Off for fast, large-motion anims (dodge roll). */
+  blend?:boolean;
   hitFrame?:number;        // frame at which damage/effect visually lands (attack/cast), for sync
   /** Optional modular body layers (one sheet per body slot, same grid as `image`). When present they are drawn
    *  instead of `image`; `order[dir][frame]` lists indices into `layers` far->near (depth sorted at bake time).
@@ -69,15 +71,26 @@ export function validateAtlas(a:Atlas):string|null{
 /** Per-frame animation state chosen from game state. The sim stays authoritative: playback is time-scaled/offset so the
  *  anim's hitFrame is shown exactly when the sim applies the hit (auto-attack: same tick; cast: when windup ends; dodge: spans COMBAT.dodge.time). */
 export type ImpactKind='attack'|'cast';
+interface PlayState { anim:AnimName; f:number; nf:number; frac:number; dir:Dir8; }
+/** Continuous direction index in the iso ring (E=0,SE=1,S=2,SW=3,W=4,NW=5,N=6,NE=7), from a world vector. */
+function ringPos(dx:number,dy:number):number{ const sx=dx-dy, sy=(dx+dy)/2; return Math.atan2(sy,sx)/(Math.PI/4); }
+const ringToDir=(k:number):Dir8=>((((k-2)%8)+8)%8) as Dir8;
+const ringDiff=(a:number,b:number)=>{ let d=((a-b)%8+8)%8; return d>4?d-8:d; };
 export class PlayerAnimator {
   /** current frame index + the anim's hitFrame (-1 if none); `atHitFrame` is true on the frame where damage/effect should visually land. */
-  frame=0; hitFrame=-1; get atHitFrame(){ return this.hitFrame>=0&&this.frame===this.hitFrame; }
+  frame=0; frac=0; hitFrame=-1; get atHitFrame(){ return this.hitFrame>=0&&this.frame===this.hitFrame; }
   anim:AnimName='idle'; t=0; dir:Dir8=0; impacts=0; lastImpact:{kind:ImpactKind;anim:AnimName;frame:number;hitFrame:number}|null=null; onImpact?:(k:ImpactKind)=>void;
+  /** smooth turning: `dir` steps one 45deg notch at a time toward the target (with hysteresis) and each notch / anim change cross-fades from the previous sprite */
+  private tk=2; private dk=2; private stepT=0; private prev:{anim:AnimName;t:number;dir:Dir8}|null=null; private fade=1; private fadeDur=.1; private prevAnim:AnimName='idle'; private prevT=0; private prevDir:Dir8=0;
   private lastHp=-1; private hitT=0; private atkT=0; private followT=0; private lastAtkCd=0; private lastAbSum=0; private wasCast=false; private lastDown=false;
   constructor(public loaded:LoadedAtlas){}
   private def(n:AnimName){ const a=this.loaded.atlas.anims; return a[n]?a[n]!:undefined; }
   private resolve(n:AnimName):AnimName{ const a=this.loaded.atlas.anims; return a[n]?n:(FALLBACK[n].find(k=>a[k])||'idle'); }
-  private sample(){ const d=this.def(this.resolve(this.anim)); if(!d){ this.frame=0; this.hitFrame=-1; return; } let f=Math.floor(this.t*d.fps+1e-6); f=d.loop?f%d.frames:Math.max(0,Math.min(f,d.frames-1)); this.frame=f; this.hitFrame=d.hitFrame??-1; }
+  /** frame position of anim `n` at time t: integer frame, next frame and the sub-frame fraction (0 when the anim does not blend) */
+  private pos(n:AnimName,t:number):{f:number;nf:number;frac:number}{ const d=this.def(this.resolve(n)); if(!d) return {f:0,nf:0,frac:0}; const p=Math.max(0,t)*d.fps+1e-6; let f=Math.floor(p); let frac=p-f;
+    if(d.loop){ f=f%d.frames; } else if(f>=d.frames-1){ f=d.frames-1; frac=0; }
+    let nf=d.loop?(f+1)%d.frames:Math.min(f+1,d.frames-1); if(!d.blend||nf===f||frac<.004) frac=0; if(frac>.996){ frac=0; f=nf; } return {f,nf,frac}; }
+  private sample(){ const d=this.def(this.resolve(this.anim)); if(!d){ this.frame=0; this.frac=0; this.hitFrame=-1; return; } const p=this.pos(this.anim,this.t); this.frame=p.f; this.frac=p.frac; this.hitFrame=d.hitFrame??-1; }
   private impact(k:ImpactKind,n:AnimName){ this.impacts++; this.sample(); this.lastImpact={kind:k,anim:this.anim,frame:this.frame,hitFrame:this.hitFrame}; this.onImpact?.(k); }
   update(g:{hp:number;downed:boolean;moving:boolean;dodgeT:number;cast:any;atkCd:number;abCd?:number[];face:number;inputMove:{x:number;y:number};dodgeDx:number;dodgeDy:number},dt:number){
     const L=this.loaded.atlas.anims; const dur=(n:AnimName)=>{ const d=L[n]; return d?d.frames/d.fps:0; }; const hitTime=(n:AnimName)=>{ const d=L[n]; return d&&d.hitFrame!=null?d.hitFrame/d.fps:0; };
@@ -92,23 +105,39 @@ export class PlayerAnimator {
     if(g.downed) next='down'; else if(g.dodgeT>0){ next='dodge'; const dd=L.dodge; if(dd) driven=Math.min(1,Math.max(0,1-g.dodgeT/COMBAT.dodge.time))*dd.frames/dd.fps*0.9999; }
     else if(g.cast){ next='cast'; const c=g.cast, w=Math.max(.001,c.ab?.windup??.2); driven=Math.min(1,c.t/w)*hitTime('cast'); }
     else if(this.followT>0) next='cast'; else if(this.hitT>0) next='hit'; else if(this.atkT>0) next='attack'; else if(g.moving) next='run';
+    // remember what was on screen so the change can be cross-faded instead of popping
+    const oldAnim=this.anim, oldT=this.t, oldDir=this.dir;
+    // facing: target direction with hysteresis; displayed direction walks the ring one notch at a time (snaps for dodge / down)
+    const fx=next==='dodge'?g.dodgeDx:g.moving&&next==='run'?g.inputMove.x:Math.cos(g.face), fy=next==='dodge'?g.dodgeDy:g.moving&&next==='run'?g.inputMove.y:Math.sin(g.face);
+    if(Math.hypot(fx,fy)>0.05){ const kf=ringPos(fx,fy); if(Math.abs(ringDiff(kf,this.tk))>0.5+0.18||this.tk<0) this.tk=((Math.round(kf)%8)+8)%8; }
+    const snap=next==='dodge'||next==='down'||(g.dodgeT>0);
+    if(snap){ this.dk=this.tk; this.stepT=0; } else if(this.dk!==this.tk){ this.stepT-=dt; if(this.stepT<=0){ const d=ringDiff(this.tk,this.dk); const bigTurn=Math.abs(d)>=3; this.dk=(((this.dk+(d>0?1:-1))%8)+8)%8; this.stepT=(next==='attack'||next==='cast'?.035:.05)*(bigTurn?.8:1); } } else this.stepT=0;
+    this.dir=ringToDir(this.dk);
     if(next!==this.anim){ this.anim=next; this.t=0; } else this.t+=dt;
     if(driven!=null) this.t=driven; else if(executed&&next==='cast') this.t=hitTime('cast'); else if(attackStart&&next==='attack') this.t=hitTime('attack');
     if(g.downed&&!this.lastDown){ this.anim='down'; this.t=0; } this.lastDown=g.downed;
-    const fx=next==='dodge'?g.dodgeDx:g.moving&&next==='run'?g.inputMove.x:Math.cos(g.face), fy=next==='dodge'?g.dodgeDy:g.moving&&next==='run'?g.inputMove.y:Math.sin(g.face);
-    if(Math.hypot(fx,fy)>0.05) this.dir=dirFromWorld(fx,fy);
+    const animChanged=this.anim!==oldAnim, dirChanged=this.dir!==oldDir;
+    if(this.fade<1){ this.fade=Math.min(1,this.fade+dt/this.fadeDur); if(this.prev) this.prev.t+=dt; }
+    if(animChanged||dirChanged){ this.prev={anim:oldAnim,t:oldT+dt,dir:oldDir}; this.fade=0; this.fadeDur=this.anim==='dodge'?.03:this.anim==='down'?.08:animChanged?(this.anim==='hit'?.04:this.anim==='attack'||this.anim==='cast'?.07:.13):.07; if(this.resolve(oldAnim)===this.resolve(this.anim)&&!dirChanged) this.fade=1; }
     this.sample();
     if(executed&&next==='cast') this.impact('cast','cast'); else if(attackStart&&next==='attack') this.impact('attack','attack');
+  }
+  private blit(c:CanvasRenderingContext2D,st:PlayState,alpha:number,s:number){
+    const a=this.loaded.atlas; const an=this.resolve(st.anim); const d=a.anims[an], im=this.loaded.images[an], lay=this.loaded.layerImages[an]; if(!d||(!im&&!lay)||alpha<=0) return;
+    let row:number=st.dir, mirror=false; if(d.dirs===5&&st.dir>4){ row=8-st.dir; mirror=true; } // SE(7)->SW(1), E(6)->W(2), NE(5)->NW(3)
+    const W=a.frame.w,H=a.frame.h; c.save(); if(mirror) c.scale(-1,1);
+    const one=(f:number,al:number)=>{ c.globalAlpha=al; if(lay&&d.order){ for(const li of d.order[row][f]) c.drawImage(lay[li],f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); } else c.drawImage(im!,f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); };
+    const g0=c.globalAlpha; one(st.f,g0*alpha); if(st.frac>0) one(st.nf,g0*alpha*st.frac); c.restore();
   }
   /** Draw with feet at (x,y) in screen px. unit = TW/64. Returns false if anim missing (caller falls back). */
   draw(c:CanvasRenderingContext2D,x:number,y:number,unit:number):boolean{
     const a=this.loaded.atlas; const an=this.resolve(this.anim);
     const d=a.anims[an], im=this.loaded.images[an], lay=this.loaded.layerImages[an]; if(!d||(!im&&!lay)) return false;
-    this.sample(); const f=this.frame;
-    let row:number=this.dir, mirror=false; if(d.dirs===5&&this.dir>4){ row=8-this.dir; mirror=true; } // SE(7)->SW(1), E(6)->W(2), NE(5)->NW(3)
-    const W=a.frame.w,H=a.frame.h,s=unit*a.scale*(48/ (H*0.6)) ; // normalise: character ~60% of cell height ≈ 48 procedural px
-    c.save(); c.translate(x,y); if(mirror) c.scale(-1,1); c.imageSmoothingEnabled=true;
-    if(lay&&d.order){ for(const li of d.order[row][f]) c.drawImage(lay[li],f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); }
-    else c.drawImage(im!,f*W,row*H,W,H,-a.anchor.x*s,-a.anchor.y*s,W*s,H*s); c.restore(); return true;
+    this.sample(); const W=a.frame.w,H=a.frame.h,s=unit*a.scale*(48/ (H*0.6)) ; // normalise: character ~60% of cell height ≈ 48 procedural px
+    c.save(); c.translate(x,y); c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high';
+    const cur:PlayState={anim:this.anim,f:this.frame,nf:0,frac:this.frac,dir:this.dir}; { const p=this.pos(this.anim,this.t); cur.nf=p.nf; }
+    if(this.prev&&this.fade<1){ const pp=this.pos(this.prev.anim,this.prev.t); this.blit(c,{anim:this.prev.anim,f:pp.f,nf:pp.nf,frac:pp.frac,dir:this.prev.dir},1,s); this.blit(c,cur,this.fade*this.fade*(3-2*this.fade),s); }
+    else this.blit(c,cur,1,s);
+    c.restore(); return true;
   }
 }

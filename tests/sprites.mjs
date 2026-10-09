@@ -14,7 +14,7 @@ for n,(f,d,fps,l) in A.items():
         for c in range(f): dr.rectangle([c*64+20,r*64+10,c*64+44,r*64+58],fill=(255,0,255,255))
     im.save('${dir}/'+n+'.png')
 P`);
-const atlas = { version:1, frame:{w:64,h:64}, anchor:{x:32,y:58}, scale:1, anims:Object.fromEntries(Object.entries(anims).map(([n,[f,d,fps,l]])=>[n,{image:n+'.png',frames:f,fps,loop:l,dirs:d,...(n==='attack'?{hitFrame:2}:n==='cast'?{hitFrame:3}:{})}])) };
+const atlas = { version:1, frame:{w:64,h:64}, anchor:{x:32,y:58}, scale:1, anims:Object.fromEntries(Object.entries(anims).map(([n,[f,d,fps,l]])=>[n,{image:n+'.png',frames:f,fps,loop:l,dirs:d,...(n==='attack'?{hitFrame:2}:n==='cast'?{hitFrame:3}:{}),...(n==='idle'||n==='run'?{blend:true}:{})}])) };
 fs.writeFileSync(dir+'/player.json', JSON.stringify(atlas));
 await new Promise(r=>setTimeout(r,2500)); // let vite's dev watcher notice the new public files
 let fails=0; const ok=(c,m)=>{ console.log((c?'PASS ':'FAIL ')+m); if(!c) fails++; };
@@ -43,6 +43,9 @@ try {
     const D=.22; st.dodgeT=D; const df=[]; for(let tt=D;tt>0;tt-=1/60){ st.dodgeT=tt; step(); df.push(A.frame); } out.dodgeFrames=df; out.dodgeAnim=A.anim; st.dodgeT=0; step(); out.afterDodge=A.anim;
     // hit then down
     for(let i=0;i<30;i++) step(); st.hp=90; step(); out.hit=A.anim; for(let i=0;i<30;i++) step(); st.hp=0; st.downed=true; step(); out.down=A.anim; for(let i=0;i<120;i++) step(); out.downFrame=A.frame;
+    // smoothness: sub-frame blending + stepped turning
+    st.hp=100; st.downed=false; st.hp=100; A.update({...base,hp:100},.01); const fr=new Set(); for(let i=0;i<40;i++){ A.update({...base},1/60); fr.add(A.frac.toFixed(2)); } out.fracVariety=fr.size; out.fracOk=[...fr].every(v=>+v>=0&&+v<1);
+    const B=new PlayerAnimator(R.anim.loaded); const gs={...base,moving:true,inputMove:{x:1,y:0}}; for(let i=0;i<20;i++) B.update(gs,1/60); const d0=B.dir; gs.inputMove={x:-1,y:0}; const seen=[d0]; for(let i=0;i<40;i++){ B.update(gs,1/60); if(B.dir!==seen[seen.length-1]) seen.push(B.dir); } out.turn=seen;
     return out; });
   console.log(JSON.stringify(sync));
   ok(sync.atk.anim==='attack'&&sync.atk.frame===sync.atk.hit&&sync.atk.hit===2&&sync.atk.li==='attack'&&sync.atk.n===1,'auto-attack: anim hitFrame (2) shown on the tick the sim hits');
@@ -51,6 +54,7 @@ try {
   ok(sync.cancelN===0,'cancelled cast fires no impact');
   ok(sync.dodgeAnim==='dodge'&&sync.dodgeFrames[0]===0&&sync.dodgeFrames[sync.dodgeFrames.length-1]===anims.dodge[0]-1&&sync.dodgeFrames.every((v,i,a)=>i===0||v>=a[i-1]),'dodge: all frames span the 0.22s dodge, monotonic'); ok(sync.afterDodge!=='dodge','dodge anim ends with dodge');
   ok(sync.hit==='hit','hit anim triggers on damage'); ok(sync.down==='down'&&sync.downFrame===anims.down[0]-1,'down anim triggers and holds last frame');
+  ok(sync.fracOk&&sync.fracVariety>3,'idle/run blend: sub-frame fractions in [0,1) advance smoothly'); ok(sync.turn.length>=4&&sync.turn.length<=6,'180deg turn walks the ring one notch at a time (no pop): '+sync.turn.join('>'));
   await browser.close();
   clear();
   ({ browser, page } = await launch()); await sleep(800);
