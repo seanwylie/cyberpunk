@@ -1,8 +1,8 @@
 // Renders loot-drop previews (per-rarity grids, spawn toss, pickup) as frame PNGs, then tools/loot/make_gifs.py assembles GIFs.
 import { launch } from './lib.mjs'; import fs from 'fs';
-const out = 'docs/art/loot/frames'; fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
+const out = (process.env.LOOT_OUT || 'docs/art/loot3d') + '/frames'; fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
 const { browser, page, errors } = await launch({ viewport: { width: 900, height: 700 } });
-await page.evaluate(async () => { window.__M = await import('/src/lootart.ts'); });
+await page.evaluate(async () => { window.__M = await import('/src/lootart.ts'); await window.__M.ensureAtlas(); });
 const FPS = 24;
 const CELLS = [['item','face','HI'],['item','brain','PS'],['item','torso','MM'],['item','armR','HI'],['item','handR','PS','popper'],['item','legL','MM'],['item','footL','HI'],['item','handL','MM'],['chip'],['stim'],['credits'],['item','armL','PS']];
 const NAMES = { orange: 'orange', purple: 'purple', blue: 'blue', green: 'green', grey: 'grey' };

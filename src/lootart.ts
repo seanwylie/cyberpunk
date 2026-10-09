@@ -6,10 +6,10 @@ import type { Rarity, Slot, Mfr } from './config';
  * Rarity follows the art style guide: grey none, green very slight, blue slight, purple restrained spectacle,
  * orange elaborate *mechanical* animation (opening plated housing, gears, hover, heat shimmer) with controlled light. No neon.
  */
-export interface LootSpec { kind:'item'|'chip'|'stim'|'credits'; slot?:Slot; mfr?:Mfr; rar:Rarity; name:string; sig:boolean; weapon?:string; amount:number; key:string; }
+export interface LootSpec { id?:string; kind:'item'|'chip'|'stim'|'credits'; slot?:Slot; mfr?:Mfr; rar:Rarity; name:string; sig:boolean; weapon?:string; amount:number; key:string; }
 export interface DropLike { id:number; kind:'item'|'chip'|'stim'|'credits'; inst?:{def:string}; chip?:string; amount:number; born?:number; }
 export function specOf(d:DropLike):LootSpec {
-  if(d.kind==='item'){ const it=ITEM_BY_ID[d.inst!.def]; const sig=!!(it as any).authoredException; return { kind:'item', slot:it.slot, mfr:it.mfr, rar:it.rarity, name:it.name, sig, weapon:it.weapon, amount:1, key:`i|${it.slot}|${it.mfr}|${it.rarity}|${it.weapon||''}|${sig?1:0}` }; }
+  if(d.kind==='item'){ const it=ITEM_BY_ID[d.inst!.def]; const sig=!!(it as any).authoredException; return { id:it.id, kind:'item', slot:it.slot, mfr:it.mfr, rar:it.rarity, name:it.name, sig, weapon:it.weapon, amount:1, key:`i|${it.slot}|${it.mfr}|${it.rarity}|${it.weapon||''}|${sig?1:0}${it.rarity==='orange'?'|'+it.id:''}` }; }
   if(d.kind==='chip'){ const c=(CHIPS as any)[d.chip!]; return { kind:'chip', rar:c.rarity, name:c.name, sig:false, amount:1, key:`c|${c.rarity}` }; }
   if(d.kind==='stim') return { kind:'stim', rar:'green', name:'Stim injector', sig:false, amount:1, key:'s|green' };
   const n=d.amount>=60?3:d.amount>=15?2:1; return { kind:'credits', rar:'grey', name:d.amount+' credits', sig:false, amount:n, key:'$|'+n };
@@ -97,9 +97,68 @@ function paintSilhouette(c:C,s:LootSpec){
 }
 // ---------------------------------------------------------------- caches
 const icons=new Map<string,HTMLCanvasElement>(); const sheens=new Map<string,HTMLCanvasElement[]>();
+// ---------------------------------------------------------------- 3D atlas (Blender-rendered, public/loot/*.webp + manifest.json), lazy loaded
+interface AtlasSprite { file:string; row:number; n:number }
+interface AtlasMan { files:Record<string,{src:string;cell:number;w:number;h:number}>; sprites:Record<string,AtlasSprite> }
+let MAN:AtlasMan|null=null; const AIMG:Record<string,HTMLImageElement>={}; let atlasState:'idle'|'loading'|'ready'|'failed'=!(typeof document!=='undefined')?'failed':'idle';
+const frames=new Map<string,HTMLCanvasElement>();
+/** orange atlas cells are 128px but drawn at 1.2x the 96px procedural scale; they sit on the ground with their platform bottom at `by` */
+const ORANGE_S=.9, ORANGE_BY=.86;
+export const atlasStatus=()=>atlasState;
+export function useAtlas(on:boolean){ forceProcedural=!on; frames.clear(); icons.clear(); sheens.clear(); }
+let forceProcedural=typeof location!=='undefined'&&/[?&]nolootatlas/.test(location.search);
+export function ensureAtlas():Promise<void>{
+  if(atlasState!=='idle') return Promise.resolve(); atlasState='loading';
+  const base=new URL('./loot/',document.baseURI).href;
+  return fetch(base+'manifest.json').then(r=>{ if(!r.ok) throw new Error('manifest '+r.status); return r.json(); }).then(async (m:AtlasMan)=>{
+    await Promise.all(Object.entries(m.files).map(([k,f])=>new Promise<void>((res,rej)=>{ const im=new Image(); im.onload=()=>{ AIMG[k]=im; res(); }; im.onerror=()=>rej(new Error('img '+k)); im.src=base+f.src; })));
+    MAN=m; atlasState='ready'; frames.clear(); icons.clear(); sheens.clear();
+  }).catch(()=>{ atlasState='failed'; });
+}
+/** atlas sprite for a spec (+ mirror flag) or null -> procedural fallback */
+export function atlasRef(s:LootSpec):{name:string;mirror:boolean;orange:boolean}|null{
+  if(!MAN||forceProcedural) return null; const has=(n:string)=>!!MAN!.sprites[n];
+  let name='', mirror=false; const orange=s.rar==='orange';
+  if(s.kind==='credits') name='credits_'+Math.min(3,Math.max(1,s.amount));
+  else if(s.kind==='stim') name='stim';
+  else if(s.kind==='chip') name=orange&&has('orange_chip')?'orange_chip':'chip';
+  else { const b=(s.slot||'').replace(/[LR]$/,''); mirror=/L$/.test(s.slot||''); const sn=s.id?'sig_'+s.id.replace(/^sig_/,''):''; name=orange&&sn&&has(sn)?sn:orange?`orange_${b}_${s.mfr}`:`base_${b}_${s.mfr}`; }
+  if(!has(name)) return null; return { name, mirror, orange: name.startsWith('orange_')||name.startsWith('sig_') };
+}
+export const isAtlas=(s:LootSpec)=>!!atlasRef(s);
+function atlasFrame(s:LootSpec,i:number):HTMLCanvasElement|null{
+  const ref=atlasRef(s); if(!ref) return null; const sp=MAN!.sprites[ref.name]; const f=MAN!.files[sp.file]; const img=AIMG[sp.file]; const n=sp.n; const fi=((i%n)+n)%n;
+  const k=s.key+'#'+fi; let cv=frames.get(k); if(cv) return cv;
+  const c0=f.cell; cv=mk(c0,c0); const c=cv.getContext('2d')!; const raw=mk(c0,c0); const rc=raw.getContext('2d')!;
+  if(ref.mirror){ rc.translate(c0,0); rc.scale(-1,1); } rc.drawImage(img,fi*c0,sp.row*c0,c0,c0,0,0,c0,c0); rc.setTransform(1,0,0,1,0,0);
+  const col=RARITY_COLOR[s.rar], rk=RARITY_RANK[s.rar], u=c0/96;
+  // rarity trim stays code-drawn: band across the lower third (not on orange: its 3D trim is part of the model), tinted outline
+  if(!ref.orange&&(rk>=1&&s.kind!=='chip'||rk>=2)){ rc.globalCompositeOperation='source-atop'; rc.fillStyle=col;
+    if(rk===1){ rc.globalAlpha=.8; rc.fillRect(0,64*u,c0,2.2*u); } else { rc.globalAlpha=.6; rc.fillRect(0,62*u,c0,2.6*u); if(rk>=3) rc.fillRect(0,67*u,c0,1.4*u); }
+    rc.globalAlpha=1; rc.globalCompositeOperation='source-over'; }
+  const t=mk(c0,c0), tc=t.getContext('2d')!; const oc=rk===0?'#1d1f1e':col; const w=(rk>=3?1.8:rk>=1?1.5:1.1)*u*(ref.orange?.8:1);
+  for(let q=0;q<8;q++){ const a=q/8*6.283; tc.drawImage(raw,Math.cos(a)*w,Math.sin(a)*w); } tc.globalCompositeOperation='source-in'; tc.fillStyle=oc; tc.fillRect(0,0,c0,c0);
+  c.globalAlpha=ref.orange?.55:.9; c.drawImage(t,0,0); c.globalAlpha=1; c.drawImage(raw,0,0);
+  (cv as any).__s=ref.orange?ORANGE_S:1; (cv as any).__atlas=true; (cv as any).__orange=ref.orange; (cv as any).__n=n; frames.set(k,cv); return cv;
+}
+/** animated frame for a drop: purple+ spin/animate, blue slow turntable, grey/green static (facing varies by seed), Reduced FX / far = still */
+export function iconAt(s:LootSpec,t:number,seed:number,fx:0|1|2):HTMLCanvasElement{
+  if(atlasState==='idle') void ensureAtlas();
+  const ref=atlasRef(s); if(!ref) return iconCanvas(s);
+  const n=MAN!.sprites[ref.name].n, rk=RARITY_RANK[s.rar]; let i:number;
+  if(fx===2&&rk>=2){ const rate=rk===4?10:rk===3?8:5; i=Math.floor((t+(seed%7)*.37)*rate); } else i=ref.orange?Math.round(n*.3):Math.floor((seed%97)/97*n);
+  return atlasFrame(s,i)||iconCanvas(s);
+}
+function gimSprite(c:C,x:number,y:number,k:number,t:number,seed:number,front:boolean):boolean{
+  if(!MAN||forceProcedural) return false; const sp=MAN.sprites[front?'gimbal_front':'gimbal_back']; if(!sp) return false; const f=MAN.files[sp.file], im=AIMG[sp.file]; if(!im) return false;
+  const i=Math.floor((t*8+seed*3)%sp.n+sp.n)%sp.n, w=f.cell*.78*k; c.drawImage(im,i*f.cell,sp.row*f.cell,f.cell,f.cell,x-w/2,y-w/2,w,w); return true; }
+function blit(c:C,ic:HTMLCanvasElement,x:number,y:number,k:number,ground=false){ const sc=(ic as any).__s??1; const w=ic.width*sc*k; if(ground&&(ic as any).__orange) c.drawImage(ic,x-w/2,y-ORANGE_BY*w,w,w); else c.drawImage(ic,x-w/2,y-w*(.5+2/96),w,w); }
+
 export const SHEEN_N=10;
 export function iconCanvas(s:LootSpec):HTMLCanvasElement {
   let cv=icons.get(s.key); if(cv) return cv;
+  if(atlasState==='idle') void ensureAtlas();
+  { const a=atlasFrame(s,MAN&&atlasRef(s)?(atlasRef(s)!.orange?Math.round(MAN.sprites[atlasRef(s)!.name].n*.3):0):0); if(a){ icons.set(s.key,a); return a; } }
   const raw=mk(CELL,CELL); const rc=raw.getContext('2d')!; paintSilhouette(rc,s);
   // rarity trim: band across the lower third (blue+), notch (green), corner diamonds (purple+) -- baked with source-atop
   const col=RARITY_COLOR[s.rar]; const rk=RARITY_RANK[s.rar];
@@ -115,8 +174,8 @@ export function iconCanvas(s:LootSpec):HTMLCanvasElement {
 function sheenFrames(s:LootSpec):HTMLCanvasElement[]{ let f=sheens.get(s.key); if(f) return f; const ic=iconCanvas(s); f=[];
   for(let i=0;i<SHEEN_N;i++){ const cv=mk(CELL,CELL); const c=cv.getContext('2d')!; c.drawImage(ic,0,0); c.globalCompositeOperation='source-atop'; const x=-30+i/(SHEEN_N-1)*(CELL+60); const g=c.createLinearGradient(x-14,0,x+14,0); g.addColorStop(0,'rgba(255,244,214,0)'); g.addColorStop(.5,'rgba(255,244,214,.85)'); g.addColorStop(1,'rgba(255,244,214,0)'); c.fillStyle=g; c.save(); c.translate(48,48); c.rotate(.5); c.translate(-48,-48); c.fillRect(x-20,-40,40,CELL+80); c.restore(); f.push(cv); }
   sheens.set(s.key,f); return f; }
-export function clearLootCaches(){ icons.clear(); sheens.clear(); }
-export const cacheStats=()=>({icons:icons.size,sheens:sheens.size});
+export function clearLootCaches(){ icons.clear(); sheens.clear(); frames.clear(); }
+export const cacheStats=()=>({icons:icons.size,sheens:sheens.size,frames:frames.size});
 
 // ---------------------------------------------------------------- spawn toss
 export const TOSS_T=.72;
@@ -140,14 +199,14 @@ const sm=(u:number)=>u<=0?0:u>=1?1:u*u*(3-2*u);
 export interface DrawOpts { age:number; reduced:boolean; fx:0|1|2; dim?:boolean; }
 /** fx: 0 = icon + shadow only (far/over-budget), 1 = static trims (Reduced FX), 2 = full animation */
 export function drawLoot(c:C,a:number,b:number,s:number,t:number,spec:LootSpec,seed:number,o:DrawOpts){
-  const rk=RARITY_RANK[spec.rar], col=RARITY_COLOR[spec.rar]; const k=s*(o.dim?.34:.5)*(spec.kind==='credits'?.9:1)*(1+rk*.07); const ic=iconCanvas(spec);
+  const rk=RARITY_RANK[spec.rar], col=RARITY_COLOR[spec.rar]; const k=s*(o.dim?.34:.5)*(spec.kind==='credits'?.9:1)*(1+rk*.07); const ic=iconAt(spec,t,seed,o.fx); const at=!!(ic as any).__atlas, ao=at&&!!(ic as any).__orange;
   const tt=toss(o.age,seed,s); const settled=tt.done; const full=o.fx===2;
-  const hoverBase=rk===4?(11+(full?2.2*Math.sin(t*1.5+seed):0))*s:rk===3&&full?(2+1.6*Math.sin(t*1.1+seed))*s:0; const hv=hoverBase*sm((o.age-TOSS_T)/.5);
-  const gx=a+tt.dx, gy=b+tt.dy; const lift=tt.z+hv; const cy=gy-14*s*(o.dim?.7:1)-lift;
+  const hoverBase=ao?0:rk===4?(11+(full?2.2*Math.sin(t*1.5+seed):0))*s:rk===3&&full?(2+1.6*Math.sin(t*1.1+seed))*s:0; const hv=hoverBase*sm((o.age-TOSS_T)/.5);
+  const gx=a+tt.dx, gy=b+tt.dy; const lift=tt.z+hv; const cy=ao?gy-30*s-tt.z:gy-14*s*(o.dim?.7:1)-lift;
   c.save();
   // ground shadow shrinks with height
   c.fillStyle='rgba(0,0,0,.32)'; const sh=Math.max(.45,1-lift/(60*s)); c.beginPath(); c.ellipse(gx,gy,11*s*sh,5*s*sh,0,0,7); c.fill();
-  if(o.dim){ c.globalAlpha=.7; c.drawImage(ic,gx-48*k,cy-50*k,CELL*k,CELL*k); c.restore(); return; }
+  if(o.dim){ c.globalAlpha=.7; blit(c,ic,gx,ao?gy-tt.z:cy,k,ao); c.restore(); return; }
   const ph=t*1.0+seed*.37; // idle phase
   if(settled||o.age>TOSS_T*.5){ // ground marks
     if(rk>=1){ const pul=full?.5+.5*Math.sin(t*(rk===1?1.6:2.2)+seed):.6; c.strokeStyle=col; c.lineWidth=1.2*s; c.globalAlpha=(rk===1?.2:.3)*(.6+.4*pul); c.beginPath(); c.ellipse(gx,gy,(14+rk*1.5+pul*(full?2:0))*s,(6.5+rk*.7)*s,0,0,7); c.stroke(); c.globalAlpha=1; }
@@ -167,16 +226,16 @@ export function drawLoot(c:C,a:number,b:number,s:number,t:number,spec:LootSpec,s
   if(rk===4){ // warm controlled light, then back housing
     if(full){ const g=c.createRadialGradient(gx,cy,0,gx,cy,34*s); g.addColorStop(0,'rgba(220,150,80,.22)'); g.addColorStop(1,'rgba(220,150,80,0)'); c.save(); c.globalCompositeOperation='lighter'; c.globalAlpha=.7+.3*Math.sin(t*1.7+seed); c.fillStyle=g; c.fillRect(gx-34*s,cy-34*s,68*s,68*s); c.restore(); }
     // kinetic gears on ground ring
-    const gr=full?t:0; gear(c,gx-20*s,gy+1*s,4.6*s,gr*1.4+seed,8,'#7a6648','#251d14'); gear(c,gx+20*s,gy+1*s,4.6*s,-gr*1.4+.2,8,'#7a6648','#251d14'); if(spec.sig) gear(c,gx,gy+8*s,3.6*s,gr*2.2,6,'#8a7355','#251d14');
-    housing(false); }
-  if(rk===3) gim(false);
+    if(!ao){ const gr=full?t:0; gear(c,gx-20*s,gy+1*s,4.6*s,gr*1.4+seed,8,'#7a6648','#251d14'); gear(c,gx+20*s,gy+1*s,4.6*s,-gr*1.4+.2,8,'#7a6648','#251d14'); if(spec.sig) gear(c,gx,gy+8*s,3.6*s,gr*2.2,6,'#8a7355','#251d14');
+    housing(false); } }
+  const gs=rk===3&&at&&gimSprite(c,gx,cy,k,full?t:0,seed,false); if(rk===3&&!gs) gim(false);
   // the item itself
-  c.drawImage(ic,gx-48*k,cy-50*k,CELL*k,CELL*k);
+  blit(c,ic,gx,ao?gy-tt.z:cy,k,ao);
   // light sweep (purple/orange continuous; grey rare, subtle) and glints
-  if(full||o.fx===1){ const cyc=rk===0?4.5:rk>=3?2.6:3.4; const u=((t+seed*.13)%cyc)/cyc; const sw=rk>=3?.5:rk===0?.22:.3; if(u<.4&&full){ const fr=sheenFrames(spec); c.globalAlpha=sw*Math.sin(u/.4*Math.PI); c.drawImage(fr[Math.min(SHEEN_N-1,(u/.4*SHEEN_N)|0)],gx-48*k,cy-50*k,CELL*k,CELL*k); c.globalAlpha=1; }
+  if(full||o.fx===1){ const cyc=rk===0?4.5:rk>=3?2.6:3.4; const u=((t+seed*.13)%cyc)/cyc; const sw=rk>=3?.5:rk===0?.22:.3; if(u<.4&&full&&!at){ const fr=sheenFrames(spec); c.globalAlpha=sw*Math.sin(u/.4*Math.PI); c.drawImage(fr[Math.min(SHEEN_N-1,(u/.4*SHEEN_N)|0)],gx-48*k,cy-50*k,CELL*k,CELL*k); c.globalAlpha=1; }
     if(rk>=1&&rk<=2&&full){ const u2=((t*.7+seed*.21)%3)/3; if(u2<.18){ const hh=hx(spec.key); glint(c,gx+((hh%7)-3)*3*s,cy-6*s-(hh%5)*2*s,3.4*s*Math.sin(u2/.18*Math.PI),1); } } }
-  if(rk===3) gim(true);
-  if(rk===4){ housing(true);
+  if(rk===3){ if(gs) gimSprite(c,gx,cy,k,full?t:0,seed,true); else gim(true); }
+  if(rk===4){ if(!ao) housing(true);
     if(full){ // heat shimmer: faint warm wavy lines rising above
       c.strokeStyle='rgba(224,160,96,.5)'; c.lineWidth=1*s; for(let i=0;i<3;i++){ const ph2=(t*.5+i*.33+seed*.1)%1; c.globalAlpha=.32*(1-ph2)*Math.min(1,ph2*5); c.beginPath(); for(let y=0;y<=12;y++){ const yy=cy-14*s-ph2*26*s-y*1.2*s; const xx=gx+(i-1)*7*s+Math.sin(y*.9+t*5+i)*1.6*s; y?c.lineTo(xx,yy):c.moveTo(xx,yy); } c.stroke(); } c.globalAlpha=1; } }
   // spawn dust (+ sparks for blue and above), not under Reduced FX
@@ -186,11 +245,11 @@ export function drawLoot(c:C,a:number,b:number,s:number,t:number,spec:LootSpec,s
 // ---------------------------------------------------------------- pickup
 export const PICK_T=.34;
 export function drawPickup(c:C,fx:number,fy:number,tx:number,ty:number,s:number,p:number,spec:LootSpec,seed:number,reduced:boolean){
-  if(p<0||p>1.5) return; const col=RARITY_COLOR[spec.rar]; const rk=RARITY_RANK[spec.rar]; const ic=iconCanvas(spec);
+  if(p<0||p>1.5) return; const col=RARITY_COLOR[spec.rar]; const rk=RARITY_RANK[spec.rar]; const ic=iconAt(spec,0,seed,1);
   const pos=(q:number)=>{ const e=q*q*(3-2*q*.6); const arc=Math.sin(q*Math.PI)*14*s; return { x:fx+(tx-fx)*e, y:(fy-14*s)+((ty-26*s)-(fy-14*s))*e-arc }; };
   c.save();
   if(p<=1){ const q=p; if(!reduced){ for(let i=5;i>=1;i--){ const qq=Math.max(0,q-i*.045); const pp=pos(qq); c.globalAlpha=(1-i/6)*.5; c.fillStyle=col; c.beginPath(); c.arc(pp.x,pp.y,(3.6-i*.4)*s,0,7); c.fill(); } }
-    const pp=pos(q); const k=s*.5*(1-q*.6)*(1+rk*.07); c.globalAlpha=1-q*.35; c.drawImage(ic,pp.x-48*k,pp.y-50*k,CELL*k,CELL*k);
+    const pp=pos(q); const k=s*.5*(1-q*.6)*(1+rk*.07); c.globalAlpha=1-q*.35; blit(c,ic,pp.x,pp.y,k);
     if(q>.85&&!reduced){ c.globalAlpha=(q-.85)/.15; c.fillStyle='#fff6dc'; c.beginPath(); c.arc(pp.x,pp.y,5*s,0,7); c.fill(); } }
   else if(!reduced){ const u=(p-1)/.5; const pp=pos(1); c.globalAlpha=(1-u)*.8; c.strokeStyle=rk>0?col:'#d8d2bf'; c.lineWidth=2*s*(1-u); c.beginPath(); c.arc(pp.x,pp.y,(4+u*13)*s,0,7); c.stroke(); c.globalAlpha=(1-u)*.9; c.fillStyle='#fff6dc'; c.beginPath(); c.arc(pp.x,pp.y,(5*(1-u))*s,0,7); c.fill(); if(rk>=2){ c.lineWidth=1.2*s; for(let i=0;i<6;i++){ const an=i/6*6.283+seed; c.beginPath(); c.moveTo(pp.x+Math.cos(an)*(7+u*8)*s,pp.y+Math.sin(an)*(7+u*8)*s*.8); c.lineTo(pp.x+Math.cos(an)*(10+u*12)*s,pp.y+Math.sin(an)*(10+u*12)*s*.8); c.stroke(); } } }
   c.restore();
