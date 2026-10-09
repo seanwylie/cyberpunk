@@ -27,7 +27,7 @@ export class Renderer {
   screenVecToWorld(dx:number,dy:number){ const a=dx/(this.TW/2), b=dy/(this.TW/4); return { x:(a+b)/2, y:(b-a)/2 }; }
 
   draw(dt:number){
-    const g=this.g, c=this.ctx; this.TW=this.baseTW*(g.level.kind==='town'?.74:1); c.setTransform(this.dpr,0,0,this.dpr,0,0); if(!this.anim) this.fallbackImpacts(); const sh=this.shake>0?this.shake*7:0; if(sh) c.translate((Math.random()*2-1)*sh,(Math.random()*2-1)*sh);
+    const g=this.g, c=this.ctx; this.TW=this.baseTW*(g.level.kind==='town'?.68:1); c.setTransform(this.dpr,0,0,this.dpr,0,0); if(!this.anim) this.fallbackImpacts(); const sh=this.shake>0?this.shake*7:0; if(sh) c.translate((Math.random()*2-1)*sh,(Math.random()*2-1)*sh);
     const tx=(g.px-g.py)*this.TW/2, ty=(g.px+g.py)*this.TW/4; this.camx+= (tx-this.camx)*Math.min(1,dt*8); this.camy+=(ty-this.camy)*Math.min(1,dt*8);
     if(this.shake>0) this.shake=Math.max(0,this.shake-dt*3);
     c.fillStyle=PAL.soot; c.fillRect(0,0,this.w,this.h);
@@ -130,7 +130,7 @@ export class Renderer {
     // ground-level telegraphs/zones go under actors
     this.drawGroundFx();
     for(const it of items) it.f();
-    this.drawProjAndFx(); if(L.kind==='town'&&this.town?.ready) this.drawTownAmbient();
+    this.drawProjAndFx(); if(L.kind==='town'&&this.town?.ready) this.drawTownOverhead(); if(L.kind==='town'&&this.town?.ready) this.drawTownAmbient();
   }
   interactVisible(id:string){ const g=this.g; if(g.mode!=='run'||!g.inst) return true; const f=g.inst.flags; if(id==='controller') return false; if(id==='hackproc') return !f.lock2; return true; }
   hazard(x:number,y:number){ const c=this.ctx; c.save(); c.strokeStyle=PAL.oxide; c.lineWidth=3; c.globalAlpha=.8; const a=this.sx(x+.5,y+.5), b=this.sy(x+.5,y+.5,.8); c.beginPath(); c.moveTo(a-this.TW*.25,b-this.TW*.1); c.lineTo(a+this.TW*.25,b+this.TW*.1); c.moveTo(a-this.TW*.25,b+this.TW*.1); c.lineTo(a+this.TW*.25,b-this.TW*.1); c.stroke(); c.restore(); }
@@ -259,11 +259,21 @@ export class Renderer {
   private townMarker(it:{id:string;x:number;y:number;label:string},a:number,b:number,s:number){ const c=this.ctx, g=this.g; const near=Math.hypot(g.px-it.x,g.py-it.y)<7; const bob=Math.sin(g.time*2.2+it.x)*2*s; const lift=(it.id==='annex'?64:it.id==='locker'?44:52)*s;
     c.save(); c.globalAlpha=near?.95:.55; c.fillStyle='#cfc6b0'; c.strokeStyle='rgba(10,10,12,.7)'; c.lineWidth=1.5; c.beginPath(); c.moveTo(a,b-lift+8*s+bob); c.lineTo(a-6*s,b-lift+bob); c.lineTo(a+6*s,b-lift+bob); c.closePath(); c.fill(); c.stroke(); c.restore();
     if(near){ c.save(); c.font=`${Math.max(10,11*s*1.3)}px system-ui,sans-serif`; c.textAlign='center'; c.fillStyle='rgba(15,15,16,.72)'; const tw=c.measureText(it.label).width; c.fillRect(a-tw/2-5,b-lift-22*s,tw+10,16*s*1.3); c.fillStyle='#d8d2bf'; c.fillText(it.label,a,b-lift-9*s); c.restore(); } }
+  /** overhead dressing (awnings, lantern swags, bulb strings, rag lines): drawn after actors, fades while the player is under it; glow anchors are saved for the light pass */
+  private ovGlows:{x:number;y:number;r:number;a:number;c:string;ph:number}[]=[];
+  private drawTownOverhead(){ const t=this.town!, L=this.g.level, c=this.ctx, g=this.g; this.ovGlows.length=0; const pa=this.sx(g.px,g.py), pb=this.sy(g.px,g.py)-this.TW*.6;
+    for(const o of L.overhead||[]){ const w=o.sw*this.TW; const sp=t.scaled(o.spr,w,this.dpr); if(!sp) continue; const X=this.sx(o.x,o.y)-sp.w/2, Y=this.sy(o.x,o.y,o.z)-sp.h*.5; if(X>this.w||X+sp.w<0||Y>this.h||Y+sp.h<0) continue;
+      const under=pa>X-6&&pa<X+sp.w+6&&pb>Y-this.TW*.3&&pb<Y+sp.h+this.TW*1.2; const key=o.spr+o.x+','+o.y; const cur=this.ovA.get(key)??1; const tgt=under?.28:o.glow?.95:.92; const na=cur+(tgt-cur)*.18; this.ovA.set(key,na);
+      c.save(); c.globalAlpha=na; c.drawImage(sp.cv,Math.round(X*this.dpr)/this.dpr,Math.round(Y*this.dpr)/this.dpr,sp.w,sp.h); c.restore();
+      if(o.glow==='lanterns') for(const u of [.13,.37,.62,.88]) this.ovGlows.push({x:X+sp.w*u,y:Y+sp.h*.74,r:this.TW*1.5,a:.3*na,c:'warm',ph:u*9+X});
+      else if(o.glow==='bulbs') for(let i=0;i<14;i++){ const u=.04+i*.069; this.ovGlows.push({x:X+sp.w*u,y:Y+sp.h*(.62+Math.sin(u*9)*.06),r:this.TW*.8,a:.16*na,c:'warm',ph:i*1.7}); } } }
+  private ovA=new Map<string,number>();
   private drawTownAmbient(){ const t=this.town!, L=this.g.level, c=this.ctx, g=this.g; const T=g.time; const red=g.save.settings.reducedFx;
     // particles (steam/embers/dust)
     for(const p of t.parts){ const k=p.t/p.life; const a=this.sx(p.x,p.y), b=this.sy(p.x,p.y,p.z); if(p.k==='steam'){ const r=p.s*this.TW; c.globalAlpha=.3*(1-k)*Math.min(1,p.t*2); c.drawImage(t.glows.puff,a-r*1.4,b-r*1.4,r*2.8,r*2.8); c.globalAlpha=1; } else if(p.k==='ember'){ c.fillStyle=`rgba(255,150,70,${1-k})`; c.fillRect(a,b,2,2); } else if(!red){ c.fillStyle=`rgba(200,190,170,${.25*Math.sin(Math.PI*k)})`; c.fillRect(a,b,1.6,1.6); } }
     // additive light pools with flicker
-    c.save(); c.globalCompositeOperation='lighter'; for(let i=0;i<(L.lights||[]).length;i++){ const l=L.lights![i]; const a=this.sx(l.x,l.y), b=this.sy(l.x,l.y,l.z); if(a<-300||a>this.w+300||b<-300||b>this.h+300) continue; const fl=l.flick?1+Math.sin(T*(9+i)+i*2.1)*l.flick*.6+Math.sin(T*23+i*5)*l.flick*.4:1; const r=l.r*this.TW*.5*(l.c==='cool'?1:.9+fl*.1); c.globalAlpha=Math.max(0,l.a*fl*(l.c==='cool'?1:.8)); c.drawImage(t.glows[l.c],a-r,b-r*.62,r*2,r*1.24); } c.restore(); }
+    c.save(); c.globalCompositeOperation='lighter'; for(let i=0;i<(L.lights||[]).length;i++){ const l=L.lights![i]; const a=this.sx(l.x,l.y), b=this.sy(l.x,l.y,l.z); if(a<-300||a>this.w+300||b<-300||b>this.h+300) continue; const fl=l.flick?1+Math.sin(T*(9+i)+i*2.1)*l.flick*.6+Math.sin(T*23+i*5)*l.flick*.4:1; const r=l.r*this.TW*.5*(l.c==='cool'?1:.9+fl*.1); c.globalAlpha=Math.max(0,l.a*fl*(l.c==='cool'?1:.8)); c.drawImage(t.glows[l.c],a-r,b-r*.62,r*2,r*1.24); }
+    for(const gl of this.ovGlows){ const fl=1+Math.sin(T*8+gl.ph)*.08+Math.sin(T*21+gl.ph*2)*.05; c.globalAlpha=gl.a*fl; c.drawImage(t.glows[gl.c],gl.x-gl.r,gl.y-gl.r,gl.r*2,gl.r*2); } c.restore(); }
   drawOverlay(){ const c=this.ctx; if(this.g.level.kind==='town'){ c.fillStyle='rgba(10,12,20,.2)'; c.fillRect(0,0,this.w,this.h); } else if(this.env) this.org.drawFogAndVignette(this); const gr=c.createRadialGradient(this.w/2,this.h/2,Math.min(this.w,this.h)*.35,this.w/2,this.h/2,Math.max(this.w,this.h)*.75); gr.addColorStop(0,'rgba(10,10,12,0)'); gr.addColorStop(1,this.g.level.kind==='town'?'rgba(6,7,10,.72)':'rgba(10,10,12,.6)'); c.fillStyle=gr; c.fillRect(0,0,this.w,this.h); }
 }
 export const ATKD:Record<string,{shape:'cone'|'circle'|'line'|'fan'|'aim';r:number;arc:number;w:number;w_?:number}&{w:number}> = {} as any;

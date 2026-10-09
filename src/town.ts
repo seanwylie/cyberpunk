@@ -4,7 +4,7 @@
 // Drop-in: replace any PNG in public/town/props with another of the same name (see public/town/manifest.json); missing files are skipped.
 import type { Level, Decor } from './level';
 
-export const TOWN_PROPS = ['stall_a','stall_clothes','stall_goods','stall_vendor_sign','fixer_booth','gate_arch','scaffold','steam_drums','npc1','npc2','npc3','npc4','lockers','fence','poster_wall','sign_fixer','stall_vendor','workbench','stall_awning','crates','barrels','lamp','cables','bench','junk','grate','vending','noticeboard','barrel_fire'];
+export const TOWN_PROPS = ['stall_a','stall_clothes','stall_goods','stall_vendor_sign','fixer_booth','gate_arch','scaffold','steam_drums','npc1','npc2','npc3','npc4','lockers','fence','poster_wall','sign_fixer','stall_vendor','workbench','stall_awning','crates','barrels','lamp','cables','bench','junk','grate','vending','noticeboard','barrel_fire','awn_red','awn_blue','awn_green','awn_grey','swag1','swag2','swag3','bulbs','rags1','rags2','leanto','stall_noodle','stall_implant','stall_clinic','stall_weapons','stall_junk','board_jobs','banner_pole','np_kneel_l','np_kneel_r','np_woman_table','np_pair_talk','np_kid_l','np_kid_r','np_guard_l','np_guard_r','np_porter','np_hooded_wall','np_lantern_l','np_lantern_r','bld1','bld2','bld3','container','slab','gantry','barrier','barrier_corner'];
 const GROUND = ['cobble','planks','debris','plaza'];
 const rng = (seed: number) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const mk = (w: number, h: number) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };

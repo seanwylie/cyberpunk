@@ -23,7 +23,7 @@ export class Organic {
     const nearDoor = L.doors.some(d => d.tiles.some(t => Math.abs(t[0] - x) <= 2 && Math.abs(t[1] - y) <= 2));
     const e = fl(x + 1, y), w = fl(x - 1, y), sN = fl(x, y + 1), nN = fl(x, y - 1); const corner = (e || w) && (sN || nN) && ((e ? 1 : 0) + (w ? 1 : 0) + (sN ? 1 : 0) + (nN ? 1 : 0)) === 2;
     const hv = hash(x * 3 + 1, y * 5 + 2); s = { h };
-    const touches = e || w || sN || nN; if (town && touches && x + y > 21 && !(L.hide && L.hide[k])) { s.rubble = 1 + ((hv * 10) | 0) % 3; m.set(k, s); return s; } const cave = vnoise(x * .45 + 91, y * .45 + 17) > .74 && hv < .8; // clustered cave-in stretches
+    const touches = e || w || sN || nN; if (town && touches && !(L.hide && L.hide[k])) { s.rubble = 1 + ((hv * 10) | 0) % 3; m.set(k, s); return s; } const cave = vnoise(x * .45 + 91, y * .45 + 17) > .74 && hv < .8; // clustered cave-in stretches
     if (corner && !nearDoor && hv < .85 && !(L.hide && L.hide[k])) s.rubble = 1 + ((hv * 10) | 0) % 3; else if (touches && cave && !nearDoor) s.rubble = 1 + ((hv * 10) | 0) % 3; else if (hv > .8 && !nearDoor) s.broken = true;
     if (nearDoor) s.h = Math.max(1.5, Math.min(1.65, h)); m.set(k, s); return s;
   }

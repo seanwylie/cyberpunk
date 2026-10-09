@@ -8,3 +8,8 @@ Style line for every prompt: "isometric 45° stylized-realism bleak industrial c
 4. **Sheet 6 – perimeter set pieces to replace the dark rubble border:** 3 tall corrugated tenement wall segments with windows lit warm and pipes, a shipping-container wall segment, a collapsed concrete slab with rebar, a gantry/stair tower, a tall chain-link + scrap barrier. Each as a straight wall piece 3 tiles long in iso, plus a corner piece.
 5. **Ground variants (top-down, seamless, 1024²):** cracked asphalt with oil stains; tarp-covered stall floor (stained canvas over planks); gutter/drain channel strip with running water; scorched ground around the burning barrel; wet plaza paving with painted bone-white lane stencils (no neon).
 6. **Animated extras (single frames are fine, we animate in code):** lamp bulb flicker frames not required; steam puff and spark sprites (soft, grey/white, transparent bg) for particles.
+
+---
+## Round 2 status
+Sheets 3–6 (`town_sheet3_overhead`, `4_stalls`, `5_npcs`, `6_perimeter`) are integrated: cut with `tools/town/cut.py` (now fits a quadratic background per sheet, `auto:` naming, env `ROWS/CUTX/OPEN/MINSZ`), see names in `src/town.ts` `TOWN_PROPS`.
+Still wanted (not yet generated): lit-from-warm NPC variants (current figures are dark and flat against the lit ground), more tall overhead tarps that connect stalls, animated steam/smoke frames, a lit window/neon-free sign set for the tenements, and a second plaza ground with painted lane stencils.
