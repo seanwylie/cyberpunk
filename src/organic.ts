@@ -5,6 +5,7 @@
 //  - drawFogAndVignette: slow parallax fog banks + extra edge darkening
 import type { Level } from './level';
 import type { Renderer } from './render';
+import { themeScatter, themeOf } from './dungeon_env';
 const OP = 24, CH = 6;
 const rng = (seed: number) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const hash = (x: number, y: number) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177 | 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967295; };
@@ -73,6 +74,7 @@ export class Organic {
       else if (hv < .25) { x.strokeStyle = 'rgba(8,8,9,.55)'; x.lineWidth = 1.1; x.beginPath(); let cx = px, cy = py, a = R() * 6.28; x.moveTo(cx, cy); for (let i = 0; i < 6; i++) { a += (R() - .5) * 1.1; cx += Math.cos(a) * OP * .35; cy += Math.sin(a) * OP * .35; x.lineTo(cx, cy); } x.stroke(); }
       else if (hv < .28) blob(px, py, OP * (.6 + R() * .6), '70,48,34', .18, .7, R() * 3);
       else if (hv < .31) { blob(px, py, OP * (.35 + R() * .45), '40,50,58', .38, .45 + R() * .3, R() * 3); blob(px - 2, py - 2, OP * .22, '170,185,195', .1, .5, 0); } }
+    themeScatter(x, L, OP, floors, R, themeOf(L));
     // 4. diagonal pipes / cables lying across the floor at arbitrary angles
     const nPipes = Math.max(4, Math.floor(floors.length / 90));
     for (let n = 0; n < nPipes; n++) { const [tx, ty] = floors[(R() * floors.length) | 0]; let a = R() * Math.PI; if (Math.abs((a % (Math.PI / 2)) - 0) < .25 || Math.abs((a % (Math.PI / 2)) - Math.PI / 2) < .25) a += .5; const pts: [number, number][] = []; let px = tx + .5, py = ty + .5; const len = 4 + R() * 6; const curve = (R() - .5) * .35;

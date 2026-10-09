@@ -214,3 +214,6 @@ export function reachable(lv:Level,from:{x:number;y:number},to:{x:number;y:numbe
   while(q.length){ const c=q.pop()!; if(c===t) return true; const cx=c%lv.w, cy=(c/lv.w)|0; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=cx+dx,ny=cy+dy; if(nx<0||ny<0||nx>=lv.w||ny>=lv.h) continue; const i=ny*lv.w+nx; if(seen[i]||s[i]) continue; seen[i]=1; q.push(i); } }
   return false;
 }
+
+// THEME TAG: visual theme id on each built level (consumed by src/dungeon_env.ts via themeOf); purely cosmetic.
+for(const id of ['foundry','clinic','warehouse']){ const d=DUNGEONS[id]; const b=d.build; d.build=()=>({ ...b(), theme:id }); }

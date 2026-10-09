@@ -1,3 +1,4 @@
+import { DungeonArt, isDungeonTheme } from './dungeon_env';
 // Procedural environment textures (runtime-generated, cached, lazily built). Style: concrete grey, soot black, dirty bone,
 // oxidized metal, faded textile; restrained oxide red / slate blue / olive; no neon. Everything is drawn once into offscreen
 // canvases (1 texture px = 1/S world unit) and blitted with an isometric affine, so per-frame cost is one drawImage per face.
@@ -155,13 +156,19 @@ let _bb: HTMLCanvasElement | null = null; function makeBeltBase(): HTMLCanvasEle
 // ---------------- public renderer-facing API ----------------
 export class Env {
   ok = true; private cache = new Map<string, HTMLCanvasElement>(); private bytes = 0;
+  /** dungeon visual theme: themed floor/wall/prop variants are re-graded from the base procedural textures (see dungeon_env.ts) */
+  theme = ''; da: DungeonArt | null = null; private th() { return this.da && isDungeonTheme(this.theme) ? this.theme : ''; }
+  setTheme(t: string) { if (t === this.theme) return; this.theme = t; for (const k of [...this.cache.keys()]) { const i = k.indexOf('|'); if (i > 0 && k.slice(0, i) !== t) { const c = this.cache.get(k)!; this.bytes -= c.width * c.height * 4; this.cache.delete(k); } } if (this.th()) this.warmTheme(); }
+  private warmTheme() { const t = this.theme; const q: (() => void)[] = []; for (const z of ['yard', 'proc', 'junction', 'boss', 'salvage', 'corridor', 'passage']) for (let v = 0; v < FLOOR_VARIANTS; v++) q.push(() => this.floor(z, v)); for (let v = 0; v < 6; v++) { q.push(() => this.wall('concrete', v, 'yard')); q.push(() => this.wall('steel', v, 'proc')); }
+    for (let v = 0; v < 5; v++) { q.push(() => this.crateFace('crate', v, .9)); q.push(() => this.top('crate', v)); } for (const h of [1.8, 1.5, 1.6, 2, 1.4, 1.1, 1.7, 2.4]) q.push(() => this.crateFace('machine', 0, h)); for (const h of [1.6, 1.4, 1.8, 1.1, 2.2, 1.7]) q.push(() => this.crateFace('rack', 0, h)); q.push(() => this.top('machine', 0)); q.push(() => this.top('rack', 0)); for (const h of [2.2, 2.0, 2.4]) q.push(() => this.crateFace('pillar', 0, h)); q.push(() => this.top('pillar', 0));
+    const tick = () => { if (this.theme !== t) return; const f = q.shift(); if (!f) return; try { f(); } catch { /* lazy path will retry */ } setTimeout(tick, 0); }; setTimeout(tick, 30); }
   private get<T extends HTMLCanvasElement>(k: string, f: () => T): T { let c = this.cache.get(k) as T; if (!c) { c = f(); this.cache.set(k, c); this.bytes += c.width * c.height * 4; } return c; }
-  floor(zone: string, v: number) { return this.get(`f:${zone}:${v}`, () => makeFloor(zone, v)); }
+  floor(zone: string, v: number) { const t = this.th(); return t ? this.get(`${t}|f:${zone}:${v}`, () => this.da!.floor(makeFloor(zone, v), t, zone, v)) : this.get(`f:${zone}:${v}`, () => makeFloor(zone, v)); }
   ao(side: number) { return this.get(`ao:${side}`, () => makeAO(side)); }
-  wall(style: WStyle, v: number, zone: string) { return this.get(`w:${style}:${v}:${style === 'concrete' ? 'c' : 's'}`, () => makeWall(style, v, zone)); }
+  wall(style: WStyle, v: number, zone: string) { const t = this.th(); if (t && style !== 'door') return this.get(`${t}|w:${style}:${v}`, () => this.da!.wall(makeWall(style, v, zone), t, style, v, zone)); return this.get(`w:${style}:${v}:${style === 'concrete' ? 'c' : 's'}`, () => makeWall(style, v, zone)); }
   cap(v: number) { return this.get(`cap:${v}`, () => makeCap(400 + v)); }
-  crateFace(kind: string, v: number, h: number) { return this.get(`pf:${kind}:${v}:${h}`, () => makeCrateFace(kind, v, h)); }
-  top(kind: string, v: number) { return this.get(`pt:${kind}:${v}`, () => makeTop(kind, v)); }
+  crateFace(kind: string, v: number, h: number) { const t = this.th(); if (t) return this.get(`${t}|pf:${kind}:${v}:${h}`, () => this.da!.prop(makeCrateFace(kind, v, h), t, kind, v, false)); return this.get(`pf:${kind}:${v}:${h}`, () => makeCrateFace(kind, v, h)); }
+  top(kind: string, v: number) { const t = this.th(); if (t) return this.get(`${t}|pt:${kind}:${v}`, () => this.da!.prop(makeTop(kind, v), t, kind, v, true)); return this.get(`pt:${kind}:${v}`, () => makeTop(kind, v)); }
   belt(ph = 0) { return this.get('belt' + ph, () => makeBelt(ph)); }
   get memoryMB() { return this.bytes / 1048576; }
   /** Build every texture one-per-tick in the background (first level/zone first) so no frame pays for generation in bulk. */

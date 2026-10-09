@@ -41,3 +41,16 @@ ten_hallowell, noor_abiodun, pell_okafor, ilya_sen, liaison_costa, liaison_dunmo
 
 ## G. Audio (later)
 Per-dungeon music foundation by manufacturer plus a boss motif layer for each boss; distinct signature sounds for the six orange items and the new telegraphs (blink, saw lanes, slag pools).
+
+## H. Enemy / boss facing variants (requested by the art pass; please generate)
+Current state: each enemy is ONE concept view (front / three-quarter), cut to alpha (`public/dungeons/enemies/<id>.png`). The game flips it left/right to the screen side of travel and aims, leans/squashes it procedurally. It does NOT yet show a back or a profile, so enemies walking up-screen still show their fronts.
+The renderer already looks for an optional **`<id>_back.png`** (same folder, same canvas height/proportions, alpha, feet at the bottom edge) and swaps it in automatically when the enemy faces away from the camera (up-screen). Dropping files in is all that is needed; no code change. Optional extra names the loader can be extended to: `<id>_side.png` (profile, facing screen-right; mirrored for left).
+
+Prompt template (one sheet per dungeon, same flat mid-grey #7b7b7b background, soft ground shadow, 1280x720 sheet, same figure order as the existing enemy sheets; keep palette and NO neon):
+- "BACK VIEW (seen from behind, isometric ~45 degrees camera, character facing away from camera and slightly to the left) of the exact same characters as in the attached enemy concept sheet [enemies_foundry|enemies_clinic|enemies_warehouse]. Identical armor, proportions, scale, colours, damage and hardware; show backpacks, vents, cable runs, spines, hydraulics, stencils on the back. Flat grey backdrop, one figure per cell in the same positions and sizes, no text, no labels."
+- Then the same prompt with "SIDE PROFILE facing screen-right".
+Priority order (largest visual win first): teague, brannoch, surgeon, recovered, retrieval, stockmgr, reclaimer, then ordinary mobs (slaghauler, ladlecrew, orderly, picker, loader), then elites.
+Static turrets (slagcannon, sentry, camgun) only need a back view if their barrel should visibly rotate; otherwise skip.
+Hover bosses (ore9, autosurgeon) are ceiling/furnace rigs: a "from below" variant is more useful than a back view.
+
+True multi-frame animation (still needs hand-made or Blender art, not covered by the procedural layer): walk cycle legs/arms, weapon swing arcs, ladle/saw/claw articulation, GEMINI claw opening, ORE-9 drone orbit, hound gallop. If generating image sets, ask for 6-frame strips per action (walk, attack wind-up, attack strike) with identical framing per row.

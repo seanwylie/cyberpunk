@@ -7,6 +7,8 @@ import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
 import type { Level } from './level';
 import { TownArt, GP, decorDepth } from './town';
 import { Organic } from './organic';
+import { DungeonArt, themeOf } from './dungeon_env';
+import { EnemyArt } from './enemyart';
 
 export const PAL = { concrete:'#7a7c78', soot:'#1b1c1e', bone:'#cfc6b0', oxide:'#8f3b2e', metal:'#6b5a4a', slate:'#4f6578', olive:'#6b7035', skin:'#b29b84' };
 const ZCOL:Record<string,[string,string]> = { yard:['#7b7d79','#727470'], proc:['#6c6e6b','#646663'], junction:['#74777b','#6c6f73'], boss:['#5f6163','#57595b'], salvage:['#6d6b63','#656359'], corridor:['#696b69','#616361'], passage:['#55585b','#4d5053'], town:['#7c7b75','#74736d'], none:['#222','#222'] };
@@ -14,8 +16,8 @@ const hash=(x:number,y:number)=>{ let h=(x*374761393+y*668265263)|0; h=(h^(h>>>1
 
 export class Renderer {
   ctx:CanvasRenderingContext2D; w=0; h=0; dpr=1; TW=64; baseTW=64; camx=0; camy=0; shake=0;
-  anim:PlayerAnimator|null=null; lastT=0; env:Env|null=null; town:TownArt|null=null; org=new Organic(); private wallCache=new WeakMap<Level,Map<number,{style:'concrete'|'steel';v:number;zone:string}>>();
-  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); if(this.env) this.town=new TownArt(); loadAtlas().then(l=>{ if(l){ this.anim=new PlayerAnimator(l); this.anim.onImpact=k=>this.impact(k); } }); }
+  anim:PlayerAnimator|null=null; lastT=0; dart=new DungeonArt(); eart=new EnemyArt(); private theme=''; env:Env|null=null; town:TownArt|null=null; org=new Organic(); private wallCache=new WeakMap<Level,Map<number,{style:'concrete'|'steel';v:number;zone:string}>>();
+  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); if(this.env) this.env.da=this.dart; if(this.env) this.town=new TownArt(); loadAtlas().then(l=>{ if(l){ this.anim=new PlayerAnimator(l); this.anim.onImpact=k=>this.impact(k); } }); }
   resize(){ this.dpr=Math.min(window.devicePixelRatio||1,2); const w=window.innerWidth,h=window.innerHeight; this.canvas.width=w*this.dpr; this.canvas.height=h*this.dpr; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=this.baseTW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
   // projection
   sx(x:number,y:number){ return (x-y)*this.TW/2 + this.w/2 - this.camx; }
@@ -28,7 +30,7 @@ export class Renderer {
   screenVecToWorld(dx:number,dy:number){ const a=dx/(this.TW/2), b=dy/(this.TW/4); return { x:(a+b)/2, y:(b-a)/2 }; }
 
   draw(dt:number){
-    const g=this.g, c=this.ctx; this.TW=this.baseTW*(g.level.kind==='town'?.68:1); c.setTransform(this.dpr,0,0,this.dpr,0,0); if(!this.anim) this.fallbackImpacts(); const sh=this.shake>0?this.shake*7:0; if(sh) c.translate((Math.random()*2-1)*sh,(Math.random()*2-1)*sh);
+    const g=this.g, c=this.ctx; this.TW=this.baseTW*(g.level.kind==='town'?.68:1); const th=themeOf(g.level); if(th!==this.theme){ this.theme=th; this.env?.setTheme(th); } c.setTransform(this.dpr,0,0,this.dpr,0,0); if(!this.anim) this.fallbackImpacts(); const sh=this.shake>0?this.shake*7:0; if(sh) c.translate((Math.random()*2-1)*sh,(Math.random()*2-1)*sh);
     const tx=(g.px-g.py)*this.TW/2, ty=(g.px+g.py)*this.TW/4; this.camx+= (tx-this.camx)*Math.min(1,dt*8); this.camy+=(ty-this.camy)*Math.min(1,dt*8);
     if(this.shake>0) this.shake=Math.max(0,this.shake-dt*3);
     c.fillStyle=PAL.soot; c.fillRect(0,0,this.w,this.h);
@@ -41,7 +43,7 @@ export class Renderer {
     for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ const i=y*L.w+x; if(L.solid[i]&&!this.isDoorTile(x,y)) continue; const z=L.zoneNames[L.zone[i]]; const pal=ZCOL[z]||ZCOL.yard; const hv=hash(x,y); if(this.env){ this.floorTile(x,y,z,i); continue; } this.tile(x,y,pal[(x+y)&1]); if(hv>.86){ c.fillStyle='rgba(20,20,22,.16)'; const a=this.sx(x+.5,y+.5), b=this.sy(x+.5,y+.5); c.beginPath(); c.ellipse(a,b,this.TW*.12*(.5+hv),this.TW*.05*(.5+hv),0,0,7); c.fill(); }
       if(hv<.04){ c.strokeStyle='rgba(30,30,30,.25)'; c.lineWidth=1; c.beginPath(); c.moveTo(this.sx(x+.2,y+.3),this.sy(x+.2,y+.3)); c.lineTo(this.sx(x+.7,y+.8),this.sy(x+.7,y+.8)); c.stroke(); }
       if((z==='proc')&&(x%8===0)&&hv>.2){ this.tile(x,y,'rgba(143,59,46,.10)'); } }
-    if(this.env){ this.drawDecals(); this.org.drawFloorOverlay(this,L); }
+    if(this.env){ this.drawDecals(); this.org.drawFloorOverlay(this,L); this.dart.arena(this); }
     for(const cp of L.checkpoints){ const done=this.g.mode==='run'&&(this.g.inst?.reached||[]).includes(cp.id); const cur=this.g.mode==='run'&&this.g.inst?.checkpoint.id===cp.id; this.ring(cp.x,cp.y,1.1,done?'#8fae7f':PAL.bone,done?.9:.6,true); if(cur) this.ring(cp.x,cp.y,1.5+.12*Math.sin(this.g.time*4),'#8fae7f',.8); }
     if(g.mode==='run'&&g.inst){ const f=g.inst.flags; if(!f.controller){ const it=L.interacts.find(i=>i.id==='controller')!; this.ring(it.x,it.y,.9,'#d8d2bf',.45,true); } }
   }
@@ -125,13 +127,13 @@ export class Renderer {
     if(L.kind==='town'&&this.town?.ready) this.townItems(items);
     for(const it of L.interacts){ if(!this.interactVisible(it.id)) continue; items.push({d:it.x+it.y,f:()=>this.drawInteract(it)}); }
     for(const dr of (g.inst&&g.mode==='run'?g.inst.drops:[])) items.push({d:dr.x+dr.y,f:()=>this.drawDrop(dr)});
-    for(const e of g.enemies){ if(e.dead){ continue; } items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); }
+    for(const e of g.enemies){ if(e.dead){ if(this.eart.dying(e,g.time)) items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); continue; } items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); }
     if(!g.downed||true) items.push({d:g.px+g.py,f:()=>this.drawPlayer()});
     items.sort((a,b)=>a.d-b.d);
     // ground-level telegraphs/zones go under actors
     this.drawGroundFx();
     for(const it of items) it.f();
-    this.drawProjAndFx(); this.drawGuidance(); if(L.kind==='town'&&this.town?.ready) this.drawTownOverhead(); if(L.kind==='town'&&this.town?.ready) this.drawTownAmbient();
+    this.dart.ambient(this); this.drawProjAndFx(); this.drawGuidance(); if(L.kind==='town'&&this.town?.ready) this.drawTownOverhead(); if(L.kind==='town'&&this.town?.ready) this.drawTownAmbient();
   }
   interactVisible(id:string){ const g=this.g; if(g.mode!=='run'||!g.inst) return true; const f=g.inst.flags; if(id==='controller') return false; if(id==='hackproc') return !f.lock2; return true; }
   hazard(x:number,y:number){ const c=this.ctx; c.save(); c.strokeStyle=PAL.oxide; c.lineWidth=3; c.globalAlpha=.8; const a=this.sx(x+.5,y+.5), b=this.sy(x+.5,y+.5,.8); c.beginPath(); c.moveTo(a-this.TW*.25,b-this.TW*.1); c.lineTo(a+this.TW*.25,b+this.TW*.1); c.moveTo(a-this.TW*.25,b+this.TW*.1); c.lineTo(a+this.TW*.25,b-this.TW*.1); c.stroke(); c.restore(); }
@@ -182,6 +184,8 @@ export class Renderer {
   }
   drawEnemy(e:En){
     const g=this.g, c=this.ctx; const def=ENEMIES[e.type]; const s=this.TW/64*(def.boss?1.8:def.elite?1.35:1); const a=this.sx(e.x,e.y), b=this.sy(e.x,e.y); const rt=e._rt; const mf=MFR[def.mfr];
+    const art=this.eart.draw(this,e,def,rt,a,b);
+    if(!art){
     const rev=rt.reveal>0?Math.max(0,1-rt.reveal/COMBAT.bossRevealSeconds):1; if(rt.reveal>0){ c.save(); c.beginPath(); c.rect(a-80*s,b-120*s,160*s,120*s+2); c.clip(); }
     c.save(); c.fillStyle='rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(a,b,13*s,6*s,0,0,7); c.fill();
     c.translate(a,b+(rt.reveal>0?(1-rev)*70*s:0)); if(e.faction==='ally'){ c.globalAlpha=.9; }
@@ -198,12 +202,13 @@ export class Renderer {
       else { this.limb(wx,wy,wx+dirx*9*s,wy+5*s,4*s,'#6e6a5e'); }
     }
     c.restore(); if(rt.reveal>0) c.restore();
+    }
     // dust on emergence
     if(rt.reveal>0&&Math.random()<.5) g.fx.push({kind:'dust',x:e.x+(Math.random()-.5)*2,y:e.y+(Math.random()-.5)*2,t:0,life:.6});
     // health bar only for elites and bosses
-    if(def.elite&&rt.reveal<=0){ const w=(def.boss?64:44)*(this.TW/64); const hx=a-w/2, hy=b-(def.boss?118:70)*(this.TW/64); c.fillStyle='rgba(10,10,10,.75)'; c.fillRect(hx-1,hy-1,w+2,7); c.fillStyle=def.boss?'#a2523f':'#b08a4a'; c.fillRect(hx,hy,w*Math.max(0,e.hp/e.maxHp),5); if(rt.vuln>0){ c.fillStyle='#d8d2bf'; c.font='10px system-ui'; c.textAlign='center'; c.fillText('OPENING',a,hy-4); } }
-    if(g.target===e.id){ const r=def.radius+.35; this.ring(e.x,e.y,r,'#d8d2bf',.95); const c2=this.ctx; c2.save(); c2.strokeStyle='#d8d2bf'; c2.lineWidth=2; const bx=a, by=b-(def.boss?100:def.elite?60:42)*(this.TW/64); c2.beginPath(); c2.moveTo(bx-6,by-8); c2.lineTo(bx,by); c2.lineTo(bx+6,by-8); c2.stroke(); c2.restore(); }
-    if(e.stunT>0){ c.fillStyle='#d8d2bf'; c.font='11px system-ui'; c.textAlign='center'; c.fillText('✕',a,b-60*(this.TW/64)); }
+    if(def.elite&&rt.reveal<=0&&!e.dead){ const w=(def.boss?64:44)*(this.TW/64); const hx=a-w/2, hy=b-(art?art.top+4:(def.boss?118:70)*(this.TW/64)); c.fillStyle='rgba(10,10,10,.75)'; c.fillRect(hx-1,hy-1,w+2,7); c.fillStyle=def.boss?'#a2523f':'#b08a4a'; c.fillRect(hx,hy,w*Math.max(0,e.hp/e.maxHp),5); if(rt.vuln>0){ c.fillStyle='#d8d2bf'; c.font='10px system-ui'; c.textAlign='center'; c.fillText('OPENING',a,hy-4); } }
+    if(g.target===e.id){ const r=def.radius+.35; this.ring(e.x,e.y,r,'#d8d2bf',.95); const c2=this.ctx; c2.save(); c2.strokeStyle='#d8d2bf'; c2.lineWidth=2; const bx=a, by=b-(art?art.top*.92:(def.boss?100:def.elite?60:42)*(this.TW/64)); c2.beginPath(); c2.moveTo(bx-6,by-8); c2.lineTo(bx,by); c2.lineTo(bx+6,by-8); c2.stroke(); c2.restore(); }
+    if(e.stunT>0){ c.fillStyle='#d8d2bf'; c.font='11px system-ui'; c.textAlign='center'; c.fillText('✕',a,b-(art?art.top+8:60*(this.TW/64))); }
   }
   drawGuidance(){ const g=this.g; if(g.mode!=='run'||g.downed) return; const gd=g.guidance(); if(!gd) return; const c=this.ctx, s=this.TW/64;
     const px=this.sx(g.px,g.py), py=this.sy(g.px,g.py,.5); const wx=this.sx(gd.wp.x,gd.wp.y), wy=this.sy(gd.wp.x,gd.wp.y,.5); const a=Math.atan2(wy-py,wx-px); const far=gd.dist>4;
@@ -212,7 +217,7 @@ export class Renderer {
     const ox=this.sx(gd.obj.x,gd.obj.y), oy=this.sy(gd.obj.x,gd.obj.y,.5); const m=26; if(ox<m||ox>this.w-m||oy<m||oy>this.h-m){ const ex=Math.max(m,Math.min(this.w-m,ox)), ey=Math.max(m+40,Math.min(this.h-m,oy)); c.save(); c.fillStyle='#e05a3a'; c.globalAlpha=.55+.3*Math.sin(g.time*6); c.beginPath(); c.arc(ex,ey,7*s,0,7); c.fill(); c.restore(); } else { this.ring(gd.obj.x,gd.obj.y,1.2+.2*Math.sin(g.time*4),'#e05a3a',.75); c.save(); c.fillStyle='#e05a3a'; c.globalAlpha=.8; c.beginPath(); c.moveTo(ox,oy-34*s+Math.sin(g.time*5)*3*s); c.lineTo(ox-7*s,oy-46*s+Math.sin(g.time*5)*3*s); c.lineTo(ox+7*s,oy-46*s+Math.sin(g.time*5)*3*s); c.closePath(); c.fill(); c.restore(); } }
   drawGroundFx(){
     const g=this.g, c=this.ctx;
-    for(const z of g.zones){ const warn=z.t<z.windup; const p=warn?z.t/z.windup:1; this.poly(this.circle(z.x,z.y,z.r),warn?'#b5483a':'#4f5f78',warn?'#d8d2bf':'#9aa8b8',warn?.18+.25*p:.38,2); if(warn) this.poly(this.circle(z.x,z.y,z.r*p),'#b5483a',undefined,.35); }
+    for(const z of g.zones){ const warn=z.t<z.windup; if(!warn&&this.env&&this.dart.zone(this,z)) continue; const p=warn?z.t/z.windup:1; this.poly(this.circle(z.x,z.y,z.r),warn?'#b5483a':'#4f5f78',warn?'#d8d2bf':'#9aa8b8',warn?.18+.25*p:.38,2); if(warn) this.poly(this.circle(z.x,z.y,z.r*p),'#b5483a',undefined,.35); }
     for(const e of g.enemies){ if(e.dead||e._rt.st!=='tele') continue; const rt=e._rt, A=ATKD[rt.atk]; if(!A) continue; const p=Math.min(1,rt.t/ (A.w||1)); const def=ENEMIES[e.type]; const fill=p>.7?'#d2503a':'#b5483a', edge=p>.7&&Math.sin(g.time*34)>0?'#ffffff':'#d8d2bf'; const A0=.26+.14*p; { const sc=this.TW/64; const ex=this.sx(e.x,e.y), ey=this.sy(e.x,e.y,0)-(def.boss?110:def.elite?66:48)*sc; c.save(); c.fillStyle=def.boss||def.elite?'#e0a040':'#e05a3a'; c.font='bold '+Math.round((14+6*p)*sc)+'px system-ui'; c.textAlign='center'; c.globalAlpha=.95; c.fillText('!',ex,ey); c.restore(); }
       if(A.shape==='cone') { this.poly(this.sector(e.x,e.y,rt.ang,A.r,A.arc),fill,edge,A0,2); this.poly(this.sector(e.x,e.y,rt.ang,A.r*p,A.arc),fill,undefined,.38); }
       else if(A.shape==='circle'){ this.poly(this.circle(e.x,e.y,A.r),fill,edge,A0,2); this.poly(this.circle(e.x,e.y,A.r*p),fill,undefined,.38); }

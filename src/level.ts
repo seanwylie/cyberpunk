@@ -6,7 +6,7 @@ export interface Interact { id:string; x:number; y:number; r:number; label:strin
 export interface SpawnDef { type:string; x:number; y:number; group:number; }
 export interface Level { w:number; h:number; solid:Uint8Array; zone:Uint8Array; doors:DoorDef[]; props:Prop[]; interacts:Interact[]; spawns:SpawnDef[]; checkpoints:{id:number;x:number;y:number;label:string}[]; sensors:{x0:number;y0:number;x1:number;y1:number}; spawn:{x:number;y:number}; zoneNames:Zone[]; bossSpawn:{x:number;y:number}; revealX:number; salvage:{x:number;y:number};
   /** 'town' enables the illustrated hub renderer (src/town.ts); decor/npcs/lights are visual-only (collision comes from `solid`). */
-  kind?:'town'|'annex'; decor?:Decor[]; npcs?:NpcDef[]; lights?:LightDef[]; hide?:Uint8Array; overhead?:Overhead[]; }
+  kind?:'town'|'annex'; /** dungeon visual theme ('foundry'|'clinic'|'warehouse'), see src/dungeon_env.ts */ theme?:string; decor?:Decor[]; npcs?:NpcDef[]; lights?:LightDef[]; hide?:Uint8Array; overhead?:Overhead[]; }
 export interface Overhead { spr:string; x:number; y:number; z:number; sw:number; glow?:'lanterns'|'bulbs'; }
 export interface Decor { spr:string; x:number; y:number; fw:number; fd:number; sw:number; ay?:number; solid?:boolean; flip?:boolean; glow?:string; steam?:boolean; }
 export interface NpcDef { spr:string; x:number; y:number; wander?:[number,number]; speed?:number; ph:number; h?:number; }
