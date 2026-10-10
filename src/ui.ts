@@ -74,7 +74,7 @@ export class UI {
     if(type==='toast') this.toast(p); else if(type==='dialog') this.showDialog(p); else if(type==='open'){ const pid=String(p); if(pid.startsWith('npc_')||pid==='contacts'){ if(pid.startsWith('npc_')&&CONTACT_BY_ID[pid.slice(4)]) this.contactSel=pid.slice(4); this.open('contacts'); } else this.open(pid==='annex'||pid==='gate'||pid.startsWith('dungeon')?'gate':pid==='locker'?'locker':pid==='vendor'?'vendor':pid==='fixer'?'fixer':pid==='store'?'store':null); }
     else if(type==='reveal') this.banner(p.name, 'Damage-free emergence. Movement is available.'); else if(type==='reveal-end') this.hideBanner();
     else if(type==='boss-dead'){ this.banner('Mission complete','Boss defeated. Personal loot remains until the instance expires.',4); setTimeout(()=>{ if(g.mode==='run'&&!this.modal&&g.inst?.flags.bossDead) this.open('summary'); },4200); }
-    else if(type==='zone'){ if(this.bannerT<=0||true) this.banner(p.label,p.hint||'',3.2); }
+    else if(type==='zone'){ if(this.bannerT<=0||true) this.banner(p.label,p.hint||'',2.3); }
     else if(type==='checkpoint'){ this.audio?.sfx?.('objective'); }
     else if(type==='down'){ this.showDown(p); } else if(type==='revived'){ $('downpanel').style.display='none'; }
     else if(type==='dodgecancel'){ $('dialog').style.display='none'; }
@@ -84,7 +84,7 @@ export class UI {
     void g;
   }
   toast(s:string){ if(!this.tutorialToast(s)) return; const el=document.createElement('div'); el.className='toast'; el.textContent=s; const box=$('toasts'); box.appendChild(el); while(box.children.length>4) box.removeChild(box.firstChild!); setTimeout(()=>el.remove(),5600); }
-  banner(t:string,sub:string,secs=7){ const b=$('banner'); b.innerHTML=esc(t)+'<small>'+esc(sub)+'</small>'; b.classList.add('show'); this.bannerT=secs; }
+  banner(t:string,sub:string,secs=4){ const b=$('banner'); b.innerHTML=esc(t)+'<small>'+esc(sub)+'</small>'; b.classList.add('show'); this.bannerT=secs; }
   hideBanner(){ $('banner').classList.remove('show'); }
   showDialog(d:{title:string;body:string;options:{label:string;cb?:()=>void}[]}){ const el=$('dialog'); el.style.display='block'; el.innerHTML=`<h4>${esc(d.title)}</h4><div>${esc(d.body)}</div>`; d.options.forEach(o=>{ const b=document.createElement('button'); b.textContent=o.label; b.onclick=()=>{ el.style.display='none'; o.cb?.(); }; el.appendChild(b); }); }
   showDown(p:{broke:string|null;defib:boolean}){ const el=$('downpanel'); el.style.display='block'; el.innerHTML=`<b>DOWN</b><div class="mut" style="margin:6px 0">${p.broke?'Hardware damaged: <b>'+esc(p.broke)+'</b> (benefits and ability offline until a checkpoint).':'No hardware could be damaged.'} Repair bill: ${this.g.save.repairBill}c</div><button data-act="cp">Return to checkpoint (restores hardware, keeps repair bill)</button>${p.defib?'<button data-act="defib">Self-defib here (hardware stays broken)</button>':''}`; }

@@ -116,6 +116,10 @@ for (const [w, h] of SIZES) {
   await ev(() => { window.__ui.modal = null; window.__ui.render(); window.__game.startRun(); window.__game.dbg.god = true; window.__game.revealing = false; });
   await sleep(800);
   await step('11-hud-run', () => { const u = window.__ui; u.toast('Picked up: Overclocked Servo (rare)'); u.toast('Objective updated'); u.banner('Foundry', 'Clear the floor and reach the boss', 30); });
+  { const ov = await ev(() => { const b = document.getElementById('banner'), br = b.getBoundingClientRect(); const bad = []; if (!b.classList.contains('show')) bad.push('banner not shown');
+      for (const id of ['topright', 'abilities', 'minimap', 'topleft', 'objective', 'controls']) { const e = document.getElementById(id); if (!e || getComputedStyle(e).display === 'none') continue; const r = e.getBoundingClientRect(); if (r.width && br.left < r.right && br.right > r.left && br.top < r.bottom && br.bottom > r.top) bad.push('banner overlaps #' + id); }
+      if (br.left < 0 || br.right > innerWidth) bad.push('banner outside viewport'); const sm = b.querySelector('small'); const bg = getComputedStyle(b).backgroundColor; return { bad, bg }; });
+    ok(ov.bad.length === 0, `${tag} zone banner clear of HUD (${ov.bad.join(',')}); has dark plate ${ov.bg}`); }
   await step('12-hud-enemies-loot', () => { const g = window.__game; g.heat = 70; for (const t of ['worker', 'worker']) { const e = g.spawnEnemy(t, g.px + 3, g.py + 1); } });
   await step('12b-canvas-text', () => { const g = window.__game; for (const t of ['sentry', 'brute', 'scanner']) { if (window.__enemies[t]) g.spawnEnemy(t, g.px + 2 + Math.random() * 3, g.py - 2 + Math.random() * 3); } for (let i = 0; i < 4; i++) g.fx.push({ kind: 'text', x: g.px + 1 + i * .4, y: g.py + 1, t: 0, life: 3, text: String(1200 + i), c: '#d8d2bf' }); g.fx.push({ kind: 'text', x: g.px - 1, y: g.py + 1, t: 0, life: 3, text: 'CRIT 9999', c: '#d8a24a' }); g.addDrop(g.px + 1.5, g.py - 1, { kind: 'credits', amount: 40 }); g.addDrop(g.px - 1.5, g.py - 1, { kind: 'chip', chip: g.dd.cache.chips[0], amount: 1 }); });
   await sleep(300); await ev(check); await step('12c-canvas-text-2');
