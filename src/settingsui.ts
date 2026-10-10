@@ -4,6 +4,7 @@ import { RARITY_COLOR, applyUiScale } from './config';
 import { persist, wipe } from './state';
 import { makeProvider, MockProvider } from './story';
 import { DUNGEONS } from './content/dungeons';
+import { Q } from './quality';
 
 type UIx=any;
 const esc=(s:string)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
@@ -35,6 +36,8 @@ export function settingsHtml(ui:UIx):string{
   else if(tab==='display') c=head('Display & UI','Text size and screen effects. UI size also scales with your window.')
     +row('UI size','Scales all text and panels. Larger is easier to read; smaller fits more.',seg('uisize',st.uiSize||'M',[['S','S'],['M','M'],['L','L'],['XL','XL']],'UI size'))
     +row('Minimap','Show the minimap during runs. Press N to toggle it anywhere.',sw('minimap',st.minimap!==false,'Minimap'),{tag:'label',id:'s-minimap'})
+    +row('Graphics quality','Auto picks for your device and adapts to keep the frame rate up. High is the full desktop look; Medium and Low trade resolution and effects for speed and battery. Now: '+Q.describe()+'.',seg('quality',st.quality||'auto',[['auto','Auto'],['high','High'],['medium','Medium'],['low','Low']],'Graphics quality'))
+    +row('FPS overlay','Show frame rate and render resolution (F3 on desktop).',sw('showfps',!!st.showFps,'FPS overlay'),{tag:'label',id:'s-showfps'})
     +row('Reduced incidental effects','Tones down flashes, shake and ambient particles. Combat telegraphs stay.',sw('reduced',!!st.reducedFx,'Reduced incidental effects'),{tag:'label',id:'s-reduced'});
   else if(tab==='audio') c=head('Audio','Volumes are saved per browser. Master scales everything.')
     +row('Master volume','Overall loudness.',slider('vol',st.volume,'Master volume'),{wide:true})
@@ -116,7 +119,7 @@ const sel=(el:HTMLElement)=>{ const d=el.dataset; let s=el.tagName.toLowerCase()
 function keep(ui:UIx,focusEl?:HTMLElement|null,reset=false){ const sb=document.querySelector<HTMLElement>('.sbody'); S.scroll=reset?0:(sb?sb.scrollTop:0); S.focus=focusEl?sel(focusEl):''; ui.render(); }
 function setTab(ui:UIx,id:string,focus=true){ if(!TABS.some(t=>t[0]===id)) return; S.tab=id; S.confirm=null; try{ localStorage.setItem(TAB_KEY,id); }catch{} S.focus=focus?'#stab-'+id:''; S.scroll=0; ui.render(); }
 
-const KEYS=new Set(['gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','recnudge','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','llmurl','llmkey','llmmodel','devreset']);
+const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','recnudge','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','llmurl','llmkey','llmmodel','devreset']);
 /** returns true if handled. v is the new value (string for selects/ranges/text, boolean for switches) */
 function apply(ui:UIx,k:string,v:any,final=true){ const g=ui.g, s=g.save, st=s.settings;
   switch(k){
@@ -128,6 +131,7 @@ function apply(ui:UIx,k:string,v:any,final=true){ const g=ui.g, s=g.save, st=s.s
     case 'sfxvol': st.sfxVol=+v; ui.audio.setSfxVolume(st.sfxVol); if(final) preview(ui); break;
     case 'llmon': st.llm.enabled=!!v; break; case 'llmurl': st.llm.url=v; break; case 'llmkey': st.llm.key=v; break; case 'llmmodel': st.llm.model=v; break;
     case 'rechide': st.recHidden=!v; break; case 'recnudge': st.recNudge=!!v; break;
+    case 'quality': st.quality=v; Q.setPref(v); break; case 'showfps': st.showFps=!!v; Q.showFps=!!v; break;
     case 'minimap': ui.setMinimap(!!v); return;
     case 'devreset': st.devFreeReset=!!v; break; }
   persist(s); }

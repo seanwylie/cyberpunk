@@ -4,13 +4,19 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
 <meta name="theme-color" content="#1b1c1e" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Warranty Void" />
+<meta name="format-detection" content="telephone=no" />
+<link rel="apple-touch-icon" href="icons/icon-180.png" />
 <link rel="icon" href="data:," />
 <link rel="manifest" href="manifest.webmanifest" />
 <title>Warranty Void</title>
 <link rel="stylesheet" href="/src/style.css" />
 </head>
 <body>
-<div id="splash" aria-hidden="true"><div class="st"><b>WARRANTY VOID</b><small>Void where prohibited</small></div><div class="bvg"><span>With Big Viking Games</span><img src="/brand/bvg_logo_bone.png" alt="Big Viking Games" width="64"></div></div>
+<div id="splash" aria-hidden="true"><div class="st"><b>WARRANTY VOID</b><small>Void where prohibited</small></div><div class="sbar" aria-hidden="true"><i id="sbarfill"></i></div><div class="bvg"><span>With Big Viking Games</span><img src="/brand/bvg_logo_bone.png" alt="Big Viking Games" width="64"></div></div>
 <canvas id="game"></canvas>
 <img id="bvgmark" src="/brand/bvg_logo_bone.png" alt="" aria-hidden="true" draggable="false" width="60">
 <div id="hud">
@@ -51,8 +57,13 @@
   <div id="hint"></div>
 </div>
 <div id="modal" style="display:none"></div>
-<div id="rotate"><div>Rotate your device to landscape</div></div>
+<div id="rotate"><div class="rbox"><svg class="rphone" viewBox="0 0 64 64" aria-hidden="true"><rect x="20" y="6" width="24" height="44" rx="4"/><path d="M26 12h12"/></svg><b>Rotate to landscape</b><span>Warranty Void plays best sideways.</span><button type="button" class="btn" data-act="portrait">Play in portrait anyway</button></div></div>
 <script type="module" src="/src/main.ts"></script>
-<script>window.addEventListener('load',function(){if(/[?&]splash=hold/.test(location.search))return;setTimeout(function(){var e=document.getElementById('splash');if(!e)return;e.classList.add('out');setTimeout(function(){e.remove()},700)},1800)});</script>
+<script>window.addEventListener('load',function(){if(/[?&]splash=hold/.test(location.search))return;var t0=Date.now(),touch=matchMedia('(pointer:coarse)').matches||/[?&]touch/.test(location.search),f=document.getElementById('sbarfill');
+function done(){var e=document.getElementById('splash');if(!e)return;e.classList.add('out');setTimeout(function(){e.remove()},700)}
+(function poll(){var el=Date.now()-t0,p=window.__loadPct||0;if(f)f.style.width=Math.round(Math.min(1,p)*100)+'%';
+/* desktop: fixed 1.8s brand splash as before. touch / slow networks: hold (max 20s) until the town art has loaded so the first frames are not blank. */
+var cn=navigator.connection&&navigator.connection.effectiveType,slow=touch||(cn&&cn!=='4g');
+if(el>=1800&&(!slow||p>=1||el>20000))return done();setTimeout(poll,120)})()});</script>
 </body>
 </html>

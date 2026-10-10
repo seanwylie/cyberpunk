@@ -6,6 +6,7 @@
 //  - lighting pools (additive), dust / steam / embers, boss-arena floor identity (furnace ring, operating amphitheatre tiers, retrieval-hall ring platform).
 //  - themeScatter(): per-dungeon floor litter used by the organic floor overlay (less square, less repetitive).
 import type { Renderer } from './render';
+import { Q } from './quality';
 import type { Level } from './level';
 import type { Zone } from './sim';
 import { LEVEL_BY_ID } from './content/batch1_levels';
@@ -266,7 +267,7 @@ export class DungeonArt {
     for (const cp of L.checkpoints) v.push({ x: cp.x, y: cp.y, r: 4, c: 'warm', a: .16 }); void warm; this.zl.set(L, v); return v;
   }
   ambient(r: Renderer) {
-    const g = r.g, L = g.level, th = themeOf(L); const c = r.ctx, TW = r.TW, t = g.time, red = g.save.settings.reducedFx; if (!th || th === 'town') { this.lights.length = 0; return; }
+    const g = r.g, L = g.level, th = themeOf(L); const c = r.ctx, TW = r.TW, t = g.time, red = g.save.settings.reducedFx || Q.fx >= 1; if (!th || th === 'town' || Q.fx >= 2) { this.lights.length = 0; return; }
     const pa = (x: number, y: number) => [r.sx(x, y), r.sy(x, y)] as const; c.save(); c.globalCompositeOperation = 'lighter';
     const draw = (l: Light) => { const [a, b] = pa(l.x, l.y); const rr = l.r * TW * .5; if (a < -rr || a > r.w + rr || b < -rr || b > r.h + rr) return; const fl = l.fl ? 1 + Math.sin(t * 13 + l.x * 3) * .05 + (Math.sin(t * 2.3 + l.y) > .96 ? -.5 : 0) : 1; c.globalAlpha = Math.max(0, l.a * fl); c.drawImage(this.glows[l.c], a - rr, b - rr * .62, rr * 2, rr * 1.24); };
     for (const l of this.zoneLights(L, th)) draw(l); for (const l of this.lights) draw(l); this.lights.length = 0; c.restore();

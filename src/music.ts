@@ -18,6 +18,7 @@ export const POOLS:Record<MState,string[]>={
   resolution:['clear'] };
 /** Boss id -> fixed fight track, so each boss has its own identity (unmapped bosses draw from the pool). */
 import { BOSSES } from './content/batch1_bosses';
+import { Q } from './quality';
 export const BOSS_MAP:Record<string,string>={ ...Object.fromEntries(BOSSES.map(b=>[b.id,b.track])), overseer:'boss_fight', warden:'boss_overclock', enforcer:'boss_meltdown', teague:'boss_hydraulic', brannoch:'boss_meltdown', ore9:'boss_fight', surgeon:'boss_overclock', autosurgeon:'boss_hydraulic', recovered:'boss_fight', stockmgr:'boss_meltdown', retrieval:'boss_overclock', reclaimer:'boss_hydraulic' };
 /** Shuffle bag: every item once per cycle, never the same item twice in a row (including across cycle refills). */
 export class ShuffleBag{ private bag:string[]=[]; last:string|null=null;
@@ -37,15 +38,18 @@ export class MusicManager {
   COMBAT_MIN=6; COMBAT_EXIT_HOLD=4; // hysteresis (seconds)
   constructor(private ctx:AudioContext, private out:AudioNode, private base='audio/music/'){}
   isReady(){ return this.ready; }
+  private getTrack:((d:TrackDef)=>Promise<void>)|null=null; private asked=new Set<string>();
+  /** constrained devices skip the preload of variety tracks (decoded PCM is ~10x the mp3); fetch just the track that is about to be needed */
+  ensure(file:string){ const d=Object.values(T).find(x=>x.file===file); if(!d||this.buffers[file]||this.asked.has(file)||!this.getTrack) return; this.asked.add(file); this.getTrack(d).catch(()=>this.asked.delete(file)); }
   async load(){ if(this.loading||this.ready) return; this.loading=true;
     try{ const get=async(d:TrackDef)=>{ const r=await fetch(this.base+d.file+'.mp3'); if(!r.ok) throw new Error(d.file+' '+r.status); const ab=await r.arrayBuffer(); this.buffers[d.file]=await this.ctx.decodeAudioData(ab); };
       await Promise.all(Object.values(T).filter(d=>CORE_TRACKS.includes(d.file)).map(get));
       this.ready=true; this.timer=setInterval(()=>this.tick(),250); this.onReady?.();
-      Promise.all(Object.values(T).filter(d=>!CORE_TRACKS.includes(d.file)).map(d=>get(d).catch(()=>{}))); } // variety tracks stream in after start
+      this.getTrack=get; if(Q.p.musicVariety) Promise.all(Object.values(T).filter(d=>!CORE_TRACKS.includes(d.file)).map(d=>get(d).catch(()=>{}))); } // variety tracks stream in after start
     catch(e){ console.warn('music files unavailable, using procedural fallback',e); this.loading=false; } }
   now(){ return this.ctx.currentTime; }
   // Game-facing: request a state. Hysteresis is applied in tick().
-  setState(s:MState,key?:string|null){ this.want=s; if(key!==undefined) this.key=key; this.tick(); }
+  setState(s:MState,key?:string|null){ this.want=s; if(key!==undefined){ this.key=key; if(key&&BOSS_MAP[key]&&!Q.p.musicVariety) this.ensure(BOSS_MAP[key]); } if(!Q.p.musicVariety&&(s==='combat'||s==='elite'||s==='traversal')){ for(const f of POOLS[s].slice(0,2)) this.ensure(f); } this.tick(); }
   /** Pick the next track for a state: boss key mapping if known, else the state's shuffle bag (no immediate repeat). */
   pick(s:MState):string{ const have=(n:string)=>!!this.buffers[n];
     if(s==='bosscombat'&&this.key&&BOSS_MAP[this.key]&&have(BOSS_MAP[this.key])) return BOSS_MAP[this.key];

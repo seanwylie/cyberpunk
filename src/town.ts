@@ -17,8 +17,9 @@ export class TownArt {
   glows: Record<string, HTMLCanvasElement> = {}; parts: Part[] = []; private sc = new Map<string, HTMLCanvasElement>(); private scKey = ''; private em = 0; private R = rng(7);
   npcPos: { x: number; y: number; flip: boolean; moving: boolean }[] = [];
   constructor(private base = './town/') { this.load(); for (const [k, c] of [['warm', '255,176,96'], ['fire', '255,128,52'], ['cool', '120,150,160'], ['puff', '190,194,192']] as const) { const cv = mk(128, 128), x = cv.getContext('2d')!; const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, `rgba(${c},1)`); g.addColorStop(.35, `rgba(${c},.38)`); g.addColorStop(1, `rgba(${c},0)`); x.fillStyle = g; x.fillRect(0, 0, 128, 128); this.glows[k] = cv; } }
-  async load() {
-    await Promise.all([...TOWN_PROPS.map(async n => { const i = await loadImg(`${this.base}props/${n}.png`); if (i) this.img[n] = i; }), ...GROUND.map(async n => { const i = await loadImg(`${this.base}ground/${n}.jpg`); if (i) this.gimg[n] = i; })]);
+  loaded = 0; total = 1;
+  async load() { this.total = TOWN_PROPS.length + GROUND.length; const tick = () => { this.loaded++; (window as any).__loadPct = this.loaded / this.total; };
+    await Promise.all([...TOWN_PROPS.map(async n => { const i = await loadImg(`${this.base}props/${n}.png`); if (i) this.img[n] = i; tick(); }), ...GROUND.map(async n => { const i = await loadImg(`${this.base}ground/${n}.jpg`); if (i) this.gimg[n] = i; tick(); })]);
     this.ready = !!this.gimg.cobble && Object.keys(this.img).length > 8;
   }
   /** pre-scaled sprite (one cached canvas per sprite per zoom) so per-frame drawing is a 1:1 blit */

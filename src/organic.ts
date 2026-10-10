@@ -5,6 +5,7 @@
 //  - drawFogAndVignette: slow parallax fog banks + extra edge darkening
 import type { Level } from './level';
 import type { Renderer } from './render';
+import { Q } from './quality';
 import { themeScatter, themeOf } from './dungeon_env';
 const OP = 24, CH = 6;
 const rng = (seed: number) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -96,7 +97,7 @@ export class Organic {
   // ---------- fog + vignette ----------
   drawFogAndVignette(r: Renderer) {
     if (!this.fog.length) for (let i = 0; i < 3; i++) { const c = mk(512, 256), x = c.getContext('2d')!; const R = rng(40 + i); for (let k = 0; k < 14; k++) { const px = R() * 512, py = 60 + R() * 140, rad = 50 + R() * 90; const g = x.createRadialGradient(px, py, 0, px, py, rad); g.addColorStop(0, 'rgba(150,155,158,.22)'); g.addColorStop(1, 'rgba(150,155,158,0)'); x.fillStyle = g; x.save(); x.translate(px, py); x.scale(1.8, .55); x.translate(-px, -py); x.beginPath(); x.arc(px, py, rad, 0, 7); x.fill(); x.restore(); } this.fog.push(c); }
-    if (r.g.save.settings.reducedFx) return; const c = r.ctx, t = r.g.time; c.save(); const sc = Math.max(1, r.w / 700);
+    if (r.g.save.settings.reducedFx || Q.fx >= 1) return; const c = r.ctx, t = r.g.time; c.save(); const sc = Math.max(1, r.w / 700);
     this.fog.forEach((f, i) => { const w = 512 * sc * (1 + i * .3), h = 256 * sc * (1 + i * .3); const ox = ((t * (6 + i * 4) - r.camx * (.15 + i * .07)) % w + w) % w; c.globalAlpha = .16 - i * .03; for (let X = -ox; X < r.w; X += w) c.drawImage(f, X, r.h * (.18 + i * .27) - h / 2 + Math.sin(t * .1 + i) * 12, w, h); });
     c.restore();
   }

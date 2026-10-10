@@ -1,7 +1,10 @@
 @font-face{ font-family:"Roboto Condensed"; src:url("/fonts/RobotoCondensed.woff") format("woff"); font-weight:100 900; font-display:swap; }
 :root{ --fs:1.1; --fmin:12px; --hintoff:62px; --soot:#1b1c1e; --bone:#d8d2bf; --concrete:#7a7c78; --oxide:#8f3b2e; --slate:#4f6578; --olive:#6b7035; --panel:rgba(24,25,27,.9); --line:#3c3e41; font-family:"Roboto Condensed","Bahnschrift","Liberation Sans Narrow","Arial Narrow",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--bone); font-weight:500; }
 *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html,body{ margin:0; height:100%; background:var(--soot); overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; }
+html,body{ margin:0; height:100%; background:var(--soot); overflow:hidden; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; -webkit-text-size-adjust:100%; text-size-adjust:100%; overscroll-behavior:none; }
+body.touch{ position:fixed; inset:0; width:100%; height:100vh; height:100dvh; }
+body.touch img{ -webkit-user-drag:none; -webkit-touch-callout:none; }
+body.touch #modal,body.touch #modal *{ touch-action:manipulation; } body.touch #modal .sbody,body.touch #modal .body,body.touch #modal [class*=scroll]{ touch-action:pan-y; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
 canvas#game{ position:fixed; inset:0; display:block; touch-action:none; }
 #hud{ position:fixed; inset:0; pointer-events:none; padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 #hud button,#hud .interactive,#dialog,#livepanel,#downpanel,#support{ pointer-events:auto; }
@@ -243,3 +246,19 @@ input.rng::-webkit-slider-thumb{ -webkit-appearance:none; width:1.4em; height:1.
 @media (max-height:480px){ .win.settingswin{ height:96vh; max-height:96vh; } .stabs{ flex-basis:clamp(110px,18%,150px); padding:6px 5px; gap:2px; } .stab{ min-height:2.2em; padding:.3em .5em; } .sbody{ padding:6px 10px 10px; } .srow{ padding:.3em .4em; min-height:2.6em; } .sd{ margin-bottom:4px; } .kgrid{ gap:0 12px; } }
 
 .settingswin .scard .bvg{ opacity:1; }
+
+/* ---- mobile pass: rotate prompt, 44px targets, safe areas (all gated on body.touch / coarse pointer; desktop untouched) ---- */
+#rotate .rbox{ display:flex; flex-direction:column; align-items:center; gap:10px; padding:20px; max-width:80vw; }
+#rotate .rphone{ width:72px; height:72px; fill:none; stroke:var(--bone); stroke-width:2.5; animation:rot 2.4s ease-in-out infinite; transform-origin:50% 50%; }
+#rotate b{ font-size:20px; letter-spacing:.06em; text-transform:uppercase; } #rotate span{ color:#a9a493; font-size:14px; }
+#rotate .btn{ margin-top:10px; min-height:44px; padding:0 18px; background:#2a2c2e; border:1px solid #686b6e; color:var(--bone); border-radius:6px; }
+@keyframes rot{ 0%,15%{ transform:rotate(0) } 55%,100%{ transform:rotate(-90deg) } }
+body.touch.portraitok #rotate{ display:none!important; }
+@media (orientation:portrait) and (max-width:900px){ body.touch.portraitok #rotate{ display:none!important; } }
+body.touch .tbtn{ width:44px; height:44px; }
+body.touch #modal{ height:var(--vh,100dvh); }
+#splash .sbar{ position:absolute; left:50%; bottom:calc(18px + env(safe-area-inset-bottom)); width:min(240px,50vw); height:3px; transform:translateX(-50%); background:#34363a; display:none; } body.touch #splash .sbar{ display:block; } #splash .sbar i{ display:block; height:100%; width:0; background:var(--bone); transition:width .25s; }
+body.touch #modal button,body.touch #modal .btn,body.touch #modal .stab,body.touch #modal select,body.touch #modal [role=tab]{ min-height:44px; min-width:44px; }
+body.touch #modal .btn,body.touch #modal .btn.sm,body.touch #modal .actrow .btn{ padding-top:6px; padding-bottom:6px; display:inline-flex; align-items:center; justify-content:center; }
+body.touch #modal label{ min-height:44px; display:flex; align-items:center; } body.touch #modal input[type=checkbox],body.touch #modal input[type=radio]{ width:22px; height:22px; }
+body.touch #modal input[type=range]{ min-height:44px; }

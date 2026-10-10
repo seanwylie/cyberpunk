@@ -1,6 +1,7 @@
 import { Game, En } from './sim';
 import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, ABILITY_TYPE_COLOR, RARITY_RANK, uiFs, cpx } from './config';
 import { installedLayout } from './build';
+import { Q } from './quality';
 import { PlayerAnimator, loadAtlas } from './sprites';
 import { bodyOf } from './bodyvariants';
 import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
@@ -19,7 +20,7 @@ export class Renderer {
   ctx:CanvasRenderingContext2D; w=0; h=0; dpr=1; TW=64; baseTW=64; camx=0; camy=0; shake=0;
   anim:PlayerAnimator|null=null; lastT=0; dart=new DungeonArt(); eart=new EnemyArt(); private theme=''; env:Env|null=null; town:TownArt|null=null; org=new Organic(); private wallCache=new WeakMap<Level,Map<number,{style:'concrete'|'steel';v:number;zone:string}>>();
   constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); if(this.env) this.env.da=this.dart; if(this.env) this.town=new TownArt(); loadAtlas().then(l=>{ if(l){ this.anim=new PlayerAnimator(l); this.anim.onImpact=k=>this.impact(k); } }); }
-  resize(){ this.dpr=Math.min(window.devicePixelRatio||1,2); const w=window.innerWidth,h=window.innerHeight; this.canvas.width=w*this.dpr; this.canvas.height=h*this.dpr; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=this.baseTW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
+  resize(){ const w=window.innerWidth,h=window.innerHeight; this.dpr=Q.dpr(window.devicePixelRatio||1,w,h); this.canvas.width=w*this.dpr; this.canvas.height=h*this.dpr; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=this.baseTW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
   // projection
   sx(x:number,y:number){ return (x-y)*this.TW/2 + this.w/2 - this.camx; }
   sy(x:number,y:number,z=0){ return (x+y)*this.TW/4 + this.h/2 - this.camy - z*this.TW/2; }
@@ -264,7 +265,7 @@ export class Renderer {
       const tl=k==='needle'?.07:k==='pistol'?.05:k==='shard'?.03:.04; const rad=(k==='slug'?5:k==='pop'?3:k==='shard'?2.6:k==='needle'?2.4:k==='pistol'?3:4)*s;
       c.strokeStyle=col; c.globalAlpha=.4; c.lineWidth=(k==='needle'?1.6:2.4)*s; c.beginPath(); c.moveTo(a,b); c.lineTo(this.sx(p.x-p.vx*tl*(k==='needle'?2:1),p.y-p.vy*tl*(k==='needle'?2:1)),this.sy(p.x-p.vx*tl*(k==='needle'?2:1),p.y-p.vy*tl*(k==='needle'?2:1),.5)); c.stroke(); c.globalAlpha=1;
       c.fillStyle=col; c.beginPath(); if(k==='shard'){ c.moveTo(a,b-rad*1.4); c.lineTo(a+rad,b); c.lineTo(a,b+rad*1.4); c.lineTo(a-rad,b); c.closePath(); } else c.arc(a,b,rad,0,7); c.fill(); if(ally){ c.fillStyle='#fff'; c.globalAlpha=.7; c.beginPath(); c.arc(a,b,rad*.4,0,7); c.fill(); c.globalAlpha=1; } }
-    const red=g.save.settings.reducedFx;
+    const red=g.save.settings.reducedFx||Q.fx>=1;
     for(const f of g.fx){ const k=f.t/f.life; const a=this.sx(f.x,f.y), b=this.sy(f.x,f.y);
       switch(f.kind){
         case 'slash': this.poly(this.sector(f.x,f.y,f.a!,f.r!,f.w!,10),f.c||'#d8d2bf',undefined,(1-k)*.45); break;
@@ -307,12 +308,12 @@ export class Renderer {
       if(o.glow==='lanterns') for(const u of [.13,.37,.62,.88]) this.ovGlows.push({x:X+sp.w*u,y:Y+sp.h*.74,r:this.TW*1.5,a:.3*na,c:'warm',ph:u*9+X});
       else if(o.glow==='bulbs') for(let i=0;i<14;i++){ const u=.04+i*.069; this.ovGlows.push({x:X+sp.w*u,y:Y+sp.h*(.62+Math.sin(u*9)*.06),r:this.TW*.8,a:.16*na,c:'warm',ph:i*1.7}); } } }
   private ovA=new Map<string,number>();
-  private drawTownAmbient(){ const t=this.town!, L=this.g.level, c=this.ctx, g=this.g; const T=g.time; const red=g.save.settings.reducedFx;
+  private drawTownAmbient(){ const t=this.town!, L=this.g.level, c=this.ctx, g=this.g; const T=g.time; const red=g.save.settings.reducedFx||Q.fx>=1;
     // particles (steam/embers/dust)
     for(const p of t.parts){ const k=p.t/p.life; const a=this.sx(p.x,p.y), b=this.sy(p.x,p.y,p.z); if(p.k==='steam'){ const r=p.s*this.TW; c.globalAlpha=.3*(1-k)*Math.min(1,p.t*2); c.drawImage(t.glows.puff,a-r*1.4,b-r*1.4,r*2.8,r*2.8); c.globalAlpha=1; } else if(p.k==='ember'){ c.fillStyle=`rgba(255,150,70,${1-k})`; c.fillRect(a,b,2,2); } else if(!red){ c.fillStyle=`rgba(200,190,170,${.25*Math.sin(Math.PI*k)})`; c.fillRect(a,b,1.6,1.6); } }
     // additive light pools with flicker
-    c.save(); c.globalCompositeOperation='lighter'; for(let i=0;i<(L.lights||[]).length;i++){ const l=L.lights![i]; const a=this.sx(l.x,l.y), b=this.sy(l.x,l.y,l.z); if(a<-300||a>this.w+300||b<-300||b>this.h+300) continue; const fl=l.flick?1+Math.sin(T*(9+i)+i*2.1)*l.flick*.6+Math.sin(T*23+i*5)*l.flick*.4:1; const r=l.r*this.TW*.5*(l.c==='cool'?1:.9+fl*.1); c.globalAlpha=Math.max(0,l.a*fl*(l.c==='cool'?1:.8)); c.drawImage(t.glows[l.c],13,13,102,102,a-r*.8,b-r*.5,r*1.6,r*1.0); }
-    for(const gl of this.ovGlows){ const fl=1+Math.sin(T*8+gl.ph)*.08+Math.sin(T*21+gl.ph*2)*.05; c.globalAlpha=gl.a*fl; c.drawImage(t.glows[gl.c],gl.x-gl.r,gl.y-gl.r,gl.r*2,gl.r*2); } c.restore(); }
+    c.save(); c.globalCompositeOperation='lighter'; const lstep=Q.fx>=1?2:1; if(Q.fx<2) for(let i=0;i<(L.lights||[]).length;i+=lstep){ const l=L.lights![i]; const a=this.sx(l.x,l.y), b=this.sy(l.x,l.y,l.z); if(a<-300||a>this.w+300||b<-300||b>this.h+300) continue; const fl=l.flick?1+Math.sin(T*(9+i)+i*2.1)*l.flick*.6+Math.sin(T*23+i*5)*l.flick*.4:1; const r=l.r*this.TW*.5*(l.c==='cool'?1:.9+fl*.1); c.globalAlpha=Math.max(0,l.a*fl*(l.c==='cool'?1:.8)); c.drawImage(t.glows[l.c],13,13,102,102,a-r*.8,b-r*.5,r*1.6,r*1.0); }
+    if(Q.fx<2) for(const gl of this.ovGlows){ const fl=1+Math.sin(T*8+gl.ph)*.08+Math.sin(T*21+gl.ph*2)*.05; c.globalAlpha=gl.a*fl; c.drawImage(t.glows[gl.c],gl.x-gl.r,gl.y-gl.r,gl.r*2,gl.r*2); } c.restore(); }
   private ovCache:HTMLCanvasElement|null=null; private ovKey='';
   /** town tint + vignette baked once per size into one canvas (one blit per frame instead of a fullscreen fill + fullscreen gradient) */
   private townOverlay(){ const c=this.ctx; const key=this.w+'x'+this.h+'|'+this.dpr; if(key!==this.ovKey||!this.ovCache){ this.ovKey=key; const cv=document.createElement('canvas'); cv.width=Math.ceil(this.w*this.dpr); cv.height=Math.ceil(this.h*this.dpr); const x=cv.getContext('2d')!; x.scale(this.dpr,this.dpr); x.fillStyle='rgba(10,12,20,.2)'; x.fillRect(0,0,this.w,this.h); const gr=x.createRadialGradient(this.w/2,this.h/2,Math.min(this.w,this.h)*.35,this.w/2,this.h/2,Math.max(this.w,this.h)*.75); gr.addColorStop(0,'rgba(10,10,12,0)'); gr.addColorStop(1,'rgba(6,7,10,.72)'); x.fillStyle=gr; x.fillRect(0,0,this.w,this.h); this.ovCache=cv; } c.drawImage(this.ovCache,0,0,this.w,this.h); }
