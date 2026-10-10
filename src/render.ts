@@ -1,5 +1,5 @@
 import { Game, En } from './sim';
-import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, ABILITY_TYPE_COLOR, RARITY_RANK, uiFs } from './config';
+import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, ABILITY_TYPE_COLOR, RARITY_RANK, uiFs, cpx } from './config';
 import { installedLayout } from './build';
 import { PlayerAnimator, loadAtlas } from './sprites';
 import { bodyOf } from './bodyvariants';
@@ -140,7 +140,7 @@ export class Renderer {
   /** world labels queued by drawInteract this frame; drawn on top (after the player) by flushLoot. alpha fades with distance. Exposed for tests. */
   ifaceLabels:{id:string;text:string;x:number;y:number;alpha:number}[]=[]; private labelQ:{id:string;text:string;a:number;b:number;s:number;alpha:number}[]=[];
   private drawIfaceLabels(){ const c=this.ctx; this.ifaceLabels=[]; const FS=uiFs(); const placed:{x0:number;x1:number;y0:number;y1:number}[]=[]; const px=this.sx(this.g.px,this.g.py), py=this.sy(this.g.px,this.g.py);
-    for(const q of this.labelQ){ c.save(); c.font=`${Math.max(10*FS,11*q.s*1.3*FS)}px system-ui,sans-serif`; c.textAlign='center'; const tw=c.measureText(q.text).width; const bw=tw+12, bh=Math.max(16,15*q.s*1.3*FS)+4; let x=q.a, y=q.b-64*q.s-bh;
+    for(const q of this.labelQ){ c.save(); c.font=`600 ${cpx(11*q.s*1.3*FS)}px ${FONT}`; c.textAlign='center'; const tw=c.measureText(q.text).width; const bw=tw+12, bh=Math.max(16,15*q.s*1.3*FS)+4; let x=q.a, y=q.b-64*q.s-bh;
       x=Math.max(bw/2+4,Math.min(this.w-bw/2-4,x)); y=Math.max(4,Math.min(this.h-bh-4,y));
       // keep clear of the player sprite and other labels
       for(let k=0;k<8;k++){ const hit=(px>x-bw/2-14&&px<x+bw/2+14&&py-70*q.s<y+bh&&py+10*q.s>y)||placed.some(r=>x+bw/2>r.x0&&x-bw/2<r.x1&&y+bh>r.y0&&y<r.y1); if(!hit) break; y-=bh+4; if(y<4){ y=4; break; } }
@@ -229,9 +229,9 @@ export class Renderer {
     // dust on emergence
     if(rt.reveal>0&&Math.random()<.5) g.fx.push({kind:'dust',x:e.x+(Math.random()-.5)*2,y:e.y+(Math.random()-.5)*2,t:0,life:.6});
     // health bar only for elites and bosses
-    if(def.elite&&rt.reveal<=0&&!e.dead){ const w=(def.boss?64:44)*(this.TW/64); const hx=a-w/2, hy=b-(art?art.top+4:(def.boss?118:70)*(this.TW/64)); c.fillStyle='rgba(10,10,10,.75)'; c.fillRect(hx-1,hy-1,w+2,7); c.fillStyle=def.boss?'#a2523f':'#b08a4a'; c.fillRect(hx,hy,w*Math.max(0,e.hp/e.maxHp),5); if(rt.vuln>0){ c.fillStyle='#d8d2bf'; c.font=Math.round(10*uiFs())+'px system-ui'; c.textAlign='center'; c.fillText('OPENING',a,hy-4); } }
+    if(def.elite&&rt.reveal<=0&&!e.dead){ const w=(def.boss?64:44)*(this.TW/64); const hx=a-w/2, hy=b-(art?art.top+4:(def.boss?118:70)*(this.TW/64)); c.fillStyle='rgba(10,10,10,.75)'; c.fillRect(hx-1,hy-1,w+2,7); c.fillStyle=def.boss?'#a2523f':'#b08a4a'; c.fillRect(hx,hy,w*Math.max(0,e.hp/e.maxHp),5); if(rt.vuln>0){ c.fillStyle='#d8d2bf'; c.font=`600 ${cpx(10*uiFs())}px ${FONT}`; c.textAlign='center'; c.fillText('OPENING',a,hy-4); } }
     if(g.target===e.id){ const r=def.radius+.35; this.ring(e.x,e.y,r,'#d8d2bf',.95); const c2=this.ctx; c2.save(); c2.strokeStyle='#d8d2bf'; c2.lineWidth=2; const bx=a, by=b-(art?art.top*.92:(def.boss?100:def.elite?60:42)*(this.TW/64)); c2.beginPath(); c2.moveTo(bx-6,by-8); c2.lineTo(bx,by); c2.lineTo(bx+6,by-8); c2.stroke(); c2.restore(); }
-    if(e.stunT>0){ c.fillStyle='#d8d2bf'; c.font=Math.round(11*uiFs())+'px system-ui'; c.textAlign='center'; c.fillText('✕',a,b-(art?art.top+8:60*(this.TW/64))); }
+    if(e.stunT>0){ c.fillStyle='#d8d2bf'; c.font=`600 ${cpx(11*uiFs())}px ${FONT}`; c.textAlign='center'; c.fillText('✕',a,b-(art?art.top+8:60*(this.TW/64))); }
   }
   drawGuidance(){ const g=this.g; if(g.mode!=='run'||g.downed) return; const gd=g.guidance(); if(!gd) return; const c=this.ctx, s=this.TW/64;
     const px=this.sx(g.px,g.py), py=this.sy(g.px,g.py,.5); const wx=this.sx(gd.wp.x,gd.wp.y), wy=this.sy(gd.wp.x,gd.wp.y,.5); const a=Math.atan2(wy-py,wx-px); const far=gd.dist>4;
@@ -241,7 +241,7 @@ export class Renderer {
   drawGroundFx(){
     const g=this.g, c=this.ctx;
     for(const z of g.zones){ const warn=z.t<z.windup; if(!warn&&this.env&&this.dart.zone(this,z)) continue; const p=warn?z.t/z.windup:1; this.poly(this.circle(z.x,z.y,z.r),warn?'#b5483a':'#4f5f78',warn?'#d8d2bf':'#9aa8b8',warn?.18+.25*p:.38,2); if(warn) this.poly(this.circle(z.x,z.y,z.r*p),'#b5483a',undefined,.35); }
-    for(const e of g.enemies){ if(e.dead||e._rt.st!=='tele') continue; const rt=e._rt, A=ATKD[rt.atk]; if(!A) continue; const p=Math.min(1,rt.t/ (A.w||1)); const def=ENEMIES[e.type]; const fill=p>.7?'#d2503a':'#b5483a', edge=p>.7&&Math.sin(g.time*34)>0?'#ffffff':'#d8d2bf'; const A0=.26+.14*p; { const sc=this.TW/64; const ex=this.sx(e.x,e.y), ey=this.sy(e.x,e.y,0)-(def.boss?110:def.elite?66:48)*sc; c.save(); c.fillStyle=def.boss||def.elite?'#e0a040':'#e05a3a'; c.font='bold '+Math.round((14+6*p)*sc)+'px system-ui'; c.textAlign='center'; c.globalAlpha=.95; c.fillText('!',ex,ey); c.restore(); }
+    for(const e of g.enemies){ if(e.dead||e._rt.st!=='tele') continue; const rt=e._rt, A=ATKD[rt.atk]; if(!A) continue; const p=Math.min(1,rt.t/ (A.w||1)); const def=ENEMIES[e.type]; const fill=p>.7?'#d2503a':'#b5483a', edge=p>.7&&Math.sin(g.time*34)>0?'#ffffff':'#d8d2bf'; const A0=.26+.14*p; { const sc=this.TW/64; const ex=this.sx(e.x,e.y), ey=this.sy(e.x,e.y,0)-(def.boss?110:def.elite?66:48)*sc; c.save(); c.fillStyle=def.boss||def.elite?'#e0a040':'#e05a3a'; c.font='bold '+cpx((14+6*p)*sc)+'px '+FONT; c.textAlign='center'; c.globalAlpha=.95; c.fillText('!',ex,ey); c.restore(); }
       if(A.shape==='cone') { this.poly(this.sector(e.x,e.y,rt.ang,A.r,A.arc),fill,edge,A0,2); this.poly(this.sector(e.x,e.y,rt.ang,A.r*p,A.arc),fill,undefined,.38); }
       else if(A.shape==='circle'){ this.poly(this.circle(e.x,e.y,A.r),fill,edge,A0,2); this.poly(this.circle(e.x,e.y,A.r*p),fill,undefined,.38); }
       else if(A.shape==='line'){ const len=A.r; const wd=(A as any).wid; this.poly(this.rect(e.x,e.y,rt.ang,len,wd),fill,edge,A0,2); this.poly(this.rect(e.x,e.y,rt.ang,len*p,wd),fill,undefined,.38); }
@@ -274,7 +274,7 @@ export class Renderer {
         case 'dust': if(!red){ c.fillStyle=`rgba(150,145,130,${.4*(1-k)})`; c.beginPath(); c.arc(a,b-6*s-k*10*s,(8+10*k)*s,0,7); c.fill(); } break;
         case 'vent': for(let i=0;i<5;i++){ c.fillStyle=`rgba(200,205,205,${.4*(1-k)})`; c.beginPath(); c.arc(a+(i-2)*6*s,b-20*s-k*30*s-i*3,(5+8*k)*s,0,7); c.fill(); } break;
         case 'line': this.poly(this.rect(f.x,f.y,f.a!,f.len!,f.w!),f.c||'#d8d2bf',undefined,(1-k)*(f.c?.9:.4)); break;
-        case 'text': c.fillStyle=f.c||'#d8d2bf'; c.font=`bold ${12*s*1.2*uiFs()}px system-ui`; c.textAlign='center'; c.globalAlpha=1-k; c.fillText(f.text||'',a,b-30*s-k*20); c.globalAlpha=1; break;
+        case 'text': c.fillStyle=f.c||'#d8d2bf'; c.font=`bold ${cpx(12*s*1.2*uiFs())}px ${FONT}`; c.textAlign='center'; c.globalAlpha=1-k; c.lineJoin='round'; c.lineWidth=3; c.strokeStyle='rgba(10,10,11,.9)'; c.strokeText(f.text||'',a,b-30*s-k*20); c.fillText(f.text||'',a,b-30*s-k*20); c.globalAlpha=1; break;
       } }
   }
 
@@ -295,7 +295,7 @@ export class Renderer {
     c.translate(a,b-step); if(s.flip) c.scale(-1,1); c.transform(1,0,sway+(s.moving?Math.sin(T*5)*.03:0),1+breathe,0,0); c.drawImage(sp.cv,-sp.w/2,-sp.h*.97,sp.w,sp.h); c.restore(); }
   private townMarker(it:{id:string;x:number;y:number;label:string},a:number,b:number,s:number){ const c=this.ctx, g=this.g; const near=Math.hypot(g.px-it.x,g.py-it.y)<7; const bob=Math.sin(g.time*2.2+it.x)*2*s; const lift=(it.id==='annex'?64:it.id==='locker'?44:52)*s;
     c.save(); c.globalAlpha=near?.95:.55; c.fillStyle='#cfc6b0'; c.strokeStyle='rgba(10,10,12,.7)'; c.lineWidth=1.5; c.beginPath(); c.moveTo(a,b-lift+8*s+bob); c.lineTo(a-6*s,b-lift+bob); c.lineTo(a+6*s,b-lift+bob); c.closePath(); c.fill(); c.stroke(); c.restore();
-    if(near){ c.save(); const FS=uiFs(); c.font=`${Math.max(10*FS,11*s*1.3*FS)}px system-ui,sans-serif`; c.textAlign='center'; c.fillStyle='rgba(15,15,16,.72)'; const tw=c.measureText(it.label).width; c.fillRect(a-tw/2-5,b-lift-22*s-4*(FS-1)*s*3,tw+10,16*s*1.3*FS); c.fillStyle='#d8d2bf'; c.fillText(it.label,a,b-lift-9*s); c.restore(); } }
+    if(near){ c.save(); const FS=uiFs(); c.font=`600 ${cpx(11*s*1.3*FS)}px ${FONT}`; c.textAlign='center'; c.fillStyle='rgba(15,15,16,.72)'; const tw=c.measureText(it.label).width; c.fillRect(a-tw/2-5,b-lift-22*s-4*(FS-1)*s*3,tw+10,16*s*1.3*FS); c.fillStyle='#d8d2bf'; c.fillText(it.label,a,b-lift-9*s); c.restore(); } }
   /** overhead dressing (awnings, lantern swags, bulb strings, rag lines): drawn after actors, fades while the player is under it; glow anchors are saved for the light pass */
   private ovGlows:{x:number;y:number;r:number;a:number;c:string;ph:number}[]=[];
   private drawTownOverhead(){ const t=this.town!, L=this.g.level, c=this.ctx, g=this.g; this.ovGlows.length=0; const pa=this.sx(g.px,g.py), pb=this.sy(g.px,g.py)-this.TW*.6;
@@ -316,5 +316,6 @@ export class Renderer {
 export const ATKD:Record<string,{shape:'cone'|'circle'|'line'|'fan'|'aim';r:number;arc:number;w:number;w_?:number}&{w:number}> = {} as any;
 // telegraph geometry mirrors ATK/resolveAttack in sim.ts
 import { ATK } from './sim';
+export const FONT='"Roboto Condensed","Bahnschrift","Liberation Sans Narrow","Arial Narrow",system-ui,sans-serif';
 const geo:Record<string,any>={ swing:{shape:'cone',r:1.5,arc:Math.PI*.6}, cleave:{shape:'cone',r:2.6,arc:Math.PI*.75}, rsweep:{shape:'cone',r:3.8,arc:Math.PI*.85}, slam:{shape:'circle',r:3.4,arc:0}, charge:{shape:'line',r:9,arc:0,w:1.4}, shot:{shape:'aim',r:10,arc:0}, turretshot:{shape:'aim',r:11,arc:0}, volley:{shape:'fan',r:13,arc:0} };
 for(const k of Object.keys(geo)) (ATKD as any)[k]={ ...geo[k], w:ATK[k].w, wid:geo[k].w };

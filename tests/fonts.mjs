@@ -1,23 +1,44 @@
 // UI text audit: every screen at 3 desktop sizes + touch landscape. Fails if any text overflows/clips
-// (text bbox outside its clipping ancestor / its own box / the viewport) and if desktop sizes fall below minimums.
+// (text bbox outside its clipping ancestor / its own box / the viewport), if any DOM or canvas text is below the minimums
+// (desktop: everything >=14px, primary text/buttons >=16px; touch >=12px) or if text/background contrast is < 4.5:1.
+// Canvas text is captured at runtime by wrapping fillText/strokeText on the game canvas (decorative low-alpha floor paint is skipped).
 // Set SHOTS=<dir> (and TAG=before|after) to also write screenshots.
 import { launch, sleep } from './lib.mjs';
 import fs from 'fs';
 const SHOTS = process.env.SHOTS, TAG = process.env.TAG || 'after'; if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
 let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL ' + m); } };
+const INIT = () => {
+  window.__ctxText = [];
+  for (const m of ['fillText', 'strokeText']) { const o = CanvasRenderingContext2D.prototype[m];
+    CanvasRenderingContext2D.prototype[m] = function (t, x, y, w) { try { if (this.canvas && this.canvas.id === 'game') { const tr = this.getTransform(); const sc = Math.hypot(tr.a, tr.b); const px = parseFloat((/(\d+(?:\.\d+)?)px/.exec(this.font) || [0, 0])[1]) * sc;
+      const st = m === 'fillText' ? this.fillStyle : this.strokeStyle; window.__ctxText.push({ t: String(t).slice(0, 24), px, font: this.font, fill: typeof st === 'string' ? st : '', ga: this.globalAlpha }); } } catch (e) {} return o.call(this, t, x, y, w); }; }
+};
 const SIZES = [[1280, 720], [1920, 1080], [1366, 768], [844, 390]];
 
 const check = () => {
   const bad = []; const vw = innerWidth, vh = innerHeight;
   const vis = e => { const s = getComputedStyle(e); return s.display !== 'none' && s.visibility !== 'hidden' && +s.opacity > 0.05 && e.getClientRects().length; };
   const desc = e => (e.id ? '#' + e.id : '') + '.' + String(e.className && e.className.baseVal === undefined ? e.className : '').split(' ').join('.') + '<' + e.tagName.toLowerCase() + '> "' + (e.textContent || '').trim().slice(0, 30) + '"';
-  let minPx = 99, minWhat = '';
+  let minPx = 99, minWhat = '', touchMode = document.body.classList.contains('touch');
+  const MINALL = touchMode ? 12 : 14, MINPRI = touchMode ? 12 : 16;
+  const parse = c => { const m = /rgba?\(([^)]+)\)/.exec(c); if (!m) return null; const p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p[3] === undefined ? 1 : p[3] }; };
+  const over = (f, b, a) => ({ r: f.r * a + b.r * (1 - a), g: f.g * a + b.g * (1 - a), b: f.b * a + b.b * (1 - a) });
+  const lum = c => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(c.r) + .7152 * f(c.g) + .0722 * f(c.b); };
+  const contrast = el => { // effective text colour (alpha*opacity chain) over layered ancestor backgrounds, base = dark canvas
+    let op = 1, layers = [], skip = false;
+    for (let a = el; a; a = a.parentElement) { const s = getComputedStyle(a); op *= +s.opacity; const bg = parse(s.backgroundColor); if (s.backgroundImage !== 'none' && a !== el) skip = true; if (bg && bg.a > 0) layers.push(bg); }
+    if (skip) return null;
+    let base = { r: 30, g: 31, b: 33 }; for (const l of layers.reverse()) base = over(l, base, l.a);
+    const f = parse(getComputedStyle(el).color); if (!f) return null; const fa = f.a * op; const fg = over(f, base, fa);
+    const L1 = lum(fg), L2 = lum(base); return (Math.max(L1, L2) + .05) / (Math.min(L1, L2) + .05); };
+  const PRIMARY = '.btn,.chip-btn,#interact,#dialog,#objective span,.toast,.row,#downpanel';
   const roots = ['#hud', '#modal', '#splash'].map(s => document.querySelector(s)).filter(Boolean);
   for (const root of roots) for (const el of root.querySelectorAll('*')) {
     if (!vis(el)) continue; const own = [...el.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim()); if (!own.length) continue;
     // skip things that are transient animation (toasts fade) or off by design
-    if (el.closest('#abtip') === null && el.closest('.toast')) continue;
     const fsz = parseFloat(getComputedStyle(el).fontSize); if (fsz < minPx) { minPx = fsz; minWhat = desc(el); }
+    if (!el.closest('.toast') || true) { if (fsz < MINALL - .01) bad.push(`font ${fsz.toFixed(1)}px < ${MINALL}: ` + desc(el)); else if (el.matches(PRIMARY) && fsz < MINPRI - .01) bad.push(`primary font ${fsz.toFixed(1)}px < ${MINPRI}: ` + desc(el)); }
+    const cr = el.closest('button:disabled,.btn[disabled]') ? null : contrast(el); if (cr !== null && cr < 4.5) bad.push(`contrast ${cr.toFixed(2)} < 4.5: ` + desc(el));
     const rg = document.createRange(); rg.selectNodeContents(el); const rs = [...rg.getClientRects()].filter(r => r.width > 0 && r.height > 0); if (!rs.length) continue;
     const L = Math.min(...rs.map(r => r.left)), R = Math.max(...rs.map(r => r.right)), T = Math.min(...rs.map(r => r.top)), B = Math.max(...rs.map(r => r.bottom));
     const own_ = el.getBoundingClientRect(); const cs = getComputedStyle(el);
@@ -37,18 +58,23 @@ const check = () => {
   }
   // scroll containers must not scroll horizontally
   for (const el of document.querySelectorAll('#modal *, #hud *')) if (vis(el)) { const s = getComputedStyle(el); if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1) bad.push('horizontal scroll: ' + desc(el)); }
-  return { bad: [...new Set(bad)], minPx, minWhat };
+  // canvas text captured since the last step
+  const cv = (window.__ctxText || []).splice(0); const seen = new Set();
+  for (const c of cv) { const m = /rgba?\(([^)]+)\)/.exec(c.fill); const col = m ? parse(c.fill) : null; if (col && col.a * c.ga < .5) continue; // decorative floor paint
+    if (c.px < MINALL - .5 && !seen.has(c.t)) { seen.add(c.t); bad.push(`canvas text ${c.px.toFixed(1)}px < ${MINALL}: "${c.t}" (${c.font})`); }
+    if (col && !seen.has('c' + c.t)) { const L1 = lum(col), L2 = lum({ r: 30, g: 31, b: 33 }); const k = (Math.max(L1, L2) + .05) / (Math.min(L1, L2) + .05); if (k < 4.5 && c.fill !== '#000' && col.a >= 1) { seen.add('c' + c.t); bad.push(`canvas contrast ${k.toFixed(2)}: "${c.t}" ${c.fill}`); } } }
+  return { bad: [...new Set(bad)], minPx, minWhat, canvasN: cv.length };
 };
 
 for (const [w, h] of SIZES) {
   const touch = w < 1000; const tag = `${w}x${h}`;
-  const { browser, page, errors } = await launch({ viewport: { width: w, height: h }, touch, dpr: touch ? 2 : 1, query: touch ? '?touch=1&splash=hold' : '?splash=hold' });
+  const { browser, page, errors, ctx } = await launch({ viewport: { width: w, height: h }, touch, dpr: touch ? 2 : 1, init: INIT, query: touch ? '?touch=1&splash=hold' : '?splash=hold' });
   const ev = (f, a) => page.evaluate(f, a);
   const step = async (name, prep, arg) => { if (prep) await ev(prep, arg); await sleep(350); const r = await ev(check);
     if (SHOTS) await page.screenshot({ path: `${SHOTS}/${TAG}-${tag}-${name}.png` });
     for (const b of r.bad) ok(false, `${tag} ${name}: ${b}`);
-    if (!touch) { ok(r.minPx >= 12 - 0.01, `${tag} ${name}: smallest text ${r.minPx}px (${r.minWhat}) < 12px`); }
     return r; };
+  await page.addStyleTag({ content: '.toast{animation:none!important}' });
   await sleep(600);
   await step('01-splash');
   await ev(() => { document.getElementById('splash')?.remove(); window.__ui.kit('A', true); });
@@ -66,6 +92,10 @@ for (const [w, h] of SIZES) {
   await sleep(800);
   await step('11-hud-run', () => { const u = window.__ui; u.toast('Picked up: Overclocked Servo (rare)'); u.toast('Objective updated'); u.banner('Foundry', 'Clear the floor and reach the boss', 30); });
   await step('12-hud-enemies-loot', () => { const g = window.__game; g.heat = 70; for (const t of ['worker', 'worker']) { const e = g.spawnEnemy(t, g.px + 3, g.py + 1); } });
+  await step('12b-canvas-text', () => { const g = window.__game; for (const t of ['sentry', 'brute', 'scanner']) { if (window.__enemies[t]) g.spawnEnemy(t, g.px + 2 + Math.random() * 3, g.py - 2 + Math.random() * 3); } for (let i = 0; i < 4; i++) g.fx.push({ kind: 'text', x: g.px + 1 + i * .4, y: g.py + 1, t: 0, life: 3, text: String(1200 + i), c: '#d8d2bf' }); g.fx.push({ kind: 'text', x: g.px - 1, y: g.py + 1, t: 0, life: 3, text: 'CRIT 9999', c: '#d8a24a' }); g.addDrop(g.px + 1.5, g.py - 1, { kind: 'credits', amount: 40 }); g.addDrop(g.px - 1.5, g.py - 1, { kind: 'chip', chip: g.dd.cache.chips[0], amount: 1 }); });
+  await sleep(300); await ev(check); await step('12c-canvas-text-2');
+  await step('12d-ability-tooltip', () => { const b = document.querySelector('#dodge'); b.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse', bubbles: true })); });
+  await ev(() => document.querySelector('#dodge').dispatchEvent(new PointerEvent('pointerleave', { bubbles: true })));
   await step('13-live-pack', () => window.__ui.toggleLive());
   await step('14-dialog', () => { window.__ui.toggleLive(); window.__ui.showDialog({ title: 'Annex security terminal', body: 'ACCESS DENIED. Requires hacking hardware.\n\nA scrawled note: the audit command selects the Neural Warden as the boss for this run.', options: [{ label: 'Close' }, { label: 'Issue the audit command (selects the Neural Warden)' }] }); });
   await step('15-down-panel', () => { document.getElementById('dialog').style.display = 'none'; window.__ui.showDown({ broke: 'armL', defib: true }); });

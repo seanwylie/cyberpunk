@@ -111,12 +111,12 @@ export class UI {
   hud(){
     const g=this.g, st=g.build.stats; $('hpfill').style.width=Math.max(0,g.hp/g.maxHp*100)+'%'; $('hptxt').textContent=Math.ceil(Math.max(0,g.hp))+' / '+Math.round(g.maxHp);
     $('heatfill').style.width=Math.min(100,g.heat)+'%'; document.querySelector('.bar.heat')!.classList.toggle('over',g.overheated); $('heattxt').textContent=g.overheated?'OVERHEATED':'HEAT';
-    const s=g.save; $('lvl').textContent=`Lv ${s.level}  ·  ${s.credits}c  ·  repair ${s.repairBill}c`;
+    const s=g.save; $('lvl').title='Level, credits, repair bill'; $('lvl').textContent=`Lv ${s.level} · ${s.credits}c`+(s.repairBill>0?` · fix ${s.repairBill}c`:'');
     const inst=g.inst; if(g.mode==='run'&&inst){ const rem=Math.max(0,inst.expiresAt-Date.now()); const h=Math.floor(rem/3600000), m=Math.floor(rem%3600000/60000); $('timer').textContent='Instance '+h+'h'+String(m).padStart(2,'0')+'m'+(rem<1800000?' ⚠':''); $('carry').textContent=`Pack ${g.carriedCount()}/${COMBAT.missionSlots} · +${inst.carried.credits}c`; $('stimn').textContent=String(inst.carried.stims); } else { $('timer').textContent=g.hasLiveInstance()?'Instance live':''; $('carry').textContent=''; $('stimn').textContent=String(s.stims); }
     this.guideHud();
     const run=g.mode==='run'; $('btn-town').style.display=run?'':'none'; $('btn-inv').style.display=run?'':'none';
     this.abilityButtons();
-    const pr=g.prompt; const ib=$('interact'); ib.style.display=pr&&!this.modal&&!g.downed?'':'none'; if(pr) ib.innerHTML=esc(pr.label.length>26?pr.label.slice(0,24)+'…':pr.label)+' <small>F</small>';
+    const pr=g.prompt; const ib=$('interact'); ib.style.display=pr&&!this.modal&&!g.downed?'':'none'; if(pr) ib.innerHTML='<span class="ilabel">'+esc(pr.label)+'</span><small>F</small>'; if(pr) ib.title=pr.label;
     const ch=$('channelbar'); if(g.channel){ ch.style.display='block'; (ch.firstElementChild as HTMLElement).style.width=g.channel.t/g.channel.dur*100+'%'; ch.querySelector('span')!.textContent=g.channel.kind==='town'?'Returning to town…':'Hacking…'; } else ch.style.display='none';
     // conditional support panel: only when relevant ability equipped
     const sup=g.build.abilities.includes('revive'); const sp=$('support'); sp.style.display=sup&&g.mode==='run'?'flex':'none'; if(sup&&!sp.innerHTML) sp.innerHTML='<span class="mut">Support</span><div class="portrait">P1</div><div class="portrait">P2</div><div class="portrait">P3</div><div class="portrait">P4</div><div class="portrait guest">G5</div><span class="mut">no teammates (solo)</span>'; if(!sup) sp.innerHTML='';

@@ -8,6 +8,7 @@ import { newStory } from './story';
 import './dungeon_fx';
 import { ENEMIES } from './config';
 
+try{ (document as any).fonts?.load('600 14px "Roboto Condensed"'); }catch{}
 const save=load(); if(!save.story) save.story=newStory();
 const audio=new AudioSys(); audio.vol=save.settings.volume; audio.musicOn=save.settings.music;
 let ui:UI;

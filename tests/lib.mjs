@@ -7,6 +7,7 @@ export async function launch(opts = {}) {
   const ctx = await browser.newContext({ viewport: opts.viewport || { width: 1280, height: 720 }, hasTouch: !!opts.touch, isMobile: !!opts.touch, deviceScaleFactor: opts.dpr || 1 });
   const page = await ctx.newPage(); const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message)); page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  if (opts.init) await page.addInitScript(opts.init);
   await page.goto(URL + (opts.query || ''), { waitUntil: 'load' }); await page.waitForFunction(() => window.__game);
   return { browser, ctx, page, errors };
 }

@@ -21,7 +21,7 @@ export const MFR: Record<Mfr,{name:string;short:string;color:string;accent:strin
 };
 export type Rarity = 'grey'|'green'|'blue'|'purple'|'orange';
 export const RARITIES: Rarity[] = ['grey','green','blue','purple','orange'];
-export const RARITY_COLOR: Record<Rarity,string> = { grey:'#8d8f8c', green:'#7f9c64', blue:'#6a8fb0', purple:'#9172a6', orange:'#cc7f3c' };
+export const RARITY_COLOR: Record<Rarity,string> = { grey:'#b4b6b2', green:'#93b676', blue:'#82aed2', purple:'#b79ccb', orange:'#dd8d42' };
 export const RARITY_RANK: Record<Rarity,number> = { grey:0, green:1, blue:2, purple:3, orange:4 };
 
 export interface Stats { maxHp:number; dmg:number; atkSpeed:number; cooling:number; move:number; pickup:number; regen:number; armor:number; }
@@ -192,5 +192,9 @@ export const STARTER_ABILITIES:AbilityId[]=['sweep','brace','reposition'];
 export const STARTING = { credits:600, chips:{ speed:2, coolant:2, sustain:2, power:1 } as Partial<Record<ChipId,number>>, lockerSlots:60, lockerPerPurchase:20 };
 
 /** Desktop UI text scale (canvas-drawn text). CSS uses --fs in style.css; keep both in sync. Touch stays 1. */
-export const DESKTOP_FS = 1.3;
+export const DESKTOP_FS = 1.4;
 export function uiFs(): number { return typeof document!=='undefined' && document.body && document.body.classList.contains('touch') ? 1 : DESKTOP_FS; }
+
+/** Minimum canvas text size in px (desktop 14, touch 12). Every ctx.font in the HUD layer goes through cpx(). */
+export function minPx(): number { return uiFs()===1 ? 12 : 14; }
+export function cpx(n:number): number { return Math.round(Math.max(minPx(), n)); }
