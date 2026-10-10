@@ -136,7 +136,16 @@ export class Renderer {
     for(const it of items) it.f();
     this.dart.ambient(this); this.drawProjAndFx(); this.drawGuidance(); if(L.kind==='town'&&this.town?.ready) this.drawTownOverhead(); if(L.kind==='town'&&this.town?.ready) this.drawTownAmbient();
   }
-  interactVisible(id:string){ const g=this.g; if(g.mode!=='run'||!g.inst) return true; const f=g.inst.flags; if(id==='controller') return false; if(id==='hackproc') return !f.lock2; return true; }
+  interactVisible(id:string){ const g=this.g; if(g.mode!=='run'||!g.inst) return true; const f=g.inst.flags; if(id==='controller') return false; if(id==='hackproc') return !f.lock2; if(id==='armorydoor') return !f.armory; if(id==='cratechip') return !g.inst.claimed.includes('cratechip'); return true; }
+  /** world labels queued by drawInteract this frame; drawn on top (after the player) by flushLoot. alpha fades with distance. Exposed for tests. */
+  ifaceLabels:{id:string;text:string;x:number;y:number;alpha:number}[]=[]; private labelQ:{id:string;text:string;a:number;b:number;s:number;alpha:number}[]=[];
+  private drawIfaceLabels(){ const c=this.ctx; this.ifaceLabels=[]; const FS=uiFs(); const placed:{x0:number;x1:number;y0:number;y1:number}[]=[]; const px=this.sx(this.g.px,this.g.py), py=this.sy(this.g.px,this.g.py);
+    for(const q of this.labelQ){ c.save(); c.font=`${Math.max(10*FS,11*q.s*1.3*FS)}px system-ui,sans-serif`; c.textAlign='center'; const tw=c.measureText(q.text).width; const bw=tw+12, bh=Math.max(16,15*q.s*1.3*FS)+4; let x=q.a, y=q.b-64*q.s-bh;
+      x=Math.max(bw/2+4,Math.min(this.w-bw/2-4,x)); y=Math.max(4,Math.min(this.h-bh-4,y));
+      // keep clear of the player sprite and other labels
+      for(let k=0;k<8;k++){ const hit=(px>x-bw/2-14&&px<x+bw/2+14&&py-70*q.s<y+bh&&py+10*q.s>y)||placed.some(r=>x+bw/2>r.x0&&x-bw/2<r.x1&&y+bh>r.y0&&y<r.y1); if(!hit) break; y-=bh+4; if(y<4){ y=4; break; } }
+      placed.push({x0:x-bw/2,x1:x+bw/2,y0:y,y1:y+bh}); c.globalAlpha=q.alpha; c.fillStyle='rgba(15,15,16,.8)'; c.fillRect(x-bw/2,y,bw,bh); c.fillStyle='#d8d2bf'; c.textBaseline='middle'; c.fillText(q.text,x,y+bh/2); c.restore(); this.ifaceLabels.push({id:q.id,text:q.text,x,y,alpha:q.alpha}); }
+    this.labelQ=[]; }
   hazard(x:number,y:number){ const c=this.ctx; c.save(); c.strokeStyle=PAL.oxide; c.lineWidth=3; c.globalAlpha=.8; const a=this.sx(x+.5,y+.5), b=this.sy(x+.5,y+.5,.8); c.beginPath(); c.moveTo(a-this.TW*.25,b-this.TW*.1); c.lineTo(a+this.TW*.25,b+this.TW*.1); c.moveTo(a-this.TW*.25,b+this.TW*.1); c.lineTo(a+this.TW*.25,b-this.TW*.1); c.stroke(); c.restore(); }
   drawProp(p:{x:number;y:number;kind:string;h:number}){ if(this.env){ this.texProp(p); return; } const k=p.kind; if(k==='crate') this.box(p.x+.05,p.y+.05,.9,.9,p.h*.9,'#8a6b4e','#6b5239','#554230'); else if(k==='conveyor') this.box(p.x,p.y,1,1,p.h,'#4f5256','#3d4043','#2f3235'); else if(k==='machine') this.box(p.x,p.y,1,1,p.h,'#5f666b','#464c50','#383d41'); else if(k==='rack') this.box(p.x,p.y,1,1,p.h,'#574f47','#443d37','#352f2a'); else this.box(p.x+.1,p.y+.1,.8,.8,p.h,'#7b7c79','#5d5e5c','#49494a');
     if(k==='conveyor'){ const c=this.ctx; c.fillStyle='rgba(168,150,90,.5)'; const a=this.sx(p.x+.5,p.y+.5), b=this.sy(p.x+.5,p.y+.5,p.h); c.fillRect(a-3,b-2,6,3); } }
@@ -144,7 +153,7 @@ export class Renderer {
     if(this.g.level.kind==='town'&&this.town?.ready){ this.townMarker(it,a,b,s); return; }
     if(it.id==='annex'){ this.box(it.x-1,it.y-1,2,2,.12,'#5a5d5f','#444','#333'); }
     c.save(); c.fillStyle='#3a3d40'; c.fillRect(a-9*s,b-22*s,18*s,22*s); c.fillStyle='#cfc6b0'; c.globalAlpha=.8; c.fillRect(a-6*s,b-19*s,12*s,8*s); c.globalAlpha=1; c.fillStyle=it.kind==='hack'||it.kind==='terminal'?PAL.slate:PAL.oxide; c.fillRect(a-9*s,b-5*s,18*s,3*s); c.restore();
-    if(Math.hypot(this.g.px-it.x,this.g.py-it.y)<7){ c.save(); const FS=uiFs(); c.font=`${Math.max(10*FS,11*s*1.3*FS)}px system-ui,sans-serif`; c.textAlign='center'; c.fillStyle='rgba(15,15,16,.7)'; const tw=c.measureText(it.label).width; c.fillRect(a-tw/2-4,b-44*s-4*(FS-1)*s*3,tw+8,15*s*1.3*FS); c.fillStyle='#d8d2bf'; c.fillText(it.label,a,b-32*s); c.restore(); } }
+    { const d=Math.hypot(this.g.px-it.x,this.g.py-it.y); const R=(it as any).r??1.5; const show=R+2.5; if(d<show){ const alpha=Math.min(1,(show-d)/1.5); this.labelQ.push({id:it.id,text:it.label,a,b,s,alpha}); } } }
   // ---- loot drops (see lootart.ts / docs/LOOT_ART.md) ----
   private lootLabels:{x:number;y:number;spec:LootSpec;strong:boolean;rk:number}[]=[]; private lootBudget=0; private mouseX=-1e5; private mouseY=-1e5; private mouseHook=false;
   drawDrop(d:import('./state').Drop){ const g=this.g; const st=g.save.settings; if(!this.mouseHook){ this.mouseHook=true; window.addEventListener('mousemove',e=>{ this.mouseX=e.clientX; this.mouseY=e.clientY; }); }
@@ -159,7 +168,7 @@ export class Renderer {
     const near=pd<(rk>=3?7:3.4); const hov=Math.hypot(a-this.mouseX,(b-14*s)-this.mouseY)<22*s; if(mode==='all'||near||hov) this.lootLabels.push({x:a,y:b-(34+(rk===4?12:0))*s,spec,strong:hov||pd<2.2,rk});
   }
   /** after the world pass: pickup fly-ins, then de-overlapped labels */
-  flushLoot(){ const g=this.g, c=this.ctx; const s=this.TW/64; const t=g.time; const px=this.sx(g.px,g.py), py=this.sy(g.px,g.py); this.lootBudget=0;
+  flushLoot(){ this.drawIfaceLabels(); const g=this.g, c=this.ctx; const s=this.TW/64; const t=g.time; const px=this.sx(g.px,g.py), py=this.sy(g.px,g.py); this.lootBudget=0;
     for(let i=g.pickFx.length-1;i>=0;i--){ const f=g.pickFx[i]; const p=(t-f.t0)/PICK_T; if(p>1.5||p<0){ g.pickFx.splice(i,1); continue; } const spec=specOf(f as any);
       drawPickup(c,this.sx(f.x,f.y),this.sy(f.x,f.y),px,py,s,p,spec,f.id,!!g.save.settings.reducedFx); }
     const L=this.lootLabels; this.lootLabels=[]; if(!L.length) return; L.sort((p,q)=>p.y-q.y||q.rk-p.rk); const placed:{x0:number;x1:number;y0:number;y1:number}[]=[]; let n=0;

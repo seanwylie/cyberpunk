@@ -1,0 +1,21 @@
+// World interactable labels: show only when usable and in range, fade, hide after use, clear of the player, on screen.
+import { launch } from './lib.mjs';
+import fs from 'fs';
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } });
+const ev = (f, a) => page.evaluate(f, a);
+const frame = () => ev(() => { const g = window.__game; g.update(0.016); return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(window.__rend.ifaceLabels.map(l => ({ ...l })))))); });
+await page.waitForFunction(() => !document.getElementById('splash'), null, { timeout: 15000 });
+await ev(() => { const g = window.__game; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lastClearDay = null; g.save.lockouts = {}; g.dbg.god = true; g.startRun('warehouse'); });
+ok(await ev(() => window.__game.mode === 'run' && window.__game.level.interacts.some(i => i.id === 'cratechip')), 'warehouse run with cache');
+const place = (dx) => ev((dx) => { const g = window.__game; const it = g.level.interacts.find(i => i.id === 'cratechip'); g.px = it.x + dx; g.py = it.y; g.update(0.016); }, dx);
+await place(12); let L = await frame(); ok(!L.some(l => l.id === 'cratechip'), 'no label when far away');
+await place(3.5); L = await frame(); const l1 = L.find(l => l.id === 'cratechip'); ok(l1 && l1.alpha > 0 && l1.alpha < 1, 'label fades in at the edge of range (alpha ' + (l1 && l1.alpha.toFixed(2)) + ')');
+await place(0.8); L = await frame(); const l2 = L.find(l => l.id === 'cratechip'); ok(l2 && l2.alpha === 1, 'label fully visible in range');
+const sc = await ev(() => { const r = window.__rend, g = window.__game; return { px: r.sx(g.px, g.py), py: r.sy(g.px, g.py), w: r.w, h: r.h }; });
+ok(l2.x > 0 && l2.x < sc.w && l2.y >= 0 && l2.y < sc.h, 'label on screen'); ok(l2.y < sc.py - 40, 'label sits above the player, not over them');
+fs.mkdirSync(process.env.SHOTS || '/tmp/lf', { recursive: true }); await page.screenshot({ path: (process.env.SHOTS || '/tmp/lf') + '/label_in_range.png' });
+await ev(() => { const g = window.__game; g.interact(); }); L = await frame();
+ok(await ev(() => window.__game.inst.claimed.includes('cratechip')), 'cache opened'); ok(!L.some(l => l.id === 'cratechip'), 'label gone right after interact');
+await page.screenshot({ path: (process.env.SHOTS || '/tmp/lf') + '/label_after_use.png' });
+ok(errors.length === 0, 'no page errors ' + errors.join('|')); await browser.close(); process.exit(fails ? 1 : 0);
