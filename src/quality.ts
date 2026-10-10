@@ -26,7 +26,7 @@ class Quality {
   p: Params = TIERS[this.tier]; onChange: (() => void) | null = null;
   private acc = 0; private n = 0; private good = 0; private warm = 3; private floor: Tier = 'high'; frameAvg = 0; steps: string[] = [];
   /** Is the dynamic path allowed? Never on the desktop (auto/high) path. */
-  get dynamic() { return this.pref === 'auto' && this.auto.tier !== 'high'; }
+  get dynamic() { return this.pref === 'auto' && this.auto.tier !== 'high' && this.auto.why !== 'query'; }
   setPref(p: QPref) { this.pref = p; this.tier = p === 'auto' ? this.auto.tier : p; this.resScale = 1; this.floor = 'high'; this.apply(); }
   private apply() { this.p = TIERS[this.tier]; this.onChange?.(); if (typeof document !== 'undefined') { const b = document.body; if (b) { for (const t of ORDER) b.classList.toggle('q-' + t, t === this.tier); } } }
   /** effective canvas dpr for a given device dpr + css size */
@@ -38,8 +38,8 @@ class Quality {
     if (ms > 250) { this.warm = Math.max(this.warm, 1.5); return; } this.acc += ms; this.n++; const win = 1.5 * 1000;
     if (this.acc < win) return; const avg = this.acc / this.n; this.frameAvg = avg; this.acc = 0; this.n = 0;
     if (!this.dynamic) return; if (this.warm > 0) { this.warm -= win / 1000; return; }
-    if (avg > 26) { this.good = 0; if (this.resScale > .66) { this.resScale = Math.max(.6, +(this.resScale - .13).toFixed(2)); this.steps.push('res ' + this.resScale); this.apply(); }
-      else if (this.tier !== 'low') { const nt = ORDER[ORDER.indexOf(this.tier) + 1]; this.tier = nt; this.floor = nt; this.resScale = .85; this.steps.push('tier ' + nt); this.apply(); } this.warm = 1.5; }
+    if (avg > 26) { this.good = 0; if (this.resScale > .72) { this.resScale = Math.max(.7, +(this.resScale - .1).toFixed(2)); this.steps.push('res ' + this.resScale); this.apply(); }
+      else if (this.tier !== 'low') { const nt = ORDER[ORDER.indexOf(this.tier) + 1]; this.tier = nt; this.floor = nt; this.resScale = .9; this.steps.push('tier ' + nt); this.apply(); } this.warm = 1.5; }
     else if (avg < 15 && this.resScale < 1) { if (++this.good >= 4) { this.good = 0; this.resScale = Math.min(1, +(this.resScale + .1).toFixed(2)); this.steps.push('res ' + this.resScale); this.apply(); this.warm = 1.5; } } else this.good = 0;
   }
   describe() { return `${this.tier}${this.pref === 'auto' ? ' (auto: ' + this.auto.why + ')' : ''} ×${this.resScale}`; }

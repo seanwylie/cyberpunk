@@ -10,7 +10,7 @@ let fails = 0; const ok = (c, m) => { if (!c) { fails++; console.log('FAIL ' + m
 const INIT = () => {
   window.__ctxText = [];
   for (const m of ['fillText', 'strokeText']) { const o = CanvasRenderingContext2D.prototype[m];
-    CanvasRenderingContext2D.prototype[m] = function (t, x, y, w) { try { if (this.canvas && this.canvas.id === 'game') { const tr = this.getTransform(); const sc = Math.hypot(tr.a, tr.b); const px = parseFloat((/(\d+(?:\.\d+)?)px/.exec(this.font) || [0, 0])[1]) * sc;
+    CanvasRenderingContext2D.prototype[m] = function (t, x, y, w) { try { if (this.canvas && this.canvas.id === 'game') { const tr = this.getTransform(); const sc = Math.hypot(tr.a, tr.b) / (window.__rend && window.__rend.dpr || 1); /* CSS px (the quality tier may lower the backing-store dpr) */ const px = parseFloat((/(\d+(?:\.\d+)?)px/.exec(this.font) || [0, 0])[1]) * sc;
       const st = m === 'fillText' ? this.fillStyle : this.strokeStyle; window.__ctxText.push({ t: String(t).slice(0, 24), px, font: this.font, fill: typeof st === 'string' ? st : '', ga: this.globalAlpha }); } } catch (e) {} return o.call(this, t, x, y, w); }; }
 };
 const SIZES = [[1280, 720], [1920, 1080], [1366, 768], [2560, 1440], [844, 390]];

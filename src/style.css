@@ -305,3 +305,19 @@ h3,.selhead{ overflow-wrap:anywhere; hyphens:auto; line-height:1.2; }
 .list>*{ flex:none; }
 .recpanel .rhead{ flex-wrap:wrap; } .recpanel .rhead b{ flex:1 1 auto; min-width:max-content; white-space:nowrap; }
 .row>.btn,.row>button{ flex:none; }
+
+body.touch #modal input[type=text],body.touch #modal input[type=search],body.touch #modal input[type=password],body.touch #modal input:not([type]){ min-height:44px; font-size:max(16px,var(--fmin)); }
+/* portrait phone HUD: bars left, tray right (smaller), objective and minimap tucked below, toasts above the thumb row */
+@media (max-width:640px) and (orientation:portrait){
+  body.touch #topleft{ width:44vw; } body.touch #topright{ gap:3px; padding:3px 4px; } body.touch .tbtn,body.touch #topright .tbtn{ width:44px; height:44px; } body.touch #topright .tbtn svg{ width:20px; height:20px; }
+  body.touch #objective{ top:calc(66px + env(safe-area-inset-top)); left:50%; max-width:92vw; width:max-content; }
+  body.touch #minimap{ top:calc(118px + env(safe-area-inset-top)); width:104px; height:65px; }
+  body.touch #toasts{ bottom:calc(190px + env(safe-area-inset-bottom)); max-width:62vw; }
+  body.touch #controls{ right:calc(8px + env(safe-area-inset-right)); bottom:calc(52px + env(safe-area-inset-bottom)); } body.touch #abilities{ gap:10px; }
+}
+@media (max-width:640px) and (orientation:portrait){
+  body.touch #topright{ flex-wrap:wrap; width:calc(3*44px + 2*3px + 12px); justify-content:center; }
+  body.touch #objective{ top:calc(112px + env(safe-area-inset-top)); } body.touch #minimap{ top:calc(168px + env(safe-area-inset-top)); right:calc(8px + env(safe-area-inset-right)); }
+  body.touch .abtn .aname,body.touch #dodge .aname{ letter-spacing:0; font-size:max(11px,var(--fmin)); max-width:calc(100% + 40px); overflow-wrap:normal; }
+}
+@media (max-height:480px) and (orientation:landscape){ body.touch #objective{ left:calc(30vw + 18px); transform:none; max-width:calc(100vw - 30vw - 6*49px - 70px); min-width:150px; text-align:left; } }

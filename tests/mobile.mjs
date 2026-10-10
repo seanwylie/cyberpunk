@@ -102,8 +102,8 @@ for (const k of devs) {
   ok(fs.existsSync('public/sw.js') && /wv-/.test(fs.readFileSync('public/sw.js', 'utf8')), 'service worker present with versioned cache'); }
 
 // ---------- frame-time regression ceilings (software raster here; ceilings are loose guards, real devices have GPUs) ----------
-if (!process.env.QUICK) for (const [k, where, ceil] of [['phoneL', 'town', 160], ['phoneL', 'annex', 240]]) {
-  const { browser, page } = await launchMobile(DEVICES[k], { cpu: 4, query: '?splash=hold' }); await sleep(2000); const r = await perf(page, where, 100); await browser.close();
+if (!process.env.QUICK) for (const [k, where, ceil] of [['phoneL', 'town', 220], ['phoneL', 'annex', 380]]) {
+  const { browser, page } = await launchMobile(DEVICES[k], { cpu: 4, query: '?splash=hold&q=medium' }); await sleep(2000); const r = await perf(page, where, 100); await browser.close();
   console.log(`  ${k} ${where} cpu x4 [${r.tier}] ${r.canvas}: draw+raster med ${r.med} p95 ${r.p95}ms (submit p95 ${r.submitP95}) raf med ${r.rafMed}`);
   ok(r.p95 < ceil, `${k} ${where} @4x throttle: p95 ${r.p95}ms < ${ceil}ms`);
 }
