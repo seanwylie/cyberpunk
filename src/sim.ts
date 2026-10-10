@@ -1,4 +1,4 @@
-import { ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING} from './config';
+import { key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING} from './config';
 import { computeBuild, installedLayout, BuildResult } from './build';
 import { buildTown, Level, Interact } from './level';
 import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
@@ -13,7 +13,7 @@ import { IDKFA_SET, IDKFA_CHIPS } from './content/idkfa';
 import { BAL } from './content/balance';
 import { record, newStory, EventKind } from './story';
 
-export const TOWN_KEY='B'; // keep in sync with input.ts (central KEYS map pending)
+export const TOWN_KEY=key('town');
 export type Emit = (type:string, payload?:any)=>void;
 export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:number; life:number; faction:'enemy'|'ally'; kind:'bolt'|'slug'|'pop'|'pistol'|'needle'|'shard'; c?:string; }
 export interface Zone { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }

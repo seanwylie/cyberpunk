@@ -1,6 +1,6 @@
 // Settings modal: tabbed panel (left rail) with consistent rows, switches, sliders and segmented controls.
 // Kept out of ui.ts so the main UI file stays small; ui.ts only hosts the hooks (settings(), input(), click(), esc(), render()).
-import { RARITY_COLOR, applyUiScale } from './config';
+import { key, RARITY_COLOR, applyUiScale } from './config';
 import { persist, wipe } from './state';
 import { makeProvider, MockProvider } from './story';
 import { DUNGEONS } from './content/dungeons';
@@ -37,7 +37,7 @@ export function settingsHtml(ui:UIx):string{
     +row('Show loot from','Hide drops below this rarity. Hidden loot is still picked up.',seg('lootmin',st.lootMin,(['grey','green','blue','purple','orange'] as const).map(r=>[r,r[0].toUpperCase()+r.slice(1),(RARITY_COLOR as any)[r]] as [string,string,string]),'Minimum loot rarity'));
   else if(tab==='display') c=head('Display & UI','Text size and screen effects. UI size also scales with your window.')
     +row('UI size','Scales all text and panels. Larger is easier to read; smaller fits more.',seg('uisize',st.uiSize||'M',[['S','S'],['M','M'],['L','L'],['XL','XL']],'UI size'))
-    +row('Minimap','Show the minimap during runs. Press N to toggle it anywhere.',sw('minimap',st.minimap!==false,'Minimap'),{tag:'label',id:'s-minimap'})
+    +row('Minimap','Show the minimap during runs. Press '+key('minimap')+' to toggle it anywhere.',sw('minimap',st.minimap!==false,'Minimap'),{tag:'label',id:'s-minimap'})
     +row('Graphics quality','Auto picks for your device and adapts to keep the frame rate up. High is the full desktop look; Medium and Low trade resolution and effects for speed and battery. Now: '+Q.describe()+'.',seg('quality',st.quality||'auto',[['auto','Auto'],['high','High'],['medium','Medium'],['low','Low']],'Graphics quality'))
     +row('FPS overlay','Show frame rate and render resolution (F3 on desktop).',sw('showfps',!!st.showFps,'FPS overlay'),{tag:'label',id:'s-showfps'})
     +row('Reduced incidental effects','Tones down flashes, shake and ambient particles. Combat telegraphs stay.',sw('reduced',!!st.reducedFx,'Reduced incidental effects'),{tag:'label',id:'s-reduced'});
@@ -119,6 +119,7 @@ export function settingsEsc(ui:UIx):boolean{ if(S.confirm){ S.confirm=null; keep
 
 const sel=(el:HTMLElement)=>{ const d=el.dataset; let s=el.tagName.toLowerCase(); if(d.act) s+=`[data-act="${d.act}"]`; if(d.in) s+=`[data-in="${d.in}"]`; if(d.v) s+=`[data-v="${d.v}"]`; if(d.tab) s+=`[data-tab="${d.tab}"]`; if(d.c) s+=`[data-c="${d.c}"]`; return s; };
 function keep(ui:UIx,focusEl?:HTMLElement|null,reset=false){ const sb=document.querySelector<HTMLElement>('.sbody'); S.scroll=reset?0:(sb?sb.scrollTop:0); S.focus=focusEl?sel(focusEl):''; ui.render(); }
+export function settingsTab(ui:UIx,id:string){ setTab(ui,id,false); }
 function setTab(ui:UIx,id:string,focus=true){ if(!TABS.some(t=>t[0]===id)) return; S.tab=id; S.confirm=null; try{ localStorage.setItem(TAB_KEY,id); }catch{} S.focus=focus?'#stab-'+id:''; S.scroll=0; ui.render(); }
 
 const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','recnudge','stationmk','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','llmurl','llmkey','llmmodel','devreset']);

@@ -105,6 +105,11 @@ for (const [w, h, touch] of VPS.filter(v => !process.env.ONLY || process.env.ONL
     try {
       await setup(page, mode, tut, touch);
       const m = await measure(page); audit(tag, m, mode, tut);
+      if (tut !== 'dock') { // every interactive HUD control must be the topmost element at its centre
+        const hits = await page.evaluate(() => [...document.querySelectorAll('#hud button, #hud .abtn, #hud .interactive, #dodge, #interact')].filter(b => { const r = b.getBoundingClientRect(); let e = b; while (e && e !== document.body) { const c = getComputedStyle(e); if (c.display === 'none' || c.visibility === 'hidden') return false; e = e.parentElement; } return r.width > 2 && r.height > 2 && r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight && getComputedStyle(b).pointerEvents !== 'none'; }).map(b => { const r = b.getBoundingClientRect(); const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return { id: b.id || b.className, ok: e === b || b.contains(e), top: e && (e.id || e.className) }; }));
+        ok(hits.length >= 3, `${tag}: hit-tested ${hits.length} controls`);
+        for (const h of hits) ok(h.ok, `${tag}: control ${h.id} receives pointer at its centre${h.ok ? '' : ' (covered by ' + h.top + ')'}`);
+      }
       if (tut === 'card') ok(m.boxes.some(b => b.name === 'tut'), `${tag}: tutorial card visible`);
       await page.screenshot({ path: `${OUT}/${w}x${h}${touch ? 't' : ''}_${mode}_${tut}.png` });
       ok(errors.length === 0, `${tag}: no page errors ${errors.slice(0, 2).join('|')}`);

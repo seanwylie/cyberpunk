@@ -7,7 +7,7 @@ import type { Game } from './sim';
 import type { UI } from './ui';
 import type { Renderer } from './render';
 import { persist } from './state';
-import { ITEMS, ITEM_BY_ID, SLOT_LABEL, CHIPS, ChipId, chipFits, RARITY_RANK, SLOTS, Slot } from './config';
+import { key, ITEMS, ITEM_BY_ID, SLOT_LABEL, CHIPS, ChipId, chipFits, RARITY_RANK, SLOTS, Slot } from './config';
 import { contractState } from './state';
 
 export interface TutState { status:'active'|'done'|'skipped'; done:string[]; skipped:string[]; slot:Slot; item:string; chip:ChipId; rankBase:number; chipBase:number; kills:number; rewarded:boolean; v:number; }
@@ -108,8 +108,8 @@ export class Tutorial {
   private compute(c:StepDef&{redirect:boolean}):View{ const g=this.g, s=g.save, st=this.st, ui=this.ui as any, t=this.touch(); const modal:string|null=ui.modal; const slotName=SLOT_LABEL[st.slot];
     const item=ITEM_BY_ID[st.item]; const itemName=item?.name||'the new part';
     const T=(sel:string,dim=false):Target=>({sel,dim});
-    if(c.redirect){ if(g.mode==='run') return { title:'Back to town', body:t?'Tap the Town button (top right) to channel a return. Some steps are waiting in town.':'Press B to channel a return to town. Some steps are waiting there.', target:T('#btn-town',true), redirect:true };
-      return { title:'Back to the gate', body:'You still have field lessons left. Walk to the Annex gate and press F.', target:{world:this.W('annex')}, redirect:true }; }
+    if(c.redirect){ if(g.mode==='run') return { title:'Back to town', body:t?'Tap the Town button (top right) to channel a return. Some steps are waiting in town.':'Press '+key('town')+' to channel a return to town. Some steps are waiting there.', target:T('#btn-town',true), redirect:true };
+      return { title:'Back to the gate', body:'You still have field lessons left. Walk to the Annex gate and press '+key('interact')+'.', target:{world:this.W('annex')}, redirect:true }; }
     switch(c.id){
       case 'move': return { title:c.title, body:t?'Drag on the left half of the screen. Walk toward the gold ring. A few steps is enough.':'WASD to move. Walk toward the gold ring. A few steps is enough.', list:[{t:'Walk a few steps',ok:this.dist>=4}], target:{world:{x:27,y:16.5,r:1.2,col:'#e0c070'}} };
       case 'fixer': {
@@ -118,7 +118,7 @@ export class Tutorial {
         if(modal==='fixer') return { title:'Press Contracts', body:'This screen is her story, not the job. Press the Contracts button.', list, target:T('#modal [data-act=opencontacts]') };
         if(modal==='contacts'){ if(ui.contactSel!=='odalys_vane') return { title:'Select Odalys', body:'Odalys Vane is on the left. She has the starter job.', list, target:T('#modal [data-act=dsel][data-id=odalys_vane]') };
           return { title:'Accept Floor sweep', body:'Press Accept on Floor sweep. That signs you up. You do the fighting later, in a dungeon.', list, target:T('#modal [data-act=accept][data-id=od_floor_sweep]') }; }
-        if(near) return { title:'Press F', body:t?'Tap the prompt at the bottom of the screen.':'Press F on the prompt at the bottom of the screen.', list, target:{sel:'#interact',dim:true,world:this.W('fixer')} };
+        if(near) return { title:'Press '+key('interact')+'', body:t?'Tap the prompt at the bottom of the screen.':'Press '+key('interact')+' on the prompt at the bottom of the screen.', list, target:{sel:'#interact',dim:true,world:this.W('fixer')} };
         return { title:'Find Odalys', body:'Follow the gold ring to the west side of the market. That is Odalys Vane. She gives out jobs.', list, target:{world:this.W('fixer')} }; }
       case 'equip': {
         if(modal!=='locker') return { title:c.title, body:`Upgrades live in the locker. Your body is eleven slots of Standard Issue. Visit the body shop and fit the ${itemName} we set aside.`, target:{world:this.W('locker')} };
@@ -140,14 +140,14 @@ export class Tutorial {
         return { title:c.title, body:t?'Walk to the Annex gate and tap the prompt.':'Walk to the Annex gate and press F to pick a dungeon.', target:{world:this.W('annex')} }; }
       case 'controls': { const f=this.flags, all=!!(f.cast&&f.dodge);
         const list=[{t:t?'Cast: hold an ability, drag to aim, release':'Cast: hold Q, E or R, aim, release',ok:!!f.cast},{t:t?'Dodge: tap the Dodge button':'Dodge: Space',ok:!!f.dodge},{t:t?'Stim: tap the stim button (optional)':'Stim: T (optional)',ok:!!f.stim},{t:t?'Interact: tap the prompt (optional)':'Interact: F (optional)',ok:!!f.interact}];
-        if(all) return { title:c.title, body:'The Objective tracker and minimap point the way. Press N to toggle the minimap.', list, target:T('#objective, #minimap, #btn-map'), ack:'Got it' };
+        if(all) return { title:c.title, body:'The Objective tracker and minimap point the way. Press '+key('minimap')+' to toggle the minimap.', list, target:T('#objective, #minimap, #btn-map'), ack:'Got it' };
         return { title:c.title, body:t?'Long-press an ability to read it.':'Hover an ability to read it.', list, target:T(f.cast?'#dodge':'#abilities') }; }
       case 'fight': { const left=Math.max(0,KILLS_NEEDED-st.kills); const en=g.enemies.filter(e=>!e.dead&&e.faction==='enemy').sort((a,b)=>Math.hypot(a.x-g.px,a.y-g.py)-Math.hypot(b.x-g.px,b.y-g.py))[0];
         const dr=(g.inst?.drops||[]).filter(d=>!d.marker).sort((a,b)=>Math.hypot(a.x-g.px,a.y-g.py)-Math.hypot(b.x-g.px,b.y-g.py))[0];
         const list=[{t:`Defeat ${KILLS_NEEDED} hostiles (${Math.min(KILLS_NEEDED,st.kills)}/${KILLS_NEEDED})`,ok:st.kills>=KILLS_NEEDED},{t:'Pick up a drop (walk over it)',ok:!!this.flags.loot}];
         const world=st.kills>=KILLS_NEEDED||!en?(dr&&!this.flags.loot?{x:dr.x,y:dr.y,r:.8,col:'#9fb98a'}:undefined):{x:en.x,y:en.y,r:1,col:'#c0503a'};
         return { title:c.title, body:left>0?'Hostiles ahead. Click one to target it, then use your abilities. Heat builds, so watch the bar.':'Loot drops where they fall. Walk over it to pick it up.', list, target:{world} }; }
-      case 'return': return { title:c.title, body:t?'Tap the Town button to channel a return. Damage or movement interrupts it, so stand still.':'Press B to channel a return to town. Damage or movement interrupts it, so stand still.', target:T('#btn-town',true) };
+      case 'return': return { title:c.title, body:t?'Tap the Town button to channel a return. Damage or movement interrupts it, so stand still.':'Press '+key('town')+' to channel a return to town. Damage or movement interrupts it, so stand still.', target:T('#btn-town',true) };
       case 'recs': { const rp=document.querySelector('#modal .recpanel, #modal .recshow'); return { title:c.title, body:modal==='locker'||modal==='vendor'?(rp?'Recommended shows the best swaps, what changes and what it costs. Check it after every run.':'Recommendations show up here when you have something worth upgrading.'):'Open the locker or vendor to see Recommended: the best upgrades for your credits. Run, loot, upgrade, repeat.', target:rp?T('#modal .recpanel, #modal .recshow'):(modal?undefined:{world:this.W('locker')}), ack:'Finish and claim reward' }; }
     } return { title:c.title, body:'' }; }
   // ---------- per-frame ----------

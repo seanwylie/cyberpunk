@@ -2,7 +2,8 @@ import { flashAllowed, FLASH_ALPHA_CAP } from './flashguard';
 import { STATIONS, STATION_BY_ID, drawIcon, type Station } from './stations';
 const _ico:Record<string,string>={}; function stationIconURL(st:Station){ return _ico[st.key]||(_ico[st.key]=(()=>{ const cv=document.createElement('canvas'); cv.width=cv.height=48; const c=cv.getContext('2d')!; drawIcon(c,st.icon,24,24,17,st.color,3); return cv.toDataURL(); })()); }
 import { Game } from './sim';
-import { applyUiScale } from './config';
+import { helpHtml } from './helpui';
+import { applyUiScale, key } from './config';
 import { specOf, iconCanvas } from './lootart';
 import { AudioSys } from './audio';
 import { chipFits, chipFitLabel, chipReason, CHIP_FITS, SLOT_GROUP, GROUP_LABEL, ABILITIES, ABILITY_TYPE_COLOR, ABILITY_TYPE_LABEL, CHIPS, ChipId, COMBAT, ENEMIES, INSTALL_COST, ITEM_BY_ID, ITEMS, MFR, RARITY_COLOR, REP_DISCOUNT_PER_RANK, SELL_VALUE, SLOT_LABEL, SLOT_SOCKETS, SLOTS, Slot, Stats, REPAIR_COST, RARITIES, STARTING, PROGRESSION, ItemDef, WEAPONS, WEAPON_RARITY_MUL } from './config';
@@ -15,7 +16,7 @@ import { CONTACTS, CONTACT_BY_ID, CONTRACT_BY_ID, MAX_ACTIVE_CONTRACTS, Contract
 import { EXTRA_ITEMS } from './content/items';
 import { WEAPON_ITEMS } from './content/weapons';
 import { lockDay, contractState } from './state';
-import { settingsHtml, settingsAfterRender, settingsReset, settingsEsc, settingsInput, settingsClick, settingsKey } from './settingsui';
+import { settingsHtml, settingsAfterRender, settingsReset, settingsEsc, settingsInput, settingsClick, settingsKey, settingsTab } from './settingsui';
 
 export const abIconUrl=(id:string)=>'abilities/'+id+'.webp';
 const abChip=(id:keyof typeof ABILITIES)=>{ const d=ABILITIES[id]; return `<span class="abchip" style="--tc:${ABILITY_TYPE_COLOR[d.type]}" title="${esc(ABILITY_TYPE_LABEL[d.type])}: ${esc(d.desc)}"><img src="${abIconUrl(id)}" alt="">${esc(d.name)}</span>`; };
@@ -39,14 +40,14 @@ const BVG='<span class="bvg"><span>With Big Viking Games</span><img src="./brand
 export class UI {
   modal:string|null=null; draft:Layout|null=null; sel:Slot='torso'; search=''; confirm:any=null; msg=''; storyMsg=''; liveOpen=false; bannerT=0; toastCount=0; storyBusy=false; devOpen=false; lastKey=''; showAll=false; resetAsk=false; contactSel='odalys_vane';
   constructor(private g:Game, private audio:AudioSys){
-    this.bindAbilityTips(); this.bindHelp(); this.syncTray(); document.getElementById('btn-map')!.addEventListener('pointerdown',e=>{ e.preventDefault(); this.setMinimap(this.g.save.settings.minimap===false); });
+    this.bindAbilityTips(); this.bindHelp(); this.syncTray(); document.getElementById('btn-map')!.addEventListener('click',e=>{ e.preventDefault(); this.setMinimap(this.g.save.settings.minimap===false); });
     $('modal').addEventListener('click',e=>this.click(e)); $('modal').addEventListener('input',e=>this.input(e)); $('modal').addEventListener('keydown',e=>settingsKey(this,e)); $('modal').addEventListener('change',e=>this.input(e));
-    document.getElementById('btn-menu')!.addEventListener('pointerdown',e=>{ e.preventDefault(); this.open('settings'); });
+    document.getElementById('btn-menu')!.addEventListener('click',e=>{ e.preventDefault(); if(this.modal==='settings') this.close(); else this.open('settings'); });
     document.getElementById('downpanel')!.addEventListener('click',e=>{ const a=(e.target as HTMLElement).dataset.act; if(a==='cp') g.returnToCheckpoint(); if(a==='defib') g.defibInPlace(); });
     window.addEventListener('keydown',e=>{ if(e.key==='\\'&&!(e.target as HTMLElement)?.tagName?.match(/INPUT|TEXTAREA/)){ g.devRestartFromStart(); this.close(); } else if(e.key==='`'){ this.devOpen=!this.devOpen; this.open(this.devOpen?'dev':null); } else if((e.key==='c'||e.key==='C')&&g.mode==='town'&&!this.modal&&(e.target as HTMLElement)?.tagName!=='INPUT'){ this.open('contacts'); } });
   }
   // ----- first-time hints: shown once per context (persisted), then fade; '?' button / Settings > Controls bring them back -----
-  static HINTS:Record<string,string>={ town:'WASD move · F interact · C contacts · Space dodge', run:'WASD move · hold Q/E/R aim, release to cast · Space dodge · click enemy to target · F interact · B town · I pack · T stim · N minimap' };
+  static HINTS:Record<string,string>={ town:`WASD move · ${key('interact')} interact · ${key('contacts')} contacts · ${key('dodge')} dodge`, run:`WASD move · hold ${key('aim1')}/${key('aim2')}/${key('aim3')} aim, release to cast · ${key('dodge')} dodge · click enemy to target · ${key('interact')} interact · ${key('town')} town · ${key('pack')} pack · ${key('stim')} stim · ${key('minimap')} minimap` };
   private hintSeenSet():Record<string,number>{ try{ return JSON.parse(localStorage.getItem('wv_hints')||'{}'); }catch{ return {}; } }
   hintSeen(k:string){ return !!this.hintSeenSet()[k]; }
   markHint(k:string){ const o=this.hintSeenSet(); o[k]=1; try{ localStorage.setItem('wv_hints',JSON.stringify(o)); }catch{} }
@@ -57,7 +58,8 @@ export class UI {
     if(this.hintUntil&&now>this.hintUntil){ this.hintUntil=0; this.markHint(ctx); }
     el.classList.toggle('show',this.hintPeek||(this.hintUntil>0&&!this.modal&&!(this.tut&&!this.tut.disabled&&this.tut.st.status==='active'))); }
   bindHelp(){ const b=$('btn-help'); b.addEventListener('pointerenter',()=>{ this.hintPeek=true; }); b.addEventListener('pointerleave',()=>{ this.hintPeek=false; }); b.addEventListener('focus',()=>{ this.hintPeek=true; }); b.addEventListener('blur',()=>{ this.hintPeek=false; });
-    b.addEventListener('click',()=>{ this.hintPeek=true; setTimeout(()=>{ this.hintPeek=false; },6000); }); }
+    b.addEventListener('click',()=>this.toggleHelp()); }
+  toggleHelp(){ if(this.modal==='help') this.close(); else if(!this.modal||this.modal==='settings') this.open('help'); }
   /** tutorial-like toasts appear only the first time (persisted); returns false when already seen */
   tutorialToast(s:string){ const m=/^(CHECKPOINT: .*Downed\?|Locked relay|Sealed shutter|Suspended run found|Hacking rel|Dungeon layouts changed)/.exec(s); if(!m) return true; const k='toast_'+m[1].slice(0,14); if(this.hintSeen(k)) return false; this.markHint(k); return true; }
   setMinimap(on:boolean){ this.g.save.settings.minimap=on; persist(this.g.save); this.guideHud(); this.syncTray(); }
@@ -169,7 +171,7 @@ export class UI {
     const s=g.save; $('lvl').title='Level, credits, repair bill'; $('lvl').textContent=`Lv ${s.level} · ${s.credits}c`+(s.repairBill>0?` · fix ${s.repairBill}c`:'');
     const inst=g.inst; if(g.mode==='run'&&inst){ const rem=Math.max(0,inst.expiresAt-Date.now()); const h=Math.floor(rem/3600000), m=Math.floor(rem%3600000/60000); $('timer').textContent='Instance '+h+'h'+String(m).padStart(2,'0')+'m'+(rem<1800000?' ⚠':''); $('carry').textContent=`Pack ${g.carriedCount()}/${COMBAT.missionSlots} · +${inst.carried.credits}c`; $('stimn').textContent=String(inst.carried.stims); } else { $('timer').textContent=g.hasLiveInstance()?'Instance live':''; $('carry').textContent=''; $('stimn').textContent=String(s.stims); }
     this.guideHud();
-    const run=g.mode==='run'; document.body.classList.toggle('intown',!run); $('btn-town').style.display=run?'':'none'; $('btn-inv').style.display=run?'':'none';
+    const run=g.mode==='run'; document.body.classList.toggle('intown',!run); $('btn-town').style.display=run?'':'none'; $('btn-inv').style.display=run?'':'none'; $('btn-map').style.display=run?'':'none';
     this.abilityButtons();
     const pr=g.prompt; const ib=$('interact'); ib.style.display=pr&&!this.modal&&!g.downed?'':'none'; if(pr){ const st=(pr as any).station?STATION_BY_ID[(pr as any).station]:null; ib.innerHTML=(st?'<img class="sico" alt="" src="'+stationIconURL(st)+'">':'')+'<span class="ilabel">'+esc(pr.label)+'</span><small>F</small>'; if(st) ib.style.setProperty('--ac',st.color); else ib.style.removeProperty('--ac'); } if(pr) ib.title=pr.label;
     const ch=$('channelbar'); if(g.channel){ ch.style.display='block'; (ch.querySelector('.track>div') as HTMLElement).style.width=g.channel.t/g.channel.dur*100+'%'; ch.querySelector('span')!.textContent=g.channel.kind==='town'?'Returning to town…':'Hacking…'; } else ch.style.display='none';
@@ -189,10 +191,10 @@ export class UI {
   layoutWith(L:Layout,slot:Slot,inst:Inst):Layout{ const o=cloneLayout(L); o[slot]={...inst,chips:[]}; return o; }
 
   // ================= modals =================
-  render(){ const m=$('modal'); if(!this.modal){ m.style.display='none'; m.innerHTML=''; return; } m.style.display='flex'; const g=this.g; this.recompute();
-    const body=this.modal==='locker'?this.locker():this.modal==='vendor'?this.vendor():this.modal==='gate'?this.gate():this.modal==='fixer'?this.fixer():this.modal==='contacts'?this.contacts():this.modal==='store'?this.store():this.modal==='settings'?this.settings():this.modal==='dev'?this.dev():this.modal==='summary'?this.summary():'';
-    const titles:Record<string,string>={locker:'Body workspace & locker',vendor:'Vendor & repair',gate:'Dungeon select',contacts:'Contacts & contracts',fixer:'Fixer: Odalys Vane',store:'Outfitter (simulated purchases)',settings:'Settings',dev:'DEV tools (prototype only)',summary:'Run summary'};
-    m.innerHTML=`<div class="win${this.modal==='settings'?' settingswin':''}${this.modal==='locker'?' lockerwin':''}" role="dialog" aria-modal="true" aria-label="${titles[this.modal]||''}"><header><span>${titles[this.modal]||''}</span><span><button data-act="close">Close</button></span></header><div class="body">${body}</div><footer class="bvgf">${BVG}</footer></div>`; void g; if(this.modal==='settings') settingsAfterRender(this); this.decorateTiles(); this.decorateChips(); this.bindTips(); this.bindChipDnD(); this.fitText(); }
+  render(){ const m=$('modal'); if(!this.modal){ m.style.display='none'; m.innerHTML=''; return; } m.style.display='flex'; m.classList.toggle('helpmodal',this.modal==='help'); const g=this.g; this.recompute();
+    const body=this.modal==='locker'?this.locker():this.modal==='vendor'?this.vendor():this.modal==='gate'?this.gate():this.modal==='fixer'?this.fixer():this.modal==='contacts'?this.contacts():this.modal==='store'?this.store():this.modal==='settings'?this.settings():this.modal==='dev'?this.dev():this.modal==='help'?helpHtml():this.modal==='summary'?this.summary():'';
+    const titles:Record<string,string>={locker:'Body workspace & locker',vendor:'Vendor & repair',gate:'Dungeon select',contacts:'Contacts & contracts',fixer:'Fixer: Odalys Vane',store:'Outfitter (simulated purchases)',settings:'Settings',help:'Controls',dev:'DEV tools (prototype only)',summary:'Run summary'};
+    m.innerHTML=`<div class="win${this.modal==='settings'||this.modal==='help'?' settingswin helpwin':''}${this.modal==='locker'?' lockerwin':''}" role="dialog" aria-modal="true" aria-label="${titles[this.modal]||''}"><header><span>${titles[this.modal]||''}</span><span><button data-act="close">Close</button></span></header><div class="body">${body}</div><footer class="bvgf">${BVG}</footer></div>`; void g; if(this.modal==='settings') settingsAfterRender(this); this.decorateTiles(); this.decorateChips(); this.bindTips(); this.bindChipDnD(); this.fitText(); }
   decorateTiles(){ document.querySelectorAll<HTMLElement>('#modal [data-def]').forEach(b=>{ const ic=b.querySelector('.ticon'); if(!ic||!b.dataset.def) return; try{ const sp=specOf({id:0,kind:'item',inst:{def:b.dataset.def},amount:1}); const src=iconCanvas(sp); const cv=document.createElement('canvas'); cv.width=src.width; cv.height=src.height; cv.getContext('2d')!.drawImage(src,0,0); ic.appendChild(cv); }catch{} }); }
   decorateChips(){ document.querySelectorAll<HTMLElement>('#modal [data-chip]').forEach(b=>{ const ic=b.querySelector('.ticon'); const id=b.dataset.chip; if(!ic||!id||!(CHIPS as any)[id]) return; try{ const src=iconCanvas(specOf({id:0,kind:'chip',chip:id,amount:1})); const cv=document.createElement('canvas'); cv.width=src.width; cv.height=src.height; cv.getContext('2d')!.drawImage(src,0,0); ic.appendChild(cv); }catch{} }); }
   /** hover (mouse) or long-press (touch) tooltips for any element carrying data-tip html */
@@ -437,7 +439,7 @@ export class UI {
     if(k==='uisize'){ st.uiSize=t.value as any; applyUiScale(st.uiSize); this.render(); } else if(k==='minimap'){ this.setMinimap(t.checked); } else if(k==='gore') st.gore=t.value as any; else if(k==='dmgnum') st.damageNumbers=t.checked; else if(k==='reduced') st.reducedFx=t.checked; else if(k==='lootlabels') st.lootLabels=t.value as any; else if(k==='lootmin') st.lootMin=t.value as any; else if(k==='devreset'){ st.devFreeReset=t.checked; this.resetAsk=false; persist(s); this.render(); return; } else if(k==='joyfixed'){ st.joystickFixed=t.checked; }
     else if(k==='music'){ st.music=t.checked; this.audio.setMusicOn(t.checked); } else if(k==='vol'){ st.volume=+t.value; this.audio.setVolume(st.volume); }
     else if(k==='llmon') st.llm.enabled=t.checked; else if(k==='llmurl') st.llm.url=t.value; else if(k==='llmkey') st.llm.key=t.value; else if(k==='llmmodel') st.llm.model=t.value; persist(s); }
-  click(e:MouseEvent){ const el=(e.target as HTMLElement).closest('[data-act]') as HTMLElement|null; if(!el) return; const a=el.dataset.act!; const g=this.g, s=g.save; this.audio.resume(); if(a.startsWith('s-')&&settingsClick(this,el,a)) return;
+  click(e:MouseEvent){ if(this.modal==='help'&&(e.target as HTMLElement).id==='modal'){ this.close(); return; } const el=(e.target as HTMLElement).closest('[data-act]') as HTMLElement|null; if(!el) return; const a=el.dataset.act!; const g=this.g, s=g.save; this.audio.resume(); if(a.startsWith('s-')&&settingsClick(this,el,a)) return;
     switch(a){
       case 'close': this.close(); return;
       case 'sel': this.sel=el.dataset.slot as Slot; this.chipSel=null; this.render(); return;
@@ -480,6 +482,9 @@ export class UI {
       case 'townchoice': { const st=g.story(); record(st,'town_choice',el.dataset.boost!); st.arc=el.dataset.boost!; const ed=st.edges.find(x=>x.from==='player'&&x.to==='odalys_vane'); if(ed) ed.w+=1; st.town=null; persist(s); this.msg='Odalys will push the "'+el.dataset.boost+'" lead.'; this.render(); return; }
       case 'story': this.runStory(); return;
       case 'buylocker': s.purchases.lockerBlocks++; persist(s); this.render(); return; case 'buyskin': s.purchases.skins.push(el.dataset.id!); persist(s); this.render(); return; case 'skin': s.purchases.equippedSkin=s.purchases.equippedSkin===el.dataset.id?null:el.dataset.id!; persist(s); this.render(); return;
+      case 'helpreplay': this.close(); this.tut?.replay(); return;
+      case 'helphints': try{ localStorage.removeItem('wv_hints'); }catch{} this.hintCtx=''; this.hintPeek=false; this.toast('Hints will show again'); return;
+      case 'helpsettings': this.open('settings'); settingsTab(this,'controls'); return;
       case 'replaytut': this.tut?.replay(); this.close(); return;
       case 'resethints': try{ localStorage.removeItem('wv_hints'); }catch{} this.hintCtx=''; this.toast('Tutorial hints will show again.'); return;
       case 'wipe': wipe(); location.reload(); return; case 'dev': this.open('dev'); return;

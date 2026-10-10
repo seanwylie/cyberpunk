@@ -232,3 +232,8 @@ export function uiFs(): number { return typeof document!=='undefined' && documen
 /** Minimum canvas text size in px (desktop ~16 at Large, touch 12). Every ctx.font in the HUD layer goes through cpx(). */
 export function minPx(): number { return uiFs()===1 ? 12 : curMin; }
 export function cpx(n:number): number { return Math.round(Math.max(minPx(), n)); }
+
+/** Single source of truth for player-facing key letters. Every string that names a key must use key('action'). */
+export const KEYS = { moveUp:'W', moveLeft:'A', moveDown:'S', moveRight:'D', aim1:'Q', aim2:'E', aim3:'R', dodge:'Space', interact:'F', contacts:'C', stim:'T', town:'B', pack:'I', minimap:'N', music:'M', help:'H', menu:'Esc' } as const;
+export type KeyAction = keyof typeof KEYS;
+export const key = (a:KeyAction):string => KEYS[a];
