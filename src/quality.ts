@@ -24,7 +24,7 @@ export function detectTier(): { tier: Tier; why: string } {
 class Quality {
   pref: QPref = 'auto'; auto = detectTier(); tier: Tier = this.auto.tier; resScale = 1; showFps = false;
   p: Params = TIERS[this.tier]; onChange: (() => void) | null = null;
-  private acc = 0; private n = 0; private good = 0; private warm = 3; private floor: Tier = 'high'; frameAvg = 0; steps: string[] = [];
+  private downs = 0; private downAt = -1e9; private upDelay = 4; private acc = 0; private n = 0; private good = 0; private warm = 3; private floor: Tier = 'high'; frameAvg = 0; steps: string[] = [];
   /** Is the dynamic path allowed? Never on the desktop (auto/high) path. */
   get dynamic() { return this.pref === 'auto' && this.auto.tier !== 'high' && this.auto.why !== 'query'; }
   setPref(p: QPref) { this.pref = p; this.tier = p === 'auto' ? this.auto.tier : p; this.resScale = 1; this.floor = 'high'; this.apply(); }
@@ -38,9 +38,9 @@ class Quality {
     if (ms > 250) { this.warm = Math.max(this.warm, 1.5); return; } this.acc += ms; this.n++; const win = 1.5 * 1000;
     if (this.acc < win) return; const avg = this.acc / this.n; this.frameAvg = avg; this.acc = 0; this.n = 0;
     if (!this.dynamic) return; if (this.warm > 0) { this.warm -= win / 1000; return; }
-    if (avg > 26) { this.good = 0; if (this.resScale > .72) { this.resScale = Math.max(.7, +(this.resScale - .1).toFixed(2)); this.steps.push('res ' + this.resScale); this.apply(); }
+    if (avg > 26) { this.good = 0; this.downAt = performance.now(); this.downs++; this.upDelay = Math.min(32, this.upDelay * 2); if (this.resScale > .72) { this.resScale = Math.max(.7, +(this.resScale - .1).toFixed(2)); this.steps.push('res ' + this.resScale); this.apply(); }
       else if (this.tier !== 'low') { const nt = ORDER[ORDER.indexOf(this.tier) + 1]; this.tier = nt; this.floor = nt; this.resScale = .9; this.steps.push('tier ' + nt); this.apply(); } this.warm = 1.5; }
-    else if (avg < 15 && this.resScale < 1) { if (++this.good >= 4) { this.good = 0; this.resScale = Math.min(1, +(this.resScale + .1).toFixed(2)); this.steps.push('res ' + this.resScale); this.apply(); this.warm = 1.5; } } else this.good = 0;
+    else if (avg < 15 && this.resScale < 1 && this.downs < 4) { if (++this.good >= this.upDelay && performance.now() - this.downAt > 20000) { this.good = 0; this.resScale = Math.min(1, +(this.resScale + .1).toFixed(2)); this.steps.push('res ' + this.resScale); this.apply(); this.warm = 1.5; } } else this.good = 0;
   }
   describe() { return `${this.tier}${this.pref === 'auto' ? ' (auto: ' + this.auto.why + ')' : ''} ×${this.resScale}`; }
 }

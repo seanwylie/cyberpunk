@@ -20,7 +20,7 @@ export class Renderer {
   ctx:CanvasRenderingContext2D; w=0; h=0; dpr=1; TW=64; baseTW=64; camx=0; camy=0; shake=0;
   anim:PlayerAnimator|null=null; lastT=0; dart=new DungeonArt(); eart=new EnemyArt(); private theme=''; env:Env|null=null; town:TownArt|null=null; org=new Organic(); private wallCache=new WeakMap<Level,Map<number,{style:'concrete'|'steel';v:number;zone:string}>>();
   constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); if(this.env) this.env.da=this.dart; if(this.env) this.town=new TownArt(); loadAtlas().then(l=>{ if(l){ this.anim=new PlayerAnimator(l); this.anim.onImpact=k=>this.impact(k); } }); }
-  resize(){ const w=window.innerWidth,h=window.innerHeight; this.dpr=Q.dpr(window.devicePixelRatio||1,w,h); this.canvas.width=w*this.dpr; this.canvas.height=h*this.dpr; this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=this.baseTW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
+  resize(){ const w=window.innerWidth,h=window.innerHeight; const dpr=Q.dpr(window.devicePixelRatio||1,w,h); const cw=Math.round(w*dpr), ch=Math.round(h*dpr); this.dpr=dpr; /* never touch the backing store unless its size really changed: assigning width clears the canvas (visible flash) */ if(this.canvas.width!==cw||this.canvas.height!==ch){ this.canvas.width=cw; this.canvas.height=ch; (window as any).__canvasResizes=((window as any).__canvasResizes||0)+1; } this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=this.baseTW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
   // projection
   sx(x:number,y:number){ return (x-y)*this.TW/2 + this.w/2 - this.camx; }
   sy(x:number,y:number,z=0){ return (x+y)*this.TW/4 + this.h/2 - this.camy - z*this.TW/2; }
@@ -32,7 +32,7 @@ export class Renderer {
   screenVecToWorld(dx:number,dy:number){ const a=dx/(this.TW/2), b=dy/(this.TW/4); return { x:(a+b)/2, y:(b-a)/2 }; }
 
   draw(dt:number){
-    const g=this.g, c=this.ctx; this.TW=this.baseTW*(g.level.kind==='town'?.68:1); const th=themeOf(g.level); if(th!==this.theme){ this.theme=th; this.env?.setTheme(th); } c.setTransform(this.dpr,0,0,this.dpr,0,0); if(!this.anim) this.fallbackImpacts(); const sh=this.shake>0?this.shake*7:0; if(sh) c.translate((Math.random()*2-1)*sh,(Math.random()*2-1)*sh);
+    const g=this.g, c=this.ctx; this.TW=this.baseTW*(g.level.kind==='town'?.68:1); const th=themeOf(g.level); if(th!==this.theme){ this.theme=th; this.env?.setTheme(th); } c.setTransform(this.dpr,0,0,this.dpr,0,0); if(!this.anim) this.fallbackImpacts(); if(this.g.save.settings.reducedFx) this.shake=0; else if(this.shake>.6) this.shake=.6; const sh=this.shake>0?this.shake*7:0; if(sh) c.translate((Math.random()*2-1)*sh,(Math.random()*2-1)*sh);
     const tx=(g.px-g.py)*this.TW/2, ty=(g.px+g.py)*this.TW/4; this.camx+= (tx-this.camx)*Math.min(1,dt*8); this.camy+=(ty-this.camy)*Math.min(1,dt*8);
     if(this.shake>0) this.shake=Math.max(0,this.shake-dt*3);
     c.fillStyle=PAL.soot; c.fillRect(0,0,this.w,this.h);

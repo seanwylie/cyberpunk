@@ -381,13 +381,16 @@ body.touch #tut button{ min-height:44px; }
 @media (max-height:480px){ #tut.dock{ padding:3px 8px; } #tut.dock .tt-btns{ flex-direction:column; align-items:stretch; gap:2px; } body.touch #tut.dock button{ min-height:36px; } }
 body.tutdock #modal{ padding-bottom:var(--tutdock,0px); } body.tutdock #modal .win{ max-height:calc(94vh - var(--tutdock,0px)); } body.touch.tutdock #modal .win{ max-height:calc(var(--vh,100vh) - env(safe-area-inset-top) - 8px - var(--tutdock,0px)); }
 body.tutdock #modal .win.settingswin{ max-height:none; }
-#tutspot{ position:fixed; z-index:31; pointer-events:none; border:2px solid #f0d880; border-radius:6px; box-sizing:border-box; animation:ttpulse 1.3s ease-in-out infinite; }
-#tutspot.dim{ box-shadow:0 0 0 200vmax rgba(0,0,0,.5); }
+#tutspot{ position:fixed; z-index:31; pointer-events:none; border:2px solid #f0d880; border-radius:6px; box-sizing:border-box; animation:ttring 1.6s ease-in-out infinite; }
+/* the dim backdrop is its own static layer that only fades (never pulses): pulsing the whole element used to strobe the screen */
+#tutspot::before{ content:''; position:absolute; inset:-2px; border-radius:inherit; box-shadow:0 0 0 200vmax rgba(0,0,0,.4); opacity:0; transition:opacity .4s ease; pointer-events:none; }
+#tutspot.dim::before{ opacity:1; }
 #tutspot .tt-arrow{ position:absolute; left:50%; bottom:calc(100% + 4px); width:0; height:0; margin-left:-9px; border:9px solid transparent; border-top:13px solid #f0d880; border-bottom:0; animation:ttbob .8s ease-in-out infinite; }
 #tutspot.below .tt-arrow{ bottom:auto; top:calc(100% + 4px); border-top:0; border-bottom:13px solid #f0d880; }
 #tutworld{ position:fixed; z-index:12; pointer-events:none; --c:#e0c070; } #tutworld .tt-wring{ position:absolute; inset:0; border:3px solid var(--c); border-radius:50%; box-shadow:0 0 14px var(--c), inset 0 0 14px var(--c); animation:ttpulse 1.3s ease-in-out infinite; }
 #tutworld .tt-warrow{ position:absolute; left:50%; bottom:100%; margin:0 0 6px -10px; width:0; height:0; border:10px solid transparent; border-top:15px solid var(--c); border-bottom:0; animation:ttbob .8s ease-in-out infinite; }
 #tutedge{ position:fixed; z-index:12; width:28px; height:28px; pointer-events:none; --c:#e0c070; --a:0rad; } #tutedge i{ display:block; width:100%; height:100%; transform:rotate(var(--a)); background:var(--c); clip-path:polygon(0 15%,100% 50%,0 85%); animation:ttpulse 1.3s ease-in-out infinite; }
+@keyframes ttring{ 0%,100%{ border-color:rgba(240,216,128,1); } 50%{ border-color:rgba(240,216,128,.6); } }
 @keyframes ttpulse{ 0%,100%{ opacity:1; } 50%{ opacity:.45; } } @keyframes ttbob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(5px); } }
 body.reducefx #tutspot,body.reducefx #tutworld .tt-wring,body.reducefx #tutworld .tt-warrow,body.reducefx #tutspot .tt-arrow,body.reducefx #tutedge i{ animation:none; }
 body.tutdock .popwrap{ bottom:var(--tutdock,0px); } body.tutdock .pop{ max-height:calc(90vh - var(--tutdock,0px)); }

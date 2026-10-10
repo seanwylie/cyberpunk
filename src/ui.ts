@@ -1,3 +1,4 @@
+import { flashAllowed, FLASH_ALPHA_CAP } from './flashguard';
 import { Game } from './sim';
 import { applyUiScale } from './config';
 import { specOf, iconCanvas } from './lootart';
@@ -81,7 +82,7 @@ export class UI {
     else if(type==='dodgecancel'){ $('dialog').style.display='none'; }
     else if(type==='mode'){ this.liveOpen=false; $('livepanel').style.display='none'; $('downpanel').style.display='none'; $('dialog').style.display='none'; if(p==='town'){ this.open(null); setTimeout(()=>{ if(this.g.mode==='town'&&!this.modal) this.recNudge(); },1400); } else this.open(null); }
     else if(type==='expired') this.toast('Instance expired.'); else if(type==='filtered') this.toast('Above your level: '+p+' did not drop (no downward reroll).');
-    else if(type==='hurt'){ document.body.animate([{boxShadow:'inset 0 0 60px rgba(143,59,46,.5)'},{boxShadow:'inset 0 0 0 rgba(0,0,0,0)'}],{duration:260}); }
+    else if(type==='hurt'){ if(flashAllowed(!!g.save.settings.reducedFx)){ (window as any).__flashes=((window as any).__flashes||0)+1; document.body.animate([{boxShadow:'inset 0 0 60px rgba(143,59,46,'+FLASH_ALPHA_CAP+')'},{boxShadow:'inset 0 0 0 rgba(0,0,0,0)'}],{duration:300}); } }
     void g;
   }
   toast(s:string){ if(!this.tutorialToast(s)) return; const el=document.createElement('div'); el.className='toast'; el.textContent=s; const box=$('toasts'); box.appendChild(el); while(box.children.length>4) box.removeChild(box.firstChild!); setTimeout(()=>el.remove(),5600); }
