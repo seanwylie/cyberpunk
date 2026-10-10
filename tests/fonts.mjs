@@ -56,6 +56,18 @@ const check = () => {
       if (R > own_.right + 1 || L < own_.left - 1) bad.push('text exceeds own box: ' + desc(el));
     }
   }
+  // vertical centring: text inside bars/buttons/chips must sit within +-12% of box height of the box centre
+  for (const el of document.querySelectorAll('.bar span,#channelbar span,.btn,.chip-btn,#interact,.tag,.abtn .aname,.akey,#dodge .aname')) { if (!vis(el)) continue; if (el.closest('button:disabled')) continue;
+    const rg = document.createRange(); rg.selectNodeContents(el); const rs = [...rg.getClientRects()].filter(r => r.width > 0 && r.height > 0); if (!rs.length) continue;
+    const host = el.matches('.bar span,#channelbar span') ? el.parentElement : el; const hb = host.getBoundingClientRect(); if (hb.height < 10) continue;
+    const ty = (Math.min(...rs.map(r => r.top)) + Math.max(...rs.map(r => r.bottom))) / 2, by = (hb.top + hb.bottom) / 2; if (el.matches('.akey,.abtn .aname,#dodge .aname')) continue;
+    if (Math.abs(ty - by) > hb.height * .12 + 1) bad.push(`text not vertically centred (${(ty - by).toFixed(1)}px off in ${hb.height.toFixed(0)}px box): ` + desc(el)); }
+  // sibling boxes laid out in the same visual row must have equal height (and socket boxes equal width)
+  for (const par of document.querySelectorAll('#modal *, #hud *')) { if (!vis(par)) continue; const kids = [...par.children].filter(k => vis(k) && k.matches('.sock,.slot,.chip-btn,.btn,.abchip,.tag')); if (kids.length < 2) continue;
+    const rects = kids.map(k => [k, k.getBoundingClientRect()]);
+    for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) { const [a, ra] = rects[i], [b, rb] = rects[j]; if (a.className !== b.className) continue; const overlap = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top); if (overlap < Math.min(ra.height, rb.height) * .5) continue;
+      if (Math.abs(ra.height - rb.height) > 1.5) bad.push(`sibling heights differ (${ra.height.toFixed(0)} vs ${rb.height.toFixed(0)}): ` + desc(a) + ' / ' + desc(b));
+      if (a.matches('.sock') && Math.abs(ra.width - rb.width) > 1.5) bad.push('sibling widths differ: ' + desc(a)); } }
   // scroll containers must not scroll horizontally
   for (const el of document.querySelectorAll('#modal *, #hud *')) if (vis(el)) { const s = getComputedStyle(el); if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1) bad.push('horizontal scroll: ' + desc(el)); }
   // canvas text captured since the last step
@@ -82,6 +94,9 @@ for (const [w, h] of SIZES) {
   const open = (name, m) => step(name, m => { const u = window.__ui; u.modal = m; u.render(); }, m);
   await step('03-locker', () => { window.__ui.resetDraft(); window.__ui.modal = 'locker'; window.__ui.render(); });
   await step('04-locker-draft', () => { const u = window.__ui; u.draft.torso.chips.push('power'); u.draft.armR.chips.push('speed'); u.render(); });
+  await step('04a-tile-tooltip', () => { const t = document.querySelector('.tile[data-def]'); t.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse', bubbles: true })); const bb = [...document.querySelectorAll('.tile')].map(x => x.getBoundingClientRect()); window.__tiles = bb.map(r => [Math.round(r.width), Math.round(r.height)]); });
+  { const tl = await ev(() => window.__tiles); ok(tl.length === 11 && tl.every(x => Math.abs(x[0] - x[1]) <= 1 && x[0] === tl[0][0]), `${tag} body tiles are uniform squares ${JSON.stringify(tl[0])}`); ok(await ev(() => document.querySelectorAll('.tile .pip').length > 10 && document.querySelectorAll('.tile .ticon canvas').length > 0 && document.querySelectorAll('.repb').length === 3 && getComputedStyle(document.getElementById('tiptile')).display === 'block'), `${tag} tiles show pips, icons, 3 rep badges and a hover tooltip`); await ev(() => document.querySelector('.tile').dispatchEvent(new PointerEvent('pointerleave', { bubbles: true }))); }
+  await step('04b-locker-sockets', () => { const u = window.__ui, g = window.__game; g.save.lockerChips.coolant = 3; g.save.lockerChips.gridlink = 3; u.sel = 'armR'; u.draft.armR.chips.length = 0; u.draft.armR.chips.push('coolant', 'gridlink', 'power'); u.render(); });
   await open('05-vendor', 'vendor');
   await open('06-dungeon-select', 'gate');
   await open('07-contacts', 'contacts');
@@ -96,6 +111,8 @@ for (const [w, h] of SIZES) {
   await sleep(300); await ev(check); await step('12c-canvas-text-2');
   await step('12d-ability-tooltip', () => { const b = document.querySelector('#dodge'); b.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse', bubbles: true })); });
   await ev(() => document.querySelector('#dodge').dispatchEvent(new PointerEvent('pointerleave', { bubbles: true })));
+  await step('12e-channel-bar', () => { const g = window.__game; g.channel = { kind: 'town', t: 1.2, dur: 99, cb: () => {} }; });
+  await ev(() => { window.__game.channel = null; });
   await step('13-live-pack', () => window.__ui.toggleLive());
   await step('14-dialog', () => { window.__ui.toggleLive(); window.__ui.showDialog({ title: 'Annex security terminal', body: 'ACCESS DENIED. Requires hacking hardware.\n\nA scrawled note: the audit command selects the Neural Warden as the boss for this run.', options: [{ label: 'Close' }, { label: 'Issue the audit command (selects the Neural Warden)' }] }); });
   await step('15-down-panel', () => { document.getElementById('dialog').style.display = 'none'; window.__ui.showDown({ broke: 'armL', defib: true }); });
