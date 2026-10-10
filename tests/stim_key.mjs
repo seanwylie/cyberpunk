@@ -11,5 +11,5 @@ ok(await ev(() => window.__game.inst.carried.stims) === 1 && await ev(() => wind
 ok(await ev(() => !window.__game.channel), 'T does not start town return');
 await page.keyboard.press('b'); await sleep(100);
 ok(await ev(() => window.__game.channel?.kind === 'town'), 'B starts town return');
-ok((await ev(() => document.getElementById('btn-stim').title)).includes('(T)'), 'stim button hint says T');
+ok((await ev(() => document.getElementById('btn-stim').getAttribute('aria-label'))).includes('(T)') && (await ev(() => document.querySelector('#btn-stim .tt kbd').textContent)) === 'T', 'stim button hint says T');
 await browser.close(); process.exit(fails ? 1 : 0);

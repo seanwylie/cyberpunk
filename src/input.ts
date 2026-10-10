@@ -1,6 +1,7 @@
 import { Game } from './sim';
 import { Renderer } from './render';
 import { AudioSys } from './audio';
+import { persist } from './state';
 
 export interface InputOpts { modalOpen:()=>boolean; onToggleInv:()=>void; onEsc:()=>void; }
 /** Keyboard/mouse + touch. Desktop: WASD, hold Q/E/R (or 1/2/3) to aim at cursor and release to cast, Space dodge, F interact, T stim, B town. */
@@ -32,6 +33,7 @@ export class Input {
     else if(k==='i'||k==='tab'){ this.opts.onToggleInv(); e.preventDefault(); }
     else if(k==='x') this.g.clearTarget();
     else if(k==='t') this.g.useStim();
+    else if(k==='n'){ const st=this.g.save.settings; st.minimap=st.minimap===false; persist(this.g.save); document.getElementById('btn-map')?.classList.toggle('on',st.minimap!==false); document.getElementById('btn-map')?.classList.toggle('off',st.minimap===false); }
     else if(k==='m'){ const s=this.g.save.settings; s.music=!s.music; this.audio.setMusicOn(s.music); }
     this.updateMove(); }
   ku(e:KeyboardEvent){ const k=e.key.toLowerCase(); this.keys.delete(k); const ai=this.abilityKey(k); if(ai>=0&&this.heldAbility===ai){ this.updateAimFromMouse(); this.g.releaseAim(); this.heldAbility=null; } this.updateMove(); }

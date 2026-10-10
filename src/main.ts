@@ -10,7 +10,7 @@ import { ENEMIES, applyUiScale } from './config';
 
 try{ (document as any).fonts?.load('600 14px "Roboto Condensed"'); }catch{}
 const save=load(); if(!save.story) save.story=newStory();
-applyUiScale(save.settings.uiSize||'L'); const audio=new AudioSys(); audio.vol=save.settings.volume; audio.musicOn=save.settings.music;
+applyUiScale(save.settings.uiSize||'M'); const audio=new AudioSys(); audio.vol=save.settings.volume; audio.musicOn=save.settings.music;
 let ui:UI;
 const game=new Game(save,(t,p)=>{ if(t==='sfx') audio.sfx(p); else if(t==='musickey') audio.setMusicKey(p); else if(t==='music') audio.setState(p); else ui?.handle(t,p); });
 ui=new UI(game,audio);

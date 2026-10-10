@@ -1,6 +1,6 @@
 // UI text audit: every screen at 3 desktop sizes + touch landscape. Fails if any text overflows/clips
 // (text bbox outside its clipping ancestor / its own box / the viewport), if any DOM or canvas text is below the minimums
-// (desktop: everything >=14px, primary text/buttons >=16px; touch >=12px) or if text/background contrast is < 4.5:1.
+// (desktop: everything >=12px, primary text/buttons >=13.5px; touch >=12px) or if text/background contrast is < 4.5:1.
 // Canvas text is captured at runtime by wrapping fillText/strokeText on the game canvas (decorative low-alpha floor paint is skipped).
 // Set SHOTS=<dir> (and TAG=before|after) to also write screenshots.
 import { launch, sleep } from './lib.mjs';
@@ -17,10 +17,10 @@ const SIZES = [[1280, 720], [1920, 1080], [1366, 768], [2560, 1440], [844, 390]]
 
 const check = () => {
   const bad = []; const vw = innerWidth, vh = innerHeight;
-  const vis = e => { const s = getComputedStyle(e); return s.display !== 'none' && s.visibility !== 'hidden' && +s.opacity > 0.05 && e.getClientRects().length; };
+  const vis = e => { if (e.closest('#hint:not(.show)')) return false; const s = getComputedStyle(e); return s.display !== 'none' && s.visibility !== 'hidden' && +s.opacity > 0.05 && e.getClientRects().length; };
   const desc = e => (e.id ? '#' + e.id : '') + '.' + String(e.className && e.className.baseVal === undefined ? e.className : '').split(' ').join('.') + '<' + e.tagName.toLowerCase() + '> "' + (e.textContent || '').trim().slice(0, 30) + '"';
   let minPx = 99, minWhat = '', touchMode = document.body.classList.contains('touch');
-  const MINALL = touchMode ? 12 : 16, MINPRI = touchMode ? 12 : 18;
+  const MINALL = touchMode ? 12 : 12, MINPRI = touchMode ? 12 : 13.5;
   const parse = c => { const m = /rgba?\(([^)]+)\)/.exec(c); if (!m) return null; const p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p[3] === undefined ? 1 : p[3] }; };
   const over = (f, b, a) => ({ r: f.r * a + b.r * (1 - a), g: f.g * a + b.g * (1 - a), b: f.b * a + b.b * (1 - a) });
   const lum = c => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(c.r) + .7152 * f(c.g) + .0722 * f(c.b); };
@@ -31,7 +31,7 @@ const check = () => {
     let base = { r: 30, g: 31, b: 33 }; for (const l of layers.reverse()) base = over(l, base, l.a);
     const f = parse(getComputedStyle(el).color); if (!f) return null; const fa = f.a * op; const fg = over(f, base, fa);
     const L1 = lum(fg), L2 = lum(base); return (Math.max(L1, L2) + .05) / (Math.min(L1, L2) + .05); };
-  const PRIMARY = '.btn,.chip-btn,#interact,#dialog,#objective span,.toast,.row,#downpanel';
+  const PRIMARY = '.btn,.tbtn,.chip-btn,#interact,#dialog,#objective span,.toast,.row,#downpanel';
   const roots = ['#hud', '#modal', '#splash'].map(s => document.querySelector(s)).filter(Boolean);
   for (const root of roots) for (const el of root.querySelectorAll('*')) {
     if (!vis(el)) continue; const own = [...el.childNodes].filter(n => n.nodeType === 3 && n.textContent.trim()); if (!own.length) continue;
@@ -126,5 +126,5 @@ for (const [w, h] of SIZES) {
   ok(errors.length === 0, `${tag}: console errors ${errors.join(';')}`);
   await browser.close();
 }
-{ const f = globalThis.__fsz || {}; ok(f['1920x1080'] > f['1280x720'] && f['2560x1440'] > f['1920x1080'], 'UI text grows with viewport: ' + JSON.stringify(f)); ok(f['1920x1080'] >= 18 && f['2560x1440'] >= 20, 'effective body text >= 18px at 1080p / 20px at 1440p ' + JSON.stringify(f)); }
+{ const f = globalThis.__fsz || {}; ok(f['1920x1080'] >= f['1280x720'] && f['2560x1440'] >= f['1920x1080'], 'UI text does not shrink with viewport: ' + JSON.stringify(f)); ok(f['1920x1080'] >= 13 && f['1920x1080'] <= 15.5 && f['2560x1440'] <= 16 && f['1280x720'] >= 13, 'body text within 13-16px (compact, not oversized) ' + JSON.stringify(f)); }
 if (fails) { console.log(fails + ' font/overflow problems'); process.exit(1); } console.log('fonts ok');

@@ -34,16 +34,32 @@ const BVG='<span class="bvg"><span>With Big Viking Games</span><img src="/brand/
 export class UI {
   modal:string|null=null; draft:Layout|null=null; sel:Slot='torso'; search=''; confirm:any=null; msg=''; storyMsg=''; liveOpen=false; bannerT=0; toastCount=0; storyBusy=false; devOpen=false; lastKey=''; showAll=false; resetAsk=false; contactSel='odalys_vane';
   constructor(private g:Game, private audio:AudioSys){
-    this.bindAbilityTips();
+    this.bindAbilityTips(); this.bindHelp(); this.syncTray(); document.getElementById('btn-map')!.addEventListener('pointerdown',e=>{ e.preventDefault(); this.setMinimap(this.g.save.settings.minimap===false); });
     $('modal').addEventListener('click',e=>this.click(e)); $('modal').addEventListener('input',e=>this.input(e)); $('modal').addEventListener('change',e=>this.input(e));
     document.getElementById('btn-menu')!.addEventListener('pointerdown',e=>{ e.preventDefault(); this.open('settings'); });
     document.getElementById('downpanel')!.addEventListener('click',e=>{ const a=(e.target as HTMLElement).dataset.act; if(a==='cp') g.returnToCheckpoint(); if(a==='defib') g.defibInPlace(); });
     window.addEventListener('keydown',e=>{ if(e.key==='\\'&&!(e.target as HTMLElement)?.tagName?.match(/INPUT|TEXTAREA/)){ g.devRestartFromStart(); this.close(); } else if(e.key==='`'){ this.devOpen=!this.devOpen; this.open(this.devOpen?'dev':null); } else if((e.key==='c'||e.key==='C')&&g.mode==='town'&&!this.modal&&(e.target as HTMLElement)?.tagName!=='INPUT'){ this.open('contacts'); } });
   }
+  // ----- first-time hints: shown once per context (persisted), then fade; '?' button / Settings > Controls bring them back -----
+  static HINTS:Record<string,string>={ town:'WASD move · F interact · C contacts · Space dodge', run:'WASD move · hold Q/E/R aim, release to cast · Space dodge · click enemy to target · F interact · B town · I pack · T stim · N minimap' };
+  private hintSeenSet():Record<string,number>{ try{ return JSON.parse(localStorage.getItem('wv_hints')||'{}'); }catch{ return {}; } }
+  hintSeen(k:string){ return !!this.hintSeenSet()[k]; }
+  markHint(k:string){ const o=this.hintSeenSet(); o[k]=1; try{ localStorage.setItem('wv_hints',JSON.stringify(o)); }catch{} }
+  private hintCtx=''; private hintUntil=0; private hintPeek=false;
+  hintTick(){ const g=this.g, el=$('hint'), ctx=g.mode==='town'?'town':'run'; const now=performance.now();
+    if(ctx!==this.hintCtx){ this.hintCtx=ctx; el.textContent=UI.HINTS[ctx]; this.hintUntil=this.hintSeen(ctx)?0:now+8000; }
+    if(this.hintUntil&&now>this.hintUntil){ this.hintUntil=0; this.markHint(ctx); }
+    el.classList.toggle('show',this.hintPeek||(this.hintUntil>0&&!this.modal)); }
+  bindHelp(){ const b=$('btn-help'); b.addEventListener('pointerenter',()=>{ this.hintPeek=true; }); b.addEventListener('pointerleave',()=>{ this.hintPeek=false; }); b.addEventListener('focus',()=>{ this.hintPeek=true; }); b.addEventListener('blur',()=>{ this.hintPeek=false; });
+    b.addEventListener('click',()=>{ this.hintPeek=true; setTimeout(()=>{ this.hintPeek=false; },6000); }); }
+  /** tutorial-like toasts appear only the first time (persisted); returns false when already seen */
+  tutorialToast(s:string){ const m=/^(CHECKPOINT: .*Downed\?|Locked relay|Sealed shutter|Suspended run found|Hacking rel|Dungeon layouts changed)/.exec(s); if(!m) return true; const k='toast_'+m[1].slice(0,14); if(this.hintSeen(k)) return false; this.markHint(k); return true; }
+  setMinimap(on:boolean){ this.g.save.settings.minimap=on; persist(this.g.save); this.guideHud(); this.syncTray(); }
+  syncTray(){ const on=this.g.save.settings.minimap!==false; const b=$('btn-map'); b.classList.toggle('on',on); b.classList.toggle('off',!on); b.setAttribute('aria-pressed',String(on)); }
   mmCache:{lv:any;cv:HTMLCanvasElement}|null=null;
   guideHud(){ const g=this.g, ob=$('objective'), mm=$('minimap') as HTMLCanvasElement; const gd=g.mode==='run'?g.guidance():null; if(!gd){ ob.style.display='none'; mm.style.display='none'; return; }
     ob.style.display='block'; (ob.firstElementChild as HTMLElement).textContent='Objective'; ob.querySelector('span')!.textContent=gd.obj.text+(gd.dist>0?' · '+Math.round(gd.dist)+'m':'');
-    mm.style.display='block'; const L=g.level; const W=mm.width, H=mm.height; const k=Math.min(W/L.w,H/L.h); const ox=(W-L.w*k)/2, oy=(H-L.h*k)/2; const c=mm.getContext('2d')!; c.clearRect(0,0,W,H);
+    if(g.save.settings.minimap===false){ mm.style.display='none'; return; } mm.style.display='block'; const L=g.level; const W=mm.width, H=mm.height; const k=Math.min(W/L.w,H/L.h); const ox=(W-L.w*k)/2, oy=(H-L.h*k)/2; const c=mm.getContext('2d')!; c.clearRect(0,0,W,H);
     if(!g.seen) return; const seen=g.seen; c.fillStyle='#2b2c2e'; for(let y=0;y<L.h;y++) for(let x=0;x<L.w;x++){ if(seen[y*L.w+x]&&!L.solid[y*L.w+x]){ c.fillStyle=g.zoneAt(x+.5,y+.5)==='boss'?'#4a2d28':'#46474a'; c.fillRect(ox+x*k,oy+y*k,Math.ceil(k),Math.ceil(k)); } }
     const inst=g.inst!; for(const cp of L.checkpoints){ const done=(inst.reached||[]).includes(cp.id); c.fillStyle=done?'#8fae7f':'#9a9488'; c.fillRect(ox+cp.x*k-2,oy+cp.y*k-2,4,4); }
     for(const it of L.interacts){ if(it.kind==='controller'&&!inst.flags.controller){ c.fillStyle='#d8a24a'; c.fillRect(ox+it.x*k-2,oy+it.y*k-2,4,4); } }
@@ -65,7 +81,7 @@ export class UI {
     else if(type==='hurt'){ document.body.animate([{boxShadow:'inset 0 0 60px rgba(143,59,46,.5)'},{boxShadow:'inset 0 0 0 rgba(0,0,0,0)'}],{duration:260}); }
     void g;
   }
-  toast(s:string){ const el=document.createElement('div'); el.className='toast'; el.textContent=s; const box=$('toasts'); box.appendChild(el); while(box.children.length>4) box.removeChild(box.firstChild!); setTimeout(()=>el.remove(),5600); }
+  toast(s:string){ if(!this.tutorialToast(s)) return; const el=document.createElement('div'); el.className='toast'; el.textContent=s; const box=$('toasts'); box.appendChild(el); while(box.children.length>4) box.removeChild(box.firstChild!); setTimeout(()=>el.remove(),5600); }
   banner(t:string,sub:string,secs=7){ const b=$('banner'); b.innerHTML=esc(t)+'<small>'+esc(sub)+'</small>'; b.classList.add('show'); this.bannerT=secs; }
   hideBanner(){ $('banner').classList.remove('show'); }
   showDialog(d:{title:string;body:string;options:{label:string;cb?:()=>void}[]}){ const el=$('dialog'); el.style.display='block'; el.innerHTML=`<h4>${esc(d.title)}</h4><div>${esc(d.body)}</div>`; d.options.forEach(o=>{ const b=document.createElement('button'); b.textContent=o.label; b.onclick=()=>{ el.style.display='none'; o.cb?.(); }; el.appendChild(b); }); }
@@ -125,7 +141,7 @@ export class UI {
     // conditional support panel: only when relevant ability equipped
     const sup=g.build.abilities.includes('revive'); const sp=$('support'); sp.style.display=sup&&g.mode==='run'?'flex':'none'; if(sup&&!sp.innerHTML) sp.innerHTML='<span class="mut">Support</span><div class="portrait">P1</div><div class="portrait">P2</div><div class="portrait">P3</div><div class="portrait">P4</div><div class="portrait guest">G5</div><span class="mut">no teammates (solo)</span>'; if(!sup) sp.innerHTML='';
     if(this.bannerT>0){ this.bannerT-=1/60; if(this.bannerT<=0) this.hideBanner(); }
-    if(g.mode==='town') $('hint').textContent='WASD move · F interact · C contacts · Space dodge'; else $('hint').textContent='WASD move · hold Q/E/R aim, release to cast · Space dodge · click enemy to target · F interact · B town · I pack · T stim';
+    this.hintTick();
     if(this.liveOpen&&g.mode==='run'){ const k=g.inst!.carried.items.length+':'+JSON.stringify(g.inst!.carried.chips)+g.inst!.carried.stims; if(k!==this.lastKey){ this.lastKey=k; this.renderLive(); } }
   }
   renderLive(){ const el=$('livepanel'); if(!this.liveOpen||this.g.mode!=='run'){ el.style.display='none'; return; } const g=this.g, c=g.inst!.carried; el.style.display='block'; const L=installedLayout(g.save);
@@ -317,14 +333,14 @@ export class UI {
   // ----- Settings -----
   settings():string{ const g0=this.g; const t=this.g.save.settings; return `<div class="col"><h3>About</h3><div class="mut">Warranty Void, an ARPG prototype. Void where prohibited.</div><div class="about">${BVG}</div><h3>Display & feel</h3>
     <label>Gore <select data-in="gore"><option value="off" ${t.gore==='off'?'selected':''}>Off</option><option value="standard" ${t.gore==='standard'?'selected':''}>Standard</option><option value="bloody" ${t.gore==='bloody'?'selected':''}>Bloody Mess</option></select></label>
-    <label>UI size <select data-in="uisize">${([['S','Small'],['M','Medium'],['L','Large'],['XL','Extra large']] as const).map(([v,n])=>`<option value="${v}" ${(t.uiSize||'L')===v?'selected':''}>${n}</option>`).join('')}</select></label><br><label><input type="checkbox" data-in="dmgnum" ${t.damageNumbers?'checked':''}/> Damage numbers (default off)</label><br><label>Loot labels <select data-in="lootlabels"><option value="off" ${t.lootLabels==='off'?'selected':''}>Off</option><option value="near" ${t.lootLabels==='near'?'selected':''}>Near / hover</option><option value="all" ${t.lootLabels==='all'?'selected':''}>All</option></select></label> <label>Show loot from <select data-in="lootmin">${(['grey','green','blue','purple','orange'] as const).map(r=>`<option value="${r}" ${t.lootMin===r?'selected':''}>${r}</option>`).join('')}</select></label><br><label><input type="checkbox" data-in="reduced" ${t.reducedFx?'checked':''}/> Reduced incidental effects</label><br><label><input type="checkbox" data-in="joyfixed" ${t.joystickFixed?'checked':''}/> Fixed joystick (default floating)</label><br>
+    <label><input type="checkbox" data-in="minimap" ${t.minimap!==false?'checked':''}/> Minimap (N)</label><br><label>UI size <select data-in="uisize">${([['S','Small'],['M','Medium'],['L','Large'],['XL','Extra large']] as const).map(([v,n])=>`<option value="${v}" ${(t.uiSize||'M')===v?'selected':''}>${n}</option>`).join('')}</select></label><br><label><input type="checkbox" data-in="dmgnum" ${t.damageNumbers?'checked':''}/> Damage numbers (default off)</label><br><label>Loot labels <select data-in="lootlabels"><option value="off" ${t.lootLabels==='off'?'selected':''}>Off</option><option value="near" ${t.lootLabels==='near'?'selected':''}>Near / hover</option><option value="all" ${t.lootLabels==='all'?'selected':''}>All</option></select></label> <label>Show loot from <select data-in="lootmin">${(['grey','green','blue','purple','orange'] as const).map(r=>`<option value="${r}" ${t.lootMin===r?'selected':''}>${r}</option>`).join('')}</select></label><br><label><input type="checkbox" data-in="reduced" ${t.reducedFx?'checked':''}/> Reduced incidental effects</label><br><label><input type="checkbox" data-in="joyfixed" ${t.joystickFixed?'checked':''}/> Fixed joystick (default floating)</label><br>
     <label><input type="checkbox" data-in="music" ${t.music?'checked':''}/> Music</label><label>Volume <input type="range" min="0" max="1" step=".05" value="${t.volume}" data-in="vol"/></label>
     ${g0.save.instance?'<h3>Instance</h3>'+this.resetBlock(true):''}
     <label title="Prototype only. The spec forbids this: completion consumes the daily clear."><input type="checkbox" data-in="devreset" ${t.devFreeReset?'checked':''}/> <b>PROTOTYPE:</b> allow resetting cleared dungeons (refunds the lockout)</label>
     <h3>Save</h3><button class="btn" data-act="wipe">Wipe save & reload</button> <button class="btn" data-act="dev">DEV tools</button></div>
     <div class="col"><h3>Story LLM provider (optional)</h3><div class="mut">Default is the offline mock. To try a real model, enable an OpenAI-compatible chat-completions endpoint. Stored only in this browser's localStorage; never sent anywhere else.</div>
     <label><input type="checkbox" data-in="llmon" ${t.llm.enabled?'checked':''}/> Use real provider</label><input type="text" placeholder="https://…/v1/chat/completions" value="${esc(t.llm.url)}" data-in="llmurl"/><input type="password" placeholder="API key" value="${esc(t.llm.key)}" data-in="llmkey"/><input type="text" placeholder="model id" value="${esc(t.llm.model)}" data-in="llmmodel"/>
-    <h3>Controls</h3><div class="mut">Desktop: WASD move · hold Q/E/R (or 1/2/3) to aim toward cursor, release to cast (release on invalid aim cancels, no heat/cooldown) · Space dodge (also cancels aiming/casting, even on cooldown) · click enemy to target (X / right-click clears) · F interact · B town return channel · I live pack · T stim.<br>Touch (landscape): floating joystick on left; hold &amp; drag ability buttons to aim, release to cast, drag far away to cancel; tap an enemy to target.</div></div>`; }
+    <h3>Controls</h3><div class="mut">Desktop: WASD move · hold Q/E/R (or 1/2/3) to aim toward cursor, release to cast (release on invalid aim cancels, no heat/cooldown) · Space dodge (also cancels aiming/casting, even on cooldown) · click enemy to target (X / right-click clears) · F interact · B town return channel · I live pack · T stim · N minimap · M music.<br><button class="btn" data-act="resethints">Show tutorial hints again</button><br>Touch (landscape): floating joystick on left; hold &amp; drag ability buttons to aim, release to cast, drag far away to cancel; tap an enemy to target.</div></div>`; }
   dev():string{ return `<div class="col"><h3>Prototype helpers</h3><div class="mut">Grants items into the locker for testing the three example builds. These are test shortcuts, not saved loadout presets.</div>
     ${Object.entries(BUILD_KITS).map(([k,b])=>`<div class="row"><span>Build ${k}: ${b.name}</span><span><button class="btn" data-act="kit" data-k="${k}">Grant kit</button><button class="btn" data-act="equipkit" data-k="${k}">Grant + equip (free)</button></span></div>`).join('')}
     <h3>Ranged weapons (grant + equip free)</h3>${WEAPON_ITEMS.map(w=>`<button class="btn" data-act="wequip" data-id="${w.id}">${esc(w.name)} <span class="mut">[${w.rarity}]</span></button>`).join('')}<button class="btn" data-act="wequip" data-id="stock_handR">Default pop pistol</button>
@@ -335,7 +351,7 @@ export class UI {
   input(e:Event){ const t=e.target as HTMLInputElement; const k=t.dataset.in; if(!k) return; const s=this.g.save, st=s.settings;
     if(k==='search'){ this.search=t.value; this.render(); const el=document.querySelector<HTMLInputElement>('[data-in=search]'); el?.focus(); el?.setSelectionRange(t.value.length,t.value.length); return; }
     if(k==='dshowall'){ this.showAll=t.checked; this.render(); return; }
-    if(k==='uisize'){ st.uiSize=t.value as any; applyUiScale(st.uiSize); this.render(); } else if(k==='gore') st.gore=t.value as any; else if(k==='dmgnum') st.damageNumbers=t.checked; else if(k==='reduced') st.reducedFx=t.checked; else if(k==='lootlabels') st.lootLabels=t.value as any; else if(k==='lootmin') st.lootMin=t.value as any; else if(k==='devreset'){ st.devFreeReset=t.checked; this.resetAsk=false; persist(s); this.render(); return; } else if(k==='joyfixed'){ st.joystickFixed=t.checked; }
+    if(k==='uisize'){ st.uiSize=t.value as any; applyUiScale(st.uiSize); this.render(); } else if(k==='minimap'){ this.setMinimap(t.checked); } else if(k==='gore') st.gore=t.value as any; else if(k==='dmgnum') st.damageNumbers=t.checked; else if(k==='reduced') st.reducedFx=t.checked; else if(k==='lootlabels') st.lootLabels=t.value as any; else if(k==='lootmin') st.lootMin=t.value as any; else if(k==='devreset'){ st.devFreeReset=t.checked; this.resetAsk=false; persist(s); this.render(); return; } else if(k==='joyfixed'){ st.joystickFixed=t.checked; }
     else if(k==='music'){ st.music=t.checked; this.audio.setMusicOn(t.checked); } else if(k==='vol'){ st.volume=+t.value; this.audio.setVolume(st.volume); }
     else if(k==='llmon') st.llm.enabled=t.checked; else if(k==='llmurl') st.llm.url=t.value; else if(k==='llmkey') st.llm.key=t.value; else if(k==='llmmodel') st.llm.model=t.value; persist(s); }
   click(e:MouseEvent){ const el=(e.target as HTMLElement).closest('[data-act]') as HTMLElement|null; if(!el) return; const a=el.dataset.act!; const g=this.g, s=g.save; this.audio.resume();
@@ -375,6 +391,7 @@ export class UI {
       case 'townchoice': { const st=g.story(); record(st,'town_choice',el.dataset.boost!); st.arc=el.dataset.boost!; const ed=st.edges.find(x=>x.from==='player'&&x.to==='odalys_vane'); if(ed) ed.w+=1; st.town=null; persist(s); this.msg='Odalys will push the "'+el.dataset.boost+'" lead.'; this.render(); return; }
       case 'story': this.runStory(); return;
       case 'buylocker': s.purchases.lockerBlocks++; persist(s); this.render(); return; case 'buyskin': s.purchases.skins.push(el.dataset.id!); persist(s); this.render(); return; case 'skin': s.purchases.equippedSkin=s.purchases.equippedSkin===el.dataset.id?null:el.dataset.id!; persist(s); this.render(); return;
+      case 'resethints': try{ localStorage.removeItem('wv_hints'); }catch{} this.hintCtx=''; this.toast('Tutorial hints will show again.'); return;
       case 'wipe': wipe(); location.reload(); return; case 'dev': this.open('dev'); return;
       case 'kit': case 'equipkit': this.kit(el.dataset.k!,a==='equipkit'); this.render(); return;
       case 'lvl': s.level=Math.max(1,Math.min(PROGRESSION.maxLevel,s.level+ +el.dataset.d!)); g.recompute(); persist(s); this.render(); return;
