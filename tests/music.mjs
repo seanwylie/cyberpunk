@@ -35,13 +35,21 @@ const bag = await ev(async () => { const { ShuffleBag } = await import('/src/mus
 ok([2, 3, 4, 7].every(n => bag[n].rep === 0), 'shuffle bag: no immediate repeat (2,3,4,7 items): ' + JSON.stringify(bag));
 ok(bag.one && bag.avail, 'shuffle bag: single item ok, availability filter respected');
 // manager-level: elite pool, boss mapping, calm rotation at loop boundary
-const mgr = await ev(async () => { const a = window.__audio, mm = a.music; await new Promise(r => { const f = () => Object.keys(mm.buffers).length >= 16 ? r() : setTimeout(f, 200); f(); setTimeout(r, 15000); });
+const mgr = await ev(async () => { const a = window.__audio, mm = a.music; await new Promise(r => { const f = () => Object.keys(mm.buffers).length >= 31 ? r() : setTimeout(f, 200); f(); setTimeout(r, 15000); });
   const r = {}; mm.setState('town'); mm.setState('traversal'); mm.setState('elite'); r.elite = mm.cur; mm.setState('bosscombat', 'warden'); r.boss = mm.cur; mm.setState('bossreveal'); mm.state = null; mm.setState('bosscombat', 'unknownboss'); r.boss2 = mm.cur;
   mm.state = null; mm.want = 'town'; mm.setState('town'); r.town0 = mm.cur; const live = mm.live.find(l => !l.ending); const d = mm.buffers[live.name].duration; mm.ROTATE_LOOPS = 1; live.startedAt = mm.now() - (d - 1); mm.tick(); r.rot = mm.cur; r.rotLog = mm.log[mm.log.length - 1];
   return r; });
 ok(['elite_siege', 'elite_hunt', 'boss_overclock', 'boss_meltdown', 'combat_a', 'combat_b'].includes(mgr.elite), 'elite state picks elite/boss pool: ' + mgr.elite);
 ok(mgr.boss === 'boss_overclock', 'warden maps to its boss track: ' + mgr.boss);
-ok(['boss_fight', 'boss_overclock', 'boss_meltdown', 'boss_hydraulic'].includes(mgr.boss2), 'unmapped boss draws from boss pool: ' + mgr.boss2);
+ok(M.pools.bosscombat.includes(mgr.boss2), 'unmapped boss draws from boss pool: ' + mgr.boss2);
+{ const B = await ev(async () => { const b = await import('/src/content/batch1_bosses.ts'), m = await import('/src/music.ts'); return b.BOSSES.map(x => ({ id: x.id, tier: x.tier, faction: x.faction, track: m.BOSS_MAP[x.id] })); });
+  const tr = B.map(b => b.track), uniq = new Set(tr);
+  ok(B.length === 20 && uniq.size >= 18, `20 batch-1 bosses have unique or near-unique themes (${uniq.size} distinct)`);
+  const cnt = {}; for (const t of tr) cnt[t] = (cnt[t] || 0) + 1; ok(Math.max(...Object.values(cnt)) <= 2, 'no boss track shared by more than 2 bosses');
+  const NEW = tr.filter(t => /^boss_/.test(t) && fs.existsSync('public/audio/music/' + t + '.mp3') && !['boss_fight', 'boss_overclock', 'boss_meltdown', 'boss_hydraulic'].includes(t)); ok(NEW.length >= 15, '15 new boss tracks are mapped (' + NEW.length + ')');
+  const t4 = B.filter(b => b.tier === 4); ok(t4.every(b => cnt[b.track] === 1 && /^boss_/.test(b.track)), 'tier IV bosses have their own dedicated tracks');
+  const lowTier = B.filter(b => b.tier === 1).map(b => b.track); ok(lowTier.some(t => /^elite_|^boss_(lineman|pitboss)$/.test(t)), 'tier I themes are the lighter ones');
+  ok(fs.statSync('public/audio/music/boss_recall.mp3').size < 1.3e6 && B.every(b => fs.existsSync('public/audio/music/' + b.track + '.mp3')), 'every boss theme file exists, ~1 MB each'); }
 ok(mgr.rot && mgr.rot !== mgr.town0 && mgr.rotLog.state === 'town' && mgr.rotLog.dur >= 3, 'calm state rotates near loop end with long crossfade: ' + mgr.town0 + ' -> ' + mgr.rot);
 ok(!errors.length, 'no page errors ' + errors.join('|'));
 // fallback: block music files

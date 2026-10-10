@@ -2,7 +2,7 @@
 // Falls back to the procedural scheduler in audio.ts when files are missing (isReady() === false).
 export type MState='town'|'traversal'|'combat'|'elite'|'bossreveal'|'bosscombat'|'resolution';
 interface TrackDef { file:string; loop:boolean; keepPos:boolean }
-const LOOPS=['town','traversal_a','traversal_b','combat_a','combat_b','boss_fight','calm_drift','calm_rust','calm_neon','calm_vents','calm_static','elite_siege','elite_hunt','boss_overclock','boss_meltdown','boss_hydraulic'];
+const LOOPS=['town','traversal_a','traversal_b','combat_a','combat_b','boss_fight','calm_drift','calm_rust','calm_neon','calm_vents','calm_static','elite_siege','elite_hunt','boss_overclock','boss_meltdown','boss_hydraulic','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall'];
 const T:Record<string,TrackDef>={ boss_reveal:{file:'boss_reveal',loop:false,keepPos:false}, clear:{file:'clear',loop:false,keepPos:false} };
 for(const n of LOOPS) T[n]={file:n,loop:true,keepPos:true};
 /** Tracks that must load for file music to activate; the rest load best-effort and are dropped from pools when missing. */
@@ -14,7 +14,7 @@ export const POOLS:Record<MState,string[]>={
   combat:['combat_a','combat_b'],
   elite:['elite_siege','elite_hunt','boss_overclock','boss_meltdown','combat_a','combat_b'],
   bossreveal:['boss_reveal'],
-  bosscombat:['boss_fight','boss_overclock','boss_meltdown','boss_hydraulic'],
+  bosscombat:['boss_fight','boss_overclock','boss_meltdown','boss_hydraulic','elite_siege','elite_hunt','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall'],
   resolution:['clear'] };
 /** Boss id -> fixed fight track, so each boss has its own identity (unmapped bosses draw from the pool). */
 import { BOSSES } from './content/batch1_bosses';

@@ -31,6 +31,38 @@ All 112 kbps / -16 LUFS, seamless-loop processed like the originals. Prompts are
 
 Credits for this pack: 10 tracks (~760 s of audio) used 8,317 credits (~11 per generated second; counter 8,735 -> 17,052 of 329,944 via `/v1/user/subscription`). Balance remaining: 312,892 credits (this month).
 
+### Boss themes pack (15 tracks, content batch 1)
+Generated with `tools/gen_music.py` (same pipeline: `music_v1`, instrumental, 75 s requested -> ~71 s seamless loop after the 2 s tail-onto-head blend, -16 LUFS, 112 kbps, ~0.97 MB each, 14.6 MB total). Tier flavours: I = lighter/slower, II = faction-flavoured mid intensity, III = fast/unnerving, IV = maximum. Every prompt ends with "steady ... intensity throughout, no breakdown, seamless loop" and carries the dark industrial cyberpunk base style.
+
+| Boss (tier, faction) | Track | Prompt gist |
+|---|---|---|
+| voss (I, Harrow-Brandt) | elite_siege (existing) | hard industrial techno 150 |
+| lineman (I, HB) | boss_lineman | electrical industrial techno 138, 50 Hz hum, arc-zap percussion |
+| gantrymother (I, Rustline) | elite_hunt (existing) | breakbeat hardcore 160 |
+| pitboss (I, HB) | boss_pitboss | half-time mining industrial 128, rock-crusher impacts |
+| bellfounder (II, HB) | boss_bellfounder | tolling detuned bells + anvil percussion, 144 |
+| cryo (II, Aldane) | boss_cryo | icy electro 150, crystalline arp, cracking-ice hats |
+| auditor (II, Aldane) | boss_auditor | bureaucratic industrial 156, stamp/typewriter clicks, ticking clock |
+| mirrorpt (II, Aldane) | boss_fight (existing) | DnB 172 |
+| apothecary (II, Aldane) | boss_apothecary | toxic DnB 170, warbling sickly bass, gas hiss |
+| clearance (II, Kestrel) | boss_clearance | corrupted retail-muzak jingle over hard techno 160, sale sirens |
+| tidewarden (II, Rustline) | boss_hydraulic (existing) | breakcore + piston/hydraulic hits |
+| resonance (III, Aldane) | boss_resonance | standing-wave sub, resonant sweeps, sudden dropouts, 168 |
+| liquidator (III, Kestrel) | boss_liquidator | industrial hardstyle-leaning 150, gavel snares, countdown ticks |
+| courier (III, Kestrel) | boss_courier | fast chase DnB 176, skittering breaks, doppler passes |
+| dispatcher (III, Kestrel) | boss_dispatcher | machine-logic 164, modem/data percussion, klaxon stabs |
+| warrantor (III, Kestrel) | boss_warrantor | orchestral-industrial hybrid 146, vault-door impacts, synth brass pulses |
+| rattle (III, Quiet Shift) | boss_rattle | minimal dark techno 142, chain/shaker rattle, creeping sub |
+| breaker (III, Rustline) | boss_meltdown (existing) | half-time industrial bass |
+| widow (III, Rustline) | boss_widow | broadcast static/morse glitch DnB 172, detuned lead |
+| recall (IV, Recall Authority) | boss_recall | apocalyptic finale 176, signature bass motif, recall-alarm sirens, most intense |
+
+Result: 20 bosses -> 20 distinct tracks (15 new + 5 existing; the 4 original dungeon bosses keep their old mapping). `BOSS_MAP` is built from each boss's `track` field in `src/content/batch1_bosses.ts`; the new tracks are in `LOOPS` and the `bosscombat` pool (best-effort loaded, not core). `elite_siege`/`elite_hunt` also joined the boss pool because tier I bosses use them.
+
+Credits for this pack: 15 tracks (~1,125 s requested) used 15,465 credits (counter 19,252 -> 34,717 of 329,944 via `/v1/user/subscription`; ~13.7 per requested second). Remaining this month: 295,227. Note: running 3 generations in parallel hit HTTP 429 (concurrency limit), failed requests cost nothing; generate sequentially with retry.
+
+Tests: `npm run test:music` now also checks that the 20 batch-1 bosses have >= 18 distinct themes (currently 20), no track shared by > 2 bosses, tier IV bosses have dedicated tracks, and every file exists and is < 1.3 MB.
+
 #### Pools and rotation (`POOLS`, `BOSS_MAP`, `ShuffleBag` in `src/music.ts`)
 - Each state draws from its pool through a shuffle bag: every track once per cycle, never the same track twice in a row (also across refills).
 - town: town, calm_drift, calm_rust, calm_vents. traversal: traversal_a/_b + calm_neon/static/drift/rust/vents. combat: combat_a/_b. elite (new state: an alerted non-boss elite within 12 tiles): elite_siege/hunt, boss_overclock/meltdown, combat_a/b. bosscombat: boss_fight + 3 new.
