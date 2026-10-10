@@ -42,16 +42,27 @@ export const ABILITY_TYPE_COLOR: Record<AbilityType,string> = { attack:'#a8483a'
 export const ABILITY_TYPE_LABEL: Record<AbilityType,string> = { attack:'Attack', defense:'Defense', hacking:'Hacking', mobility:'Mobility' };
 export const ABILITY_TYPE: Record<AbilityId,AbilityType> = { sweep:'attack', bladeburst:'attack', brace:'defense', forcedcool:'defense', defib:'defense', revive:'defense', control:'hacking', pulse:'hacking', cloak:'mobility', reposition:'mobility' };
 export interface AbilityDef { id:AbilityId; type:AbilityType; name:string; aim:AimType; heat:number; cd:number; windup:number; range:number; desc:string; }
+/** Ability power pass (docs/ABILITIES.md): every number the abilities and their synergies use. Abilities are the main damage/utility tool; autos are the filler that builds heat. */
+export const AB = {
+  autoDmgMul:.45, autoHeatMul:2.4,            // basic attacks: weaker, and they build heat you then dump through abilities
+  sweepDmg:85, sweepStun:.7, burstDmg:90, burstStun:.5, pulseDmg:55, pulseR:3.2, pulseStun:1.8, repoDmg:50, repoStun:.5,
+  shieldAuto:.35, shieldAbility:1.5, pulseShield:4, pulseShieldFrac:.45,   // shield interaction: autos bounce off, Pulse breaks
+  ctrlR:3.8, ctrlDmg:45, ctrlStun:1.6, ctrlResistStun:2, hackMul:1.4, hackT:6,        // Control: mass stun + 'Hacked' bonus damage
+  braceMul:.25, braceT:3.5, reflect:1.5, reflectCap:120, counterStun:2,    // Brace: -75% damage, reflect, counter-stun chargers
+  cloakMul:2.5, cloakAuto:3, evadeCd:1.5, evadeHeat:12, evadeBonusT:3,
+  comboT:3, comboStep:.15, comboMax:3, chargedPerHeat:.005, chargedMax:.4,  // synergies: combo chain, heat-spend 'Charged', Overclock
+  ovMul:1.3, ovT:5, killCdRefund:.8, regenSuppress:3,
+};
 export const ABILITIES: Record<AbilityId,AbilityDef> = {
-  sweep:{ id:'sweep', type:'attack', name:'Powered Sweep', aim:'direction', heat:24, cd:4, windup:.25, range:3.2, desc:'Wide ripper arc; damages and shoves everything in front.' },
-  brace:{ id:'brace', type:'defense', name:'Bracing', aim:'self', heat:14, cd:9, windup:.1, range:0, desc:'Lock the frame: 60% less damage for 3s, no movement penalty.' },
-  forcedcool:{ id:'forcedcool', type:'defense', name:'Forced Cooling', aim:'self', heat:0, cd:10, windup:.15, range:0, desc:'Vent 70 heat. Weapons are offline for 2s.' },
-  cloak:{ id:'cloak', type:'mobility', name:'Cloak', aim:'self', heat:20, cd:10, windup:.1, range:0, desc:'Enemies lose you for 5s. First strike hits 2x and breaks cloak.' },
-  bladeburst:{ id:'bladeburst', type:'attack', name:'Blade Burst', aim:'direction', heat:22, cd:5, windup:.2, range:5.5, desc:'Lunge in a line, cutting through everything.' },
-  reposition:{ id:'reposition', type:'mobility', name:'Reposition', aim:'ground', heat:12, cd:6, windup:.1, range:6.5, desc:'Short displacement to an open ground point.' },
-  control:{ id:'control', type:'hacking', name:'Enemy Control', aim:'target', heat:30, cd:12, windup:.3, range:9, desc:'Turn an enemy against its squad for 8s. Elites resist (stun only).' },
-  pulse:{ id:'pulse', type:'hacking', name:'Disruption Pulse', aim:'ground', heat:20, cd:6, windup:.25, range:8, desc:'Ground burst: damage and 1.2s stun.' },
-  revive:{ id:'revive', type:'defense', name:'Team Revival', aim:'ally', heat:18, cd:6, windup:.3, range:7, desc:'Revive a downed teammate (needs a party; inactive solo).' },
+  sweep:{ id:'sweep', type:'attack', name:'Powered Sweep', aim:'direction', heat:14, cd:3, windup:.2, range:3.6, desc:`Wide ripper arc: ${AB.sweepDmg} damage to everything in front, shoves and staggers ${AB.sweepStun}s. Clears packs, swarms and summoned adds.` },
+  brace:{ id:'brace', type:'defense', name:'Bracing', aim:'self', heat:10, cd:7, windup:.1, range:0, desc:`Lock the frame for ${AB.braceT}s: ${Math.round((1-AB.braceMul)*100)}% less damage, ${Math.round(AB.reflect*100)}% of what you take is reflected to the attacker, and a hit from a charging enemy stuns it ${AB.counterStun}s. Shoves adjacent enemies.` },
+  forcedcool:{ id:'forcedcool', type:'defense', name:'Forced Cooling', aim:'self', heat:0, cd:8, windup:.15, range:0, desc:`Vent 70 heat, then OVERCLOCK: abilities deal +${Math.round((AB.ovMul-1)*100)}% for ${AB.ovT}s and your other cooldowns drop 2s. Weapons offline 1.2s.` },
+  cloak:{ id:'cloak', type:'mobility', name:'Cloak', aim:'self', heat:12, cd:8, windup:.1, range:0, desc:`Enemies lose you for 5s. Your next hit (auto ${AB.cloakAuto}x, ability ${AB.cloakMul}x) is an AMBUSH crit and breaks cloak.` },
+  bladeburst:{ id:'bladeburst', type:'attack', name:'Blade Burst', aim:'direction', heat:14, cd:4, windup:.15, range:6, desc:`Lunge in a line with invulnerability, cutting for ${AB.burstDmg} damage through everything (burst damage on elites and chargers).` },
+  reposition:{ id:'reposition', type:'mobility', name:'Reposition', aim:'ground', heat:8, cd:4, windup:.1, range:6.5, desc:`Dash-strike to an open point: ${AB.repoDmg} damage along the path, ${Math.round(.32*100)/100}s invulnerable. Cast INTO a telegraph for a PERFECT EVADE: cooldown drops to ${AB.evadeCd}s, -${AB.evadeHeat} heat, abilities +30% for ${AB.evadeBonusT}s.` },
+  control:{ id:'control', type:'hacking', name:'Enemy Control', aim:'target', heat:20, cd:9, windup:.25, range:9, desc:`Turn an enemy against its squad for 8s; everything within ${AB.ctrlR} tiles is pulled in and stunned ${AB.ctrlStun}s. Controlled and stunned enemies are HACKED: +${Math.round((AB.hackMul-1)*100)}% damage taken for ${AB.hackT}s. Elites and bosses resist but are stunned. Stops healers and shield-casters.` },
+  pulse:{ id:'pulse', type:'hacking', name:'Disruption Pulse', aim:'ground', heat:14, cd:5, windup:.2, range:8, desc:`Ground burst: ${AB.pulseDmg} damage and ${AB.pulseStun}s stun. SHIELD-BREAK: deals ${AB.pulseShield}x to shields, so one pulse strips most shields and staggers (+50% damage).` },
+  revive:{ id:'revive', type:'defense', name:'Team Revival', aim:'self', heat:16, cd:8, windup:.25, range:0, desc:`Emergency rally: restore 30% HP and release a shockwave (60 damage, 1.2s stun) around you. With a party it also revives a downed teammate.` },
   defib:{ id:'defib', type:'defense', name:'Self-Defib', aim:'self', heat:0, cd:0, windup:0, range:0, desc:'Passive: revive in place once per down (hardware stays broken).' },
 };
 

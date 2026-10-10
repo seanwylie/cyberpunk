@@ -35,12 +35,14 @@ export async function runJob(job) {
     const kitInfo = () => ({ hp: Math.round(g.maxHp), dmg: +g.stat().dmg.toFixed(2), armor: +g.stat().armor.toFixed(1), atk: +g.stat().atkSpeed.toFixed(2), weapon: g.build.weapon.kind, abilities: g.build.abilities.slice() });
 
     // ---- instrumentation ----
+    g.dealt = {}; g.casts = {}; g.dbg.noHitStop = true;
     const R = { src: {}, abil: {}, mobTtk: {}, bossTtk: null, deaths: 0, dodges: 0, stims: 0, killsByType: {}, hits: [], maxHit: 0, maxHitSrc: '' };
     const origResolve = g.resolveAttack.bind(g), origBegin = g.beginAttack.bind(g), origHurt = g.hurtPlayer.bind(g), origExec = g.executeAbility.bind(g), origKill = g.killEnemy.bind(g);
     g.beginAttack = (e, a, ang, tx, ty) => { const z0 = g.zones.length; const r = origBegin(e, a, ang, tx, ty); for (let i = z0; i < g.zones.length; i++) g.zones[i].src = e.type + ':' + a; return r; };
     g.resolveAttack = (e, a, tx, ty) => { const p0 = g.projs.length, z0 = g.zones.length; const r = origResolve(e, a, tx, ty); for (let i = p0; i < g.projs.length; i++) g.projs[i].src = e.type + ':' + a; for (let i = z0; i < g.zones.length; i++) if (!g.zones[i].src) g.zones[i].src = e.type + ':' + a; return r; };
     g.hurtPlayer = (dmg, sx, sy) => { const hp0 = g.hp; const dead0 = g.downed; origHurt(dmg, sx, sy); const d = hp0 - g.hp; if (d > 0 && !dead0) { const k = g.dmgSrc || '?'; R.src[k] = (R.src[k] || 0) + d; if (d > R.maxHit) { R.maxHit = d; R.maxHitSrc = k; } } };
-    g.executeAbility = c => { R.abil[c.ab.id] = (R.abil[c.ab.id] || 0) + 1; return origExec(c); };
+    g.executeAbility = c => { R.abil[c.ab.id] = (R.abil[c.ab.id] || 0) + 1; const p = g.curTag; g.curTag = c.ab.id; try { return origExec(c); } finally { g.curTag = p; } };
+    { const lb = g.lungeBladeHit.bind(g); g.lungeBladeHit = () => { const p = g.curTag; g.curTag = 'bladeburst'; try { return lb(); } finally { g.curTag = p; } }; }
     const firstAlert = new Map(); let simT = 0;
     g.killEnemy = e => { if (!e.dead && e.faction === 'enemy') { const t0 = firstAlert.get(e.id); const k = e.type; const def = ENEMIES[k]; if (t0 !== undefined) { (R.mobTtk[k] ||= []).push(+(simT - t0).toFixed(2)); if (def.boss) R.bossTtk = +(simT - t0).toFixed(1); } R.killsByType[k] = (R.killsByType[k] || 0) + 1; } return origKill(e); };
 
@@ -72,7 +74,25 @@ export async function runJob(job) {
     };
     const useAbilities = (near, alive) => {
       if (g.aim || g.cast || g.overheated || g.downed) return;
-      for (let i = 0; i < 3; i++) { const id = g.build.abilities[i]; if (!id || g.abCd[i] > 0) continue; const d = dist(g.px, g.py, near.x, near.y); if (alive.length >= 2 ? d < 6 : (ENEMIES[near.type].boss || ENEMIES[near.type].elite) && d < 6) { try { g.beginAim(i); if (g.aim) { g.updateAim(near.x, near.y, true); g.releaseAim(); } } catch (e) {} break; } }
+      const AB = g.build.abilities; const has = id => AB.indexOf(id); const rdy = id => { const i = has(id); return i >= 0 && g.abCd[i] <= 0 && g.heat + Cfg.ABILITIES[id].heat <= 96 ? i : -1; };
+      const fire = (i, tx, ty) => { try { g.beginAim(i); if (g.aim) { g.updateAim(tx, ty, true); g.releaseAim(); return true; } } catch (e) {} return false; };
+      const d = dist(g.px, g.py, near.x, near.y); const near8 = alive.filter(e => dist(e.x, e.y, g.px, g.py) < 8);
+      const shielded = near8.find(e => e._rt.shield && e._rt.shield.hp > 0), healer = near8.find(e => /healer|mender|warder|summoner|matron|relay/.test(e.type));
+      const tele = alive.find(e => e._rt.st === 'tele' && dist(e.x, e.y, g.px, g.py) < 3.5);
+      // smart-ish rotation: counters first, then attack abilities on cooldown, defence when threatened
+      let i;
+      if (g.bot_mode !== 'auto_only') {
+        if ((i = rdy('cloak')) >= 0 && (near.boss || ENEMIES[near.type].boss || ENEMIES[near.type].elite) && d < 9 && g.cloakT <= 0 && rdy('bladeburst') >= 0) { if (fire(i, g.px, g.py)) return; }
+        if ((i = rdy('pulse')) >= 0 && (shielded || near8.length >= 2) && d < 7.5) { const t = shielded || near; if (fire(i, t.x, t.y)) return; }
+        if ((i = rdy('control')) >= 0 && (healer || ENEMIES[near.type].elite || near8.length >= 2) && d < 8.5) { const t = healer || near; if (fire(i, t.x, t.y)) return; }
+        if ((i = rdy('reposition')) >= 0 && (tele || g.zones.some(z => !z.env && z.dps > 0 && z.t < z.windup + .2 && dist(z.x, z.y, g.px, g.py) < z.r + 1)) ) { const a = Math.atan2(g.py - near.y, g.px - near.x); if (fire(i, g.px + Math.cos(a) * 4, g.py + Math.sin(a) * 4)) return; }
+        if ((i = rdy('revive')) >= 0 && (g.hp < g.maxHp * .6 || near8.filter(e => dist(e.x, e.y, g.px, g.py) < 3).length >= 2) && d < 3.2) { if (fire(i, g.px, g.py)) return; }
+        if ((i = rdy('reposition')) >= 0 && d > 2.2 && d < 6 && !tele && has('sweep') < 0 && has('bladeburst') < 0) { const a = Math.atan2(near.y - g.py, near.x - g.px); if (fire(i, near.x + Math.cos(a) * 1.2, near.y + Math.sin(a) * 1.2)) return; }
+        if ((i = rdy('brace')) >= 0 && (tele || g.hp < g.maxHp * .6) && d < 3.5) { if (fire(i, g.px, g.py)) return; }
+        if ((i = rdy('sweep')) >= 0 && d < 3.4) { if (fire(i, near.x, near.y)) return; }
+        if ((i = rdy('bladeburst')) >= 0 && d < 5.5) { if (fire(i, near.x, near.y)) return; }
+        if ((i = rdy('forcedcool')) >= 0 && g.heat > 55) { if (fire(i, g.px, g.py)) return; }
+      }
     };
     const ranged = () => g.build.weapon.range;
     const fight = () => {
@@ -82,7 +102,7 @@ export async function runJob(job) {
       const pri = e => (e.pylon ? 0 : /healer|mender|warder|summoner|matron/.test(e.type) ? 1 : e.bossAdd ? 2 : 3);
       alive.sort((a, b) => pri(a) - pri(b) || dist(a.x, a.y, g.px, g.py) - dist(b.x, b.y, g.px, g.py));
       const t = alive[0]; g.target = t.id;
-      const d = dist(t.x, t.y, g.px, g.py), rr = ENEMIES[t.type].radius || .5, w = g.build.weapon; const want = Math.max(.8, Math.min(w.range * .8, 5)) + rr;
+      const d = dist(t.x, t.y, g.px, g.py), rr = ENEMIES[t.type].radius || .5, w = g.build.weapon; const abR = g.build.abilities.includes('sweep') ? 2.8 : g.build.abilities.includes('bladeburst') ? 4.2 : 99; const want = Math.min(Math.max(.8, Math.min(w.range * .8, 5)), abR) + rr; /* ability-centric play: close to ability range */
       if (d > want) { (d < 3 ? mv(t.x - g.px, t.y - g.py) : nav(t.x, t.y)); } else if (d < 1.0 && w.range > 2.5) mv(g.px - t.x, g.py - t.y); else g.setMove(0, 0);
       useAbilities(t, alive);
       return true;
@@ -96,7 +116,7 @@ export async function runJob(job) {
       const es = spots.map(([x, y]) => { const e = g.spawnEnemy(job.id, x, y); e.alert = true; return e; }); const hp0 = g.hp; let t = 0, hpLost = 0;
       R.kitInfo = kitInfo();
       while (t < 60 && g.enemies.some(e => !e.dead && e.faction === 'enemy' && (e.type === job.id || e.minionOf)) && !g.downed) { const hpb = g.hp; trackAlert(); const act = heroLogic(); if (!act && !fight()) g.setMove(0, 0); stepSim(); t += dt; if (g.hp < g.maxHp * .3) g.hp = g.maxHp, R.refills = (R.refills || 0) + 1; }
-      return { id: job.id, kit: job.kit, level: job.level, seed: job.seed, par: job.par, n, t: +t.toFixed(1), downed: g.downed, kitInfo: R.kitInfo, src: R.src, maxHit: R.maxHit, maxHitSrc: R.maxHitSrc, mobTtk: R.mobTtk, abil: R.abil, refills: R.refills || 0, mobHp: ENEMIES[job.id].hp };
+      return { id: job.id, kit: job.kit, level: job.level, seed: job.seed, par: job.par, n, t: +t.toFixed(1), downed: g.downed, kitInfo: R.kitInfo, src: R.src, maxHit: R.maxHit, maxHitSrc: R.maxHitSrc, mobTtk: R.mobTtk, abil: R.abil, dealt: { ...g.dealt }, refills: R.refills || 0, mobHp: ENEMIES[job.id].hp };
     }
 
     // ---- full level run ----
@@ -110,7 +130,7 @@ export async function runJob(job) {
       const f = g.inst.flags; const boss = g.enemies.find(e => !e.dead && ENEMIES[e.type].boss && e._rt.reveal <= 0);
       if (boss && !bossSeen) bossSeen = simT;
       if (g.revealing) { g.setMove(0, 0); stepSim(); continue; }
-      const act = heroLogic(); if (job.debug && Math.floor(simT * 30) % 150 === 0) (R.trace ||= []).push([+simT.toFixed(1), +g.px.toFixed(1), +g.py.toFixed(1), act || '-', g.target, g.inputMove.x, g.inputMove.y]);
+      const act = heroLogic(); if (job.debug && Math.floor(simT * 30) % (job.traceEvery || 150) === 0) (R.trace ||= []).push([+simT.toFixed(1), +g.px.toFixed(1), +g.py.toFixed(1), act || '-', g.target, g.inputMove.x, g.inputMove.y]);
       if (!act) {
         const fought = fight();
         if (!fought) {
@@ -132,6 +152,6 @@ export async function runJob(job) {
     }
     const cleared = !!g.inst.flags.bossDead; const bossDef = ENEMIES[dd.defaultBoss];
     const bossRun = g.enemies.find(e => ENEMIES[e.type].boss);
-    return { ...result, cleared, deaths: R.deaths, t: +simT.toFixed(1), bossReached: bossSeen ? +bossSeen.toFixed(1) : null, bossTtk: R.bossTtk, bossFightT: bossSeen && cleared ? +(simT - bossSeen).toFixed(1) : null, bossHpLeft: bossRun && !cleared ? +(bossRun.hp / bossRun.maxHp).toFixed(2) : 0, boss: bossRun?.type || dd.defaultBoss, src: R.src, abil: R.abil, mobTtk: R.mobTtk, maxHit: +R.maxHit.toFixed(1), maxHitSrc: R.maxHitSrc, dodges: R.dodges, stims: R.stims, stuck: R.stuck || 0, nEnemies, kills: g.kills, tier: dd.tier || 0, maxHp: Math.round(g.maxHp), stuckAt: R.stuckAt, trace: R.trace, failWhy: cleared ? '' : (R.stuck ? 'stuck' : R.deaths >= maxDeaths ? 'deaths' : 'timeout') };
+    return { ...result, cleared, deaths: R.deaths, t: +simT.toFixed(1), bossReached: bossSeen ? +bossSeen.toFixed(1) : null, bossTtk: R.bossTtk, bossFightT: bossSeen && cleared ? +(simT - bossSeen).toFixed(1) : null, bossHpLeft: bossRun && !cleared ? +(bossRun.hp / bossRun.maxHp).toFixed(2) : 0, boss: bossRun?.type || dd.defaultBoss, src: R.src, abil: R.abil, dealt: { ...g.dealt }, mobTtk: R.mobTtk, maxHit: +R.maxHit.toFixed(1), maxHitSrc: R.maxHitSrc, dodges: R.dodges, stims: R.stims, stuck: R.stuck || 0, nEnemies, kills: g.kills, tier: dd.tier || 0, maxHp: Math.round(g.maxHp), stuckAt: R.stuckAt, trace: R.trace, failWhy: cleared ? '' : (R.stuck ? 'stuck' : R.deaths >= maxDeaths ? 'deaths' : 'timeout') };
   } finally { Math.random = realRandom; }
 }

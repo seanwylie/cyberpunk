@@ -49,7 +49,7 @@ export class AudioSys {
     const m=[55,65.4,49,77.8]; m.forEach((f,i)=>{ const tt=t+1.6+i*1.25; this.osc('sawtooth',f*2,tt,1.1,.12,B,500); this.osc('sine',f,tt,1.3,.2,B); this.noiseAt(tt,.12,.1,900,B); });
     this.osc('sawtooth',220,t+7.4,1.4,.1,B,800,60); this.hit(1.1); }
   // --- sfx ---
-  sfx(name:string){ const c=this.ctx; if(!c||c.state!=='running') return; const now=c.currentTime; const gap:Record<string,number>={ hit:.05,enemy_swing:.08,pickup:.05,coin:.05,atk_ripper:.09,atk_blade:.06,atk_fist:.08,atk_slug:.1,atk_popper:.05,atk_autopistol:.04,atk_burst:.03,atk_shard:.08,atk_arc:.08,death_MM:.05,death_HI:.06,death_PS:.06,telegraph_basic:.15,hurt:.1,enemy_shot:.08,alert:.2 }; const g=gap[name]??.02; if(this.last[name]&&now-this.last[name]<g) return; this.last[name]=now; if(this.playing>14) return; const B=this.sfxBus; const t=now; this.playing++; setTimeout(()=>this.playing--,300);
+  sfx(name:string){ const c=this.ctx; if(!c||c.state!=='running') return; const now=c.currentTime; const gap:Record<string,number>={ hit:.05,enemy_swing:.08,pickup:.05,coin:.05,atk_ripper:.09,atk_blade:.06,atk_fist:.08,atk_slug:.1,atk_popper:.05,atk_autopistol:.04,atk_burst:.03,atk_shard:.08,atk_arc:.08,death_MM:.05,death_HI:.06,death_PS:.06,telegraph_basic:.15,hurt:.1,enemy_shot:.08,alert:.2,combo:.1,ab_ready:.15 }; const g=gap[name]??.02; if(this.last[name]&&now-this.last[name]<g) return; this.last[name]=now; if(this.playing>14) return; const B=this.sfxBus; const t=now; this.playing++; setTimeout(()=>this.playing--,300);
     switch(name){
       case 'hit': this.noiseAt(t,.06,.2,2400,B); this.osc('sine',140,t,.1,.25,B,undefined,60); break;
       case 'atk_ripper': this.noiseAt(t,.14,.16,1400,B,'bandpass',4); this.osc('sawtooth',95,t,.14,.1,B,500,70); break;
@@ -61,6 +61,18 @@ export class AudioSys {
       case 'atk_shard': this.noiseAt(t,.12,.2,3200,B,'bandpass',2); this.osc('triangle',240,t,.1,.2,B,undefined,90); break;
       case 'atk_arc': this.noiseAt(t,.12,.14,4200,B,'highpass'); this.osc('sawtooth',700,t,.12,.12,B,undefined,160); break;
       case 'atk_slug': this.osc('sine',180,t,.16,.35,B,undefined,50); this.noiseAt(t,.1,.2,1800,B); break;
+      // ability casts: one distinct synthesized voice per ability + synergy cues
+      case 'ab_sweep': this.noiseAt(t,.2,.26,1200,B,'bandpass',2); this.osc('sawtooth',140,t,.22,.16,B,700,60); this.osc('triangle',900,t,.12,.06,B,undefined,300); break;
+      case 'ab_bladeburst': this.noiseAt(t,.14,.2,7000,B,'highpass'); this.osc('sawtooth',1500,t,.14,.1,B,undefined,300); this.osc('triangle',2200,t+.04,.1,.05,B,undefined,900); break;
+      case 'ab_pulse': this.osc('sine',90,t,.4,.3,B,undefined,420); this.osc('triangle',640,t,.3,.08,B,undefined,1200); this.noiseAt(t,.2,.12,3000,B,'bandpass',3); break;
+      case 'ab_control': this.osc('square',330,t,.12,.07,B,1800,660); this.osc('square',495,t+.07,.14,.07,B,1800,990); this.osc('sine',220,t,.4,.1,B,undefined,110); break;
+      case 'ab_brace': this.osc('sine',110,t,.25,.3,B,undefined,70); this.noiseAt(t,.18,.14,700,B,'lowpass'); this.osc('triangle',440,t+.05,.2,.07,B); break;
+      case 'ab_reposition': this.noiseAt(t,.2,.2,3800,B,'bandpass',.8); this.osc('triangle',500,t,.16,.07,B,undefined,1400); break;
+      case 'ab_cloak': this.osc('sine',700,t,.5,.07,B,undefined,160); this.noiseAt(t,.4,.06,5000,B,'highpass'); break;
+      case 'ab_forcedcool': this.noiseAt(t,.7,.22,4200,B,'highpass'); this.osc('sine',300,t,.5,.06,B,undefined,120); break;
+      case 'ab_revive': case 'ab_defib': this.osc('sine',330,t,.3,.1,B,undefined,660); this.osc('triangle',660,t+.08,.4,.09,B,undefined,990); this.noiseAt(t,.1,.14,6000,B,'highpass'); break;
+      case 'combo': this.osc('triangle',660,t,.12,.08,B); this.osc('triangle',880,t+.06,.14,.08,B); this.osc('triangle',1320,t+.12,.2,.07,B); break;
+      case 'ab_ready': this.osc('sine',1200,t,.09,.05,B,undefined,1800); break;
       case 'enemy_swing': this.noiseAt(t,.12,.1,1100,B); break;
       case 'enemy_shot': this.osc('square',420,t,.1,.06,B,1200,200); break;
       case 'slam': this.osc('sine',120,t,.5,.5,B,undefined,32); this.noiseAt(t,.3,.2,500,B,'lowpass'); break;

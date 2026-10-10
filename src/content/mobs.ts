@@ -1,6 +1,6 @@
 // Runtime for batch-2 mobs (docs/MOBS_BATCH_2.md): mob-only attacks (snipe / mend / ward / hex / detonate / summonlite), elite AFFIXES and shield/regen/frenzy ticks.
 // The sim only calls the hooks at the bottom (mobTick, mobDeath, mobAfterHit, resolveMobAttack, mobPattern, MOB_COND, mobLabel). Toolkit moves ("<mob>.<n>") run through mechanics.ts.
-import { ENEMIES, COMBAT } from '../config';
+import { ENEMIES, COMBAT, AB } from '../config';
 import { MOB_ATK, TIER_CURVE, AFFIX_LABEL } from './batch2_mobs';
 import type { Affix } from './batch2_mobs';
 import { BAL } from './balance';
@@ -22,7 +22,7 @@ export function mobTick(sim:any,e:any,dt:number){ const rt=e._rt; if(e.dead) ret
   if(rt.cdMul&&rt.cdMul!==1){ const extra=dt*(1/rt.cdMul-1); for(const k in rt.acd) rt.acd[k]-=extra; }
   if(rt.immune>0) rt.immune-=dt; const aff:string[]=e.affix; if(!aff||!aff.length) return;
   if(e.hp<rt.lastHp-.01) rt.calm=0; else rt.calm+=dt;
-  if(aff.includes('regenerating')&&rt.calm>3&&e.hp<e.maxHp) e.hp=Math.min(e.maxHp,e.hp+e.maxHp*.025*dt);
+  if(aff.includes('regenerating')&&e.hp<e.maxHp&&sim.time-(rt.abHitAt||-99)>AB.regenSuppress) e.hp=Math.min(e.maxHp,e.hp+e.maxHp*.04*dt); /* abilities suppress regeneration */
   rt.lastHp=e.hp;
   if(aff.includes('frenzied')&&!rt.fr&&e.hp<e.maxHp*.4){ rt.fr=1; rt.spdMul=(rt.spdMul||1)*1.35; rt.cdMul=(rt.cdMul||1)*.71; sim.fx.push({kind:'ring',x:e.x,y:e.y,r:2.4,t:0,life:.5,c:'#d85a3a'}); }
   if(aff.includes('warded')&&!rt.wd&&e.hp<e.maxHp*.5){ rt.wd=1; rt.immune=2; sim.fx.push({kind:'ring',x:e.x,y:e.y,r:2.8,t:0,life:.6,c:'#e8d890'}); } }

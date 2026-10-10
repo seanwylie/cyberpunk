@@ -159,3 +159,42 @@ Gear drops per run (items + chips + stims), before -> after (full table in the o
 - Purple items per run stay 0-1.7 and orange ~0 (rarity curve unchanged).
 
 Economy check: sell-all value of an Annex run (credits + selling every item) 858c -> 483c; vendor blue gear costs 300c, install 80/400c for blue/purple removals, stim 30c, so a run still funds roughly one blue purchase; tier III/IV runs give 1.6-3.6k. Credit income overall is ~76% of before because elite/boss credit piles are unchanged. Still placeholders pending human playtests.
+
+## Ability power pass (abilities are the main damage)
+
+Par kits (tools/balance `--par --seeds 6`, ability bot: counters first, then attack abilities, closes to ability range). "Ability share" is damage dealt through an ability (including Cloak ambush hits, Control overload and Brace reflect) over all damage dealt; Control's +40% hack bonus and Overclock/Combo/Charged bonuses are counted inside the damage they boost.
+
+| | Before (autos + old bot) | After |
+|---|---|---|
+| Clear rate (par kits) | 86.5% | 89.6% (target 70-90%) |
+| Ability damage share | 13.8% | **66.4%** (target >60%) |
+| Casts per run | 82.9 | 111.9 |
+| Mean clear time | 268s | 271s |
+
+Before (4 seeds, original bot and numbers):
+```
+par runs 96, clear 86.5%, mean clear time 268s
+ability damage share 13.8% (auto 86.2%); casts per run 82.9
+damage by source (%): auto 86.2%, bladeburst 10.0%, sweep 3.8%
+casts per run: sweep 20.3, bladeburst 19.4, control 17.6, reposition 15.8, cloak 8.3, brace 0.8, forcedcool 0.7
+  tier 0: ability share 15.2%, clear 100.0%, casts/run 45.9, time 142s
+  tier 1: ability share 0.0%, clear 87.5%, casts/run 0.0, time 309s
+  tier 2: ability share 14.5%, clear 78.6%, casts/run 107.4, time 318s
+  tier 3: ability share 15.4%, clear 90.6%, casts/run 111.7, time 325s
+  tier 4: ability share 13.8%, clear 50.0%, casts/run 159.5, time 561s
+```
+After (6 seeds, final numbers):
+```
+par runs 144, clear 89.6%, mean clear time 271s
+ability damage share 66.4% (auto 33.6%); casts per run 111.9
+damage by source (%): auto 33.6%, bladeburst 33.3%, sweep 17.4%, control 8.0%, reposition 6.5%, revive 1.1%, brace 0.0%
+casts per run: control 32.5, sweep 28.0, bladeburst 26.0, reposition 22.3, revive 2.1, brace 1.0
+  tier 0: ability share 66.0%, clear 83.3%, casts/run 87.0, time 218s
+  tier 1: ability share 64.1%, clear 95.8%, casts/run 96.0, time 217s
+  tier 2: ability share 67.2%, clear 90.5%, casts/run 109.4, time 314s
+  tier 3: ability share 65.9%, clear 89.6%, casts/run 121.6, time 288s
+  tier 4: ability share 68.1%, clear 83.3%, casts/run 214.5, time 678s
+```
+What moved the numbers: auto damage x0.45 and heat x2.4; Sweep 34->85, Burst 30->90, Pulse 22->55, Reposition 25->50, Control now deals 45 overload damage to everything it stuns; Revive got a solo effect (it was a dead slot in the T1 par kit); cooldowns 3-5s. To keep clears in band, enemy HP is multiplied by dungeon tier (`BAL.g.tier`: T0-T2 x1.75, T3 x1.4, T4 x1.25) and several boss multipliers were retuned (Overseer, Bellfounder, Auditor, Mirror P.T., Apothecary, Clearance, Courier, Recall). The earlier seeds of this pass are kept in `tools/balance/out/abil_a*.json`.
+
+Tuning notes: the bot found that Control could turn the Overseer's pylons (boss then immune for ever); pylons and static enemies now only get stunned. Outliers left alone: Breaker Yard and Drained Reservoir swing 50-70% on 6 seeds (high variance, boss tele-chain), Recall Yard (T4) ~83%.

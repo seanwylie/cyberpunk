@@ -1,5 +1,5 @@
 import { Game, En, type Fx } from './sim';
-import { ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, ABILITY_TYPE_COLOR, RARITY_RANK, uiFs, cpx } from './config';
+import { AB, ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, ABILITY_TYPE_COLOR, RARITY_RANK, uiFs, cpx } from './config';
 import { installedLayout } from './build';
 import { Q } from './quality';
 import { PlayerAnimator, loadAtlas } from './sprites';
@@ -37,7 +37,7 @@ export class Renderer {
     const tx=(g.px-g.py)*this.TW/2, ty=(g.px+g.py)*this.TW/4; this.camx+= (tx-this.camx)*Math.min(1,dt*8); this.camy+=(ty-this.camy)*Math.min(1,dt*8);
     if(this.shake>0) this.shake=Math.max(0,this.shake-dt*3);
     c.fillStyle=PAL.soot; c.fillRect(0,0,this.w,this.h);
-    this.drawFloor(); this.drawWorld(); this.flushLoot(); this.drawOverlay();
+    vfxFrame(this,dt); if(g.kick>0){ if(!g.save.settings.reducedFx) this.shake=Math.max(this.shake,g.kick); g.kick=0; } this.drawFloor(); this.drawWorld(); this.flushLoot(); this.drawOverlay();
   }
   tile(x:number,y:number,col:string){ const c=this.ctx; const a=this.sx(x,y), b=this.sy(x,y); const hw=this.TW/2, hh=this.TW/4; c.fillStyle=col; c.beginPath(); c.moveTo(a,b); c.lineTo(a+hw,b+hh); c.lineTo(a,b+2*hh); c.lineTo(a-hw,b+hh); c.closePath(); c.fill(); }
   drawFloor(){
@@ -137,6 +137,7 @@ export class Renderer {
     for(const dr of (g.inst&&g.mode==='run'?g.inst.drops:[])) items.push({d:dr.x+dr.y,f:()=>this.drawDrop(dr)});
     for(const e of g.enemies){ if(e.dead){ if(this.eart.dying(e,g.time)) items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); continue; } items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); }
     if(!g.downed||true) items.push({d:g.px+g.py,f:()=>this.drawPlayer()});
+    vfxItems(this,items);
     items.sort((a,b)=>a.d-b.d);
     // ground-level telegraphs/zones go under actors
     this.drawGroundFx();
@@ -212,7 +213,7 @@ export class Renderer {
   }
   /** Buffs that have to stay readable after the cast flash: a plate while braced, a veil while cloaked. */
   private playerStatus(){
-    const g=this.g; if(g.braceT>0) this.braceShield(); if(g.cloakT>0) this.cloakVeil();
+    const g=this.g; vfxAuras(this); if(g.braceT>0) this.braceShield(); if(g.cloakT>0) this.cloakVeil();
   }
   private braceShield(){
     const g=this.g; const pulse=.72+.28*Math.sin(g.time*7);
@@ -262,7 +263,7 @@ export class Renderer {
     if(def.elite&&rt.reveal<=0&&!e.dead){ const w=(def.boss?64:44)*(this.TW/64); const hx=a-w/2, hy=b-(art?art.top+4:(def.boss?118:70)*(this.TW/64)); c.fillStyle='rgba(10,10,10,.75)'; c.fillRect(hx-1,hy-1,w+2,7); c.fillStyle=def.boss?'#a2523f':'#b08a4a'; c.fillRect(hx,hy,w*Math.max(0,e.hp/e.maxHp),5); if(rt.vuln>0){ c.fillStyle='#d8d2bf'; c.font=`600 ${cpx(10*uiFs())}px ${FONT}`; c.textAlign='center'; c.fillText('OPENING',a,hy-4); } }
     if(g.target===e.id){ const r=def.radius+.35; this.ring(e.x,e.y,r,'#d8d2bf',.95); const c2=this.ctx; c2.save(); c2.strokeStyle='#d8d2bf'; c2.lineWidth=2; const bx=a, by=b-(art?art.top*.92:(def.boss?100:def.elite?60:42)*(this.TW/64)); c2.beginPath(); c2.moveTo(bx-6,by-8); c2.lineTo(bx,by); c2.lineTo(bx+6,by-8); c2.stroke(); c2.restore(); }
     if(!e.dead&&e.ctrlT>0){ this.ring(e.x,e.y,def.radius+.5+.1*Math.sin(g.time*5),'#d5e4f0',.95); if(!g.save.settings.reducedFx) this.ring(e.x,e.y,def.radius+.95,'#5f7f9e',.4); }
-    if(e.stunT>0){ c.fillStyle='#d8d2bf'; c.font=`600 ${cpx(11*uiFs())}px ${FONT}`; c.textAlign='center'; c.fillText('✕',a,b-(art?art.top+8:60*(this.TW/64))); }
+    vfxStatus(this,e,a,b,art?art.top+8:60*(this.TW/64),def);
   }
   drawGuidance(){ const g=this.g; if(g.mode!=='run'||g.downed) return; const gd=g.guidance(); if(!gd) return; const c=this.ctx, s=this.TW/64;
     const px=this.sx(g.px,g.py), py=this.sy(g.px,g.py,.5); const wx=this.sx(gd.wp.x,gd.wp.y), wy=this.sy(gd.wp.x,gd.wp.y,.5); const a=Math.atan2(wy-py,wx-px); const far=gd.dist>4;
@@ -270,7 +271,7 @@ export class Renderer {
     // objective beacon: screen-edge marker when off screen, pulse ring when on screen
     const ox=this.sx(gd.obj.x,gd.obj.y), oy=this.sy(gd.obj.x,gd.obj.y,.5); const m=26; if(ox<m||ox>this.w-m||oy<m||oy>this.h-m){ const ex=Math.max(m,Math.min(this.w-m,ox)), ey=Math.max(m+40,Math.min(this.h-m,oy)); c.save(); c.fillStyle='#e05a3a'; c.globalAlpha=.55+.3*Math.sin(g.time*6); c.beginPath(); c.arc(ex,ey,7*s,0,7); c.fill(); c.restore(); } else { this.ring(gd.obj.x,gd.obj.y,1.2+.2*Math.sin(g.time*4),'#e05a3a',.75); c.save(); c.fillStyle='#e05a3a'; c.globalAlpha=.8; c.beginPath(); c.moveTo(ox,oy-34*s+Math.sin(g.time*5)*3*s); c.lineTo(ox-7*s,oy-46*s+Math.sin(g.time*5)*3*s); c.lineTo(ox+7*s,oy-46*s+Math.sin(g.time*5)*3*s); c.closePath(); c.fill(); c.restore(); } }
   drawGroundFx(){
-    const g=this.g, c=this.ctx;
+    const g=this.g, c=this.ctx; vfxGround(this);
     for(const z of g.zones){ const warn=z.t<z.windup; if(!warn&&this.env&&this.dart.zone(this,z)) continue; const p=warn?z.t/z.windup:1; this.poly(this.circle(z.x,z.y,z.r),warn?'#b5483a':'#4f5f78',warn?'#d8d2bf':'#9aa8b8',warn?.18+.25*p:.38,2); if(warn) this.poly(this.circle(z.x,z.y,z.r*p),'#b5483a',undefined,.35); }
     for(const e of g.enemies){ if(e.dead||e._rt.st!=='tele') continue; const rt=e._rt, A=ATKD[rt.atk]; if(!A) continue; const p=Math.min(1,rt.t/ (A.w||1)); const def=ENEMIES[e.type]; const fill=p>.7?'#d2503a':'#b5483a', edge=p>.7&&Math.sin(g.time*34)>0?'#ffffff':'#d8d2bf'; const A0=.26+.14*p; { const sc=this.TW/64; const ex=this.sx(e.x,e.y), ey=this.sy(e.x,e.y,0)-(def.boss?110:def.elite?66:48)*sc; c.save(); c.fillStyle=def.boss||def.elite?'#e0a040':'#e05a3a'; c.font='bold '+cpx((14+6*p)*sc)+'px '+FONT; c.textAlign='center'; c.globalAlpha=.95; c.fillText('!',ex,ey); c.restore(); }
       if(A.shape==='cone') { this.poly(this.sector(e.x,e.y,rt.ang,A.r,A.arc),fill,edge,A0,2); this.poly(this.sector(e.x,e.y,rt.ang,A.r*p,A.arc),fill,undefined,.38); }
@@ -281,10 +282,11 @@ export class Renderer {
       void def; }
     // aim preview
     const aim=g.aim; if(aim){ const idx=aim.idx; const id=g.build.abilities[idx]; if(id){ const def=ABILITIES[id]; const v=g.validateAim(def,aim); const col=v.valid?ABILITY_TYPE_COLOR[def.type]:'#7a706a'; const ang=Math.atan2(aim.wy-g.py,aim.wx-g.px); const al=v.valid?.8:.55;
-      if(def.aim==='direction'){ if(aim.hasDir){ if(def.id==='sweep') this.poly(this.sector(g.px,g.py,ang,def.range,Math.PI*.75*(1+g.build.mods.arc)),col,col,.18,2); else this.poly(this.rect(g.px,g.py,ang,def.range+g.build.mods.burstLen,.9),col,col,.2,2); } else this.ring(g.px,g.py,1,col,.5); }
-      else if(def.aim==='ground'){ this.ring(g.px,g.py,def.range*.7,col,.2); if(v.tx!==undefined){ this.poly(this.circle(v.tx,v.ty!,def.id==='pulse'?2.8:.7),col,col,.2,2); } else this.ring(aim.wx,aim.wy,.6,col,.5); }
-      else if(def.aim==='target'){ this.ring(g.px,g.py,def.range*.7,col,.15); if(v.target) this.ring(v.target.x,v.target.y,1.1,col,.95); else this.ring(aim.wx,aim.wy,.8,col,.5); }
-      else this.ring(g.px,g.py,1.3,col,al); } }
+      const pul=.16+.1*Math.sin(g.time*9)*(g.save.settings.reducedFx?0:1);
+      if(def.aim==='direction'){ if(aim.hasDir){ if(def.id==='sweep'){ const arc=Math.PI*.75*(1+g.build.mods.arc); this.poly(this.sector(g.px,g.py,ang,def.range,arc),col,col,pul,2); this.strokeArc(g.px,g.py,def.range,ang,arc,col,.9,2); } else { const L=def.range+g.build.mods.burstLen; this.poly(this.rect(g.px,g.py,ang,L,.9),col,col,pul,2); this.ring(g.px+Math.cos(ang)*L,g.py+Math.sin(ang)*L,.6,col,.8); } for(const e of g.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const d=Math.hypot(e.x-g.px,e.y-g.py); if(d<(def.range+g.build.mods.burstLen)+1&&Math.abs(((Math.atan2(e.y-g.py,e.x-g.px)-ang+Math.PI*3)%(Math.PI*2))-Math.PI)<(def.id==='sweep'?Math.PI*.4:.25)) this.ring(e.x,e.y,ENEMIES[e.type].radius+.35,col,.9); } } else this.ring(g.px,g.py,1,col,.5); }
+      else if(def.aim==='ground'){ this.ring(g.px,g.py,def.range*.7,col,.2); if(v.tx!==undefined){ if(def.id==='pulse'){ this.poly(this.circle(v.tx,v.ty!,AB.pulseR),col,col,pul,2); this.ring(v.tx,v.ty!,AB.pulseR*.6,col,.5); for(const e of g.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(Math.hypot(e.x-v.tx,e.y-v.ty!)<=AB.pulseR+ENEMIES[e.type].radius) this.ring(e.x,e.y,ENEMIES[e.type].radius+.35,e._rt.shield&&e._rt.shield.hp>0?'#e8d890':col,.95); } } else { this.wline(g.px,g.py,v.tx,v.ty!,col,.6,3); this.poly(this.circle(v.tx,v.ty!,.7),col,col,pul+.1,2); if(this.g.dangerNear()) this.ring(v.tx,v.ty!,1.4,'#a8d87a',.9); } } else this.ring(aim.wx,aim.wy,.6,col,.5); }
+      else if(def.aim==='target'){ this.ring(g.px,g.py,def.range*.7,col,.15); if(v.target){ this.ring(v.target.x,v.target.y,1.1,col,.95); this.poly(this.circle(v.target.x,v.target.y,AB.ctrlR),col,col,pul*.6,1); for(const e of g.enemies){ if(e===v.target||e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(Math.hypot(e.x-v.target.x,e.y-v.target.y)<=AB.ctrlR) this.ring(e.x,e.y,ENEMIES[e.type].radius+.35,col,.9); } } else this.ring(aim.wx,aim.wy,.8,col,.5); }
+      else { this.ring(g.px,g.py,1.3,col,al); if(def.id==='brace') this.ring(g.px,g.py,1.8,col,.4); if(def.id==='revive') this.ring(g.px,g.py,3,col,pul+.2); } } }
     // town channel
     if(g.channel){ const p=g.channel.t/g.channel.dur; this.ring(g.px,g.py,1.3,'#d8d2bf',.9); this.ring(g.px,g.py,1.3*p,'#8fae7f',.8,true); }
   }
@@ -428,6 +430,7 @@ export class Renderer {
 export const ATKD:Record<string,{shape:'cone'|'circle'|'line'|'fan'|'aim';r:number;arc:number;w:number;w_?:number}&{w:number}> = {} as any;
 // telegraph geometry mirrors ATK/resolveAttack in sim.ts
 import { ATK } from './sim';
+import { vfxFrame, vfxGround, vfxItems, vfxStatus, vfxAuras } from './vfxdraw';
 import { mobLabel } from './content/mobs';
 export const FONT='"Roboto Condensed","Bahnschrift","Liberation Sans Narrow","Arial Narrow",system-ui,sans-serif';
 const geo:Record<string,any>={ swing:{shape:'cone',r:1.5,arc:Math.PI*.6}, cleave:{shape:'cone',r:2.6,arc:Math.PI*.75}, rsweep:{shape:'cone',r:3.8,arc:Math.PI*.85}, slam:{shape:'circle',r:3.4,arc:0}, charge:{shape:'line',r:9,arc:0,w:1.4}, shot:{shape:'aim',r:10,arc:0}, turretshot:{shape:'aim',r:11,arc:0}, volley:{shape:'fan',r:13,arc:0}, snipe:{shape:'aim',r:18,arc:0}, hex:{shape:'aim',r:13,arc:0}, detonate:{shape:'circle',r:2.6,arc:0}, detonate_big:{shape:'circle',r:3.6,arc:0} };

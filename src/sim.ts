@@ -1,4 +1,5 @@
-import { key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING} from './config';
+import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING} from './config';
+import { counterFor, hintText } from './content/abilfx';
 import { computeBuild, installedLayout, BuildResult } from './build';
 import { buildTown, Level, Interact } from './level';
 import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
@@ -21,7 +22,7 @@ export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
 export interface Rt { // enemy transient runtime fields
   /** content batch 1 boss mechanics (src/content/mechanics.ts) */ spdMul?:number; cdMul?:number; shield?:any; gim?:any; gimT?:number; q?:any[]; pylPrev?:number; tl?:number;
-  st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; wpT?:number; wp?:{x:number;y:number}|null; sx?:number; sy?:number; sT?:number; unstick?:number; side?:number; dashed:boolean; strafe:number; chained?:boolean;
+  st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; hack:number; abHitAt:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; wpT?:number; wp?:{x:number;y:number}|null; sx?:number; sy?:number; sT?:number; unstick?:number; side?:number; dashed:boolean; strafe:number; chained?:boolean;
 }
 export type En = EnemyState & { _rt:Rt };
 
@@ -36,10 +37,11 @@ export class Game {
   enemies:En[]=[]; projs:Proj[]=[]; zones:Zone[]=[]; fx:Fx[]=[]; time=0; pickFx:{id:number;x:number;y:number;kind:Drop['kind'];inst?:Drop['inst'];chip?:Drop['chip'];amount:number;t0:number}[]=[];
   // player
   px=0; py=0; face=0; hp=100; heat=0; overheated=false; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; slowT=0; downed=false; downT=0; defibCd=0; revealing=false;
+  /** ability power pass: damage dealt per source tag ('auto' or ability id), cast counts, synergy state */ kick=0; lastStop=-9; curTag='auto'; dealt:Record<string,number>={}; casts:Record<string,number>={}; comboN=0; comboT=0; lastAb=''; ovT=0; hitStop=0; sinceAb=0; nudgeCd=0;
   abCd:number[]=[0,0,0]; cast:{ idx:number; t:number; aim:AimState; ab:AbilityDef }|null=null; aim:AimState|null=null; target:number|null=null; lungeT=0; lungeDx=0; lungeDy=0; lungeHit:Set<number>=new Set();
   slideT=0; slideFx=0; slideFy=0; channel:{ kind:'town'|'hack'; t:number; dur:number; cb:()=>void }|null=null;
   inputMove={x:0,y:0}; build!:BuildResult; moving=false; prompt:Interact|null=null; musicState='traversal'; combatHold=0; eliteEng=0; toastQ:string[]=[];
-  dbg={god:false,oneShot:false};
+  dbg={god:false,oneShot:false,noHitStop:false};
   flow:Int16Array|null=null; flows:(Int16Array|null)[]=[null,null,null]; clr:(Uint8Array|null)[]=[null,null,null]; clrLevel:Level|null=null; q:Int32Array|null=null; frame=0; flowT=0; kills=0; saveT=0; sensorFlag=false; lastRoute='';
   constructor(save:Save, emit:Emit){ this.save=save; this.emit=emit; this.level=buildTown(); this.migrateInstance(); this.recompute(); this.enterTown(true); }
 
@@ -71,7 +73,7 @@ export class Game {
     const inst:InstanceState={ id:'inst-'+seed, dungeon:id, layoutV:LAYOUT_V, createdAt:this.now(), expiresAt:this.now()+retentionMs, seed, enemies:[], drops:[], carried:{items:[],chips:{},stims:0,credits:0},
       flags:{gate1:false,lock2:false,passageSeen:false,controller:false,armory:false,cond:null,bossKey:null,bossRevealed:false,bossSpawned:false,bossDead:false,completed:false,rewardsGranted:false,alarm:false,salvageForeman:false},
       checkpoint:{id:1,x:lv.checkpoints[0].x,y:lv.checkpoints[0].y}, px:lv.spawn.x, py:lv.spawn.y, hp:0, broken:[], protectedSlots:[], repairAdded:0, nextId:1, xpEarned:0, warned:false, kills:{}, claimed:[], elapsed:0 };
-    for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp, maxHp:ENEMIES[sp.type].hp, alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); }
+    for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp*this.hpMul(), maxHp:ENEMIES[sp.type].hp*this.hpMul(), alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); }
     { const n=Math.min(2,s.stims); inst.carried.stims=n; s.stims-=n; }
     s.instance=inst; this.inst=inst; s.stats.runs++; this.resumeInstance(true); return true;
   }
@@ -87,7 +89,8 @@ export class Game {
     if(this.save.story && !this.save.story) {}
     this.toast(fresh?this.dd.intro:'Re-entered existing instance. Surviving enemies and loot remain.');
   }
-  wrap(e:EnemyState):En{ const x=e as En; x._rt={ st:'idle',t:0,atk:'',acd:{},ang:0,tx:0,ty:0,lost:0,vuln:0,reveal:0,bornT:0,fire:0,shots:[],hit:0,dashed:false,strafe:Math.random()<.5?1:-1 }; return x; }
+  /** global enemy HP multiplier by dungeon tier (ability power pass: autos are weaker, enemy HP is retuned here) */ hpMul(){ return BAL.g.tier[(this.dd as any)?.tier||0]??BAL.g.hp; }
+  wrap(e:EnemyState):En{ const x=e as En; x._rt={ st:'idle',t:0,atk:'',acd:{},ang:0,tx:0,ty:0,lost:0,vuln:0,hack:0,abHitAt:-99,reveal:0,bornT:0,fire:0,shots:[],hit:0,dashed:false,strafe:Math.random()<.5?1:-1 }; return x; }
   /** True when the saved instance's boss is dead (a finished run). A finished instance never blocks starting another dungeon. */
   instDone(i:InstanceState|null=this.save.instance):boolean{ return !!i&&(!!i.flags.bossDead||!!i.flags.completed&&!!i.flags.rewardsGranted); }
   /** Save migration: an instance whose boss is dead (dead boss enemy but flags unset, or half-set flags) is marked completed, its rewards and per-dungeon lockout are applied, so it is never stuck "live". */
@@ -188,17 +191,19 @@ export class Game {
 
   // ---------- main update ----------
   update(dtRaw:number){
+    if(this.hitStop>0){ this.hitStop-=dtRaw; this.updateFx(dtRaw*.25); return; }
     const dt=Math.min(dtRaw,.05); this.time+=dt;
     if(this.mode==='run'&&this.inst){ this.inst.elapsed+=dt; const rem=this.inst.expiresAt-this.now(); if(rem<=0){ this.expireInstance(); this.enterTown(); return; } if(!this.inst.warned&&rem<INSTANCE_WARN_MINUTES*60000){ this.inst.warned=true; this.toast('Instance expires in under '+INSTANCE_WARN_MINUTES+' minutes. Retrieve loot.'); } }
     this.updatePlayer(dt);
-    if(this.mode==='run'){ this.updateEnemies(dt); this.updateProjs(dt); this.updateZones(dt); this.autoPickup(); this.updateRun(dt); this.updateMusic(dt); this.saveT+=dt; if(this.saveT>4){ this.saveT=0; this.saveNow(); } }
+    if(this.mode==='run'){ this.updateEnemies(dt); this.updateProjs(dt); this.updateZones(dt); this.autoPickup(); this.updateRun(dt); this.updateMusic(dt); this.abilityHints(dt); this.saveT+=dt; if(this.saveT>4){ this.saveT=0; this.saveNow(); } }
     this.updatePrompt(); this.updateFx(dt);
   }
   updateFx(dt:number){ for(const f of this.fx){ f.t+=dt; if(f.vx){ f.x+=f.vx*dt; f.y+=(f.vy||0)*dt; } } this.fx=this.fx.filter(f=>f.t<f.life); if(this.fx.length>260) this.fx.splice(0,this.fx.length-260); }
   updatePlayer(dt:number){
     const st=this.stat(); const revealLock=this.revealing;
     if(this.dodgeCd>0) this.dodgeCd-=dt; if(this.iframes>0) this.iframes-=dt; if(this.atkCd>0) this.atkCd-=dt; if(this.weaponOff>0) this.weaponOff-=dt; if(this.defibCd>0) this.defibCd-=dt;
-    for(let i=0;i<3;i++) if(this.abCd[i]>0) this.abCd[i]-=dt;
+    for(let i=0;i<3;i++) if(this.abCd[i]>0){ this.abCd[i]-=dt; if(this.abCd[i]<=0&&this.mode==='run'&&this.combatHold>0&&this.build.abilities[i]) this.emit('sfx','ab_ready'); }
+    if(this.comboT>0){ this.comboT-=dt; if(this.comboT<=0) this.comboN=0; } if(this.ovT>0) this.ovT-=dt;
     if(this.cloakT>0){ this.cloakT-=dt; } if(this.braceT>0) this.braceT-=dt; if(this.slowT>0) this.slowT-=dt;
     // heat
     const cool=(COMBAT.heat.passiveCool)*st.cooling*(this.overheated?1.3:1); this.heat=Math.max(0,this.heat-cool*dt);
@@ -236,12 +241,13 @@ export class Game {
     if(w.stationary&&this.moving) return; if(this.atkCd>0) return; if(this.aim) return;
     const st=this.stat(); const rate=w.rate*st.atkSpeed*(this.overheated?.5:1); this.atkCd=1/rate;
     this.face=Math.atan2(t.y-this.py,t.x-this.px);
-    let dmg=w.dmg*this.build.weaponMul*st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1); if(w.kind==='ripper') dmg*=1+(st.atkSpeed-1)*.6;
-    if(this.cloakT>0){ dmg*=2; this.cloakT=0; this.toast('Cloak broken: first strike'); }
-    this.heat+=w.heat; this.emit('sfx','atk_'+w.kind);
+    let dmg=w.dmg*AB.autoDmgMul*this.build.weaponMul*st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1); if(w.kind==='ripper') dmg*=1+(st.atkSpeed-1)*.6;
+    let tag='auto'; if(this.cloakT>0){ dmg*=AB.cloakAuto; this.cloakT=0; tag='cloak'; this.popup(this.px,this.py,'AMBUSH x'+AB.cloakAuto,'#e8c46a'); this.vfx('cloak.ambush',this.px,this.py,{a:this.face}); }
+    this.heat+=w.heat*AB.autoHeatMul; this.curTag=tag; this.emit('sfx','atk_'+w.kind);
     if(w.kind==='arc') this.fireArc(t,w,dmg);
-    else if(w.proj){ this.fireProj(w,dmg,this.face); if(w.burst){ this.burstLeft=w.burst-1; this.burstT=w.burstGap||.07; this.burstDmg=dmg; this.atkCd+=(w.burst-1)*(w.burstGap||.07); } }
+    else if(w.proj){ this.fireProj(w,dmg,this.face); if(tag!=='auto') for(const pj of this.projs.slice(-(w.pellets||1))) (pj as any).tag=tag; if(w.burst){ this.burstLeft=w.burst-1; this.burstT=w.burstGap||.07; this.burstDmg=dmg; this.atkCd+=(w.burst-1)*(w.burstGap||.07); } }
     else { this.fx.push({kind:'slash',x:this.px,y:this.py,a:this.face,r:w.range,t:0,life:.18,w:w.arc}); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const dd=dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius; if(dd<=w.range&&Math.abs(angDiff(Math.atan2(e.y-this.py,e.x-this.px),this.face))<=w.arc/2&&this.los(this.px,this.py,e.x,e.y)) this.hurtEnemy(e,dmg,this.px,this.py,.6); } }
+    this.curTag='auto';
   }
   burstLeft=0; burstT=0; burstDmg=0;
   weaponColor():string{ const m=this.build.weaponMfr; return m==='HI'?'#d0623a':m==='PS'?'#bfe0ea':m==='MM'?'#c4cf7a':'#d8d2bf'; }
@@ -256,7 +262,7 @@ export class Game {
     for(let i=0;i<(w.chain||1)&&tgt;i++){ hit.add(tgt.id); const a=Math.atan2(tgt.y-cur.y,tgt.x-cur.x), L=dist(cur.x,cur.y,tgt.x,tgt.y); this.fx.push({kind:'line',x:cur.x,y:cur.y,a,len:L,w:.12,t:0,life:.16,c}); this.fx.push({kind:'spark',x:tgt.x,y:tgt.y,t:0,life:.2,c}); this.hurtEnemy(tgt,d,cur.x,cur.y,.3); d*=.7; cur={x:tgt.x,y:tgt.y};
       let best:En|null=null,bd=w.chainR||3; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0||hit.has(e.id)) continue; const dd=dist(cur.x,cur.y,e.x,e.y); if(dd<bd&&this.los(cur.x,cur.y,e.x,e.y)){ bd=dd; best=e; } } tgt=best; }
   }
-  updateBurst(dt:number){ if(this.burstLeft<=0) return; if(this.mode!=='run'||this.cast||this.dodgeT>0||this.revealing||this.downed){ this.burstLeft=0; return; } this.burstT-=dt; if(this.burstT<=0){ const w=this.build.weapon; this.burstLeft--; this.burstT=w.burstGap||.07; const t=this.pickTarget(); if(t) this.face=Math.atan2(t.y-this.py,t.x-this.px); this.heat+=w.heat; this.emit('sfx','atk_'+w.kind); this.fireProj(w,this.burstDmg,this.face); } }
+  updateBurst(dt:number){ if(this.burstLeft<=0) return; if(this.mode!=='run'||this.cast||this.dodgeT>0||this.revealing||this.downed){ this.burstLeft=0; return; } this.burstT-=dt; if(this.burstT<=0){ const w=this.build.weapon; this.burstLeft--; this.burstT=w.burstGap||.07; const t=this.pickTarget(); if(t) this.face=Math.atan2(t.y-this.py,t.x-this.px); this.heat+=w.heat*AB.autoHeatMul; this.emit('sfx','atk_'+w.kind); this.fireProj(w,this.burstDmg,this.face); } }
   // ---------- abilities ----------
   /** Cast graphic only. Numbers (damage, heat, cooldown) stay on the ability itself. */
   private castLook(id:string, x:number, y:number, o:Partial<Fx>={}){
@@ -264,41 +270,97 @@ export class Game {
     const base=id==='sweep'?.58:id==='bladeburst'?.46:id==='pulse'?.68:id==='brace'?.72:id==='forcedcool'?.95:id==='control'?.8:id==='reposition'?.42:.52;
     this.fx.push({ ...o, kind:'ability', text:id, x, y, t:0, life:red?Math.min(.36,base*.55):base });
   }
+  /** visual-effect events consumed by the renderer's particle system (src/vfx.ts); capped so headless runs never grow it */
+  vev:{k:string;x:number;y:number;a?:number;r?:number;len?:number;x2?:number;y2?:number;n?:number}[]=[];
+  vfx(k:string,x:number,y:number,o:{a?:number;r?:number;len?:number;x2?:number;y2?:number;n?:number}={}){ if(this.vev.length>160) this.vev.shift(); this.vev.push({k,x,y,...o}); }
+  popup(x:number,y:number,text:string,c='#e8c46a'){ this.fx.push({kind:'text',x,y,t:0,life:1.1,text,c}); }
+  /** nearby telegraph the player is about to be hit by (zone windup/active, enemy wind-up, incoming enemy shot): Reposition into it is a PERFECT EVADE */
+  dangerNear():boolean{ for(const z of this.zones){ if(z.env||z.dps<=0) continue; if(z.t<z.windup+.25&&Math.hypot(z.x-this.px,z.y-this.py)<z.r+1.2) return true; }
+    for(const e of this.enemies){ if(!e.dead&&e.faction==='enemy'&&e._rt.st==='tele'&&Math.hypot(e.x-this.px,e.y-this.py)<4.2) return true; }
+    for(const p of this.projs){ if(p.faction==='enemy'&&Math.hypot(p.x-this.px,p.y-this.py)<3.2) return true; } return false; }
   executeAbility(c:{ idx:number; aim:AimState; ab:AbilityDef }){
     const def=c.ab; const st=this.stat(); const m=this.build.mods;
     const v=this.validateAim(def,c.aim); if(!v.valid&&def.aim!=='self'){ this.toast('Cancelled: '+v.why); return; } // re-validate at effect start; still free
+    // synergies read state BEFORE the cast pays its heat
+    const chargedB=Math.min(AB.chargedMax,this.heat*AB.chargedPerHeat); const danger=def.id==='reposition'&&this.dangerNear();
     // resource commitment point: effect start
-    this.heat+=def.heat; this.abCd[c.idx]=def.cd; this.emit('sfx','ab_'+def.id); const ang=Math.atan2(c.aim.wy-this.py,c.aim.wx-this.px); const dmgM=st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1);
-    switch(def.id){
-      case 'sweep': { const arc=Math.PI*.75*(1+m.arc); this.face=ang; this.castLook('sweep',this.px,this.py,{a:ang,r:def.range,w:arc,c:'#c4543c'}); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const d=dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius; if(d<=def.range&&Math.abs(angDiff(Math.atan2(e.y-this.py,e.x-this.px),ang))<=arc/2) this.hurtEnemy(e,34*dmgM,this.px,this.py,2); } break; }
-      case 'brace': this.braceT=3; this.castLook('brace',this.px,this.py,{r:1.5,c:'#e4dcc8'}); break;
-      case 'forcedcool': this.heat=Math.max(0,this.heat-70); this.weaponOff=2; this.overheated=this.heat>=COMBAT.heat.max; this.castLook('forcedcool',this.px,this.py,{r:1.6,c:'#d5e4e6'}); break;
-      case 'cloak': this.cloakT=5+m.cloakDur; this.castLook('cloak',this.px,this.py,{r:1.5,c:'#8a9a62'}); for(const e of this.enemies){ if(e.faction==='enemy'&&dist(e.x,e.y,this.px,this.py)>1.6&&!ENEMIES[e.type].boss){ e._rt.st=e.alert?'lost':e._rt.st; } } break;
-      case 'bladeburst': { const len=def.range+m.burstLen; this.face=ang; const sp=len/.18; this.lungeDx=Math.cos(ang)*sp; this.lungeDy=Math.sin(ang)*sp; this.lungeT=.18; this.iframes=Math.max(this.iframes,.2); this.lungeHit=new Set(); (this as any)._lungeDmg=30*dmgM; this.castLook('bladeburst',this.px,this.py,{a:ang,len,w:1.15,c:'#c4543c'}); break; }
-      case 'reposition': { const tx=v.tx!, ty=v.ty!; const ox=this.px, oy=this.py; const d=dist(ox,oy,tx,ty); this.slideFx=(tx-ox)/.12; this.slideFy=(ty-oy)/.12; this.slideT=.12; this.iframes=Math.max(this.iframes,.14); this.castLook('reposition',ox,oy,{a:Math.atan2(ty-oy,tx-ox),len:d,c:'#a8b87a'}); break; }
-      case 'control': { const e=v.target!; if(ENEMIES[e.type].elite){ e.stunT=1.5; this.toast(ENEMIES[e.type].name+' resists control: stunned'); } else { e.faction='ally'; e.ctrlT=8+m.ctrlDur; e.alert=true; this.toast('Enemy control: '+ENEMIES[e.type].name+' turned'); } this.castLook('control',e.x,e.y,{r:1.35,c:'#7f9bb8'}); break; }
-      case 'pulse': { const tx=v.tx!, ty=v.ty!; this.castLook('pulse',tx,ty,{r:2.8,c:'#6d90b0'}); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(dist(tx,ty,e.x,e.y)<=2.8+ENEMIES[e.type].radius){ this.hurtEnemy(e,22*dmgM,tx,ty,.5); e.stunT=Math.max(e.stunT,ENEMIES[e.type].boss?.5:1.2); } } break; }
+    this.heat+=def.heat; this.abCd[c.idx]=def.cd; this.emit('sfx','ab_'+def.id); this.casts[def.id]=(this.casts[def.id]||0)+1; this.sinceAb=0; const ang=Math.atan2(c.aim.wy-this.py,c.aim.wx-this.px);
+    // combo chain: a different ability within comboT of the last stacks +15% each (max 3)
+    if(this.comboT>0&&this.lastAb!==def.id) this.comboN=Math.min(AB.comboMax,this.comboN+1); else if(this.comboT<=0) this.comboN=0; this.lastAb=def.id; this.comboT=AB.comboT;
+    const comboB=this.comboN*AB.comboStep; if(this.comboN>=1){ this.popup(this.px,this.py-.6,'COMBO x'+(this.comboN+1)+' +'+Math.round(comboB*100)+'%','#9fd8c8'); this.emit('sfx','combo'); }
+    if(chargedB>=.15) this.popup(this.px,this.py-1.1,'CHARGED +'+Math.round(chargedB*100)+'%','#e08a4a');
+    const ovB=this.ovT>0?AB.ovMul-1:0; const dmgingId=def.id==='sweep'||def.id==='bladeburst'||def.id==='pulse'||def.id==='reposition';
+    let ambushB=0; if(this.cloakT>0&&dmgingId){ ambushB=AB.cloakMul-1; this.cloakT=0; this.popup(this.px,this.py-1.6,'AMBUSH x'+AB.cloakMul,'#e8c46a'); }
+    const dmgM=st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1)*(1+chargedB+comboB+ovB+ambushB);
+    this.curTag=def.id;
+    try{ switch(def.id){
+      case 'sweep': { const arc=Math.PI*.75*(1+m.arc); this.face=ang; this.castLook('sweep',this.px,this.py,{a:ang,r:def.range,w:arc,c:'#c4543c'}); this.vfx('sweep.cast',this.px,this.py,{a:ang,r:def.range,len:arc}); let n=0; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const d=dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius; if(d<=def.range&&Math.abs(angDiff(Math.atan2(e.y-this.py,e.x-this.px),ang))<=arc/2){ n++; this.hurtEnemy(e,AB.sweepDmg*dmgM,this.px,this.py,2.2); if(!e.dead&&!ENEMIES[e.type].boss) e.stunT=Math.max(e.stunT,AB.sweepStun); } } if(n>=3) this.popup(this.px+Math.cos(ang)*2,this.py+Math.sin(ang)*2,'CLEAR x'+n,'#e8a07a'); break; }
+      case 'brace': { this.braceT=AB.braceT; this.slowT=0; this.castLook('brace',this.px,this.py,{r:1.5,c:'#e4dcc8'}); this.vfx('brace.cast',this.px,this.py); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius<1.8) this.hurtEnemy(e,0,this.px,this.py,1.6); } break; }
+      case 'forcedcool': { this.heat=Math.max(0,this.heat-70); this.weaponOff=1.2; this.overheated=this.heat>=COMBAT.heat.max; this.ovT=AB.ovT; for(let k=0;k<3;k++) if(k!==c.idx) this.abCd[k]=Math.max(0,this.abCd[k]-2); this.castLook('forcedcool',this.px,this.py,{r:1.6,c:'#d5e4e6'}); this.vfx('forcedcool.cast',this.px,this.py); this.popup(this.px,this.py-1.1,'OVERCLOCK +'+Math.round((AB.ovMul-1)*100)+'% abilities','#d5e4e6'); break; }
+      case 'cloak': this.cloakT=5+m.cloakDur; this.castLook('cloak',this.px,this.py,{r:1.5,c:'#8a9a62'}); this.vfx('cloak.cast',this.px,this.py); for(const e of this.enemies){ if(e.faction==='enemy'&&dist(e.x,e.y,this.px,this.py)>1.6&&!ENEMIES[e.type].boss){ e._rt.st=e.alert?'lost':e._rt.st; } } break;
+      case 'bladeburst': { const len=def.range+m.burstLen; this.face=ang; const sp=len/.18; this.lungeDx=Math.cos(ang)*sp; this.lungeDy=Math.sin(ang)*sp; this.lungeT=.18; this.iframes=Math.max(this.iframes,.3); this.lungeHit=new Set(); (this as any)._lungeDmg=AB.burstDmg*dmgM; this.castLook('bladeburst',this.px,this.py,{a:ang,len,w:1.15,c:'#c4543c'}); this.vfx('bladeburst.cast',this.px,this.py,{a:ang,len}); break; }
+      case 'reposition': { const tx=v.tx!, ty=v.ty!; const ox=this.px, oy=this.py; const d=dist(ox,oy,tx,ty); this.slideFx=(tx-ox)/.12; this.slideFy=(ty-oy)/.12; this.slideT=.12; this.iframes=Math.max(this.iframes,.32); this.castLook('reposition',ox,oy,{a:Math.atan2(ty-oy,tx-ox),len:d,c:'#a8b87a'}); this.vfx('reposition.cast',ox,oy,{a:Math.atan2(ty-oy,tx-ox),len:d});
+        // dash-strike: everything near the path takes damage
+        for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const L2=(tx-ox)**2+(ty-oy)**2||1; const tt=Math.max(0,Math.min(1,((e.x-ox)*(tx-ox)+(e.y-oy)*(ty-oy))/L2)); const dd=dist(e.x,e.y,ox+(tx-ox)*tt,oy+(ty-oy)*tt)-ENEMIES[e.type].radius; if(dd<1.1){ this.hurtEnemy(e,AB.repoDmg*dmgM,ox,oy,.6); if(!e.dead&&!ENEMIES[e.type].boss) e.stunT=Math.max(e.stunT,AB.repoStun); } }
+        if(danger){ this.abCd[c.idx]=AB.evadeCd; this.heat=Math.max(0,this.heat-AB.evadeHeat); this.ovT=Math.max(this.ovT,AB.evadeBonusT); this.popup(this.px,this.py-1,'PERFECT EVADE','#a8d87a'); this.vfx('reposition.evade',tx,ty); this.emit('sfx','combo'); this.fx.push({kind:'ring',x:tx,y:ty,r:2.2,t:0,life:.5,c:'#a8d87a'}); } break; }
+      case 'control': { const e=v.target!; const def0=ENEMIES[e.type];
+        if(def0.boss||(e as any).pylon||def0.static){ e.stunT=Math.max(e.stunT,1); e._rt.hack=AB.hackT; this.toast(def0.name+' resists control: stunned'); }
+        else if(def0.elite||(e as any).affix?.length){ e.stunT=Math.max(e.stunT,AB.ctrlResistStun); e._rt.hack=AB.hackT; this.toast(def0.name+' resists control: stunned and hacked'); }
+        else { e.faction='ally'; e.ctrlT=8+m.ctrlDur; e.alert=true; e._rt.hack=AB.hackT; this.toast('Enemy control: '+def0.name+' turned'); }
+        this.castLook('control',e.x,e.y,{r:1.35,c:'#7f9bb8'}); this.vfx('control.cast',e.x,e.y,{r:AB.ctrlR,x2:this.px,y2:this.py});
+        // mass stun: everything near the target is pulled in, stunned and hacked
+        let n=0; for(const o of this.enemies){ if(o===e||o.dead||o.faction!=='enemy'||o._rt.reveal>0) continue; const dd=dist(e.x,e.y,o.x,o.y); if(dd>AB.ctrlR) continue; n++; this.hurtEnemy(o,AB.ctrlDmg*dmgM,e.x,e.y,0); if(o.dead) continue; if(!ENEMIES[o.type].boss&&!(o as any).pylon&&!ENEMIES[o.type].static){ const a2=Math.atan2(e.y-o.y,e.x-o.x); const pull=Math.min(1.4,Math.max(0,dd-.9)); const pp=this.moveCircle(o.x,o.y,Math.cos(a2)*pull,Math.sin(a2)*pull,ENEMIES[o.type].radius); o.x=pp.x; o.y=pp.y; o.stunT=Math.max(o.stunT,AB.ctrlStun); } o._rt.hack=AB.hackT; o.alert=true; this.vfx('control.hit',o.x,o.y); }
+        this.fx.push({kind:'ring',x:e.x,y:e.y,r:AB.ctrlR,t:0,life:.5,c:'#7f9bb8'}); if(n>=2) this.popup(e.x,e.y,'MASS STUN x'+(n+1),'#8fb8d8'); break; }
+      case 'pulse': { const tx=v.tx!, ty=v.ty!; this.castLook('pulse',tx,ty,{r:AB.pulseR,c:'#6d90b0'}); this.vfx('pulse.cast',tx,ty,{r:AB.pulseR}); let broke=0; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(dist(tx,ty,e.x,e.y)<=AB.pulseR+ENEMIES[e.type].radius){ const had=!!(e._rt.shield&&e._rt.shield.hp>0); this.hurtEnemy(e,AB.pulseDmg*dmgM,tx,ty,.5); if(had&&!(e._rt.shield&&e._rt.shield.hp>0)) broke++; if(!e.dead) e.stunT=Math.max(e.stunT,ENEMIES[e.type].boss?.8:AB.pulseStun); } } if(broke) this.vfx('pulse.shatter',tx,ty); if(broke) this.popup(tx,ty,'SHIELD BREAK'+(broke>1?' x'+broke:''),'#e8d890'); break; }
+      case 'revive': { this.hp=Math.min(this.maxHp,this.hp+this.maxHp*.3); this.castLook('brace',this.px,this.py,{r:2.2,c:'#9fd0f0'}); this.vfx('revive.fire',this.px,this.py); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius<3){ this.hurtEnemy(e,60*dmgM,this.px,this.py,1.8); if(!e.dead&&!ENEMIES[e.type].boss) e.stunT=Math.max(e.stunT,1.2); } } this.popup(this.px,this.py-1,'RALLY +30% HP','#9fd0f0'); break; }
       default: break;
-    }
+    } } finally{ this.curTag='auto'; }
   }
-  lungeBladeHit(){ const dm=(this as any)._lungeDmg||20; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||this.lungeHit.has(e.id)||e._rt.reveal>0) continue; if(dist(this.px,this.py,e.x,e.y)<1.2+ENEMIES[e.type].radius){ this.lungeHit.add(e.id); this.hurtEnemy(e,dm,this.px,this.py,.8); } } }
+  lungeBladeHit(){ const dm=(this as any)._lungeDmg||20; const prev=this.curTag; this.curTag='bladeburst'; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||this.lungeHit.has(e.id)||e._rt.reveal>0) continue; if(dist(this.px,this.py,e.x,e.y)<1.2+ENEMIES[e.type].radius){ this.lungeHit.add(e.id); this.hurtEnemy(e,dm,this.px,this.py,.8); if(!e.dead&&!ENEMIES[e.type].boss) e.stunT=Math.max(e.stunT,AB.burstStun); } } this.curTag=prev; }
 
   // ---------- damage ----------
   hurtEnemy(e:En,dmg:number,sx:number,sy:number,knock=0){
-    if(e.dead||e._rt.reveal>0) return; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; dmg=filterDamage(this,e,dmg); e.hp-=dmg; e.alert=true; e._rt.hit=.12; if(!ENEMIES[e.type].boss) e._rt.lost=0;
+    if(e.dead||e._rt.reveal>0) return; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; const rt=e._rt, tag=this.curTag;
+    if(rt.hack>0) dmg*=AB.hackMul;
+    const hadShield=!!(rt.shield&&rt.shield.hp>0);
+    if(hadShield&&dmg>0){ if(tag==='pulse') dmg=Math.max(dmg*AB.pulseShield,(rt.shield.max||rt.shield.hp)*AB.pulseShieldFrac); else if(tag==='auto') dmg*=AB.shieldAuto; else dmg*=AB.shieldAbility; }
+    if(tag!=='auto') rt.abHitAt=this.time;
+    { const pre=e.hp+(hadShield?rt.shield.hp:0); this.dealt[tag]=(this.dealt[tag]||0)+Math.min(dmg,pre); } dmg=filterDamage(this,e,dmg); e.hp-=dmg; e.alert=true; e._rt.hit=.12; if(!ENEMIES[e.type].boss) e._rt.lost=0;
     this.emit('sfx','hit'); this.combatHold=3; if(!ENEMIES[e.type].boss&&this.isElite(e)) this.eliteExchange();
-    if(this.save.settings.damageNumbers) this.fx.push({kind:'text',x:e.x,y:e.y,t:0,life:.7,text:String(Math.round(dmg)),c:'#d8d2bf'});
+    const broke=hadShield&&!(rt.shield&&rt.shield.hp>0);
+    if(tag!=='auto'&&dmg>0) this.fx.push({kind:'text',x:e.x,y:e.y,t:0,life:.85,text:String(Math.round(dmg))+'!',c:tag==='pulse'||tag==='control'?'#8fb8d8':tag==='brace'?'#e4dcc8':tag==='reposition'?'#a8d87a':'#e8a07a'});
+    else if(this.save.settings.damageNumbers&&dmg>0) this.fx.push({kind:'text',x:e.x,y:e.y,t:0,life:.7,text:String(Math.round(dmg)),c:'#d8d2bf'});
+    if(tag!=='auto'&&tag!=='brace'&&dmg>=0) this.vfx(tag+'.hit',e.x,e.y,{a:Math.atan2(e.y-sy,e.x-sx)});
+    if(broke){ this.kick=Math.max(this.kick,.6); this.emit('sfx','combo'); }
     if(knock&&!ENEMIES[e.type].boss){ const a=Math.atan2(e.y-sy,e.x-sx); const p=this.moveCircle(e.x,e.y,Math.cos(a)*knock,Math.sin(a)*knock,ENEMIES[e.type].radius); e.x=p.x; e.y=p.y; }
-    if(e.hp<=0) this.killEnemy(e);
-    else this.alertGroup(e);
+    if(e.hp<=0){ this.killEnemy(e); if(tag!=='auto'){ for(let k=0;k<3;k++) this.abCd[k]=Math.max(0,this.abCd[k]-AB.killCdRefund); this.kick=Math.max(this.kick,.35); if(!this.save.settings.reducedFx&&!this.dbg.noHitStop&&this.time-this.lastStop>.4){ this.hitStop=.05; this.lastStop=this.time; } } }
+    else { this.alertGroup(e); if(broke&&!this.save.settings.reducedFx&&!this.dbg.noHitStop&&this.time-this.lastStop>.4){ this.hitStop=.06; this.lastStop=this.time; } }
   }
   alertGroup(e:En){ for(const o of this.enemies){ if(!o.dead&&o.faction==='enemy'&&!o.alert&&(o.group===e.group||dist(o.x,o.y,e.x,e.y)<6)&&this.los(o.x,o.y,e.x,e.y)) o.alert=true; } }
   hurtPlayer(dmg:number,sx:number,sy:number){
     if(this.downed||this.iframes>0||this.revealing||this.mode!=='run'||this.dbg.god) return;
-    const st=this.stat(); dmg=Math.max(1,dmg-st.armor); if(this.braceT>0) dmg*=.4; this.hp-=dmg; this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
+    const st=this.stat(); dmg=Math.max(1,dmg-st.armor); let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
     if(this.channel){ if(this.channel.kind==='town') this.toast('Town return interrupted by damage'); this.channel=null; }
     this.fx.push({kind:'blood',x:this.px,y:this.py,t:0,life:.6,c:'#7a2f26'});
     if(this.hp<=0) this.playerDown();
+  }
+  /** Bracing: the attacker takes a share of what it dealt; a charging attacker is counter-stunned. */
+  braceReflect(dmg:number,sx:number,sy:number){
+    const k=String(this.dmgSrc).split(':')[0], act=String(this.dmgSrc).split(':')[1]||''; let t:En|null=null, bd=1e9;
+    for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; let d=dist(e.x,e.y,sx,sy); if(e.type===k) d-=3; if(d<bd){ bd=d; t=e; } }
+    if(!t||bd>3.5) return; const prev=this.curTag; this.curTag='brace'; const boss=ENEMIES[t.type].boss;
+    this.vfx('brace.reflect',t.x,t.y,{x2:this.px,y2:this.py}); this.hurtEnemy(t,Math.min(AB.reflectCap,dmg)*(boss?.5:1),this.px,this.py,0);
+    const role=ENEMIES[t.type].mob?.role; if(!t.dead&&!boss&&(role==='charger'||/charge|rush|dash|blink/.test(act))){ t.stunT=Math.max(t.stunT,AB.counterStun); t._rt.hack=AB.hackT; this.popup(t.x,t.y,'COUNTER STUN','#e4dcc8'); }
+    else if(!t.dead&&this.time-(this._refT||0)>.8){ this._refT=this.time; this.popup(this.px,this.py-.6,'REFLECT','#e4dcc8'); }
+    this.curTag=prev; }
+  _refT=0; hintSeen:Record<string,number>=(()=>{ try{ return JSON.parse(localStorage.getItem('wv_abhints')||'{}'); }catch{ return {}; } })();
+  /** In-run ability nudges: first time an enemy trait needs an ability ("Shield: use Pulse"), and a reminder when you only auto-attack. */
+  abilityHints(dt:number){
+    if(this.mode!=='run'||this.downed||this.revealing) return;
+    if(this.nudgeCd>0) this.nudgeCd-=dt;
+    for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||!e.alert||e._rt.reveal>0||dist(e.x,e.y,this.px,this.py)>11) continue; const c=counterFor(e); if(!c||this.hintSeen[c.kind]) continue;
+      this.hintSeen[c.kind]=1; try{ localStorage.setItem('wv_abhints',JSON.stringify(this.hintSeen)); }catch{} this.toast(hintText(c,this.build.abilities)); this.nudgeCd=Math.max(this.nudgeCd,8); break; }
+    if(this.combatHold>0){ this.sinceAb+=dt; if(this.sinceAb>16&&this.nudgeCd<=0&&!this.overheated){ const i=this.build.abilities.findIndex((a,k)=>a&&this.abCd[k]<=0&&ABILITIES[a].heat+this.heat<=COMBAT.heat.max); if(i>=0){ this.nudgeCd=40; this.sinceAb=0; this.emit('nudge',i); this.toast(`Abilities are ready: ${ABILITIES[this.build.abilities[i]!].name} [${['Q','E','R'][i]}] hits far harder than auto-attacks.`); } } } else this.sinceAb=0;
   }
   playerDown(){
     this.hp=0; this.downed=true; this.downT=0; this.cast=null; this.aim=null; this.channel=null; this.emit('sfx','down');
@@ -308,7 +370,7 @@ export class Game {
     this.recompute(); this.hp=0; this.emit('down',{ broke:broke&&ITEM_BY_ID[this.save.items.find(i=>i.uid===this.save.installed[broke!])!.def].name, defib:hasDefib });
   }
   returnToCheckpoint(){ if(!this.downed||!this.inst) return; const inst=this.inst; for(const s of inst.broken) if(!inst.protectedSlots.includes(s)) inst.protectedSlots.push(s); inst.broken=[]; this.downed=false; this.px=inst.checkpoint.x; this.py=inst.checkpoint.y; this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.iframes=1.5; this.resetBossIfAlive(); this.enemies=this.enemies.filter(e=>true); this.projs=[]; this.emit('revived','checkpoint'); this.toast('Checkpoint recovery: hardware restored. Repair bill kept ('+this.save.repairBill+'c).'); }
-  defibInPlace(){ if(!this.downed||!this.build.passives.includes('defib')) return; this.downed=false; this.hp=this.maxHp*.5; this.iframes=1.5; this.defibCd=90; this.emit('revived','defib'); this.toast('Defib: back up. Broken hardware stays broken until a checkpoint.'); }
+  defibInPlace(){ if(!this.downed||!this.build.passives.includes('defib')) return; this.downed=false; this.hp=this.maxHp*.5; this.iframes=1.5; this.defibCd=90; this.vfx('defib.fire',this.px,this.py); this.emit('revived','defib'); this.toast('Defib: back up. Broken hardware stays broken until a checkpoint.'); }
 
   // ---------- run logic ----------
   updateRun(dt:number){
@@ -346,7 +408,7 @@ export class Game {
     this.emit('dialog',{ title:c.title, body:clue+'\n\n'+c.body+' Combat continues while this is open.', options:[
       { label:c.confirm, cb:()=>{ if(f.cond) return; this.channel={kind:'hack',t:0,dur:1.5,cb:()=>{ if(f.cond) return; f.cond=id; f.bossKey=c.boss; this.note('condition_used',id); this.note('route_used',c.cap); this.toast(c.toast); this.saveNow(); }}; }},{label:'Cancel'} ] }); }
   story(){ if(!this.save.story) this.save.story=newStory(); return this.save.story; }
-  spawnEnemy(type:string,x:number,y:number):En{ const inst=this.inst!; const d=ENEMIES[type]; const e=this.wrap({ id:inst.nextId++,type,x,y,hp:d.hp,maxHp:d.hp,alert:false,dead:false,home:{x,y},group:99,faction:'enemy',ctrlT:0,stunT:0 }); inst.enemies.push(e); this.enemies.push(e); return e; }
+  spawnEnemy(type:string,x:number,y:number):En{ const inst=this.inst!; const d=ENEMIES[type]; const e=this.wrap({ id:inst.nextId++,type,x,y,hp:d.hp*this.hpMul(),maxHp:d.hp*this.hpMul(),alert:false,dead:false,home:{x,y},group:99,faction:'enemy',ctrlT:0,stunT:0 }); inst.enemies.push(e); this.enemies.push(e); return e; }
   spawnBoss(){
     const inst=this.inst!; const f=inst.flags; if(!f.bossKey){ f.bossKey=this.dd.defaultBoss; } // arbitration: first confirmed condition wins; none => Overseer
     f.bossSpawned=true; f.bossRevealed=true; const b=this.spawnEnemy(f.bossKey!,this.level.bossSpawn.x,this.level.bossSpawn.y); b._rt.reveal=COMBAT.bossRevealSeconds; b.alert=false; this.revealing=true; this.projs=[]; this.emit('reveal',{ key:f.bossKey, name:ENEMIES[f.bossKey!].name }); this.toast(ENEMIES[f.bossKey!].name+' emerges. You are safe during the reveal.'); this.emit('sfx','boss_reveal');
@@ -407,7 +469,7 @@ export class Game {
   updateEnemies(dt:number){
     this.frame++; this.flowT-=dt; if(this.flowT<=0){ this.flowT=.35; const need=[false,false,false]; for(const e of this.enemies){ if(!e.dead&&e.faction==='enemy'&&e.alert&&!ENEMIES[e.type].static) need[this.flowCls(ENEMIES[e.type].radius)]=true; } need[0]=true; for(let c=0;c<3;c++){ if(need[c]) this.flowField(c); } }
     const alive=this.enemies.filter(e=>!e.dead);
-    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.reveal>0) continue; if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); else mobTick(this,e,dt); this.updateEnemy(e,dt); }
+    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.hack>0) rt.hack-=dt; if(rt.reveal>0) continue; if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); else mobTick(this,e,dt); this.updateEnemy(e,dt); }
     // separation
     for(let i=0;i<alive.length;i++){ const a=alive[i]; if(ENEMIES[a.type].static) continue; for(let j=i+1;j<alive.length;j++){ const b=alive[j]; const dx=b.x-a.x, dy=b.y-a.y; const d2=dx*dx+dy*dy; const rr=(ENEMIES[a.type].radius+ENEMIES[b.type].radius)*.9; if(d2<rr*rr&&d2>1e-4){ const d=Math.sqrt(d2), push=(rr-d)*.5; const nx=dx/d, ny=dy/d; if(!ENEMIES[b.type].static){ const pb=this.moveCircle(b.x,b.y,nx*push,ny*push,ENEMIES[b.type].radius*.8); b.x=pb.x; b.y=pb.y; } const pa=this.moveCircle(a.x,a.y,-nx*push,-ny*push,ENEMIES[a.type].radius*.8); a.x=pa.x; a.y=pa.y; } } }
     this.enemies=this.enemies.filter(e=>!e.dead||e._rt.bornT>-1); // keep dead for persistence
@@ -500,7 +562,7 @@ export class Game {
   updateProjs(dt:number){
     for(const p of this.projs){ this.dmgSrc=(p as any).src||'proj'; p.life-=dt; const nx=p.x+p.vx*dt, ny=p.y+p.vy*dt; if(this.solidAt(nx,ny)){ p.life=0; this.fx.push({kind:'spark',x:p.x,y:p.y,t:0,life:.2}); continue; } p.x=nx; p.y=ny;
       if(p.faction==='enemy'){ for(const o of this.opponents('enemy')) if(dist(p.x,p.y,o.x,o.y)<o.r+p.r){ o.hurt(p.dmg,p.x-p.vx,p.y-p.vy); p.life=0; break; } }
-      else { for(const o of this.opponents('ally')) if(dist(p.x,p.y,o.x,o.y)<o.r+p.r){ o.hurt(p.dmg,p.x-p.vx,p.y-p.vy); this.fx.push({kind:'spark',x:p.x,y:p.y,t:0,life:.2}); p.life=0; break; } } }
+      else { for(const o of this.opponents('ally')) if(dist(p.x,p.y,o.x,o.y)<o.r+p.r){ this.curTag=(p as any).tag||'auto'; o.hurt(p.dmg,p.x-p.vx,p.y-p.vy); this.curTag='auto'; this.fx.push({kind:'spark',x:p.x,y:p.y,t:0,life:.2}); p.life=0; break; } } }
     this.projs=this.projs.filter(p=>p.life>0);
   }
   updateZones(dt:number){ for(const z of this.zones){ z.t+=dt; this.dmgSrc=(z as any).src||(z.env?'env':'zone'); if(z.t>=z.windup&&!this.downed&&!this.revealing&&dist(z.x,z.y,this.px,this.py)<z.r){ this.zoneTick=(this.zoneTick||0)+dt; this.heat=Math.min(COMBAT.heat.max,this.heat+z.heat*dt); if(this.zoneTick>.5){ this.zoneTick=0; this.hurtPlayer(z.dps,z.x,z.y); } } } this.zones=this.zones.filter(z=>z.t<z.life); }
