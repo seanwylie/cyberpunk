@@ -12,7 +12,7 @@ export const POOLS:Record<MState,string[]>={
   town:['town','calm_drift','calm_rust','calm_vents'],
   traversal:['traversal_a','traversal_b','calm_neon','calm_static','calm_drift','calm_rust','calm_vents'],
   combat:['combat_a','combat_b'],
-  elite:['elite_siege','elite_hunt','boss_overclock','boss_meltdown','combat_a','combat_b'],
+  elite:['elite_siege','elite_hunt','boss_overclock','boss_meltdown'],
   bossreveal:['boss_reveal'],
   bosscombat:['boss_fight','boss_overclock','boss_meltdown','boss_hydraulic','elite_siege','elite_hunt','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall'],
   resolution:['clear'] };
@@ -35,7 +35,7 @@ export class MusicManager {
   buffers:Record<string,AudioBuffer>={}; ready=false; loading=false; live:Live[]=[]; pos:Record<string,number>={};
   state:MState|null=null; want:MState='town'; cur:string|null=null; bags:Partial<Record<MState,ShuffleBag>>={}; key:string|null=null; fromTown=true; ROTATE_LOOPS=2; ROTATE_FADE=3;
   enteredAt=0; leaveSince=-1; log:FadeEvent[]=[]; timer:any=null; onReady:(()=>void)|null=null;
-  COMBAT_MIN=6; COMBAT_EXIT_HOLD=4; // hysteresis (seconds)
+  HARD_MIN=15; HARD_EXIT_HOLD=4; CALM_MIN=20; // hysteresis (seconds): min time on a hard track; calm required before leaving it; min time on a calm track before it rotates
   constructor(private ctx:AudioContext, private out:AudioNode, private base='audio/music/'){}
   isReady(){ return this.ready; }
   private getTrack:((d:TrackDef)=>Promise<void>)|null=null; private asked=new Set<string>();
@@ -55,13 +55,14 @@ export class MusicManager {
     if(s==='bosscombat'&&this.key&&BOSS_MAP[this.key]&&have(BOSS_MAP[this.key])) return BOSS_MAP[this.key];
     const pool=POOLS[s]; if(pool.length===1) return pool[0]; const bag=(this.bags[s]??=new ShuffleBag(pool)); return bag.next(have); }
   tick(){ if(!this.ready) return; const t=this.now(); let tgt=this.want;
-    if((this.state==='combat'||this.state==='elite')&&tgt==='traversal'){ // hold combat music: min dwell + sustained calm before dropping out
-      if(this.leaveSince<0) this.leaveSince=t; if(t-this.enteredAt<this.COMBAT_MIN||t-this.leaveSince<this.COMBAT_EXIT_HOLD) tgt=this.state; }
+    const hard=(s:MState|null)=>s==='elite'||s==='bosscombat'||s==='combat';
+    if(hard(this.state)&&tgt==='traversal'){ // (town return is explicit and not held) hold hard music: min dwell + sustained calm (exit delay) before fading back to calm
+      if(this.leaveSince<0) this.leaveSince=t; if(t-this.enteredAt<this.HARD_MIN||t-this.leaveSince<this.HARD_EXIT_HOLD) tgt=this.state!; }
     else this.leaveSince=-1;
     if(tgt===this.state){ this.maybeRotate(t); return; }
     this.enter(tgt); }
   /** Calm states rotate to the next pool track after ROTATE_LOOPS full loops; the fade starts so it lands on the loop boundary. */
-  private maybeRotate(t:number){ if(this.state!=='town'&&this.state!=='traversal') return; const l=this.live.find(x=>!x.ending); if(!l) return; const b=this.buffers[l.name]; if(!b) return;
+  private maybeRotate(t:number){ if(this.state!=='town'&&this.state!=='traversal') return; if(t-this.enteredAt<this.CALM_MIN) return; const l=this.live.find(x=>!x.ending); if(!l) return; const b=this.buffers[l.name]; if(!b) return;
     const played=l.offset+(t-l.startedAt); if(played<b.duration*this.ROTATE_LOOPS-this.ROTATE_FADE) return;
     const n=this.pick(this.state); if(n===l.name) return; this.crossfade(n,this.ROTATE_FADE,this.state); }
   private enter(s:MState){ const prev=this.state; const t=this.now(); this.state=s; this.enteredAt=t; this.leaveSince=-1; const name=this.pick(s);

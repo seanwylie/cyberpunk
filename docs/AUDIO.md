@@ -65,7 +65,7 @@ Tests: `npm run test:music` now also checks that the 20 batch-1 bosses have >= 1
 
 #### Pools and rotation (`POOLS`, `BOSS_MAP`, `ShuffleBag` in `src/music.ts`)
 - Each state draws from its pool through a shuffle bag: every track once per cycle, never the same track twice in a row (also across refills).
-- town: town, calm_drift, calm_rust, calm_vents. traversal: traversal_a/_b + calm_neon/static/drift/rust/vents. combat: combat_a/_b. elite (new state: an alerted non-boss elite within 12 tiles): elite_siege/hunt, boss_overclock/meltdown, combat_a/b. bosscombat: boss_fight + 3 new.
+- town: town, calm_drift, calm_rust, calm_vents. traversal: traversal_a/_b + calm_neon/static/drift/rust/vents. combat: combat_a/_b. elite (engagement with a non-boss elite): elite_siege/hunt, boss_overclock/meltdown. combat_a/b are no longer used by the game (the `combat` state is kept in the manager but the sim never emits it). bosscombat: boss_fight + 3 new.
 - Calm states (town, traversal) rotate after `ROTATE_LOOPS` (2) full loops of the current track (~2.4 min): a 3 s equal-power crossfade is scheduled to land on the loop boundary.
 - Bosses have a fixed track via `BOSS_MAP` (sim emits `musickey` with the boss id); unmapped bosses draw from the pool.
 - Core 8 original tracks must load for file music to activate; the 10 new ones stream in after start and are skipped in pools until decoded or if missing.
@@ -76,11 +76,18 @@ Prompts live in `tools/gen_music.py` (`TRACKS`). To change a track edit its prom
 ### Credits
 Plan: Creator, 329,944 credits/month, 1,627 used before work. Whole job (1 probe + 8 tracks, ~420 s of audio) consumed ≈ 7.1k credits (~2.2% of quota; budget was 30%). Rough rate ≈ 15–17 credits per generated second. Counter read via `GET /v1/user/subscription`.
 
+### Music state rules (engagement-based; `Game.updateMusic` in `src/sim.ts`)
+- Calm pool (town / traversal tracks) plays everywhere in town and runs. Map position, room/zone changes, proximity, enemy alert and ordinary-mob combat never change the track.
+- `elite` (hard pool) starts only when the player damages an elite (`ENEMIES[].elite` or an affixed elite pack member) or is damaged by one, and lasts 8 s after the last such exchange (`eliteEng`). Mere proximity or alert does not count.
+- `bossreveal` -> `bosscombat` start with the boss encounter (boss spawn from entering the arena / boss aggro); `resolution` after the kill.
+- Manager hysteresis (`src/music.ts`): `HARD_MIN` 15 s minimum on a hard track, `HARD_EXIT_HOLD` 4 s of calm before fading back to a calm track, `CALM_MIN` 20 s before a calm track may rotate. Calm tracks still rotate only after `ROTATE_LOOPS` loops, landing on the loop boundary. Return to town is explicit and not held.
+- Tests: `tests/music.mjs` (fake clock) covers zone walking, ordinary combat, elite proximity vs first hit, elite hurt, boss, delayed disengage, no flapping. Use `URL=http://localhost:PORT/` if the dev server is not on 5173.
+
 ### Runtime (`src/music.ts`, hooked in `src/audio.ts`)
 - States: town, traversal, combat, bossreveal, bosscombat, resolution (driven by `Game` `music` events).
 - Equal-power (sin/cos) crossfades: 3 s town↔run, 1.5 s combat in, 2 s combat out, 2.5 s boss reveal in, 0.6 s reveal→fight, 0.5 s into the clear sting.
 - Loop tracks remember their position when faded out and resume there; one-shots restart.
-- Combat hysteresis: min 6 s in combat, then 4 s calm required before returning to traversal (`COMBAT_MIN`, `COMBAT_EXIT_HOLD`).
+- Hard-music hysteresis: see "Music state rules" above (the old combat state/`COMBAT_MIN` was removed).
 - Variants picked randomly per run; 35% chance to swap variant on re-entry. Reset on return to town.
 - Unlock: context is created/resumed on first user gesture (existing `audio.resume()`); files load then. Procedural music plays until files finish decoding and when any file is missing/fails (automatic fallback).
 - Volume hooks: `audio.setVolume` (master), `audio.setMusicVolume(0..1)`, `audio.setMusicOn`.

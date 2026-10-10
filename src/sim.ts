@@ -36,7 +36,7 @@ export class Game {
   px=0; py=0; face=0; hp=100; heat=0; overheated=false; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; slowT=0; downed=false; downT=0; defibCd=0; revealing=false;
   abCd:number[]=[0,0,0]; cast:{ idx:number; t:number; aim:AimState; ab:AbilityDef }|null=null; aim:AimState|null=null; target:number|null=null; lungeT=0; lungeDx=0; lungeDy=0; lungeHit:Set<number>=new Set();
   slideT=0; slideFx=0; slideFy=0; channel:{ kind:'town'|'hack'; t:number; dur:number; cb:()=>void }|null=null;
-  inputMove={x:0,y:0}; build!:BuildResult; moving=false; prompt:Interact|null=null; musicState='traversal'; combatHold=0; toastQ:string[]=[];
+  inputMove={x:0,y:0}; build!:BuildResult; moving=false; prompt:Interact|null=null; musicState='traversal'; combatHold=0; eliteEng=0; toastQ:string[]=[];
   dbg={god:false,oneShot:false};
   flow:Int16Array|null=null; flows:(Int16Array|null)[]=[null,null,null]; clr:(Uint8Array|null)[]=[null,null,null]; clrLevel:Level|null=null; q:Int32Array|null=null; frame=0; flowT=0; kills=0; saveT=0; sensorFlag=false; lastRoute='';
   constructor(save:Save, emit:Emit){ this.save=save; this.emit=emit; this.level=buildTown(); this.recompute(); this.enterTown(true); }
@@ -258,7 +258,7 @@ export class Game {
   // ---------- damage ----------
   hurtEnemy(e:En,dmg:number,sx:number,sy:number,knock=0){
     if(e.dead||e._rt.reveal>0) return; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; dmg=filterDamage(this,e,dmg); e.hp-=dmg; e.alert=true; e._rt.hit=.12; if(!ENEMIES[e.type].boss) e._rt.lost=0;
-    this.emit('sfx','hit'); this.combatHold=3;
+    this.emit('sfx','hit'); this.combatHold=3; if(!ENEMIES[e.type].boss&&this.isElite(e)) this.eliteEng=8;
     if(this.save.settings.damageNumbers) this.fx.push({kind:'text',x:e.x,y:e.y,t:0,life:.7,text:String(Math.round(dmg)),c:'#d8d2bf'});
     if(knock&&!ENEMIES[e.type].boss){ const a=Math.atan2(e.y-sy,e.x-sx); const p=this.moveCircle(e.x,e.y,Math.cos(a)*knock,Math.sin(a)*knock,ENEMIES[e.type].radius); e.x=p.x; e.y=p.y; }
     if(e.hp<=0) this.killEnemy(e);
@@ -267,7 +267,7 @@ export class Game {
   alertGroup(e:En){ for(const o of this.enemies){ if(!o.dead&&o.faction==='enemy'&&!o.alert&&(o.group===e.group||dist(o.x,o.y,e.x,e.y)<6)&&this.los(o.x,o.y,e.x,e.y)) o.alert=true; } }
   hurtPlayer(dmg:number,sx:number,sy:number){
     if(this.downed||this.iframes>0||this.revealing||this.mode!=='run'||this.dbg.god) return;
-    const st=this.stat(); dmg=Math.max(1,dmg-st.armor); if(this.braceT>0) dmg*=.4; this.hp-=dmg; this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3;
+    const st=this.stat(); dmg=Math.max(1,dmg-st.armor); if(this.braceT>0) dmg*=.4; this.hp-=dmg; this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteEng=8; }
     if(this.channel){ if(this.channel.kind==='town') this.toast('Town return interrupted by damage'); this.channel=null; }
     this.fx.push({kind:'blood',x:this.px,y:this.py,t:0,life:.6,c:'#7a2f26'});
     if(this.hp<=0) this.playerDown();
@@ -536,10 +536,12 @@ export class Game {
     return {obj:o,wp:this.pathWp!,dist:this.pathLen}; }
   runSummary(){ const inst=this.inst; if(!inst) return null; const dd=this.dd; const byR:Record<string,number>={}; for(const d of inst.drops) if(d.inst){ const r=ITEM_BY_ID[d.inst.def].rarity; byR[r]=(byR[r]||0)+1; }
     return { dungeon:dd.name, id:dd.id, cleared:inst.flags.bossDead, boss:inst.flags.bossKey?ENEMIES[inst.flags.bossKey]?.name:null, time:inst.elapsed, kills:Object.values(inst.kills).reduce((a,b)=>a+b,0), killTypes:inst.kills, xp:inst.xpEarned, credits:inst.carried.credits, repair:inst.repairAdded, carried:inst.carried.items.map(i=>({name:ITEM_BY_ID[i.def].name,rarity:ITEM_BY_ID[i.def].rarity})), chips:{...inst.carried.chips}, stims:inst.carried.stims, ground:inst.drops.length, groundByRarity:byR, route:inst.flags.cond||'combat' }; }
+  isElite(e:En){ return !!(ENEMIES[e.type].elite||(e as any).affix?.length); }
+  /** Music state (docs/AUDIO.md): only 'traversal' (calm pool), 'elite' (hit/hurt by an elite in the last 8 s), 'bossreveal'/'bosscombat' (boss encounter) and 'resolution'. Ordinary mobs, proximity, alert and map position never change it. */
   lastKey=''; updateMusic(dt:number){
-    let st='traversal'; if(this.combatHold>0) this.combatHold-=dt; const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal<=0&&this.inst!.flags.bossSpawned);
+    let st='traversal'; if(this.combatHold>0) this.combatHold-=dt; if(this.eliteEng>0) this.eliteEng-=dt; const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal<=0&&this.inst!.flags.bossSpawned);
     const bossRev=this.enemies.some(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal>0);
-    if(this.resPending>0){ this.resPending-=dt; st='resolution'; } else if(bossRev) st='bossreveal'; else if(boss) st='bosscombat'; else { const engaged=this.enemies.some(e=>!e.dead&&e.faction==='enemy'&&e.alert&&dist(e.x,e.y,this.px,this.py)<12&&!ENEMIES[e.type].static); if(engaged||this.combatHold>0) st='combat'; if(engaged&&this.enemies.some(e=>!e.dead&&e.faction==='enemy'&&e.alert&&ENEMIES[e.type].elite&&!ENEMIES[e.type].boss&&dist(e.x,e.y,this.px,this.py)<12)) st='elite'; }
+    if(this.resPending>0){ this.resPending-=dt; st='resolution'; } else if(bossRev) st='bossreveal'; else if(boss) st='bosscombat'; else if(this.eliteEng>0&&this.enemies.some(e=>!e.dead&&e.faction==='enemy'&&this.isElite(e)&&!ENEMIES[e.type].boss)) st='elite';
     if(st==='bosscombat'&&boss&&this.lastKey!==boss.type){ this.lastKey=boss.type; this.emit('musickey',boss.type); }
     this.musicSet(st);
   }
