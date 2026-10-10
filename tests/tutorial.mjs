@@ -38,9 +38,12 @@ async function playthrough(w, h, touch) {
   const { browser, page, errors } = await open(w, h, touch); const shot = n => page.screenshot({ path: `shots/tutorial/${sub}_${n}.png` });
   let s = await S(page); ok(s.n === 1 && s.status === 'active' && s.shown, `${tag}: tutorial starts at step 1 on a fresh save`); await check(page, `${tag} step1`); await shot('1_move');
   ok(/drag|WASD/i.test(s.body) && (touch ? /Drag/.test(s.body) : /WASD/.test(s.body)), `${tag}: move copy matches input type`);
+  ok(await worldRing(page), `${tag}: move step shows a gold ring`);
   await move(page, touch); s = await waitN(page, 2); ok(s.n === 2, `${tag}: moving advances to step 2 (got ${s.n})`);
-  // 2 fixer
-  ok(await worldRing(page) || true, `${tag}: fixer target`); await tp(page, 'fixer'); await sleep(250); await check(page, `${tag} step2 world`); await shot('2_fixer_world');
+  // 2 fixer: ring, then the talk prompt, then Contracts, then Floor sweep
+  ok(await worldRing(page), `${tag}: gold ring points at Odalys`); ok(/gold ring/i.test(s.body), `${tag}: contract step says to follow the ring`);
+  await tp(page, 'fixer'); await sleep(250); await check(page, `${tag} step2 world`); await shot('2_fixer_world');
+  ok(await spotOn(page, '#interact'), `${tag}: spotlight on the talk prompt`);
   if (touch) await click(page, '#interact'); else await press(page, 'f'); await sleep(300);
   ok((await S(page)).modal === 'fixer', `${tag}: F/tap at Odalys opens the fixer panel`); await check(page, `${tag} step2 fixer modal`);
   ok(await spotOn(page, '#modal [data-act=opencontacts]'), `${tag}: spotlight on Open contacts`);

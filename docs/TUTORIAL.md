@@ -7,8 +7,8 @@ The tutorial **observes** the game and never drives it. Progress is a set of lat
 
 | # | Step | Completes when |
 |---|---|---|
-| 1 | Walk the market | 4 tiles travelled (or a run starts) |
-| 2 | Get a contract | any contract accepted (Odalys, fixer panel, contacts) |
+| 1 | Walk the market | 4 tiles travelled (or a run starts). A gold ring sits a few tiles east so the pointer is visible before anything else. |
+| 2 | Get a contract | any contract accepted. The card walks one path: gold ring to Odalys, the F prompt, the Contracts button (not the story), then Accept on Floor sweep. |
 | 3 | Install an upgrade | installed rarity total rises (a guaranteed upgrade, Bellows Clamp, is put in storage) |
 | 4 | Socket a chip | chips on installed gear rise after Apply (a fitting chip is guaranteed in stock) |
 | 5 | Vendor and repair | vendor open 2.5 s |

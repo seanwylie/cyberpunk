@@ -33,7 +33,7 @@ const fmtStats=(s:Stats)=>`HP ${Math.round(s.maxHp)} · DMG ×${s.dmg.toFixed(2)
 const diff=(a:number,b:number,f=(n:number)=>n.toFixed(2))=>{ const d=b-a; if(Math.abs(d)<1e-6) return ''; return `<span class="${d>0?'up':'dn'}">${d>0?'+':''}${f(d)}</span>`; };
 const rc=(r:string)=>RARITY_COLOR[r as keyof typeof RARITY_COLOR];
 
-const BVG='<span class="bvg"><span>With Big Viking Games</span><img src="/brand/bvg_logo_bone.png" alt="Big Viking Games" width="64"></span>';
+const BVG='<span class="bvg"><span>With Big Viking Games</span><img src="./brand/bvg_logo_bone.png" alt="Big Viking Games" width="64"></span>';
 export class UI {
   modal:string|null=null; draft:Layout|null=null; sel:Slot='torso'; search=''; confirm:any=null; msg=''; storyMsg=''; liveOpen=false; bannerT=0; toastCount=0; storyBusy=false; devOpen=false; lastKey=''; showAll=false; resetAsk=false; contactSel='odalys_vane';
   constructor(private g:Game, private audio:AudioSys){

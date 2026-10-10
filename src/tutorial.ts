@@ -111,12 +111,15 @@ export class Tutorial {
     if(c.redirect){ if(g.mode==='run') return { title:'Back to town', body:t?'Tap the Town button (top right) to channel a return. Some steps are waiting in town.':'Press B to channel a return to town. Some steps are waiting there.', target:T('#btn-town',true), redirect:true };
       return { title:'Back to the gate', body:'You still have field lessons left. Walk to the Annex gate and press F.', target:{world:this.W('annex')}, redirect:true }; }
     switch(c.id){
-      case 'move': return { title:c.title, body:t?'Drag on the left half of the screen to move. The market is not going anywhere. Neither are you, yet.':'WASD to move. Take a lap of the market. Nobody checks your paperwork until you leave.', list:[{t:'Walk a few steps',ok:this.dist>=4}] };
+      case 'move': return { title:c.title, body:t?'Drag on the left half of the screen. Walk toward the gold ring. A few steps is enough.':'WASD to move. Walk toward the gold ring. A few steps is enough.', list:[{t:'Walk a few steps',ok:this.dist>=4}], target:{world:{x:27,y:16.5,r:1.2,col:'#e0c070'}} };
       case 'fixer': {
-        if(modal==='fixer') return { title:c.title, body:'Odalys sells Annex work out of a tarp stall. Open her contacts and take a job.', target:T('#modal [data-act=opencontacts]') };
-        if(modal==='contacts'){ const sel=document.querySelector('#modal [data-act=accept]:not([disabled])'); const own=ui.contactSel==='odalys_vane'||!ui.contactSel; if(!own) return { title:c.title, body:'Pick Odalys Vane in the contact list.', target:T('#modal [data-act=dsel][data-id=odalys_vane]') };
-          return { title:c.title, body:sel?'Accept a contract. Floor sweep is the easy one. Progress counts while you are in the field.':'Accept any contract that is not locked.', target:T(sel?'#modal [data-act=accept]:not([disabled])':'#modal') }; }
-        return { title:c.title, body:t?'Walk to Odalys Vane, the fixer, and tap the prompt. Or open Contacts any time.':'Walk to Odalys Vane, the fixer, and press F. Or press C for contacts from anywhere in town.', target:{world:this.W('fixer')} }; }
+        const near=g.prompt?.id==='fixer'; const atHer=near||modal==='fixer'||modal==='contacts'; const jobs=modal==='contacts';
+        const list=[{t:'Follow the ring to Odalys',ok:atHer},{t:'Press Contracts',ok:jobs},{t:'Accept Floor sweep',ok:false}];
+        if(modal==='fixer') return { title:'Press Contracts', body:'This screen is her story, not the job. Press the Contracts button.', list, target:T('#modal [data-act=opencontacts]') };
+        if(modal==='contacts'){ if(ui.contactSel!=='odalys_vane') return { title:'Select Odalys', body:'Odalys Vane is on the left. She has the starter job.', list, target:T('#modal [data-act=dsel][data-id=odalys_vane]') };
+          return { title:'Accept Floor sweep', body:'Press Accept on Floor sweep. That signs you up. You do the fighting later, in a dungeon.', list, target:T('#modal [data-act=accept][data-id=od_floor_sweep]') }; }
+        if(near) return { title:'Press F', body:t?'Tap the prompt at the bottom of the screen.':'Press F on the prompt at the bottom of the screen.', list, target:{sel:'#interact',dim:true,world:this.W('fixer')} };
+        return { title:'Find Odalys', body:'Follow the gold ring to the west side of the market. That is Odalys Vane. She gives out jobs.', list, target:{world:this.W('fixer')} }; }
       case 'equip': {
         if(modal!=='locker') return { title:c.title, body:`Upgrades live in the locker. Your body is eleven slots of Standard Issue. Visit the body shop and fit the ${itemName} we set aside.`, target:{world:this.W('locker')} };
         if(ui.confirm?.type==='replace') return { title:c.title, body:'Before and after, plus what it costs. Confirm the swap.', target:T('#modal [data-act=confirm-replace]') };

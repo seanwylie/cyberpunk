@@ -16,7 +16,7 @@ import { record, newStory, EventKind } from './story';
 export type Emit = (type:string, payload?:any)=>void;
 export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:number; life:number; faction:'enemy'|'ally'; kind:'bolt'|'slug'|'pop'|'pistol'|'needle'|'shard'; c?:string; }
 export interface Zone { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }
-export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; }
+export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'|'ability'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; }
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
 export interface Rt { // enemy transient runtime fields
   /** content batch 1 boss mechanics (src/content/mechanics.ts) */ spdMul?:number; cdMul?:number; shield?:any; gim?:any; gimT?:number; q?:any[]; pylPrev?:number; tl?:number;
@@ -236,20 +236,26 @@ export class Game {
   }
   updateBurst(dt:number){ if(this.burstLeft<=0) return; if(this.mode!=='run'||this.cast||this.dodgeT>0||this.revealing||this.downed){ this.burstLeft=0; return; } this.burstT-=dt; if(this.burstT<=0){ const w=this.build.weapon; this.burstLeft--; this.burstT=w.burstGap||.07; const t=this.pickTarget(); if(t) this.face=Math.atan2(t.y-this.py,t.x-this.px); this.heat+=w.heat; this.emit('sfx','atk_'+w.kind); this.fireProj(w,this.burstDmg,this.face); } }
   // ---------- abilities ----------
+  /** Cast graphic only. Numbers (damage, heat, cooldown) stay on the ability itself. */
+  private castLook(id:string, x:number, y:number, o:Partial<Fx>={}){
+    const red=!!this.save.settings.reducedFx;
+    const base=id==='sweep'?.58:id==='bladeburst'?.46:id==='pulse'?.68:id==='brace'?.72:id==='forcedcool'?.95:id==='control'?.8:id==='reposition'?.42:.52;
+    this.fx.push({ ...o, kind:'ability', text:id, x, y, t:0, life:red?Math.min(.36,base*.55):base });
+  }
   executeAbility(c:{ idx:number; aim:AimState; ab:AbilityDef }){
     const def=c.ab; const st=this.stat(); const m=this.build.mods;
     const v=this.validateAim(def,c.aim); if(!v.valid&&def.aim!=='self'){ this.toast('Cancelled: '+v.why); return; } // re-validate at effect start; still free
     // resource commitment point: effect start
     this.heat+=def.heat; this.abCd[c.idx]=def.cd; this.emit('sfx','ab_'+def.id); const ang=Math.atan2(c.aim.wy-this.py,c.aim.wx-this.px); const dmgM=st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1);
     switch(def.id){
-      case 'sweep': { const arc=Math.PI*.75*(1+m.arc); this.face=ang; this.fx.push({kind:'slash',x:this.px,y:this.py,a:ang,r:def.range,t:0,life:.3,w:arc}); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const d=dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius; if(d<=def.range&&Math.abs(angDiff(Math.atan2(e.y-this.py,e.x-this.px),ang))<=arc/2) this.hurtEnemy(e,34*dmgM,this.px,this.py,2); } break; }
-      case 'brace': this.braceT=3; this.fx.push({kind:'ring',x:this.px,y:this.py,r:1.4,t:0,life:.5,c:'#b0a58c'}); break;
-      case 'forcedcool': this.heat=Math.max(0,this.heat-70); this.weaponOff=2; this.overheated=this.heat>=COMBAT.heat.max; this.fx.push({kind:'vent',x:this.px,y:this.py,t:0,life:1.2}); if(this.overheated===false) {} break;
-      case 'cloak': this.cloakT=5+m.cloakDur; for(const e of this.enemies){ if(e.faction==='enemy'&&dist(e.x,e.y,this.px,this.py)>1.6&&!ENEMIES[e.type].boss){ e._rt.st=e.alert?'lost':e._rt.st; } } break;
-      case 'bladeburst': { const len=def.range+m.burstLen; this.face=ang; const sp=len/.18; this.lungeDx=Math.cos(ang)*sp; this.lungeDy=Math.sin(ang)*sp; this.lungeT=.18; this.iframes=Math.max(this.iframes,.2); this.lungeHit=new Set(); (this as any)._lungeDmg=30*dmgM; this.fx.push({kind:'line',x:this.px,y:this.py,a:ang,len,t:0,life:.35,w:.8}); break; }
-      case 'reposition': { const tx=v.tx!, ty=v.ty!; const d=dist(this.px,this.py,tx,ty); this.slideFx=(tx-this.px)/.12; this.slideFy=(ty-this.py)/.12; this.slideT=.12; this.iframes=Math.max(this.iframes,.14); void d; this.fx.push({kind:'dust',x:this.px,y:this.py,t:0,life:.4}); break; }
-      case 'control': { const e=v.target!; if(ENEMIES[e.type].elite){ e.stunT=1.5; this.toast(ENEMIES[e.type].name+' resists control: stunned'); } else { e.faction='ally'; e.ctrlT=8+m.ctrlDur; e.alert=true; this.toast('Enemy control: '+ENEMIES[e.type].name+' turned'); } this.fx.push({kind:'ring',x:e.x,y:e.y,r:1,t:0,life:.6,c:'#8aa0b0'}); break; }
-      case 'pulse': { const tx=v.tx!, ty=v.ty!; this.fx.push({kind:'ring',x:tx,y:ty,r:2.8,t:0,life:.5,c:'#9aa7b0'}); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(dist(tx,ty,e.x,e.y)<=2.8+ENEMIES[e.type].radius){ this.hurtEnemy(e,22*dmgM,tx,ty,.5); e.stunT=Math.max(e.stunT,ENEMIES[e.type].boss?.5:1.2); } } break; }
+      case 'sweep': { const arc=Math.PI*.75*(1+m.arc); this.face=ang; this.castLook('sweep',this.px,this.py,{a:ang,r:def.range,w:arc,c:'#c4543c'}); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const d=dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius; if(d<=def.range&&Math.abs(angDiff(Math.atan2(e.y-this.py,e.x-this.px),ang))<=arc/2) this.hurtEnemy(e,34*dmgM,this.px,this.py,2); } break; }
+      case 'brace': this.braceT=3; this.castLook('brace',this.px,this.py,{r:1.5,c:'#e4dcc8'}); break;
+      case 'forcedcool': this.heat=Math.max(0,this.heat-70); this.weaponOff=2; this.overheated=this.heat>=COMBAT.heat.max; this.castLook('forcedcool',this.px,this.py,{r:1.6,c:'#d5e4e6'}); break;
+      case 'cloak': this.cloakT=5+m.cloakDur; this.castLook('cloak',this.px,this.py,{r:1.5,c:'#8a9a62'}); for(const e of this.enemies){ if(e.faction==='enemy'&&dist(e.x,e.y,this.px,this.py)>1.6&&!ENEMIES[e.type].boss){ e._rt.st=e.alert?'lost':e._rt.st; } } break;
+      case 'bladeburst': { const len=def.range+m.burstLen; this.face=ang; const sp=len/.18; this.lungeDx=Math.cos(ang)*sp; this.lungeDy=Math.sin(ang)*sp; this.lungeT=.18; this.iframes=Math.max(this.iframes,.2); this.lungeHit=new Set(); (this as any)._lungeDmg=30*dmgM; this.castLook('bladeburst',this.px,this.py,{a:ang,len,w:1.15,c:'#c4543c'}); break; }
+      case 'reposition': { const tx=v.tx!, ty=v.ty!; const ox=this.px, oy=this.py; const d=dist(ox,oy,tx,ty); this.slideFx=(tx-ox)/.12; this.slideFy=(ty-oy)/.12; this.slideT=.12; this.iframes=Math.max(this.iframes,.14); this.castLook('reposition',ox,oy,{a:Math.atan2(ty-oy,tx-ox),len:d,c:'#a8b87a'}); break; }
+      case 'control': { const e=v.target!; if(ENEMIES[e.type].elite){ e.stunT=1.5; this.toast(ENEMIES[e.type].name+' resists control: stunned'); } else { e.faction='ally'; e.ctrlT=8+m.ctrlDur; e.alert=true; this.toast('Enemy control: '+ENEMIES[e.type].name+' turned'); } this.castLook('control',e.x,e.y,{r:1.35,c:'#7f9bb8'}); break; }
+      case 'pulse': { const tx=v.tx!, ty=v.ty!; this.castLook('pulse',tx,ty,{r:2.8,c:'#6d90b0'}); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(dist(tx,ty,e.x,e.y)<=2.8+ENEMIES[e.type].radius){ this.hurtEnemy(e,22*dmgM,tx,ty,.5); e.stunT=Math.max(e.stunT,ENEMIES[e.type].boss?.5:1.2); } } break; }
       default: break;
     }
   }
