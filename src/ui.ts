@@ -47,11 +47,12 @@ export class UI {
   private hintSeenSet():Record<string,number>{ try{ return JSON.parse(localStorage.getItem('wv_hints')||'{}'); }catch{ return {}; } }
   hintSeen(k:string){ return !!this.hintSeenSet()[k]; }
   markHint(k:string){ const o=this.hintSeenSet(); o[k]=1; try{ localStorage.setItem('wv_hints',JSON.stringify(o)); }catch{} }
+  tut?:import('./tutorial').Tutorial;
   private hintCtx=''; private hintUntil=0; private hintPeek=false;
   hintTick(){ const g=this.g, el=$('hint'), ctx=g.mode==='town'?'town':'run'; const now=performance.now();
     if(ctx!==this.hintCtx){ this.hintCtx=ctx; el.textContent=UI.HINTS[ctx]; this.hintUntil=this.hintSeen(ctx)?0:now+8000; }
     if(this.hintUntil&&now>this.hintUntil){ this.hintUntil=0; this.markHint(ctx); }
-    el.classList.toggle('show',this.hintPeek||(this.hintUntil>0&&!this.modal)); }
+    el.classList.toggle('show',this.hintPeek||(this.hintUntil>0&&!this.modal&&!(this.tut&&!this.tut.disabled&&this.tut.st.status==='active'))); }
   bindHelp(){ const b=$('btn-help'); b.addEventListener('pointerenter',()=>{ this.hintPeek=true; }); b.addEventListener('pointerleave',()=>{ this.hintPeek=false; }); b.addEventListener('focus',()=>{ this.hintPeek=true; }); b.addEventListener('blur',()=>{ this.hintPeek=false; });
     b.addEventListener('click',()=>{ this.hintPeek=true; setTimeout(()=>{ this.hintPeek=false; },6000); }); }
   /** tutorial-like toasts appear only the first time (persisted); returns false when already seen */
@@ -470,6 +471,7 @@ export class UI {
       case 'townchoice': { const st=g.story(); record(st,'town_choice',el.dataset.boost!); st.arc=el.dataset.boost!; const ed=st.edges.find(x=>x.from==='player'&&x.to==='odalys_vane'); if(ed) ed.w+=1; st.town=null; persist(s); this.msg='Odalys will push the "'+el.dataset.boost+'" lead.'; this.render(); return; }
       case 'story': this.runStory(); return;
       case 'buylocker': s.purchases.lockerBlocks++; persist(s); this.render(); return; case 'buyskin': s.purchases.skins.push(el.dataset.id!); persist(s); this.render(); return; case 'skin': s.purchases.equippedSkin=s.purchases.equippedSkin===el.dataset.id?null:el.dataset.id!; persist(s); this.render(); return;
+      case 'replaytut': this.tut?.replay(); this.close(); return;
       case 'resethints': try{ localStorage.removeItem('wv_hints'); }catch{} this.hintCtx=''; this.toast('Tutorial hints will show again.'); return;
       case 'wipe': wipe(); location.reload(); return; case 'dev': this.open('dev'); return;
       case 'kit': case 'equipkit': this.kit(el.dataset.k!,a==='equipkit'); this.render(); return;

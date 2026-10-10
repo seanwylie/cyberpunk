@@ -360,3 +360,34 @@ body.touch.intown #interact{ left:50%; }
 .win .body .sctl output{ min-width:3.6em; flex:none; white-space:nowrap; }
 body:not(.touch) .win .body .btn{ max-width:calc(100% - 4px); white-space:normal; }
 .row>span:has(>.btn){ flex:none; max-width:60%; }
+
+/* ---- first-run tutorial (src/tutorial.ts): card follows the type scale; rings/spotlight never take pointer events ---- */
+#tut{ position:fixed; z-index:30; width:min(calc(300px*var(--fs)),42vw); max-width:calc(100vw - 20px); box-sizing:border-box; padding:8px 10px 8px; background:rgba(18,19,21,.94); border:1px solid #8a8466; border-left:3px solid #d8c070; border-radius:4px; box-shadow:0 4px 14px rgba(0,0,0,.6); color:var(--bone); font-size:max(var(--fmin),calc(12.5px*var(--fs))); line-height:1.3; pointer-events:auto; }
+#tut .tt-head{ display:flex; flex-direction:column; gap:1px; margin-bottom:3px; }
+#tut .tt-step{ font-size:max(var(--fmin),calc(10px*var(--fs))); letter-spacing:.16em; text-transform:uppercase; color:#d8c070; font-weight:700; }
+#tut .tt-title{ font-size:max(calc(var(--fmin) + 1px),calc(14px*var(--fs))); letter-spacing:.04em; }
+#tut .tt-body{ color:#e0dac6; }
+#tut .tt-list{ list-style:none; margin:5px 0 0; padding:0; display:flex; flex-direction:column; gap:2px; }
+#tut .tt-list li{ display:flex; gap:6px; align-items:flex-start; opacity:.92; } #tut .tt-list li.ok{ color:#9fb98a; opacity:1; }
+#tut .tt-box{ flex:none; width:1.1em; height:1.1em; border:1px solid #8a8466; border-radius:2px; text-align:center; line-height:1.05em; font-size:.9em; margin-top:.1em; }
+#tut .tt-btns{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; align-items:center; }
+#tut button{ min-height:max(30px,2.2em); padding:3px 10px; border-radius:3px; border:1px solid #66696c; background:#2a2c2e; color:var(--bone); font-size:max(var(--fmin),calc(11.5px*var(--fs))); cursor:pointer; }
+#tut button:hover{ background:#3b3d40; } #tut button.tt-ack{ border-color:#d8c070; background:#3a3626; font-weight:700; }
+#tut button.tt-skip{ margin-left:auto; border-color:transparent; background:transparent; color:#b9b4a2; text-decoration:underline; }
+body.touch #tut button{ min-height:44px; }
+#tut.dock{ width:min(1100px,96vw); max-width:96vw; grid-template-columns:1fr auto; column-gap:12px; align-items:center; padding:6px 12px; }
+#tut.dock .tt-head{ flex-direction:row; align-items:baseline; gap:10px; margin:0; } #tut.dock .tt-body{ grid-column:1; } #tut.dock .tt-list{ grid-column:1; flex-direction:row; flex-wrap:wrap; gap:2px 14px; margin-top:2px; } #tut.dock .tt-btns{ grid-column:2; grid-row:1 / span 3; margin:0; flex-wrap:nowrap; }
+#tut.dock .tt-btns .tt-skip{ margin-left:0; }
+@media (max-height:480px){ #tut.dock{ padding:3px 8px; } #tut.dock .tt-btns{ flex-direction:column; align-items:stretch; gap:2px; } body.touch #tut.dock button{ min-height:36px; } }
+body.tutdock #modal{ padding-bottom:var(--tutdock,0px); } body.tutdock #modal .win{ max-height:calc(94vh - var(--tutdock,0px)); } body.touch.tutdock #modal .win{ max-height:calc(var(--vh,100vh) - env(safe-area-inset-top) - 8px - var(--tutdock,0px)); }
+body.tutdock #modal .win.settingswin{ max-height:none; }
+#tutspot{ position:fixed; z-index:31; pointer-events:none; border:2px solid #f0d880; border-radius:6px; box-sizing:border-box; animation:ttpulse 1.3s ease-in-out infinite; }
+#tutspot.dim{ box-shadow:0 0 0 200vmax rgba(0,0,0,.5); }
+#tutspot .tt-arrow{ position:absolute; left:50%; bottom:calc(100% + 4px); width:0; height:0; margin-left:-9px; border:9px solid transparent; border-top:13px solid #f0d880; border-bottom:0; animation:ttbob .8s ease-in-out infinite; }
+#tutspot.below .tt-arrow{ bottom:auto; top:calc(100% + 4px); border-top:0; border-bottom:13px solid #f0d880; }
+#tutworld{ position:fixed; z-index:12; pointer-events:none; --c:#e0c070; } #tutworld .tt-wring{ position:absolute; inset:0; border:3px solid var(--c); border-radius:50%; box-shadow:0 0 14px var(--c), inset 0 0 14px var(--c); animation:ttpulse 1.3s ease-in-out infinite; }
+#tutworld .tt-warrow{ position:absolute; left:50%; bottom:100%; margin:0 0 6px -10px; width:0; height:0; border:10px solid transparent; border-top:15px solid var(--c); border-bottom:0; animation:ttbob .8s ease-in-out infinite; }
+#tutedge{ position:fixed; z-index:12; width:28px; height:28px; pointer-events:none; --c:#e0c070; --a:0rad; } #tutedge i{ display:block; width:100%; height:100%; transform:rotate(var(--a)); background:var(--c); clip-path:polygon(0 15%,100% 50%,0 85%); animation:ttpulse 1.3s ease-in-out infinite; }
+@keyframes ttpulse{ 0%,100%{ opacity:1; } 50%{ opacity:.45; } } @keyframes ttbob{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(5px); } }
+body.reducefx #tutspot,body.reducefx #tutworld .tt-wring,body.reducefx #tutworld .tt-warrow,body.reducefx #tutspot .tt-arrow,body.reducefx #tutedge i{ animation:none; }
+body.tutdock .popwrap{ bottom:var(--tutdock,0px); } body.tutdock .pop{ max-height:calc(90vh - var(--tutdock,0px)); }

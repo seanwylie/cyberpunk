@@ -27,6 +27,7 @@ const krow=(keys:string,what:string,note='')=>`<div class="krow">${keys}<span cl
 export function settingsHtml(ui:UIx):string{
   const g=ui.g, st=g.save.settings, tab=S.tab; let c='';
   if(tab==='gameplay') c=head('Gameplay','How combat looks and what the game tells you about loot.')
+    +row('Replay tutorial','Walk through the first-run guide again: contracts, the locker, the vendor and your first run.',`<button type="button" class="btn" data-act="replaytut">Replay tutorial</button>`)
     +row('Gore','How much blood and debris combat leaves behind.',seg('gore',st.gore,[['off','Off'],['standard','Standard'],['bloody','Bloody']],'Gore'))
     +row('Upgrade recommendations','Show the Recommended panel and ▲ badges in the locker and vendor.',sw('rechide',st.recHidden!==true,'Upgrade recommendations'),{tag:'label',id:'s-rechide'})
     +row('Recommendations: nudge on town return','Pop a short toast about your best upgrade when you get back to town.',sw('recnudge',st.recNudge!==false,'Recommendations nudge on town return'),{tag:'label',id:'s-recnudge'})

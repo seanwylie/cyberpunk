@@ -18,6 +18,7 @@ export interface Save {
   settings:Settings; purchases:{ lockerBlocks:number; skins:string[]; equippedSkin:string|null }; lastClearDay:string|null;
   instance:InstanceState|null; story:StoryState|null; uidN:number; stats:{ runs:number; clears:number; kills:number };
   /** Set by the idkfa dev cheat; leaderboards/MMO must ignore flagged saves. */ cheated?:boolean; cheatLog?:string[];
+  /** First-run tutorial progress (src/tutorial.ts). */ tutorial?:import('./tutorial').TutState;
   /** Dungeons cleared at least once (content batch 1 unlock path). */ cleared?:Record<string,number>;
   /** Per-dungeon daily lockout days (annex keeps using lastClearDay for backward compatibility). */ lockouts?:Record<string,string>;
   /** Contracts: active progress by id, once-only completions, daily completion day by id. */ contracts?:{ active:Record<string,number>; done:string[]; doneDay:Record<string,string> };
