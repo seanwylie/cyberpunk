@@ -262,3 +262,19 @@ body.touch #modal button,body.touch #modal .btn,body.touch #modal .stab,body.tou
 body.touch #modal .btn,body.touch #modal .btn.sm,body.touch #modal .actrow .btn{ padding-top:6px; padding-bottom:6px; display:inline-flex; align-items:center; justify-content:center; }
 body.touch #modal label{ min-height:44px; display:flex; align-items:center; } body.touch #modal input[type=checkbox],body.touch #modal input[type=radio]{ width:22px; height:22px; }
 body.touch #modal input[type=range]{ min-height:44px; }
+/* ---- narrow / portrait phones: panels become full-width single-column bottom sheets ---- */
+@media (max-width:640px){
+  body.touch #modal{ align-items:flex-end; padding:env(safe-area-inset-top) 0 0; }
+  body.touch .win{ width:100vw; max-width:100vw; max-height:calc(var(--vh,100vh) - env(safe-area-inset-top) - 8px); border-radius:10px 10px 0 0; border-left:0; border-right:0; }
+  body.touch .win .body{ flex-direction:column; overflow-y:auto; overflow-x:hidden; min-height:0; } body.touch .win .col,body.touch .win .col.narrow{ flex:none; width:100%; min-width:0; }
+  body.touch .win.settingswin{ height:calc(var(--vh,100vh) - env(safe-area-inset-top) - 8px); max-height:none; }
+  body.touch .settingswin .body{ flex-direction:column!important; }
+  body.touch .stabs{ flex:0 0 auto; flex-direction:row; overflow-x:auto; overflow-y:hidden; border-right:0; border-bottom:1px solid var(--line); padding:4px; gap:4px; touch-action:pan-x; }
+  body.touch .stab{ flex:0 0 auto; white-space:nowrap; border-left-width:1px; }
+  body.touch .sbody{ padding:8px 10px 14px; min-height:0; }
+  body.touch .srow{ flex-direction:column; align-items:stretch; gap:4px; } body.touch .seg{ flex-wrap:wrap; } body.touch .segb{ flex:1 1 auto; }
+  body.touch .win footer.bvgf{ display:none; }
+  body.touch .win .body *{ min-width:0; overflow-wrap:anywhere; }
+  body.touch .shoprow,body.touch .actrow,body.touch .abdiff,body.touch .pickbar{ flex-wrap:wrap; }
+}
+@media (max-width:640px){ body.touch label.srow{ flex-direction:row; align-items:center; } body.touch .win .body button,body.touch .win .body .btn{ overflow-wrap:normal; white-space:nowrap; } }
