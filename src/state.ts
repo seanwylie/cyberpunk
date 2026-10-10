@@ -1,4 +1,4 @@
-import { Slot, ChipId, SLOTS, STARTING, PROGRESSION, ITEM_BY_ID, Mfr, INSTANCE_RETENTION_HOURS } from './config';
+import { chipFits, Slot, ChipId, SLOTS, STARTING, PROGRESSION, ITEM_BY_ID, Mfr, INSTANCE_RETENTION_HOURS } from './config';
 import type { StoryState } from './story';
 
 export interface Inst { uid:string; def:string; chips:ChipId[]; }
@@ -35,9 +35,13 @@ export function newSave():Save {
 }
 export function mkInst(s:{uidN:number}, def:string):Inst { if(!ITEM_BY_ID[def]) throw new Error('unknown item '+def); return { uid:'u'+(s.uidN++), def, chips:[] }; }
 export function load():Save {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw) as Save; if (s.version===1) { s.settings = { ...newSave().settings, ...s.settings }; s.lockouts=s.lockouts||{}; s.contracts=s.contracts||{active:{},done:[],doneDay:{}}; return s; } } } catch (e) { console.warn('load failed', e); }
+  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw) as Save; if (s.version===1) { s.settings = { ...newSave().settings, ...s.settings }; s.lockouts=s.lockouts||{}; s.contracts=s.contracts||{active:{},done:[],doneDay:{}}; const moved=sanitizeChips(s); (s as any)._chipMigrated=moved; return s; } } } catch (e) { console.warn('load failed', e); }
   return newSave();
 }
+/** Migration/enforcement: unsocket chips that do not fit their body part and return them to the locker stock. Returns number moved. */
+export function sanitizeChips(s:Save):number{ let n=0; const slotOf:Record<string,Slot>={}; for(const sl of SLOTS){ const u=s.installed[sl]; if(u) slotOf[u]=sl; }
+  for(const it of s.items){ const def=ITEM_BY_ID[it.def]; if(!def) continue; const sl=slotOf[it.uid]||def.slot; const keep:ChipId[]=[]; for(const c of it.chips){ if(chipFits(c,sl)) keep.push(c); else { s.lockerChips[c]=(s.lockerChips[c]||0)+1; n++; } } it.chips=keep; }
+  return n; }
 export function persist(s:Save) { try { localStorage.setItem(KEY, JSON.stringify(s, (k,v)=>k.startsWith('_')?undefined:v)); } catch(e){ console.warn('save failed',e); } }
 export function wipe() { localStorage.removeItem(KEY); }
 export function capacityUsed(s:Save){ return s.items.filter(i=>!Object.values(s.installed).includes(i.uid)).length + Object.values(s.lockerChips).filter(v=>v&&v>0).length; }

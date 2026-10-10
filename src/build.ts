@@ -1,4 +1,4 @@
-import { ABILITY_SLOT_ORDER, STARTER_ABILITIES, ABILITIES, AbilityId, BASE_STATS, BASE_STATS as B0, CHIPS, ITEM_BY_ID, MIX_PENALTY, REP_RANKS, SLOTS, Slot, Stats, WEAPONS, WEAPON_RARITY_MUL, WeaponDef, Mfr, ChipId, SLOT_SOCKETS, ItemDef, PROGRESSION } from './config';
+import { chipFits, ABILITY_SLOT_ORDER, STARTER_ABILITIES, ABILITIES, AbilityId, BASE_STATS, BASE_STATS as B0, CHIPS, ITEM_BY_ID, MIX_PENALTY, REP_RANKS, SLOTS, Slot, Stats, WEAPONS, WEAPON_RARITY_MUL, WeaponDef, Mfr, ChipId, SLOT_SOCKETS, ItemDef, PROGRESSION } from './config';
 import type { Inst, Save } from './state';
 
 export interface BuildResult { stats:Stats; abilities:AbilityId[]; passives:AbilityId[]; weapon:WeaponDef; caps:Set<string>; mix:{ mfrs:Mfr[]; coolingPenalty:number }; mods:{ ctrlDur:number; cloakDur:number; arc:number; burstLen:number }; conflicts:string[]; weaponMul:number; weaponMfr:Mfr|null; weaponName:string; extraAbilities:AbilityId[]; }
@@ -15,7 +15,7 @@ export function computeBuild(L:Layout, level:number, rep:Record<Mfr,number>, bro
   const add=(p:Partial<Stats>)=>{ for(const k of Object.keys(p) as (keyof Stats)[]) stats[k]+= p[k]!; };
   const defs:ItemDef[]=[];
   for(const sl of ABILITY_SLOT_ORDER){ const inst=L[sl]; if(!inst) continue; const d=ITEM_BY_ID[inst.def]; if(broken.includes(sl)) continue; defs.push(d);
-    add(d.stats); for(const c of inst.chips){ const cd=CHIPS[c]; add(cd.stats); if(cd.mod){ mods.ctrlDur+=cd.mod.ctrlDur||0; mods.cloakDur+=cd.mod.cloakDur||0; mods.arc+=cd.mod.arc||0; mods.burstLen+=cd.mod.burstLen||0; } }
+    add(d.stats); for(const c of inst.chips){ if(!chipFits(c,sl)) continue; const cd=CHIPS[c]; add(cd.stats); if(cd.mod){ mods.ctrlDur+=cd.mod.ctrlDur||0; mods.cloakDur+=cd.mod.cloakDur||0; mods.arc+=cd.mod.arc||0; mods.burstLen+=cd.mod.burstLen||0; } }
     for(const a of d.abilities||[]) (ABILITIES[a].id==='defib'?passives:abilities).push(a);
     (d.caps||[]).forEach(c=>caps.add(c));
     if(!d.id.startsWith('stock_')) mfrs.add(d.mfr);

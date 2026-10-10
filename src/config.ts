@@ -51,7 +51,7 @@ export const ABILITIES: Record<AbilityId,AbilityDef> = {
   defib:{ id:'defib', type:'defense', name:'Self-Defib', aim:'self', heat:0, cd:0, windup:0, range:0, desc:'Passive: revive in place once per down (hardware stays broken).' },
 };
 
-export type ChipId = 'speed'|'cutwide'|'bladepat'|'coolant'|'sustain'|'cloakdur'|'ctrldur'|'magnet'|'power'|'plating'|'ablative'|'fineedge'|'quench'|'overdrive'|'gridlink';
+export type ChipId = 'speed'|'cutwide'|'bladepat'|'coolant'|'sustain'|'cloakdur'|'ctrldur'|'magnet'|'power'|'plating'|'ablative'|'fineedge'|'quench'|'overdrive'|'gridlink'|'stride'|'servo';
 export interface ChipDef { id:ChipId; name:string; desc:string; stats:Partial<Stats>; mod?:{ ctrlDur?:number; cloakDur?:number; arc?:number; burstLen?:number }; rarity:Rarity; }
 export const CHIPS: Record<ChipId,ChipDef> = { ...EXTRA_CHIPS,
   speed:{ id:'speed', name:'Speed Chip', desc:'+15% attack speed. Rippers convert RPM into damage.', stats:{atkSpeed:.15}, rarity:'green' },
@@ -63,8 +63,22 @@ export const CHIPS: Record<ChipId,ChipDef> = { ...EXTRA_CHIPS,
   ctrldur:{ id:'ctrldur', name:'Control Uptime', desc:'+4s enemy control.', stats:{}, mod:{ctrlDur:4}, rarity:'blue' },
   magnet:{ id:'magnet', name:'Magnet Chip', desc:'+0.7 pickup radius.', stats:{pickup:.7}, rarity:'green' },
   power:{ id:'power', name:'Power Chip', desc:'+12% damage.', stats:{dmg:.12}, rarity:'green' },
+  stride:{ id:'stride', name:'Stride Chip', desc:'+6% move speed.', stats:{move:.06}, rarity:'green' },
+  servo:{ id:'servo', name:'Servo Chip', desc:'+10% move speed, +1 armor.', stats:{move:.1,armor:1}, rarity:'blue' },
   plating:{ id:'plating', name:'Plating Chip', desc:'+3 armor (flat damage reduction).', stats:{armor:3}, rarity:'green' },
 };
+
+// Chip/body-part compatibility (docs/CHIP_SLOT_RULES.md). Every chip declares the body-part groups it fits.
+export type SlotGroup = 'hand'|'arm'|'leg'|'foot'|'torso'|'face'|'brain';
+export const SLOT_GROUP: Record<Slot,SlotGroup> = { handL:'hand',handR:'hand',armL:'arm',armR:'arm',legL:'leg',legR:'leg',footL:'foot',footR:'foot',torso:'torso',face:'face',brain:'brain' };
+export const GROUP_LABEL: Record<SlotGroup,string> = { hand:'Hands',arm:'Arms',leg:'Legs',foot:'Feet',torso:'Torso',face:'Face',brain:'Brain' };
+export const CHIP_FITS: Record<ChipId,SlotGroup[]> = {
+  speed:['hand','arm'], fineedge:['hand','arm'], power:['hand','arm'], overdrive:['hand','arm'], cutwide:['hand','arm'], bladepat:['hand','arm'],
+  coolant:['torso','brain'], quench:['torso','brain'], sustain:['torso','leg'], ablative:['torso','leg'], plating:['torso','leg'],
+  cloakdur:['torso','face'], ctrldur:['brain','face'], gridlink:['brain','face'], magnet:['face','foot'], stride:['leg','foot'], servo:['leg','foot'] };
+export const chipFits=(c:ChipId,sl:Slot):boolean=>!!CHIP_FITS[c]?.includes(SLOT_GROUP[sl]);
+export const chipFitLabel=(c:ChipId):string=>CHIP_FITS[c].map(g=>GROUP_LABEL[g]).join(' / ');
+export const chipReason=(c:ChipId,sl:Slot):string=>chipFits(c,sl)?'':`${CHIPS[c].name} fits ${chipFitLabel(c)}, not ${SLOT_LABEL[sl]}.`;
 
 export type WeaponKind = 'fist'|'ripper'|'blade'|'slug'|'popper'|'autopistol'|'burst'|'shard'|'arc';
 export interface WeaponDef { kind:WeaponKind; dmg:number; rate:number; range:number; arc:number; heat:number; stationary?:boolean; proj?:boolean; /** ranged extras */ burst?:number; burstGap?:number; pellets?:number; spread?:number; pspeed?:number; plife?:number; chain?:number; chainR?:number; label?:string; }
@@ -179,11 +193,11 @@ export interface LootEntry { item?:string; chip?:ChipId; stim?:boolean; w:number
 export const LOOT = {
   ordinary: { chance:.16, credits:[2,9] as [number,number], pool:[
     {item:'pool_g_torso',w:6},{item:'pool_g_legs',w:6},{item:'pool_gr_face',w:5},{item:'hi_torso_green',w:3},{item:'hi_legs_l',w:3},{item:'hi_legs_r',w:3},
-    {chip:'speed',w:5},{chip:'coolant',w:5},{chip:'sustain',w:5},{chip:'magnet',w:4},{chip:'power',w:4},{chip:'plating',w:4},{stim:true,w:8},
+    {chip:'speed',w:5},{chip:'coolant',w:5},{chip:'sustain',w:5},{chip:'magnet',w:4},{chip:'stride',w:4},{chip:'power',w:4},{chip:'plating',w:4},{stim:true,w:8},
     {item:'mm_autopistol',w:1.2},{item:'pool_b_foot',w:1.2},{item:'pool_b_arm',w:1.2},{item:'pool_p_hand',w:.3},{item:'pool_o_legs',w:.05} ] as LootEntry[] },
   elite: { chance:1, credits:[30,60] as [number,number], pool:[
     {item:'hi_ripper_arm',w:2},{item:'ps_blade_arm',w:2},{item:'ps_veil_torso',w:2},{item:'ps_brain',w:2},{item:'ps_legs_l',w:2},{item:'hi_cutting_head',w:2},{item:'ps_needle_rifle',w:1.2},{item:'hi_shard_arm',w:1.2},{item:'mm_shocktack',w:1.2},
-    {chip:'cutwide',w:3},{chip:'bladepat',w:3},{chip:'cloakdur',w:3},{chip:'ctrldur',w:3},{chip:'speed',w:3},{item:'pool_p_hand',w:.8},{item:'pool_p_torso',w:.6},{item:'pool_o_legs',w:.1},{stim:true,w:3} ] as LootEntry[] },
+    {chip:'cutwide',w:3},{chip:'bladepat',w:3},{chip:'cloakdur',w:3},{chip:'ctrldur',w:3},{chip:'speed',w:3},{chip:'servo',w:2},{item:'pool_p_hand',w:.8},{item:'pool_p_torso',w:.6},{item:'pool_o_legs',w:.1},{stim:true,w:3} ] as LootEntry[] },
   boss: { chance:1, rolls:3, credits:[120,200] as [number,number], pool:[
     {item:'hi_torso_cool',w:3},{item:'mm_slug_hand',w:2},{item:'ps_needle_rifle',w:1},{item:'hi_shard_arm',w:1},{item:'mm_arm_l',w:2},{item:'mm_torso_defib',w:2},{item:'ps_blade_hand_r',w:2},{item:'ps_blade_hand_l',w:2},
     {chip:'cutwide',w:2},{chip:'ctrldur',w:2},{chip:'bladepat',w:2},{chip:'cloakdur',w:2},{chip:'coolant',w:2},{item:'pool_p_torso',w:1},{stim:true,w:3} ] as LootEntry[] },

@@ -184,3 +184,15 @@ body.touch .tbtn .tt{ display:none!important; } body.touch .tbtn{ width:38px; he
 #hint.show{ opacity:1; } #hint.peek{ opacity:1; } body.touch #helpbtn{ display:none; }
 #hinthelp{ position:absolute; right:0; top:calc(100% + 8px); }
 #hint{ pointer-events:none; }
+/* chip workspace: compatible tray, socket states, slot tags */
+.trayhead{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; } .trayhead h3{ margin:6px 0 2px; } .trayctl{ display:flex; gap:6px; } .trayctl .btn{ padding:2px 10px; min-height:0; }
+.chipstock.tray{ gap:6px; }
+.ctile{ position:relative; display:flex; flex-direction:column; align-items:center; justify-content:space-between; width:max(72px,calc(46px*var(--fs))); height:max(88px,calc(56px*var(--fs))); padding:3px 2px; border:1px solid #666; border-radius:3px; background:#2a2c2e; color:#e8e3d1; line-height:1.05; overflow:hidden; cursor:pointer; }
+.ctile .ticon{ flex:1; min-height:0; display:flex; align-items:center; } .ctile .ticon canvas{ max-height:100%; max-width:100%; }
+.ctile b{ font-size:max(var(--fmin),calc(9px*var(--fs))); white-space:nowrap; } .ctile .cnt{ position:absolute; top:1px; right:3px; font-style:normal; font-weight:700; font-size:max(var(--fmin),calc(9px*var(--fs))); }
+.ctile.sel{ outline:2px solid #ffd35a; background:#3a3626; } .ctile.dim{ opacity:.45; cursor:not-allowed; } .ctile:hover:not(.dim){ background:#34373a; }
+.stags{ display:flex; gap:2px; } .stag{ font-style:normal; font-size:max(var(--fmin),calc(7px*var(--fs))); padding:0 2px; border:1px solid #555; border-radius:2px; color:#999; line-height:1.15; } .stag.on{ color:#111; background:#ffd35a; border-color:#ffd35a; }
+.sock.empty.ready{ border-color:#ffd35a; animation:sockpulse 1s infinite alternate; } .sock.over{ background:#3a3626; border-color:#ffd35a; } @keyframes sockpulse{ from{ box-shadow:0 0 0 0 #ffd35a66; } to{ box-shadow:0 0 6px 2px #ffd35a99; } }
+.sockinfo{ margin:0 0 2px; } .mut.empty{ padding:8px 0; }
+.slot.tile .sc{ position:absolute; top:1px; right:3px; font-style:normal; font-size:max(var(--fmin),calc(8px*var(--fs))); color:#cfc9b4; } .slot.tile{ position:relative; }
+.hoverd{ min-height:28px; border-bottom:1px solid #444; padding-bottom:4px; }

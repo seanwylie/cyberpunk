@@ -2,7 +2,7 @@ import { Game } from './sim';
 import { applyUiScale } from './config';
 import { specOf, iconCanvas } from './lootart';
 import { AudioSys } from './audio';
-import { ABILITIES, ABILITY_TYPE_COLOR, ABILITY_TYPE_LABEL, CHIPS, ChipId, COMBAT, ENEMIES, INSTALL_COST, ITEM_BY_ID, ITEMS, MFR, RARITY_COLOR, REP_DISCOUNT_PER_RANK, SELL_VALUE, SLOT_LABEL, SLOT_SOCKETS, SLOTS, Slot, Stats, REPAIR_COST, RARITIES, STARTING, PROGRESSION, ItemDef, WEAPONS, WEAPON_RARITY_MUL } from './config';
+import { chipFits, chipFitLabel, chipReason, CHIP_FITS, SLOT_GROUP, GROUP_LABEL, ABILITIES, ABILITY_TYPE_COLOR, ABILITY_TYPE_LABEL, CHIPS, ChipId, COMBAT, ENEMIES, INSTALL_COST, ITEM_BY_ID, ITEMS, MFR, RARITY_COLOR, REP_DISCOUNT_PER_RANK, SELL_VALUE, SLOT_LABEL, SLOT_SOCKETS, SLOTS, Slot, Stats, REPAIR_COST, RARITIES, STARTING, PROGRESSION, ItemDef, WEAPONS, WEAPON_RARITY_MUL } from './config';
 import { Layout, cloneLayout, computeBuild, hardConflicts, installedLayout, repRank, wouldConflict } from './build';
 import { Inst, capacityUsed, lockerItems, mkInst, persist, wipe, todayStr, newSave } from './state';
 import { makeProvider, runStoryStep, newStory, MockProvider, record } from './story';
@@ -90,6 +90,29 @@ export class UI {
   close(){ this.modal=null; this.confirm=null; if(this.g.mode==='town'||true) this.draft=null; this.render(); }
   toggleLive(){ if(this.g.mode!=='run') return; this.liveOpen=!this.liveOpen; this.renderLive(); }
   esc(){ if(this.modal){ this.close(); } else if(this.liveOpen){ this.liveOpen=false; this.renderLive(); } else this.g.clearTarget(); }
+  /** Socket a chip into the selected body part of the draft (validates fit, ownership, capacity). */
+  socketChip(c:ChipId):boolean{ const s=this.g.save; const it=this.draft?.[this.sel]; if(!it) return false; const sl=this.sel;
+    if(!chipFits(c,sl)){ this.g.toast(chipReason(c,sl)); return false; } if(it.chips.length>=SLOT_SOCKETS[sl]){ this.g.toast('No free sockets on '+SLOT_LABEL[sl]+'.'); return false; }
+    const inst=installedLayout(s); const owned=(s.lockerChips[c]||0)+Object.values(inst).reduce((x,i)=>x+(i?.chips.filter(y=>y===c).length||0),0); const used=Object.values(this.draft!).reduce((x,i)=>x+(i?.chips.filter(y=>y===c).length||0),0);
+    if(owned-used<=0){ this.g.toast('No '+CHIPS[c].name+' left in stock.'); return false; }
+    it.chips.push(c); const left=owned-used-1; if(left<=0||it.chips.length>=SLOT_SOCKETS[sl]) this.chipSel=null; this.render(); return true; }
+  /** Fill empty sockets with the best compatible chips in stock (rarity first, then by name). */
+  bestFit(){ const s=this.g.save; const it=this.draft?.[this.sel]; if(!it) return; const inst=installedLayout(s); const sl=this.sel; let n=0;
+    const av=(c:ChipId)=>(s.lockerChips[c]||0)+Object.values(inst).reduce((x,i)=>x+(i?.chips.filter(y=>y===c).length||0),0)-Object.values(this.draft!).reduce((x,i)=>x+(i?.chips.filter(y=>y===c).length||0),0);
+    const list=(Object.keys(CHIPS) as ChipId[]).filter(c=>chipFits(c,sl)).sort((a,b)=>RARITIES.indexOf(CHIPS[b].rarity)-RARITIES.indexOf(CHIPS[a].rarity)||CHIPS[a].name.localeCompare(CHIPS[b].name));
+    for(const c of list){ while(it.chips.length<SLOT_SOCKETS[sl]&&av(c)>0){ it.chips.push(c); n++; } } this.chipSel=null; this.render(); this.g.toast(n?`Best fit: added ${n} chip${n>1?'s':''}.`:'No compatible chips in stock.'); }
+  /** Live delta preview while hovering a chip tile (does not modify the draft). */
+  hoverDelta(c:ChipId|null){ const el=document.getElementById('hoverdelta'); if(!el||!this.draft) return; const s=this.g.save; const sl=this.sel; const it=this.draft[sl];
+    if(!c){ el.innerHTML='<span class="mut">Hover a chip to preview its effect</span>'; return; }
+    if(!it||!chipFits(c,sl)){ el.innerHTML=`<span class="bad">${esc(chipReason(c,sl))}</span>`; return; }
+    if(it.chips.length>=SLOT_SOCKETS[sl]){ el.innerHTML='<span class="mut">Sockets full: remove a chip first</span>'; return; }
+    const L2=cloneLayout(this.draft); L2[sl]!.chips.push(c); const a=computeBuild(this.draft,s.level,s.rep), b=computeBuild(L2,s.level,s.rep);
+    const ks=(Object.keys(STAT_L) as (keyof Stats)[]).filter(k=>Math.abs((b.stats[k] as number)-(a.stats[k] as number))>1e-6);
+    const mods=(Object.keys(b.mods) as (keyof typeof b.mods)[]).filter(k=>Math.abs(b.mods[k]-a.mods[k])>1e-6);
+    el.innerHTML='<b>+ '+esc(CHIPS[c].name)+':</b> '+(ks.map(k=>{ const d=(b.stats[k] as number)-(a.stats[k] as number); return `<span class="pchip ${d>0?'up':'dn'}">${STAT_L[k]} <b>${fmtN(b.stats[k] as number)}</b> <i>${d>0?'▲':'▼'}${fmtN(Math.abs(d))}</i></span>`; }).join('')+mods.map(k=>`<span class="pchip up">${esc(CHIPS[c].desc)}</span>`).slice(0,1).join('')||'<span class="mut">no stat change</span>'); }
+  bindChipDnD(){ const m=$('modal'); m.querySelectorAll<HTMLElement>('.ctile[draggable=true]').forEach(t=>{ t.addEventListener('dragstart',e=>{ e.dataTransfer?.setData('text/plain',t.dataset.chip!); e.dataTransfer!.effectAllowed='copy'; this.chipSel=t.dataset.chip as ChipId; }); });
+    m.querySelectorAll<HTMLElement>('.sock[data-drop]').forEach(k=>{ k.addEventListener('dragover',e=>{ e.preventDefault(); k.classList.add('over'); }); k.addEventListener('dragleave',()=>k.classList.remove('over')); k.addEventListener('drop',e=>{ e.preventDefault(); const c=(e.dataTransfer?.getData('text/plain')||this.chipSel) as ChipId; if(c&&CHIPS[c]) this.socketChip(c); }); });
+    m.querySelectorAll<HTMLElement>('.ctile').forEach(t=>{ t.addEventListener('pointerenter',e=>{ if(e.pointerType==='mouse'||e.pointerType==='pen') this.hoverDelta(t.dataset.chip as ChipId); }); t.addEventListener('pointerleave',()=>this.hoverDelta(null)); t.addEventListener('focus',()=>this.hoverDelta(t.dataset.chip as ChipId)); }); }
   resetDraft(){ this.draft=cloneLayout(installedLayout(this.g.save)); }
 
   // ================= HUD =================
@@ -148,7 +171,7 @@ export class UI {
     let h=`<h4>Pack (live: combat continues) ${g.carriedCount()}/${COMBAT.missionSlots}</h4><div class="mut">Hardware and chips are locked mid-run. Compare, then return to town to install. Items stay on the ground until the instance expires.</div>`;
     for(const it of c.items){ const d=ITEM_BY_ID[it.def]; const cur=L[d.slot]?ITEM_BY_ID[L[d.slot]!.def]:null; const bl=computeBuild(this.layoutWith(L,d.slot,it),g.save.level,g.save.rep).stats, b0=g.build.stats;
       h+=`<div class="lp-item" style="border-color:${rc(d.rarity)}"><b style="color:${rc(d.rarity)}">${esc(d.name)}</b> <span class="tag">${SLOT_LABEL[d.slot]}</span><small>${MFR[d.mfr].short} · req Lv ${d.lvl}${d.lvl>g.save.level?' <span class="bad">(too high)</span>':''}${d.abilities?' · '+abChips(d.abilities):''}</small><small>vs ${cur?esc(cur.name):'empty'}: HP ${diff(b0.maxHp,bl.maxHp,n=>n.toFixed(0))} DMG ${diff(b0.dmg,bl.dmg)} ATK ${diff(b0.atkSpeed,bl.atkSpeed)} COOL ${diff(b0.cooling,bl.cooling)}</small></div>`; }
-    for(const [k,v] of Object.entries(c.chips)) if(v) h+=`<div class="lp-item"><b>${CHIPS[k as ChipId].name}</b> ×${v}<small>${CHIPS[k as ChipId].desc}</small></div>`;
+    for(const [k,v] of Object.entries(c.chips)) if(v) h+=`<div class="lp-item"><b>${CHIPS[k as ChipId].name}</b> ×${v} <span class="tag">${chipFitLabel(k as ChipId)}</span><small>${CHIPS[k as ChipId].desc}</small></div>`;
     if(c.stims) h+=`<div class="lp-item"><b>Stim</b> ×${c.stims}</div>`; if(!c.items.length&&!Object.keys(c.chips).length&&!c.stims) h+='<div class="mut" style="margin-top:6px">Empty. Loot is picked up by proximity.</div>';
     el.innerHTML=h; }
   layoutWith(L:Layout,slot:Slot,inst:Inst):Layout{ const o=cloneLayout(L); o[slot]={...inst,chips:[]}; return o; }
@@ -157,7 +180,7 @@ export class UI {
   render(){ const m=$('modal'); if(!this.modal){ m.style.display='none'; m.innerHTML=''; return; } m.style.display='flex'; const g=this.g;
     const body=this.modal==='locker'?this.locker():this.modal==='vendor'?this.vendor():this.modal==='gate'?this.gate():this.modal==='fixer'?this.fixer():this.modal==='contacts'?this.contacts():this.modal==='store'?this.store():this.modal==='settings'?this.settings():this.modal==='dev'?this.dev():this.modal==='summary'?this.summary():'';
     const titles:Record<string,string>={locker:'Body workspace & locker',vendor:'Vendor & repair',gate:'Dungeon select',contacts:'Contacts & contracts',fixer:'Fixer: Odalys Vane',store:'Outfitter (simulated purchases)',settings:'Settings',dev:'DEV tools (prototype only)',summary:'Run summary'};
-    m.innerHTML=`<div class="win"><header><span>${titles[this.modal]||''}</span><span><button data-act="close">Close</button></span></header><div class="body">${body}</div><footer class="bvgf">${BVG}</footer></div>`; void g; this.decorateTiles(); this.decorateChips(); this.bindTips(); }
+    m.innerHTML=`<div class="win"><header><span>${titles[this.modal]||''}</span><span><button data-act="close">Close</button></span></header><div class="body">${body}</div><footer class="bvgf">${BVG}</footer></div>`; void g; this.decorateTiles(); this.decorateChips(); this.bindTips(); this.bindChipDnD(); }
   decorateTiles(){ document.querySelectorAll<HTMLElement>('#modal [data-def]').forEach(b=>{ const ic=b.querySelector('.ticon'); if(!ic||!b.dataset.def) return; try{ const sp=specOf({id:0,kind:'item',inst:{def:b.dataset.def},amount:1}); const src=iconCanvas(sp); const cv=document.createElement('canvas'); cv.width=src.width; cv.height=src.height; cv.getContext('2d')!.drawImage(src,0,0); ic.appendChild(cv); }catch{} }); }
   decorateChips(){ document.querySelectorAll<HTMLElement>('#modal [data-chip]').forEach(b=>{ const ic=b.querySelector('.ticon'); const id=b.dataset.chip; if(!ic||!id||!(CHIPS as any)[id]) return; try{ const src=iconCanvas(specOf({id:0,kind:'chip',chip:id,amount:1})); const cv=document.createElement('canvas'); cv.width=src.width; cv.height=src.height; cv.getContext('2d')!.drawImage(src,0,0); ic.appendChild(cv); }catch{} }); }
   /** hover (mouse) or long-press (touch) tooltips for any element carrying data-tip html */
@@ -173,19 +196,27 @@ export class UI {
     const slotBtn=(sl:Slot)=>{ const it=D[sl]; const d=it?ITEM_BY_ID[it.def]:null; const changed=JSON.stringify(it?.chips)!==JSON.stringify(inst[sl]?.chips); const n=SLOT_SOCKETS[sl];
       const pips=Array.from({length:n},(_,i)=>{ const ch=it?.chips[i]; return ch?`<i class="pip full" style="--pc:${RARITY_COLOR[CHIPS[ch].rarity]}"></i>`:'<i class="pip"></i>'; }).join('');
       const tip=d?`<b style="color:${rc(d.rarity)}">${esc(d.name)}</b><br>${esc(SLOT_LABEL[sl])} · ${d.rarity} · ${esc(MFR[d.mfr].short)} · req Lv ${d.lvl}<br>`+(it!.chips.length?it!.chips.map(c=>'▪ '+esc(CHIPS[c].name)+' <span class="mut">'+esc(CHIPS[c].desc)+'</span>').join('<br>'):'<span class="mut">No chips</span>')+`<br><span class="mut">Chips ${it!.chips.length}/${n}${changed?' · staged':''}</span>`:`<b>${esc(SLOT_LABEL[sl])}</b><br><span class="mut">Empty · ${n} chip socket${n===1?'':'s'}</span>`;
-      return `<button class="slot tile ${this.sel===sl?'sel':''} ${changed?'staged':''}" data-act="sel" data-slot="${sl}" ${d?`data-def="${d.id}"`:''} data-tip="${esc(tip)}" aria-label="${esc(SLOT_LABEL[sl]+': '+(d?d.name:'empty'))}" style="border-color:${d?rc(d.rarity):'#555'}"><b>${SHORT[sl]}</b><span class="ticon">${d?'':'<span class="tempty">—</span>'}</span><span class="pips">${pips}</span>${d?`<span class="mf" style="background:${MFR[d.mfr].accent}"></span>`:''}</button>`; };
+      return `<button class="slot tile ${this.sel===sl?'sel':''} ${changed?'staged':''}" data-act="sel" data-slot="${sl}" ${d?`data-def="${d.id}"`:''} data-tip="${esc(tip)}" aria-label="${esc(SLOT_LABEL[sl]+': '+(d?d.name:'empty'))}" style="border-color:${d?rc(d.rarity):'#555'}"><b>${SHORT[sl]}</b><span class="ticon">${d?'':'<span class="tempty">—</span>'}</span><span class="pips">${pips}</span><i class="sc" title="Sockets used / total">${it?it.chips.length:0}/${n}</i>${d?`<span class="mf" style="background:${MFR[d.mfr].accent}"></span>`:''}</button>`; };
     const sp='<div class="sp"></div>';
     const grid=`<div class="body-grid">${sp}${slotBtn('face')}${sp}${slotBtn('handL')}${slotBtn('brain')}${slotBtn('handR')}${slotBtn('armL')}${slotBtn('torso')}${slotBtn('armR')}${slotBtn('legL')}${sp}${slotBtn('legR')}${slotBtn('footL')}${sp}${slotBtn('footR')}</div>`;
     const sl=this.sel; const di=D[sl]; const dd=di?ITEM_BY_ID[di.def]:null;
     const owned=(c:ChipId)=>(s.lockerChips[c]||0)+Object.values(inst).reduce((a,i)=>a+(i?.chips.filter(x=>x===c).length||0),0); const used=(c:ChipId)=>Object.values(D).reduce((a,i)=>a+(i?.chips.filter(x=>x===c).length||0),0);
     const chipShort=(c:ChipId)=>CHIPS[c].name.replace(/ Chip$/,'');
     const chipTip=(c:ChipId)=>esc('<b>'+esc(CHIPS[c].name)+'</b><br><span class="mut">'+esc(CHIPS[c].desc)+'</span>');
-    // (e) sockets: small icon slots (empty = dashed +)
-    let socks=''; if(di){ for(let i=0;i<SLOT_SOCKETS[sl];i++){ const ch=di.chips[i]; socks+=ch?`<button class="sock full" data-act="unsock" data-i="${i}" data-chip="${ch}" data-tip="${chipTip(ch)}<br>Tap to remove" aria-label="${esc(CHIPS[ch].name)} (remove)"><span class="ticon"></span><b>${esc(chipShort(ch))}</b></button>`:`<button class="sock" data-act="sock" data-i="${i}" data-tip="${esc('<b>Empty socket</b><br>Tap to add a chip')}" aria-label="Empty socket (add chip)"><span class="plus">+</span></button>`; } }
-    const chipPick=(this as any).chipPick===true; let chipList=''; if(chipPick){ chipList='<div class="chipstock pick">'+(Object.keys(CHIPS) as ChipId[]).map(c=>{ const av=owned(c)-used(c); return `<button class="sock ${av<=0?'dim':''}" data-act="addchip" data-chip="${c}" data-tip="${chipTip(c)}" ${av<=0?'aria-disabled="true"':''}><span class="ticon"></span><b>${esc(chipShort(c))}</b><i class="cnt">×${av}</i></button>`; }).join('')+'</div>'; }
-    // (d) chips in stock: icon chips with counts
-    const stockChips=(Object.keys(CHIPS) as ChipId[]).filter(c=>(s.lockerChips[c]||0)>0);
-    const chipStock=stockChips.length?`<div class="chipstock">${stockChips.map(c=>`<span class="cchip" data-chip="${c}" data-tip="${chipTip(c)}"><span class="ticon"></span><b>${esc(chipShort(c))}</b><i class="cnt">×${s.lockerChips[c]}</i></span>`).join('')}</div>`:'<div class="mut">No chips in stock</div>';
+    // (e) sockets: icon slots for the selected body part (empty = dashed +). Click chip then socket, drag & drop, or one click to remove.
+    const csel=this.chipSel&&chipFits(this.chipSel,sl)?this.chipSel:null; const avail=(c:ChipId)=>owned(c)-used(c);
+    const GL:Record<string,string>={hand:'HD',arm:'AR',leg:'LG',foot:'FT',torso:'TR',face:'FC',brain:'BR'};
+    const stags=(c:ChipId)=>'<span class="stags">'+CHIP_FITS[c].map(g=>`<i class="stag ${g===SLOT_GROUP[sl]?'on':''}" title="${esc(GROUP_LABEL[g])}">${GL[g]}</i>`).join('')+'</span>';
+    let socks=''; if(di){ for(let i=0;i<SLOT_SOCKETS[sl];i++){ const ch=di.chips[i]; socks+=ch?`<button class="sock full" data-act="unsock" data-i="${i}" data-chip="${ch}" data-tip="${chipTip(ch)}<br>Click to remove" aria-label="${esc(CHIPS[ch].name)} (remove)" style="border-color:${RARITY_COLOR[CHIPS[ch].rarity]}"><span class="ticon"></span><b>${esc(chipShort(ch))}</b></button>`:`<button class="sock empty ${csel?'ready':''}" data-act="sock" data-i="${i}" data-drop="1" data-tip="${esc(csel?'<b>Empty socket</b><br>Click to socket '+esc(CHIPS[csel].name):'<b>Empty socket</b><br>Pick a chip below, then click here (or drag it here)')}" aria-label="Empty socket"><span class="plus">+</span></button>`; } }
+    const byRar=(a:ChipId,b:ChipId)=>RARITIES.indexOf(CHIPS[b].rarity)-RARITIES.indexOf(CHIPS[a].rarity)||CHIPS[a].name.localeCompare(CHIPS[b].name);
+    const allC=Object.keys(CHIPS) as ChipId[];
+    const fitList=allC.filter(c=>chipFits(c,sl)&&avail(c)>0).sort(byRar); const unfitList=this.chipShowAll?allC.filter(c=>!chipFits(c,sl)&&avail(c)>0).sort(byRar):[];
+    const tile=(c:ChipId,ok:boolean)=>`<button class="ctile ${ok?'':'dim'} ${csel===c?'sel':''}" ${ok?`data-act="pickchip" draggable="true"`:`data-act="noop" aria-disabled="true"`} data-chip="${c}" data-tip="${esc('<b style="color:'+RARITY_COLOR[CHIPS[c].rarity]+'">'+CHIPS[c].name+'</b><br>'+CHIPS[c].desc+'<br><span class="mut">Fits: '+chipFitLabel(c)+'</span>'+(ok?'':'<br><span class="bad">'+chipReason(c,sl)+'</span>'))}" style="border-color:${RARITY_COLOR[CHIPS[c].rarity]}"><span class="ticon"></span><b>${esc(chipShort(c))}</b><i class="cnt">×${avail(c)}</i>${stags(c)}</button>`;
+    const free=di?SLOT_SOCKETS[sl]-di.chips.length:0;
+    const chipStock=`<div class="trayhead"><h3>Compatible chips <span class="mut">for ${esc(SLOT_LABEL[sl])}</span></h3><span class="trayctl"><button class="btn" data-act="bestfit" ${free>0&&fitList.length?'':'disabled'} data-tip="${esc('Fill empty sockets with the best compatible chips in stock')}">Best fit</button><button class="btn" data-act="clearchips" ${di&&di.chips.length?'':'disabled'}>Clear</button><button class="btn ${this.chipShowAll?'primary':''}" data-act="chipshowall" aria-pressed="${this.chipShowAll}">Show all</button></span></div>`
+      +(fitList.length?`<div class="chipstock tray">${fitList.map(c=>tile(c,true)).join('')}</div>`:'<div class="mut empty">No compatible chips in stock</div>')
+      +(unfitList.length?`<div class="mut" style="margin-top:4px">Does not fit ${esc(SLOT_LABEL[sl])}:</div><div class="chipstock tray">${unfitList.map(c=>tile(c,false)).join('')}</div>`:'');
+    const chipList='';
     // (a) storage: uniform icon tiles + tabs + search + one action bar
     const TABS:[string,string,(d:ItemDef)=>boolean][]=[['all','All',()=>true],['face','Face',d=>d.slot==='face'],['brain','Brain',d=>d.slot==='brain'],['torso','Torso',d=>d.slot==='torso'],['arm','Arms',d=>d.slot==='armL'||d.slot==='armR'],['hand','Hands',d=>d.slot==='handL'||d.slot==='handR'],['leg','Legs',d=>d.slot==='legL'||d.slot==='legR'],['foot','Feet',d=>d.slot==='footL'||d.slot==='footR']];
     const tab=this.stTab; const tf=TABS.find(t=>t[0]===tab)?.[2]||(()=>true);
@@ -215,14 +246,14 @@ export class UI {
       <div class="hdrrow ${dirty?'dirty':''}">${hasCarry?`<span class="pack">Pack ${carried!.items.length}▪ ${Object.values(carried!.chips).reduce((a,b)=>a+(b||0),0)}◈ ${carried!.stims}✚ ${carried!.credits}c</span><button class="btn" data-act="unload">Unload</button><i class="sep"></i>`:''}<b>${dirty?'DRAFT (unapplied)':'No staged changes'}</b>${dirty?`<span class="warnb" data-tip="${esc('Leaving the workspace or entering a mission discards the draft.')}" tabindex="0">⚠</span>`:''}<button class="btn primary" data-act="apply" ${dirty?'':'disabled'}>Apply</button><button class="btn" data-act="discard" ${dirty?'':'disabled'}>Discard</button><span class="help" data-tip="${help}" tabindex="0">?</span></div>
       ${conf}
       <h3 class="selhead" ${dd?`data-tip="${esc('<b>'+esc(dd.name)+'</b><br>'+esc(MFR[dd.mfr].name)+' · req Lv '+dd.lvl+(dd.weapon?'<br>Weapon: '+esc(WEAPONS[dd.weapon]?.label||dd.weapon)+' ('+WEAPONS[dd.weapon].dmg+' dmg ×'+WEAPON_RARITY_MUL[dd.rarity]+', range '+WEAPONS[dd.weapon].range+', heat '+WEAPONS[dd.weapon].heat+')':'')+(dd.caps?'<br>Capability: '+dd.caps.join(', '):'')+(dd.blurb?'<br><span class="mut">'+esc(dd.blurb)+'</span>':''))}"`:''}>${SLOT_LABEL[sl]}: ${dd?esc(dd.name):'empty'} ${dd?`<span class="tag" style="border-color:${rc(dd.rarity)}">${dd.rarity}</span>`:''}${dd?' <span class="mut hov">ⓘ</span>':''}</h3>
-      <div class="sockrow">${socks}</div>${chipList}
-      <h3>Chips in stock</h3>${chipStock}
+      <div class="sockrow">${socks}</div><div class="sockinfo mut">${di?di.chips.length+'/'+SLOT_SOCKETS[sl]+' sockets · accepts '+Object.entries(CHIP_FITS).filter(([c])=>chipFits(c as ChipId,sl)).length+' chip types':''}</div>
+      ${chipStock}
       <h3>Storage ${capacityUsed(s)}/${cap}</h3>
       <div class="sttabs">${TABS.map(t=>`<button class="btn tabb ${tab===t[0]?'primary':''}" data-act="sttab" data-tab="${t[0]}">${t[1]}</button>`).join('')}</div>
       <input type="search" placeholder="Search storage (name, slot)…" value="${esc(this.search)}" data-in="search" />
       <div class="stgrid">${tiles}</div>${actbar}
       <div class="actrow">${(()=>{ const gl=this.greyDisposable(); return `<button class="btn" data-act="sellgrey" ${gl.length?'':'disabled'}>Dispose grey (${gl.length})</button>`; })()}${this.repairBtn(true)}</div></div>
-    <div class="col previewcol"><h3>Preview</h3>${stripRight}</div>`;
+    <div class="col previewcol"><h3>Preview</h3><div class="strip hoverd" id="hoverdelta"><span class="mut">Hover a chip to preview its effect</span></div>${stripRight}</div>`;
   }
   confirmHtml():string{ const c=this.confirm; if(c.type!=='replace') return ''; const SKS:(keyof Stats)[]=['maxHp','dmg','atkSpeed','cooling','move','armor','regen','pickup']; const broke=c.cost>this.g.save.credits;
     const rows=SKS.map(k=>{ const a=c.before[k] as number, b=c.after[k] as number, d=b-a; return `<div class="crow"><span>${STAT_L[k]}</span><span>${fmtN(a)}</span><i class="${d>0?'up':d<0?'dn':'mut'}">${d>0?'▲':d<0?'▼':'='}</i><span class="${d>0?'up':d<0?'dn':''}">${fmtN(b)}</span></div>`; }).join('');
@@ -235,7 +266,7 @@ export class UI {
     this.confirm={type:'replace',uid,cost,disc,lines,block,before:b0.stats,after:b1.stats,lostIds:b0.abilities.filter(a=>!b1.abilities.includes(a)),gainedIds:b1.abilities.filter(a=>!b0.abilities.includes(a)),text:`${od?od.name:'empty slot'} → ${nd.name} (${nd.rarity})`}; }
   doReplace(){ const g=this.g,s=g.save; const c=this.confirm; const inst=s.items.find(i=>i.uid===c.uid)!; const nd=ITEM_BY_ID[inst.def]; if(c.block||s.credits<c.cost) return; const old=installedLayout(s)[nd.slot]; s.credits-=c.cost; if(old){ for(const ch of old.chips) s.lockerChips[ch]=(s.lockerChips[ch]||0)+1; old.chips=[]; } s.installed[nd.slot]=inst.uid; persist(s); g.recompute(); this.confirm=null; this.resetDraft(); this.msg='Installed '+nd.name; g.toast('Installed '+nd.name+' ('+c.cost+'c)'); }
   applyDraft(){ const g=this.g,s=g.save; const D=this.draft!; const inst=installedLayout(s); const owned:Record<string,number>={}; for(const c of Object.keys(CHIPS)) owned[c]=(s.lockerChips[c as ChipId]||0)+Object.values(inst).reduce((a,i)=>a+(i?.chips.filter(x=>x===c).length||0),0);
-    const used:Record<string,number>={}; for(const sl of SLOTS){ const it=D[sl]; if(!it) continue; if(it.chips.length>SLOT_SOCKETS[sl]){ g.toast('Over socket capacity on '+SLOT_LABEL[sl]); return; } for(const c of it.chips) used[c]=(used[c]||0)+1; }
+    const used:Record<string,number>={}; for(const sl of SLOTS){ const it=D[sl]; if(!it) continue; if(it.chips.length>SLOT_SOCKETS[sl]){ g.toast('Over socket capacity on '+SLOT_LABEL[sl]); return; } for(const c of it.chips){ if(!chipFits(c,sl)){ g.toast(chipReason(c,sl)); return; } used[c]=(used[c]||0)+1; } }
     for(const c in used) if(used[c]>owned[c]){ g.toast('Not enough '+CHIPS[c as ChipId].name+' chips'); return; }
     for(const sl of SLOTS){ const it=D[sl]; const real=inst[sl]; if(it&&real) real.chips=[...it.chips]; } for(const c in owned) s.lockerChips[c as ChipId]=owned[c]-(used[c]||0); persist(s); g.recompute(); this.resetDraft(); g.toast('Chip configuration applied.'); }
   /** Unequipped grey items (excludes installed; keeps one Standard Issue per slot when a non-stock part is installed so you can always revert). */
@@ -245,7 +276,7 @@ export class UI {
   repairAll(){ const g=this.g,s=g.save; if(s.repairBill<=0){ g.toast('Nothing needs repair.'); return; } if(s.credits<=0){ g.toast('Not enough credits to repair.'); return; } const pay=Math.min(s.credits,s.repairBill); s.credits-=pay; s.repairBill-=pay; persist(s); g.toast(s.repairBill>0?`Partial repair: paid ${pay}c, ${s.repairBill}c still owed.`:`Repaired everything for ${pay}c`); }
   repairBtn(compact=false):string{ const s=this.g.save; const b=s.repairBill; const why=b<=0?'No repairs needed':s.credits<=0?'No credits':''; const lbl=b<=0?'Repair all':s.credits>=b?`Repair all (${b}c)`:`Repair what I can (${s.credits}c of ${b}c)`; return `<button class="btn primary" data-act="repairall" title="${why}" ${why?'disabled':''}>${lbl}</button>${why&&!compact?`<span class="mut stat">${why}</span>`:''}`; }
   // ----- Vendor -----
-  shopSlot:Slot='armR'; stTab='all'; pickUid='';
+  shopSlot:Slot='armR'; chipSel:ChipId|null=null; chipShowAll=false; stTab='all'; pickUid='';
   /** hardware for sale: grey/green/blue only (purple/orange are loot-only). */
   static BUY:Record<string,number>={ grey:15, green:60, blue:300 };
   shopList(sl:Slot){ return ITEMS.filter(d=>d.slot===sl&&!d.id.startsWith('stock_')&&UI.BUY[d.rarity]!==undefined).sort((a,b)=>a.lvl-b.lvl||UI.BUY[a.rarity]-UI.BUY[b.rarity]||a.name.localeCompare(b.name)); }
@@ -357,13 +388,17 @@ export class UI {
   click(e:MouseEvent){ const el=(e.target as HTMLElement).closest('[data-act]') as HTMLElement|null; if(!el) return; const a=el.dataset.act!; const g=this.g, s=g.save; this.audio.resume();
     switch(a){
       case 'close': this.close(); return;
-      case 'sel': this.sel=el.dataset.slot as Slot; (this as any).chipPick=false; this.render(); return;
+      case 'sel': this.sel=el.dataset.slot as Slot; this.chipSel=null; this.render(); return;
       case 'pick': this.pickUid=el.dataset.uid!; this.render(); return;
       case 'sttab': this.stTab=el.dataset.tab!; this.render(); return;
       case 'gosel': this.sel=el.dataset.slot as Slot; this.render(); return;
-      case 'sock': (this as any).chipPick=true; (this as any).sockI=+el.dataset.i!; this.render(); return;
+      case 'sock': if(this.chipSel){ this.socketChip(this.chipSel); } else this.g.toast('Pick a compatible chip below, then click a socket.'); return;
       case 'unsock': { const it=this.draft![this.sel]; if(it) it.chips.splice(+el.dataset.i!,1); this.render(); return; }
-      case 'addchip': { const it=this.draft![this.sel]; const c=el.dataset.chip as ChipId; if(!it) return; const inst=installedLayout(s); const owned=(s.lockerChips[c]||0)+Object.values(inst).reduce((x,i)=>x+(i?.chips.filter(y=>y===c).length||0),0); const used=Object.values(this.draft!).reduce((x,i)=>x+(i?.chips.filter(y=>y===c).length||0),0); if(owned-used<=0||it.chips.length>=SLOT_SOCKETS[this.sel]) return; it.chips.push(c); (this as any).chipPick=false; this.render(); return; }
+      case 'pickchip': { const c=el.dataset.chip as ChipId; this.chipSel=this.chipSel===c?null:c; this.render(); return; }
+      case 'noop': return;
+      case 'chipshowall': this.chipShowAll=!this.chipShowAll; this.render(); return;
+      case 'clearchips': { const it=this.draft![this.sel]; if(it) it.chips=[]; this.render(); return; }
+      case 'bestfit': this.bestFit(); return;
       case 'apply': this.applyDraft(); this.render(); return; case 'discard': this.resetDraft(); this.render(); return;
       case 'replace': this.prepareReplace(el.dataset.uid!); this.render(); return; case 'cancel-confirm': this.confirm=null; this.render(); return; case 'confirm-replace': this.doReplace(); this.render(); return;
       case 'unload': this.unload(); this.render(); return;
@@ -402,8 +437,8 @@ export class UI {
     for(const [k,v] of Object.entries(c.chips)){ const kk=k as ChipId; if((s.lockerChips[kk]||0)>0||capacityUsed(s)<cap){ s.lockerChips[kk]=(s.lockerChips[kk]||0)+(v||0); delete c.chips[kk]; } } s.stims+=c.stims; c.stims=0; persist(s); if(rest.length||Object.keys(c.chips).length) g.toast('Locker full: some items stayed in your pack. Sell or buy capacity.'); else g.toast('Unloaded into locker.'); }
   kit(k:string,equip:boolean){ const g=this.g,s=g.save; const kit=BUILD_KITS[k]; if(equip){ for(const sl of SLOTS){ const st=s.items.find(i=>i.def==='stock_'+sl); if(st) s.installed[sl]=st.uid; } } for(const [sl,id] of Object.entries(kit.items)){ const it=mkInst(s,id!); s.items.push(it); if(equip) s.installed[sl as Slot]=it.uid; } for(const [c,n] of Object.entries(kit.chips)) s.lockerChips[c as ChipId]=(s.lockerChips[c as ChipId]||0)+(n||0);
     if(equip){ // auto-socket a sensible chip set so the build has its stated plan
-      const L=installedLayout(s); const put=(sl:Slot,chips:ChipId[])=>{ const it=L[sl]; if(!it) return; for(const c of chips){ if((s.lockerChips[c]||0)>0&&it.chips.length<SLOT_SOCKETS[sl]){ it.chips.push(c); s.lockerChips[c]!--; } } };
-      if(k==='A'){ put('handR',['speed','cutwide']); put('torso',['coolant','coolant','coolant','sustain','sustain','plating','power']); } if(k==='B'){ put('handR',['speed','bladepat']); put('torso',['cloakdur','cloakdur','coolant','coolant','sustain','sustain']); } if(k==='C'){ put('brain',['ctrldur','ctrldur','coolant','coolant']); put('torso',['sustain','sustain','power','power']); } }
+      const L=installedLayout(s); const put=(sl:Slot,chips:ChipId[])=>{ const it=L[sl]; if(!it) return; for(const c of chips){ if(chipFits(c,sl)&&(s.lockerChips[c]||0)>0&&it.chips.length<SLOT_SOCKETS[sl]){ it.chips.push(c); s.lockerChips[c]!--; } } };
+      if(k==='A'){ put('handR',['speed','cutwide']); put('handL',['power']); put('torso',['coolant','coolant','coolant','sustain','sustain','plating']); } if(k==='B'){ put('handR',['speed','bladepat']); put('torso',['cloakdur','cloakdur','coolant','coolant','sustain','sustain']); } if(k==='C'){ put('brain',['ctrldur','ctrldur','coolant','coolant']); put('handR',['power','power']); put('torso',['sustain','sustain']); } }
     persist(s); g.recompute(); this.resetDraft(); g.toast('Granted build '+k+(equip?' and equipped (dev)':'')); }
   async runStory(){ const g=this.g; this.storyBusy=true; this.storyMsg='Requesting a bounded proposal…'; this.render(); const st=g.story(); this.storyMsg=await runStoryStep(st,makeProvider(g.save.settings.llm)); this.storyBusy=false; persist(g.save); this.render(); }
 }

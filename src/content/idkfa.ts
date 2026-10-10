@@ -15,6 +15,6 @@ export const IDKFA_SET:Record<Slot,string>={ armR:'sig_reclaimer_ripper', armL:'
   handL:'idkfa_hand_l', handR:'idkfa_hand_r', footL:'idkfa_foot_l', footR:'idkfa_foot_r', legL:'idkfa_leg_l', face:'idkfa_face' };
 /** Chips per slot; length equals the slot's socket capacity. */
 export const IDKFA_CHIPS:Record<Slot,ChipId[]>={
-  handL:['overdrive','fineedge'], handR:['overdrive','power'], armL:['overdrive','cutwide','bladepat'], armR:['overdrive','power','plating'],
-  footL:['sustain'], footR:['sustain'], legL:['ablative','plating','sustain'], legR:['ablative','plating','sustain'],
-  torso:['quench','quench','coolant','overdrive','sustain','ablative','plating','cloakdur'], face:['magnet','quench'], brain:['quench','gridlink','ctrldur','coolant'] };
+  handL:['overdrive','fineedge'], handR:['overdrive','power'], armL:['overdrive','cutwide','bladepat'], armR:['overdrive','power','fineedge'],
+  footL:['servo'], footR:['servo'], legL:['servo','plating','sustain'], legR:['servo','plating','sustain'],
+  torso:['quench','quench','coolant','quench','sustain','ablative','plating','cloakdur'], face:['magnet','gridlink'], brain:['quench','gridlink','ctrldur','coolant'] };
