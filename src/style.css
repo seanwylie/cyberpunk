@@ -278,3 +278,30 @@ body.touch #modal input[type=range]{ min-height:44px; }
   body.touch .shoprow,body.touch .actrow,body.touch .abdiff,body.touch .pickbar{ flex-wrap:wrap; }
 }
 @media (max-width:640px){ body.touch label.srow{ flex-direction:row; align-items:center; } body.touch .win .body button,body.touch .win .body .btn{ overflow-wrap:normal; white-space:nowrap; } }
+/* ---- locker/vendor text fit (shared) ----
+   .nm2  : any item/chip/socket name: 2-line clamp, wraps/hyphenates, ellipsis after 2 lines (full name lives in tooltip/title/aria-label)
+   .fit  : tiny single-line labels: JS auto-shrinks to 12px (ui.fitText), then ellipsis
+   flex/grid children get min-width:0 so nothing forces a box wider than its container */
+.nm2{ max-height:2.3em; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; overflow-wrap:anywhere; word-break:break-word; hyphens:auto; min-width:0; max-width:100%; line-height:1.15; text-align:inherit; white-space:normal; font-size:max(12px,calc(11.5px*var(--fs))); }
+.fit{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; max-width:100%; }
+.win .body *,.pop *{ min-width:0; } .row>span,.rec .ri,.shoprow .si{ min-width:0; }
+.sock{ width:max(76px,calc(48px*var(--fs))); height:max(76px,calc(48px*var(--fs))); } .sock b.nm2,.ctile b.nm2{ white-space:normal; } .sock b.nm2{ font-size:max(12px,calc(11px*var(--fs))); width:100%; text-align:center; flex:none; }
+.ctile{ width:max(84px,calc(54px*var(--fs))); height:max(100px,calc(64px*var(--fs))); } .ctile b.nm2{ font-size:max(12px,calc(11px*var(--fs))); width:100%; text-align:center; flex:none; }
+.ctile .stags{ flex:none; }
+/* body tiles: label row on its own line; chip count is a badge in a fixed corner below it */
+.slot.tile{ --tf:max(12px,calc(11px*var(--fs))); padding-top:3px; }
+.slot.tile>b.fit{ font-size:var(--tf); line-height:1.2; height:calc(var(--tf)*1.2); width:100%; flex:none; padding:0 1px; text-align:center; }
+.slot.tile .sc{ top:calc(var(--tf)*1.2 + 5px); right:3px; left:auto; z-index:2; background:rgba(10,10,11,.85); border-radius:3px; padding:0 3px; line-height:1.2; font-size:max(12px,calc(10.5px*var(--fs))); font-weight:700; }
+.slot.tile.mini>b.fit,.tile.mini>b{ font-size:max(12px,calc(10.5px*var(--fs))); }
+.slot.tile:not(.st):not(.mini) .ticon{ margin-top:2px; }
+.rec .ri b.nm2{ flex:1 1 8em; white-space:normal; text-overflow:clip; }
+.shoprow .si b.nm2{ flex:1 1 100%; }
+.row>.nm2{ flex:1; }
+/* headings wrap and shrink; badges stay on the same flow without overlapping */
+h3,.selhead{ overflow-wrap:anywhere; hyphens:auto; line-height:1.2; }
+.selhead{ font-size:max(12px,calc(11.5px*var(--fs))); display:flex; flex-wrap:wrap; align-items:center; gap:2px 6px; } .selhead.nm2h{ position:relative; z-index:1; }
+.pickbar>*,.hdrrow>*{ min-width:0; } .pickbar b,.pickbar .nm{ overflow-wrap:anywhere; }
+#tiptile{ overflow-wrap:anywhere; max-height:calc(100vh - 16px); overflow:auto; }
+.list>*{ flex:none; }
+.recpanel .rhead{ flex-wrap:wrap; } .recpanel .rhead b{ flex:1 1 auto; min-width:max-content; white-space:nowrap; }
+.row>.btn,.row>button{ flex:none; }
