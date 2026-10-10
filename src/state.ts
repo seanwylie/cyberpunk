@@ -2,7 +2,7 @@ import { chipFits, Slot, ChipId, SLOTS, STARTING, PROGRESSION, ITEM_BY_ID, Mfr, 
 import type { StoryState } from './story';
 
 export interface Inst { uid:string; def:string; chips:ChipId[]; }
-export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolean; damageNumbers:boolean; reducedFx:boolean; uiSize:'S'|'M'|'L'|'XL'; minimap?:boolean; hintsSeen?:Record<string,number>; lootLabels:'off'|'near'|'all'; lootMin:import('./config').Rarity; devFreeReset?:boolean; volume:number; music:boolean; llm:{ enabled:boolean; url:string; key:string; model:string } }
+export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolean; damageNumbers:boolean; reducedFx:boolean; uiSize:'S'|'M'|'L'|'XL'; minimap?:boolean; recHidden?:boolean; recNudge?:boolean; hintsSeen?:Record<string,number>; lootLabels:'off'|'near'|'all'; lootMin:import('./config').Rarity; devFreeReset?:boolean; volume:number; music:boolean; llm:{ enabled:boolean; url:string; key:string; model:string } }
 export interface Carried { items:Inst[]; chips:Partial<Record<ChipId,number>>; stims:number; credits:number; }
 export interface EnemyState { id:number; type:string; x:number; y:number; hp:number; maxHp:number; alert:boolean; dead:boolean; home:{x:number;y:number}; group:number; faction:'enemy'|'ally'; ctrlT:number; stunT:number; name?:string; /** boss phase index (content batch 1) */ phase?:number; /** spawned by a boss (tether node / add): cleaned up with the boss */ bossAdd?:boolean; pylon?:boolean; }
 export interface Drop { id:number; x:number; y:number; kind:'item'|'chip'|'stim'|'credits'; inst?:Inst; chip?:ChipId; amount:number; marker?:boolean; born?:number; }
