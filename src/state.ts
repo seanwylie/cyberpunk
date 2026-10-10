@@ -6,9 +6,10 @@ export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolea
 export interface Carried { items:Inst[]; chips:Partial<Record<ChipId,number>>; stims:number; credits:number; }
 export interface EnemyState { id:number; type:string; x:number; y:number; hp:number; maxHp:number; alert:boolean; dead:boolean; home:{x:number;y:number}; group:number; faction:'enemy'|'ally'; ctrlT:number; stunT:number; name?:string; }
 export interface Drop { id:number; x:number; y:number; kind:'item'|'chip'|'stim'|'credits'; inst?:Inst; chip?:ChipId; amount:number; marker?:boolean; born?:number; }
+export const LAYOUT_V=2;
 export interface Flags { gate1:boolean; lock2:boolean; passageSeen:boolean; controller:boolean; armory:boolean; cond:null|'A'|'B'; bossKey:string|null; bossRevealed:boolean; bossSpawned:boolean; bossDead:boolean; completed:boolean; rewardsGranted:boolean; alarm:boolean; salvageForeman:boolean; }
 export interface InstanceState {
-  id:string; dungeon?:string; createdAt:number; expiresAt:number; seed:number; enemies:EnemyState[]; drops:Drop[]; carried:Carried; flags:Flags;
+  id:string; dungeon?:string; createdAt:number; expiresAt:number; seed:number; /** layout generator version: older instances are discarded */ layoutV?:number; enemies:EnemyState[]; drops:Drop[]; carried:Carried; flags:Flags;
   checkpoint:{ id:number; x:number; y:number }; px:number; py:number; hp:number; broken:Slot[]; protectedSlots:Slot[]; repairAdded:number; nextId:number; xpEarned:number; warned:boolean; kills:Record<string,number>; claimed:string[]; elapsed:number; reached?:number[]; shots?:{fired:number;hits:number};
 }
 export interface Save {

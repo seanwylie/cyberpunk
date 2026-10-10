@@ -35,9 +35,9 @@ await clickDialog(0); const s2 = await state(); ok(s2.flags.cond === 'B' && s2.f
 await near('terminal'); await ev(() => window.__game.interact()); ok(await ev(() => /locked/i.test(document.getElementById('dialog').textContent)), 'terminal disabled after first condition (arbitration)');
 await clickDialog(0);
 // controller -> boss door
-await near('controller'); await ev(() => window.__game.interact()); const s3 = await state(); ok(s3.flags.controller, 'controller secured'); ok(await ev(() => !window.__game.solidAt(63.5, 19.5)), 'boss door opened');
+await near('controller'); await ev(() => window.__game.interact()); const s3 = await state(); ok(s3.flags.controller, 'controller secured'); ok(await ev(() => { const g = window.__game; const t = g.level.doors.find(d => d.id === 'boss').tiles[1]; return !g.solidAt(t[0] + .5, t[1] + .5); }), 'boss door opened');
 // boss reveal is damage-free and full length
-await tp(68, 19.5); await step(0.3);
+{ const t = await ev(() => window.__game.level.doors.find(d => d.id === 'boss').tiles[1]); await tp(t[0] + 5, t[1] + .5); } await step(0.3);
 ok(await ev(() => window.__game.revealing), 'boss reveal started');
 const hp0 = (await state()).hp; await ev(() => window.__game.hurtPlayer(50, 0, 0)); 
 await ev(() => { window.__game.dbg.god = false; window.__game.hurtPlayer(50, 0, 0); window.__game.dbg.god = true; });
@@ -78,7 +78,7 @@ await near('hackproc'); await ev(() => window.__game.interact()); await step(1.7
 await near('terminal'); await ev(() => window.__game.interact()); await clickDialog(0); await step(1.7); const s6 = await state(); ok(s6.flags.cond === 'A' && s6.flags.bossKey === 'warden', 'audit command selects Neural Warden');
 ok(await ev(() => document.getElementById('support').style.display) !== 'none', 'support panel visible only with support ability equipped');
 // control ability validity: invalid release (no target) costs nothing
-await tp(30, 20); await ev(() => { const g = window.__game; g.enemies.forEach(e => { if (!e.dead && Math.hypot(e.x - g.px, e.y - g.py) < 20) { e.x = 0.5; e.y = 0.5; } }); g.beginAim(2); g.updateAim(g.px + 3, g.py, true); g.releaseAim(); });
+{ const c = await ev(() => window.__game.level.checkpoints[1]); await tp(c.x - 8, c.y); } await ev(() => { const g = window.__game; g.enemies.forEach(e => { if (!e.dead && Math.hypot(e.x - g.px, e.y - g.py) < 20) { e.x = 0.5; e.y = 0.5; } }); g.beginAim(2); g.updateAim(g.px + 3, g.py, true); g.releaseAim(); });
 await step(0.6); ok(await ev(() => window.__game.heat) < 2 && await ev(() => window.__game.abCd[2]) === 0, 'invalid ability release cancels: no heat, no cooldown');
 await ev(() => { const g = window.__game; const e = g.enemies.find(e => e.type === 'worker' && !e.dead); e.x = g.px + 3; e.y = g.py; g.beginAim(2); g.updateAim(e.x, e.y, true); g.releaseAim(); }); await step(0.6);
 ok(await ev(() => window.__game.enemies.some(e => e.faction === 'ally')), 'valid control release turns an enemy'); ok(await ev(() => window.__game.heat) > 20, 'valid cast commits heat');
@@ -86,12 +86,12 @@ ok(await ev(() => window.__game.enemies.some(e => e.faction === 'ally')), 'valid
 await ev(() => { const g = window.__game; g.abCd = [0, 0, 0]; g.heat = 0; const e = g.enemies.find(e => e.type === 'shooter' && !e.dead && e.faction === 'enemy'); if (e) { e.x = g.px + 3; e.y = g.py; g.beginAim(0); g.updateAim(g.px + 3, g.py, true); g.releaseAim(); g.dodge(); } }); await step(1);
 ok(await ev(() => window.__game.cast === null && window.__game.abCd[0] === 0), 'dodge during windup cancels execution before resource commit');
 // sensor alarm if uncloaked in the passage
-await ev(() => { window.__game.dodgeCd = 0; }); await tp(44, 3.5); await step(0.1); ok((await state()).flags.alarm, 'maintenance-passage sensors alarm an uncloaked player');
+await ev(() => { window.__game.dodgeCd = 0; }); { const sn = await ev(() => window.__game.level.sensors); await tp((sn.x0 + sn.x1) / 2 + .5, (sn.y0 + sn.y1) / 2 + .5); } await step(0.1); ok((await state()).flags.alarm, 'maintenance-passage sensors alarm an uncloaked player');
 
 // ---------- Scenario 3: cloak build, passage quiet ----------
 await ev(() => { const g = window.__game; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lastClearDay = null; }); await kit('B');
 const abB = await ev(() => window.__game.build.abilities.join()); ok(abB === 'bladeburst,cloak,reposition', 'Build B abilities: ' + abB);
-await ev(() => window.__game.startRun()); await ev(() => { const g = window.__game; g.cloakT = 6; }); await tp(44, 3.5); await step(0.1); ok(!(await state()).flags.alarm, 'cloaked player passes sensors silently');
+await ev(() => window.__game.startRun()); await ev(() => { const g = window.__game; g.cloakT = 6; }); { const sn = await ev(() => window.__game.level.sensors); await tp((sn.x0 + sn.x1) / 2 + .5, (sn.y0 + sn.y1) / 2 + .5); } await step(0.1); ok(!(await state()).flags.alarm, 'cloaked player passes sensors silently');
 // heat / overheat
 await ev(() => { const g = window.__game; g.heat = 99; g.dbg.god = true; g.heat += 5; g.update(0.016); }); ok(await ev(() => window.__game.overheated), 'overheat triggers at max heat'); await step(8); ok(!(await ev(() => window.__game.overheated)), 'cools back down and recovers');
 // level filter: low-level recipients don't get above-level gear and no downward reroll

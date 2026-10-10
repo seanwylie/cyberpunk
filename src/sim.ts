@@ -3,7 +3,7 @@ import { computeBuild, installedLayout, BuildResult } from './build';
 import { buildTown, Level, Interact } from './level';
 import { dungeonOf, DungeonDef } from './content/dungeons';
 import { CONTRACT_BY_ID, Goal } from './content/npcs';
-import { Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState } from './state';
+import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState } from './state';
 import { record, newStory, EventKind } from './story';
 
 export type Emit = (type:string, payload?:any)=>void;
@@ -47,14 +47,15 @@ export class Game {
   hasLiveInstance(){ return !!this.inst && this.inst.expiresAt>this.now(); }
   dailyLocked(id='annex'){ return lockDay(this.save,id)===todayStr(); }
   get dd():DungeonDef{ return dungeonOf(this.inst?.dungeon); }
-  envZones():Zone[]{ return this.mode==='run'?this.dd.hazards.map(h=>({x:h.x,y:h.y,r:h.r,t:0,life:1e9,dps:h.dps,heat:h.heat,windup:0,env:true})):[]; }
+  envZones():Zone[]{ return this.mode==='run'?(this.level.hazards||[]).map(h=>({x:h.x,y:h.y,r:h.r,t:0,life:1e9,dps:h.dps,heat:h.heat,windup:0,env:true})):[]; }
   startRun(id='annex'){
     const s=this.save;
     if(s.instance && s.instance.expiresAt<=this.now()){ this.expireInstance(); }
+    if(s.instance&&s.instance.layoutV!==LAYOUT_V&&s.instance.expiresAt>this.now()){ this.expireInstance(); this.toast('Dungeon layouts changed: your old instance was discarded.'); }
     if(s.instance){ const cur=s.instance.dungeon||'annex'; if(cur!==id){ this.toast('You have a live instance in '+dungeonOf(cur).name+'. Re-enter or abandon it before starting another.'); return false; } this.inst=s.instance; this.resumeInstance(); return true; }
     if(this.dailyLocked(id)){ this.toast('Daily clear used for '+dungeonOf(id).name+'. A fresh run unlocks tomorrow (dev panel can reset).'); return false; }
-    const dd=dungeonOf(id); const seed=(Math.random()*1e9)|0; const lv=dd.build();
-    const inst:InstanceState={ id:'inst-'+seed, dungeon:id, createdAt:this.now(), expiresAt:this.now()+retentionMs, seed, enemies:[], drops:[], carried:{items:[],chips:{},stims:0,credits:0},
+    const dd=dungeonOf(id); const seed=(Math.random()*1e9)|0; const lv=dd.build(seed);
+    const inst:InstanceState={ id:'inst-'+seed, dungeon:id, layoutV:LAYOUT_V, createdAt:this.now(), expiresAt:this.now()+retentionMs, seed, enemies:[], drops:[], carried:{items:[],chips:{},stims:0,credits:0},
       flags:{gate1:false,lock2:false,passageSeen:false,controller:false,armory:false,cond:null,bossKey:null,bossRevealed:false,bossSpawned:false,bossDead:false,completed:false,rewardsGranted:false,alarm:false,salvageForeman:false},
       checkpoint:{id:1,x:lv.checkpoints[0].x,y:lv.checkpoints[0].y}, px:lv.spawn.x, py:lv.spawn.y, hp:0, broken:[], protectedSlots:[], repairAdded:0, nextId:1, xpEarned:0, warned:false, kills:{}, claimed:[], elapsed:0 };
     for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp, maxHp:ENEMIES[sp.type].hp, alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0 }); }
@@ -62,7 +63,7 @@ export class Game {
     s.instance=inst; this.inst=inst; s.stats.runs++; this.resumeInstance(true); return true;
   }
   resumeInstance(fresh=false){
-    const inst=this.inst!; this.mode='run'; this.level=dungeonOf(inst.dungeon).build(); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.downed=false; this.revealing=false;
+    const inst=this.inst!; this.mode='run'; this.level=dungeonOf(inst.dungeon).build(inst.seed); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.downed=false; this.revealing=false;
     this.lastZone=''; this.pathWp=null; this.applyDoors(); this.enemies=inst.enemies.map(e=>this.wrap(e));
     // Boss attempts always replay the full reveal: reset a living boss on (re)entry.
     this.resetBossIfAlive();
