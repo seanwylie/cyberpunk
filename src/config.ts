@@ -190,3 +190,7 @@ export const LOOT = {
 /** Baseline abilities when no installed hardware provides any (stock Standard Issue body), so a fresh character can act. */
 export const STARTER_ABILITIES:AbilityId[]=['sweep','brace','reposition'];
 export const STARTING = { credits:600, chips:{ speed:2, coolant:2, sustain:2, power:1 } as Partial<Record<ChipId,number>>, lockerSlots:60, lockerPerPurchase:20 };
+
+/** Desktop UI text scale (canvas-drawn text). CSS uses --fs in style.css; keep both in sync. Touch stays 1. */
+export const DESKTOP_FS = 1.3;
+export function uiFs(): number { return typeof document!=='undefined' && document.body && document.body.classList.contains('touch') ? 1 : DESKTOP_FS; }

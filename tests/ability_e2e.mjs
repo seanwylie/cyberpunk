@@ -47,7 +47,7 @@ for (const [name, o] of [['desktop', {}], ['touch', { viewport: { width: 844, he
   // hotkey path (desktop only): Q with aim from mouse
   if (!o.touch) { await setup('A'); await ev(() => { window.__game.recompute(); }); const ids = await spawn(); await page.keyboard.down('e'); await sleep(60); await page.keyboard.up('e'); await sleep(700); ok(await ev(() => window.__game.braceT > 0), 'desktop: hotkey E (brace, self-cast) applies'); }
   // fresh starter character (stock hardware, no kit): must have abilities, and a plain tap/click (no drag) must cast
-  { const f = await launch(o); const fe = (fn, a) => f.page.evaluate(fn, a); await fe(() => { localStorage.clear(); }); await f.page.reload(); await f.page.waitForFunction(() => window.__game); await sleep(500);
+  { const f = await launch(o); const fe = (fn, a) => f.page.evaluate(fn, a); await fe(() => { localStorage.clear(); }); await f.page.reload(); await f.page.waitForFunction(() => window.__game); /* the splash overlay (z-index 90) swallows input for ~2.5s after load; wait for it to be gone like a player would */ await f.page.waitForFunction(() => !document.getElementById('splash'), null, { timeout: 15000 }); await sleep(500);
     await fe(() => { const g = window.__game; g.startRun(); g.dbg.god = true; g.revealing = false; g.weaponOff = 999; g.enemies.forEach(e => { e.dead = true; }); }); await sleep(300);
     const ab = await fe(() => window.__game.build.abilities); ok(ab.length === 3, name + ': starter character has 3 abilities by default: ' + ab.join(','));
     for (let i = 0; i < 3; i++) { await fe(() => { const g = window.__game; g.revealing = false; g.heat = 0; g.abCd = [0, 0, 0]; g.cast = null; });

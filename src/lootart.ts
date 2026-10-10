@@ -1,4 +1,4 @@
-import { ITEM_BY_ID, CHIPS, RARITY_COLOR, RARITY_RANK } from './config';
+import { ITEM_BY_ID, CHIPS, RARITY_COLOR, RARITY_RANK, uiFs } from './config';
 import type { Rarity, Slot, Mfr } from './config';
 /**
  * Loot-drop art (see docs/LOOT_ART.md). Everything is pre-rendered into small offscreen canvases (icon cells, sheen frames)
@@ -255,7 +255,7 @@ export function drawPickup(c:C,fx:number,fy:number,tx:number,ty:number,s:number,
   c.restore();
 }
 // ---------------------------------------------------------------- labels
-export function drawLabel(c:C,x:number,y:number,s:number,spec:LootSpec,strong:boolean){ const fs=Math.max(10,Math.round(11*Math.max(.9,s))); c.save(); c.font=`600 ${fs}px system-ui,sans-serif`; const txt=spec.name; const w=c.measureText(txt).width+12, h=fs+7; const col=RARITY_COLOR[spec.rar];
+export function drawLabel(c:C,x:number,y:number,s:number,spec:LootSpec,strong:boolean){ const fs=Math.max(10,Math.round(11*Math.max(.9,s)))*uiFs()|0; c.save(); c.font=`600 ${fs}px system-ui,sans-serif`; const txt=spec.name; const w=c.measureText(txt).width+12, h=fs+7; const col=RARITY_COLOR[spec.rar];
   c.globalAlpha=strong?.95:.78; c.fillStyle='rgba(14,15,16,.82)'; rr(c,x-w/2,y-h,w,h,3); c.fill(); c.strokeStyle=col; c.lineWidth=1; c.stroke(); c.fillStyle=spec.rar==='grey'?'#cfc9b6':col; c.textAlign='center'; c.textBaseline='middle'; c.globalAlpha=1; c.fillText(txt,x,y-h/2+.5);
   if(spec.mfr){ c.fillStyle=PAL[spec.mfr].b; c.fillRect(x-w/2+1,y-h+1,2.6,h-2); } c.restore(); return { w, h }; }
 export const LOOT_FILTERS:Rarity[]=['grey','green','blue','purple','orange'];
