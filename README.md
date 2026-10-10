@@ -30,9 +30,9 @@ node tests/bot.mjs A 900   # naive bot playthrough with build kit A/B/C (pacing 
 | 3 abilities | **hold** Q/E/R (or 1/2/3) to aim at the cursor, **release** to cast | press & drag from the ability button, release to cast; drag far away to cancel |
 | Dodge | Space (one button, no direction) | big button |
 | Interact | F (explicit press, never hold) | Interact button appears near things |
-| Town return | T (5 s channel, interrupted by movement/damage) | “Town” button |
+| Town return | B (5 s channel, interrupted by movement/damage) | “Town” button |
 | Live pack/compare | I / Tab | “Pack” |
-| Stim | H | “Stim” |
+| Stim | T | “Stim” |
 
 ## What is implemented
 - **Combat**: auto-attack with closest-enemy targeting + manual override (kept until target dies/invalid/cleared); three aimed abilities with validity by aim type (self / direction / ground / target / ally) – invalid release cancels with **no heat or cooldown**; valid cast commits heat+cooldown at effect start; one-button dodge (short cooldown, i-frames) that **always cancels aiming and in-progress casts, even on cooldown**; shared **heat** with overheat (abilities offline, slowed, weapons weaker) and cooling; stationary heavy weapon (Slug Driver); only elites/bosses have health bars; damage numbers off by default; enemy telegraphs (cone/circle/line/aim/fan, ground zones) drawn with highest visual priority.

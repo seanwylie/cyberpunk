@@ -3,7 +3,7 @@ import { Renderer } from './render';
 import { AudioSys } from './audio';
 
 export interface InputOpts { modalOpen:()=>boolean; onToggleInv:()=>void; onEsc:()=>void; }
-/** Keyboard/mouse + touch. Desktop: WASD, hold Q/E/R (or 1/2/3) to aim at cursor and release to cast, Space dodge, F interact, T town. */
+/** Keyboard/mouse + touch. Desktop: WASD, hold Q/E/R (or 1/2/3) to aim at cursor and release to cast, Space dodge, F interact, T stim, B town. */
 export class Input {
   keys=new Set<string>(); mouse={x:0,y:0}; heldAbility:number|null=null; joy:{id:number;ox:number;oy:number;x:number;y:number}|null=null; touchMode=false; aimBtn:{id:number;idx:number;cx:number;cy:number}|null=null;
   joyEl:HTMLElement; knobEl:HTMLElement; fixedZone:HTMLElement;
@@ -26,10 +26,10 @@ export class Input {
     const ai=this.abilityKey(k); if(ai>=0&&this.heldAbility===null){ this.heldAbility=ai; this.g.beginAim(ai); this.updateAimFromMouse(); e.preventDefault(); }
     else if(k===' '){ this.g.dodge(); this.heldAbility=null; e.preventDefault(); }
     else if(k==='f'||k==='enter'&&false) this.g.interact();
-    else if(k==='t') this.g.townReturn();
+    else if(k==='b') this.g.townReturn();
     else if(k==='i'||k==='tab'){ this.opts.onToggleInv(); e.preventDefault(); }
     else if(k==='x') this.g.clearTarget();
-    else if(k==='h') this.g.useStim();
+    else if(k==='t') this.g.useStim();
     else if(k==='m'){ const s=this.g.save.settings; s.music=!s.music; this.audio.setMusicOn(s.music); }
     this.updateMove(); }
   ku(e:KeyboardEvent){ const k=e.key.toLowerCase(); this.keys.delete(k); const ai=this.abilityKey(k); if(ai>=0&&this.heldAbility===ai){ this.updateAimFromMouse(); this.g.releaseAim(); this.heldAbility=null; } this.updateMove(); }
