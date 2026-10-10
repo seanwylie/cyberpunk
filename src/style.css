@@ -336,3 +336,27 @@ body.touch.intown #interact{ bottom:calc(30px + env(safe-area-inset-bottom)); }
 body.intown #interact{ bottom:calc(52px + env(safe-area-inset-bottom)); }
 body.touch.intown #interact{ left:50%; }
 @media (max-width:1000px){ body:not(.touch):not(.intown) #interact{ bottom:calc(150px + env(safe-area-inset-bottom)); } }
+/* ---- responsive locker/panels (desktop widths 700-2560, zoom 100-150%) ----
+   single scroll container (.body), header/footer fixed; nothing scrolls or clips horizontally */
+.win{ width:min(96vw,1400px); max-height:94vh; max-height:94dvh; min-height:0; }
+.win .body{ min-height:0; overflow-x:hidden; overflow-y:auto; flex:1 1 auto; }
+.win>header,.win>footer{ flex:none; } .win>header{ position:relative; z-index:3; background:#222426; }
+.lockerwin .body{ display:grid; grid-template-columns:minmax(220px,260px) minmax(0,1fr) minmax(200px,300px); grid-template-areas:"bodyv main prev"; align-items:start; gap:12px; }
+.lockerwin .body>.narrow{ grid-area:bodyv; width:auto; } .lockerwin .body>.col:not(.narrow):not(.previewcol){ grid-area:main; } .lockerwin .body>.previewcol{ grid-area:prev; }
+.lockerwin .body>*{ min-width:0; max-width:100%; }
+.lockerwin .body-grid{ padding-right:1px; } .slot.tile{ padding-left:4px; padding-right:4px; }
+.lockerwin .pickbar{ position:sticky; bottom:0; z-index:4; }
+.sockrow,.chipstock,.sttabs,.trayhead,.strip,.actrow,.repbar,.hdrrow{ max-width:100%; }
+.stgrid{ max-width:100%; }
+@media (max-width:1099px){
+  .lockerwin .body{ grid-template-columns:minmax(210px,250px) minmax(0,1fr); grid-template-areas:"bodyv main" "prev main"; grid-template-rows:auto 1fr; }
+}
+@media (max-width:719px){
+  .lockerwin .body{ grid-template-columns:minmax(0,1fr); grid-template-areas:"bodyv" "prev" "main"; grid-template-rows:none; }
+  .lockerwin .body-grid{ max-width:340px; }
+}
+/* other multi-column panels (vendor, contacts, fixer, store...) wrap instead of overflowing */
+@media (max-width:1099px) and (min-height:481px){ .win:not(.lockerwin):not(.settingswin) .body{ flex-wrap:wrap; } .win:not(.lockerwin):not(.settingswin) .body>.col{ flex:1 1 300px; } .win:not(.lockerwin):not(.settingswin) .body>.col.narrow{ flex:1 1 220px; } .win:not(.lockerwin):not(.settingswin) .body>.shopcol{ flex:2 1 380px; } }
+.win .body .sctl output{ min-width:3.6em; flex:none; white-space:nowrap; }
+body:not(.touch) .win .body .btn{ max-width:calc(100% - 4px); white-space:normal; }
+.row>span:has(>.btn){ flex:none; max-width:60%; }

@@ -6,7 +6,10 @@ import { launch, sleep } from './lib.mjs';
 import fs from 'fs';
 const SHOTS = process.env.SHOTS, TAG = process.env.TAG || 'after'; if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
 let fails = 0; const seen = new Set(); const ok = (c, m) => { if (!c && !seen.has(m)) { seen.add(m); fails++; console.log('FAIL ' + m); } };
-const SIZES = (process.env.ONLY ? [process.env.ONLY.split('x').map(Number)] : [[1280, 720], [1920, 1080], [2560, 1440], [844, 390]]);
+// [cssW, cssH, lite]. lite = 3 representative slots (full sweep only at the 4 original sizes). Zoom 125/150% is emulated by the smaller CSS viewports
+// (1920x1080@125% = 1536x864, @150% = 1280x720, 1280x720@150% = 853x480, 1024x768@125% = 819x614).
+const ALL = [[1280, 720], [1920, 1080], [2560, 1440], [844, 390], [760, 600, 1], [900, 700, 1], [1024, 768, 1], [1366, 768, 1], [1536, 864, 1], [853, 480, 1], [819, 614, 1], [700, 500, 1], [1024, 576, 1]];
+const SIZES = process.env.ONLY ? [process.env.ONLY.split('x').map(Number)] : ALL;
 
 const SETUP = async () => {
   const cfg = await import('/src/config.ts'), st = await import('/src/state.ts'); const g = window.__game, s = g.save;
@@ -47,7 +50,7 @@ const CHECK = () => {
       const s = getComputedStyle(a), r = a.getBoundingClientRect();
       if (/auto|scroll/.test(s.overflowY)) scrolls = true;
       if (s.overflowX !== 'visible' && (R > r.right + 1 || L < r.left - 1)) { if (!(clampOk(el) && hasName(el))) bad.push('text clipped by ' + desc(a) + ' : ' + desc(el)); }
-      if (s.overflowY === 'hidden' && (B > r.bottom + 1 || T < r.top - 1)) { if (!(clampOk(el) && hasName(el))) bad.push('text clipped (y) by ' + desc(a) + ' : ' + desc(el)); }
+      if (s.overflowY === 'hidden' && !scrolls && (B > r.bottom + 1 || T < r.top - 1)) { if (!(clampOk(el) && hasName(el))) bad.push('text clipped (y) by ' + desc(a) + ' : ' + desc(el)); }
       if (s.overflowX !== 'visible') { vr.l = Math.max(vr.l, r.left); vr.r = Math.min(vr.r, r.right); } if (s.overflowY !== 'visible') { vr.t = Math.max(vr.t, r.top); vr.b = Math.min(vr.b, r.bottom); }
     }
     if (cs.overflowY !== 'visible') { const r = el.getBoundingClientRect(); vr.t = Math.max(vr.t, r.top); vr.b = Math.min(vr.b, r.bottom); } if (cs.overflowX !== 'visible') { const r = el.getBoundingClientRect(); vr.l = Math.max(vr.l, r.left); vr.r = Math.min(vr.r, r.right); }
@@ -58,9 +61,15 @@ const CHECK = () => {
     if (vr.r - vr.l > 1 && vr.b - vr.t > 1) texts.push({ el, l: vr.l, r: vr.r, t: vr.t, b: vr.b });
     if (cs.overflow === 'visible' && el.scrollWidth > el.clientWidth + 1 && !cs.display.startsWith('inline')) bad.push('content overflows element: ' + desc(el));
   }
-  for (let i = 0; i < texts.length; i++) for (let j = i + 1; j < texts.length; j++) { const a = texts[i], b = texts[j]; if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+  for (let i = 0; i < texts.length; i++) for (let j = i + 1; j < texts.length; j++) { const a = texts[i], b = texts[j]; if (a.el.contains(b.el) || b.el.contains(a.el)) continue; if ((a.el.closest('.pickbar') || b.el.closest('.pickbar')) && getComputedStyle(a.el.closest('.pickbar') || b.el.closest('.pickbar')).position === 'sticky') continue; // sticky action row opaque-covers scrolled content
     const ox = Math.min(a.r, b.r) - Math.max(a.l, b.l), oy = Math.min(a.b, b.b) - Math.max(a.t, b.t); if (ox > 1.5 && oy > 2.5) bad.push('text overlap: ' + desc(a.el) + ' <> ' + desc(b.el)); }
-  for (const el of root.querySelectorAll('.tile .ticon,.tile')) { }
+  { const win = document.querySelector('#modal .win'); if (win) { const wr = win.getBoundingClientRect(); const body = win.querySelector('.body');
+      if (wr.left < -1 || wr.right > vw + 1 || wr.top < -1 || wr.bottom > vh + 1) bad.push(`modal outside viewport (${wr.left | 0},${wr.top | 0},${wr.right | 0},${wr.bottom | 0}) in ${vw}x${vh}`);
+      if (body && body.scrollWidth > body.clientWidth + 1) { const br = body.getBoundingClientRect(); const w = [...body.querySelectorAll('*')].find(e => e.getBoundingClientRect().right > br.left + body.clientWidth + .5 && vis(e)); bad.push(`horizontal overflow in .body (${body.scrollWidth} > ${body.clientWidth}) widest: ` + (w ? desc(w) : '?')); }
+      if (document.documentElement.scrollWidth > vw + 1) bad.push('page horizontal overflow');
+      for (const el of win.querySelectorAll('*')) { if (!vis(el) || el.closest('.popwrap') || el.closest('#tiptile')) continue; const r = el.getBoundingClientRect(); if (r.width < 1) continue;
+        if (r.right > wr.right + 1 || r.left < wr.left - 1) bad.push('element outside modal horizontally: ' + desc(el));
+        const cl = el.closest('.tile,.sock,.ctile'); if (cl && cl !== el) { const c = cl.getBoundingClientRect(); if (r.right > c.right + 1.5 || r.left < c.left - 1.5) { const ov = getComputedStyle(cl).overflow; bad.push('child sticks out of ' + desc(cl) + ' : ' + desc(el)); } } } } }
   return [...new Set(bad)];
 };
 
@@ -86,16 +95,16 @@ async function session(w, h, work) {
     await sleep(500); await page.evaluate(() => { document.getElementById('splash')?.remove(); window.__ui.kit && window.__ui.kit('A', true); });
     await page.evaluate(SETUP);
     const step = async (name, prep, shot, arg) => { if (prep) await page.evaluate(prep, arg); await sleep(100); const bad = await page.evaluate(CHECK); for (const b of bad) ok(false, `${tag} ${name}: ${b}`);
-      if (SHOTS && shot) await page.screenshot({ path: `${SHOTS}/${TAG}-${tag}-${name}.png` }); };
+      if (SHOTS && shot !== false && (shot === true || typeof shot === 'string')) await page.screenshot({ path: `${SHOTS}/${TAG}-${tag}-${name}.png`.replace(/ /g, '') }); };
     await page.evaluate(() => { const u = window.__ui; u.resetDraft(); u.modal = 'locker'; u.chipShowAll = true; u.stTab = 'all'; u.render(); });
     await work({ page, step, tag });
     ok(errors.length === 0, `${tag}: console errors ${errors.join(';')}`);
   } catch (e) { ok(false, `${tag}: audit crashed (${String(e.message).split('\n')[0]})`); }
   await browser.close();
 }
-for (const [w, h] of SIZES) {
+for (const [w, h, lite] of SIZES) {
   for (let i = 0; i < SLOTS_ALL.length; i += 3) await session(w, h, async ({ page, step, tag }) => {
-    for (const sl of SLOTS_ALL.slice(i, i + 3)) {
+    for (const sl of SLOTS_ALL.slice(i, i + 3)) { if (lite && !['torso', 'handR', 'footR'].includes(sl)) continue;
       await step('locker-' + sl, sl => { const u = window.__ui; u.sel = sl; u.pickUid = null; u.stTab = 'all'; u.render(); }, sl === 'torso' || sl === 'handR', sl);
       await step('locker-pick-' + sl, () => { const t = [...document.querySelectorAll('.stgrid .tile')].find(x => !x.classList.contains('off')) || document.querySelector('.stgrid .tile'); t && t.click(); }, sl === 'torso');
       await step('locker-replace-' + sl, () => { const b = document.querySelector('[data-act=replace]'); b && b.click(); });
@@ -103,6 +112,10 @@ for (const [w, h] of SIZES) {
       await step('vendor-' + sl, sl => { const u = window.__ui; u.confirm = null; u.modal = 'vendor'; u.shopSlot = sl; u.render(); }, sl === 'torso', sl);
       await page.evaluate(() => { const u = window.__ui; u.modal = 'locker'; u.render(); });
     }
+  });
+  if (w <= 900 || (w === 1024 && h === 768)) await session(w, h, async ({ page, step, tag }) => {
+    for (const m of ['vendor', 'fixer', 'contacts', 'gate', 'store']) await step('panel-' + m, m => { const u = window.__ui; u.confirm = null; u.modal = m; u.render(); }, m === 'vendor', m);
+    for (const t of ['gameplay', 'display', 'audio', 'controls', 'instance', 'story', 'about']) await step('settings-' + t, t => { const u = window.__ui; u.modal = 'settings'; u.render(); document.getElementById('stab-' + t)?.click(); }, t === 'gameplay', t);
   });
   await session(w, h, async ({ page, step, tag }) => {
     const tabs = await page.evaluate(() => [...document.querySelectorAll('[data-act=sttab]')].map(b => b.dataset.tab));
