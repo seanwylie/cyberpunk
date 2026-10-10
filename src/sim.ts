@@ -4,6 +4,7 @@ import { buildTown, Level, Interact } from './level';
 import { dungeonOf, DungeonDef } from './content/dungeons';
 import { CONTRACT_BY_ID, Goal } from './content/npcs';
 import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState } from './state';
+import { IDKFA_SET, IDKFA_CHIPS } from './content/idkfa';
 import { record, newStory, EventKind } from './story';
 
 export type Emit = (type:string, payload?:any)=>void;
@@ -145,6 +146,13 @@ export class Game {
   }
   interact(){ if(!this.prompt||this.downed) return; this.doInteract(this.prompt); }
   townReturn(){ if(this.mode!=='run'||this.downed) return; if(this.channel&&this.channel.kind==='town'){ this.channel=null; this.toast('Town return cancelled'); return; } this.channel={kind:'town',t:0,dur:COMBAT.townChannel,cb:()=>{ this.saveNow(); this.enterTown(); }}; this.toast('Returning to town... movement or damage interrupts. No invulnerability.'); this.emit('sfx','channel'); }
+  /** Dev cheat (typed "idkfa"): orange hardware + best chips in every slot, stims/credits top-up, full heal. Old gear goes to storage. Marks the save cheated. */
+  cheatIdkfa(){ const s=this.save; const keep=new Set<string>();
+    for(const sl of SLOTS){ const def=IDKFA_SET[sl]; let it=s.items.find(i=>i.def===def&&s.installed[sl]===i.uid); if(!it) it=mkInst(s,def); if(!s.items.includes(it)) s.items.push(it); it.chips=[...IDKFA_CHIPS[sl]]; s.installed[sl]=it.uid; keep.add(it.uid); }
+    s.level=Math.max(s.level,30); s.credits=Math.max(s.credits,99999); s.stims=Math.max(s.stims,20); s.repairBill=0;
+    if(this.inst){ this.inst.broken=[]; this.inst.carried.stims=Math.max(this.inst.carried.stims,10); }
+    s.cheated=true; (s.cheatLog=s.cheatLog||[]).push('idkfa@'+new Date().toISOString());
+    this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.downed=false; this.emit('inv'); this.toast('IDKFA: best gear equipped'); this.saveNow(); return true; }
   useStim(){ const c=this.inst?.carried; if(!c||this.downed){ if(this.mode==='town'&&this.save.stims>0){ this.save.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); } return; } if(c.stims>0&&this.hp<this.maxHp){ c.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); this.emit('sfx','heal'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.8,text:'+'+COMBAT.stimHeal,c:'#9fb98a'}); } else if(c.stims<=0 && this.save.stims>0 && false){} }
   musicSet(s:string){ if(this.musicState!==s){ this.musicState=s; this.emit('music',s); } }
 

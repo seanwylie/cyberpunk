@@ -19,7 +19,9 @@ export class Input {
     window.addEventListener('pagehide',()=>this.g.saveNow());
   }
   abilityKey(k:string){ return k==='q'||k==='1'?0:k==='e'||k==='2'?1:k==='r'||k==='3'?2:-1; }
-  kd(e:KeyboardEvent){ if((e.target as HTMLElement)?.tagName==='INPUT') return; this.audio.resume(); const k=e.key.toLowerCase(); if(e.repeat&&k!==' ') { if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault(); return; }
+  cheatBuf=''; 
+  kd(e:KeyboardEvent){ const tg=(e.target as HTMLElement)?.tagName; if(tg==='INPUT'||tg==='TEXTAREA'||tg==='SELECT'||(e.target as HTMLElement)?.isContentEditable) return; this.audio.resume(); const k=e.key.toLowerCase();
+    if(!e.repeat&&k.length===1){ this.cheatBuf=(this.cheatBuf+k).slice(-5); if(this.cheatBuf==='idkfa'){ this.cheatBuf=''; this.g.cheatIdkfa(); return; } } if(e.repeat&&k!==' ') { if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault(); return; }
     if(k==='escape'){ this.opts.onEsc(); return; }
     if(this.opts.modalOpen()&&k!==' ') return;
     this.keys.add(k);
