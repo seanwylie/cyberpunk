@@ -4,7 +4,7 @@ import fs from 'fs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 fs.mkdirSync('shots/tutorial', { recursive: true });
 const VIS = `(el)=>{const r=el.getBoundingClientRect();let e=el;while(e&&e!==document.body){const s=getComputedStyle(e);if(s.display==='none'||s.visibility==='hidden'||+s.opacity<0.05)return false;e=e.parentElement}return r.width>1&&r.height>1}`;
-const HUDSEL = '#topleft,#topright,#objective,#minimap,#abilities,#dodge,#interact,#channelbar,#downpanel,#dialog,#livepanel,#support';
+const HUDSEL = '#topleft>:not(#tut),#topright,#objective,#minimap,#abilities,#dodge,#interact,#channelbar,#downpanel,#dialog,#livepanel,#support';
 const open = async (w, h, touch, extra = '') => {
   const r = await launch({ viewport: { width: w, height: h }, touch, tutorial: true, query: '?tutorial=on&splash=hold' + extra });
   await r.page.evaluate(() => { document.getElementById('splash')?.remove(); document.getElementById('rotate')?.remove(); document.body.classList.add('portraitok'); });

@@ -161,7 +161,7 @@ export class Tutorial {
     const v=g.downed&&g.mode==='run'?{title:c.title,body:'You are down. Pick Return to checkpoint on the panel. Hardware breaks, but the lesson stays.',redirect:false} as View:this.compute(c); this.view=v; this.idx=c.n;
     this.shown=true; this.render(c,v); }
   private hideAll(){ this.shown=false; this.el.style.display=this.spot.style.display=this.world.style.display=this.edge.style.display='none'; document.body.classList.remove('tutdock'); document.body.style.removeProperty('--tutdock'); }
-  private render(c:StepDef&{n:number},v:View){ const el=this.el, ui=this.ui as any; const dock=!!ui.modal;
+  private render(c:StepDef&{n:number},v:View){ const el=this.el, ui=this.ui as any; const dock=!!ui.modal||!!this.g.downed;
     const key=[c.id,c.n,v.title,v.body,v.ack||'',JSON.stringify(v.list||[]),this.touch()].join('|');
     if(key!==this.key){ this.key=key; el.querySelector('.tt-step')!.textContent=`Step ${c.n} of ${STEPS.length}`; el.querySelector('.tt-title')!.textContent=v.title; el.querySelector('.tt-body')!.textContent=v.body;
       const ul=el.querySelector('.tt-list') as HTMLElement; ul.innerHTML=(v.list||[]).map(x=>`<li class="${x.ok?'ok':''}"><span class="tt-box">${x.ok?'✓':''}</span>${x.t}</li>`).join(''); ul.style.display=v.list?.length?'':'none';
@@ -171,16 +171,11 @@ export class Tutorial {
     if(pk!==this.placeKey||!dock&&performance.now()%500<20){ this.placeKey=pk; this.place(dock); }
     this.target(v.target); }
   private rect(sel:string):DOMRect|null{ const es=Array.from(document.querySelectorAll(sel)).filter(isVis); if(!es.length) return null; let r=es[0].getBoundingClientRect(); let x0=r.left,y0=r.top,x1=r.right,y1=r.bottom; for(const e of es.slice(1)){ const q=e.getBoundingClientRect(); x0=Math.min(x0,q.left);y0=Math.min(y0,q.top);x1=Math.max(x1,q.right);y1=Math.max(y1,q.bottom); } return new DOMRect(x0,y0,x1-x0,y1-y0); }
+  // Layout is pure CSS (docs/HUD_LAYOUT.md): the card is the last row of the top-left stack, or the bottom dock bar when a panel is open.
   private place(dock:boolean){ const el=this.el; el.style.left=el.style.top=el.style.right=el.style.bottom=''; el.style.transform='';
-    if(dock){ el.style.left='50%'; el.style.transform='translateX(-50%)'; el.style.bottom='max(6px,env(safe-area-inset-bottom))'; el.style.top='auto'; const h=Math.ceil(el.getBoundingClientRect().height)+10+8; document.body.style.setProperty('--tutdock',h+'px'); return; }
-    document.body.style.removeProperty('--tutdock');
-    const avoid=['#topleft','#topright','#objective','#minimap','#abilities','#dodge','#interact','#channelbar','#downpanel','#dialog','#livepanel','#support','#joyfixed'].map(s=>this.rect(s)).filter(Boolean) as DOMRect[];
-    const w=el.getBoundingClientRect().width, h=el.getBoundingClientRect().height, M=10;
-    const tl=this.rect('#topleft'); const cands:[number,number][]=[[M,(tl?tl.bottom:60)+8]];
-    const mm=this.rect('#minimap'), tr=this.rect('#topright'); cands.push([innerWidth-w-M,(mm?mm.bottom:(tr?tr.bottom:60))+8]); cands.push([M,innerHeight-h-M-70]); cands.push([M,innerHeight-h-M]); { const dp=this.rect('#downpanel'); if(dp){ cands.unshift([M,Math.min(innerHeight-h-M,dp.bottom+6)]); cands.push([dp.right+8,M+60]); } } cands.push([innerWidth/2-w/2,innerHeight*.5]);
-    const hit=(x:number,y:number)=>avoid.reduce((n,r)=>n+(x<r.right+4&&x+w>r.left-4&&y<r.bottom+4&&y+h>r.top-4?1:0),0);
-    let best=cands[0],bs=1e9; for(const c of cands){ const sc=hit(c[0],c[1])+(c[1]+h>innerHeight||c[0]<0||c[0]+w>innerWidth?5:0); if(sc<bs){ bs=sc; best=c; if(sc===0) break; } }
-    el.style.left=Math.max(0,best[0])+'px'; el.style.top=Math.max(0,best[1])+'px'; }
+    const host=dock?document.body:document.getElementById('topleft'); if(host&&el.parentElement!==host) host.appendChild(el);
+    if(dock){ const r=el.getBoundingClientRect(); document.body.style.setProperty('--tutdock',Math.ceil(innerHeight-r.top+8)+'px'); return; }
+    document.body.style.removeProperty('--tutdock'); }
   private target(t?:Target){ const sp=this.spot, wd=this.world, ed=this.edge; let spOn=false, wOn=false, edOn=false; const ui=this.ui as any;
     if(t?.sel){ if(t.sel!==this.lastSel||ui.modal!==this.lastSelModal){ this.lastSel=t.sel; this.lastSelModal=ui.modal; this.scrollT=0; } if(performance.now()>this.scrollT&&ui.modal){ const te=Array.from(document.querySelectorAll(t.sel)).find(isVis); if(te){ const q=te.getBoundingClientRect(), win=document.querySelector('#modal .win')?.getBoundingClientRect(); if(win&&(q.top<win.top+40||q.bottom>win.bottom-4)) { te.scrollIntoView({block:'center',inline:'nearest'}); this.scrollT=performance.now()+1500; } } }
       const r=this.rect(t.sel); if(r){ spOn=true; const pad=6; Object.assign(sp.style,{left:r.left-pad+'px',top:r.top-pad+'px',width:r.width+pad*2+'px',height:r.height+pad*2+'px'}); sp.classList.toggle('dim',!!t.dim&&!ui.modal&&!isVis(document.getElementById('interact'))&&!this.g.downed); sp.classList.toggle('below',r.top<90); } }
