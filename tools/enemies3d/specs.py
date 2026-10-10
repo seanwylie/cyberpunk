@@ -53,3 +53,8 @@ SPECS.update({
  'reclaimer':  dict(arch='bruiser', palette=dict(WHS, main='#6a4a34', dark='#1c1a1a', accent='#c9a02a', glow='#ff6a1a'), weapon_R='saw', weapon_L='claws', extras=('hivis','visor'), scale=1.85),
  'drone':      dict(arch='hover', palette=dict(main='#7a7e80', dark='#202428', accent='#4f6479', metal='#8a9094', white='#a8acae', glow='#ff5a3a'), scale=.6),
 })
+
+try:
+    from specs_batch1 import BATCH1
+    SPECS.update(BATCH1)
+except ImportError: pass

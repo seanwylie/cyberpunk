@@ -63,6 +63,8 @@ def box(parent,size,loc,m='main',rot=(0,0,0),bevel=.02):
     bpy.ops.mesh.primitive_cube_add(size=1); o=bpy.context.object; o.scale=size; bpy.ops.object.transform_apply(scale=True); return _fin(o,m,parent,loc,rot,bevel)
 def cyl(parent,r,h,loc,m='main',rot=(0,0,0),v=20,r2=None,bevel=.01):
     bpy.ops.mesh.primitive_cone_add(vertices=v,radius1=r,radius2=r if r2 is None else r2,depth=h); o=bpy.context.object; return _fin(o,m,parent,loc,rot,bevel)
+def tor(parent,R,r,loc,m='glow',rot=(0,0,0)):
+    bpy.ops.mesh.primitive_torus_add(major_radius=R,minor_radius=r,major_segments=36,minor_segments=8); o=bpy.context.object; return _fin(o,m,parent,loc,rot,0,1)
 def sph(parent,r,loc,m='main',scale=(1,1,1)):
     bpy.ops.mesh.primitive_uv_sphere_add(radius=r,segments=24,ring_count=14); o=bpy.context.object; o.scale=scale; bpy.ops.object.transform_apply(scale=True); return _fin(o,m,parent,loc,(0,0,0),0,0)
 for_smooth=None
@@ -96,6 +98,21 @@ def weapon(kind,j,s):
         cyl(j,.04,.7,(0,-.3,0),'dark',(90,0,0),v=8); cyl(j,.055,.12,(0,-.68,0),'glow',(90,0,0),v=8)
     elif kind=='scalpel':
         box(j,(.05,.3,.07),(0,-.1,0),'dark'); box(j,(.012,.62,.1),(0,-.6,0),'metal',bevel=.003); box(j,(.012,.2,.06),(0,-.98,-.02),'metal',(0,0,0),bevel=.003)
+    elif kind=='hammer':   # long haft + block head (bell mallet / maul)
+        cyl(j,.05,1.0,(0,-.45,0),'metal',(90,0,0),v=8); box(j,(.5,.34,.34),(0,-1.0,0),'main',bevel=.04); box(j,(.52,.1,.36),(0,-1.0,0),'accent',bevel=.02)
+    elif kind=='lance':    # long spear/boom with glowing tip
+        cyl(j,.04,1.6,(0,-.7,0),'metal',(90,0,0),v=8); cyl(j,.09,.35,(0,-1.62,0),'glow',(90,0,0),v=10,r2=.01); box(j,(.16,.16,.16),(0,-.1,0),'dark')
+    elif kind=='cleaver':  # broad chopping blade
+        box(j,(.06,.2,.1),(0,-.1,0),'dark'); box(j,(.03,.7,.34),(0,-.55,0),'metal',bevel=.006); box(j,(.05,.1,.36),(0,-.2,0),'accent',bevel=.01)
+    elif kind=='syringe':  # injector gun
+        cyl(j,.07,.7,(0,-.4,0),'white',(90,0,0),v=12); cyl(j,.025,.5,(0,-.95,0),'metal',(90,0,0),v=6); cyl(j,.06,.18,(0,-.1,0),'glow',(90,0,0),v=10); box(j,(.12,.1,.1),(0,-.25,.1),'dark')
+    elif kind=='dishgun':  # parabolic emitter
+        cyl(j,.03,.5,(0,-.3,0),'metal',(90,0,0),v=6); cyl(j,.3,.08,(0,-.62,0),'white',(90,0,0),v=24,r2=.05); sph(j,.05,(0,-.66,0),'glow')
+    elif kind=='whip':     # cable whip with weighted end
+        cyl(j,.025,1.5,(0,-.75,.0),'dark',(90,0,0),v=6); sph(j,.09,(0,-1.52,0),'glow'); box(j,(.1,.18,.1),(0,-.08,0),'metal')
+    elif kind=='gauntlet': # oversized claw gauntlet
+        box(j,(.34,.4,.34),(0,-.2,0),'main',bevel=.04)
+        for x in (-.11,0,.11): box(j,(.07,.45,.07),(x,-.6,0),'metal',(0,0,x*60),bevel=.01)
     elif kind=='none': pass
 # ---------------- archetypes ----------------
 class Rig: pass
@@ -181,12 +198,55 @@ def extras(R,spec):
         elif e=='horns':
             for sx in (-1,1): cyl(hd,.05,.4,(sx*.22,0,.5),'metal',(0,sx*-35,0),v=8,r2=.01)
         elif e=='visor': box(hd,(.5,.08,.1),(0,-.25,.26),'glow')
+        elif e=='pauldrons':
+            for sx in (-1,1): sph(t,.27,(sx*(tw*.5+.06),0,th*.98),'main',(1,1,.8)); box(t,(.1,.1,.26),(sx*(tw*.5+.12),0,th*1.12),'metal',(0,sx*20,0),bevel=.01)
+        elif e=='crown':
+            cyl(hd,.27,.08,(0,0,.44),'metal',v=16)
+            for i in range(7): a=i/7*math.tau; cyl(hd,.035,.2,(math.cos(a)*.24,math.sin(a)*.24,.56),'accent',v=5,r2=.005)
+        elif e=='cape': box(t,(tw*1.0,.06,th*1.5),(0,by+.1,th*.25),'cloth',(8,0,0),bevel=.01); box(t,(tw*.6,.07,.1),(0,by+.12,th*.95),'accent')
+        elif e=='wings':
+            for sx in (-1,1):
+                for k in range(3): box(t,(.05,.2+.08*k,.9-.16*k),(sx*(.36+.14*k),by+.18,th*.8-.05*k),'metal',(0,sx*(18+10*k),sx*8),bevel=.01)
+        elif e=='spikes':
+            for i in range(5): cyl(t,.05,.34,(0,by+.12,th*.2+i*th*.17),'metal',(-70,0,0),v=6,r2=.005)
+        elif e=='dishback': cyl(t,.04,.5,(0,by+.12,th*.8),'metal',v=6); cyl(t,.42,.07,(0,by+.3,th*1.2),'white',(70,0,0),v=24,r2=.1); sph(t,.06,(0,by+.46,th*1.18),'glow')
+        elif e=='banner': cyl(t,.025,1.6,(.25,by+.1,th*1.0),'metal',v=6); box(t,(.5,.03,.5),(.5,by+.1,th*1.55),'accent'); box(t,(.3,.04,.12),(.5,by+.09,th*1.55),'glow')
+        elif e=='halo': tor(hd,.4,.03,(0,0,.8),'glow')
+        elif e=='bell':
+            cyl(t,.34,.55,(0,by+.35,th*.65),'accent',v=18,r2=.12); sph(t,.07,(0,by+.35,th*.34),'glow'); cyl(t,.09,.14,(0,by+.35,th*1.0),'metal',v=8)
+        elif e=='coils':
+            for k in range(3): cyl(t,.34-.04*k,.07,(0,by+.12,th*(.35+.2*k)),'glow',v=18)
+            for sx in (-1,1): cyl(t,.05,.7,(sx*.3,by+.1,th*.7),'metal',v=6)
+        elif e=='crates':
+            for k,(x,z) in enumerate(((-.12,.3),(.14,.4),(0,.82))): box(t,(.34,.3,.34),(x,by+.2,th*z+.1),'accent' if k%2 else 'main',(0,0,k*9),bevel=.02)
+        elif e=='goggles': box(hd,(.5,.1,.16),(0,-.25,.26),'dark'); sph(hd,.075,(.12,-.3,.27),'glow'); sph(hd,.075,(-.12,-.3,.27),'glow')
+        elif e=='chains':
+            for sx in (-1,1):
+                for k in range(5): cyl(t,.05,.06,(sx*(.12+k*.05),-by-.06,th*(.9-k*.12)),'metal',(90,0,0),v=8)
+        elif e=='apparatus': box(t,(.5,.35,.34),(0,by+.2,th*.55),'dark',bevel=.03); cyl(t,.1,.5,(0,by+.2,th*.95),'metal',v=10); sph(t,.1,(0,by+.2,th*1.22),'glow')
 def torD_(br): return .5 if br else .36
 
 def hum2(sp,b):
     R=humanoid(sp,b); extras(R,sp); return R
+def hover_extras(R,sp):
+    t=R.torso; hd=R.head
+    for e in sp.get('extras',()):
+        if e=='dish': cyl(t,.04,.5,(0,.25,.6),'metal',v=6); cyl(t,.5,.07,(0,.35,1.0),'white',(70,0,0),v=28,r2=.1); sph(t,.07,(0,.5,.98),'glow')
+        elif e=='coils':
+            for k in range(3): cyl(t,.4-.05*k,.07,(0,.28,.05+.22*k),'glow',v=18)
+        elif e=='fins':
+            for sx in (-1,1):
+                for k in range(3): box(t,(.05,.25,.6-.12*k),(sx*(.42+.1*k),.1,.1+.05*k),'metal',(0,sx*(15+8*k),0),bevel=.01)
+        elif e=='crown':
+            cyl(hd,.22,.06,(0,0,.34),'metal',v=14)
+            for i in range(6): a=i/6*math.tau; cyl(hd,.03,.18,(math.cos(a)*.2,math.sin(a)*.2,.45),'accent',v=5,r2=.005)
+        elif e=='halo': tor(hd,.36,.03,(0,0,.66),'glow')
+        elif e=='banks':
+            for sx in (-1,1):
+                for k in range(3): cyl(t,.05,.5,(sx*.5,-.1+k*.12,.35),'metal',(90,0,0),v=8); sph(t,.05,(sx*.5,-.38+k*.0,.35),'glow')
+        elif e=='mast': cyl(t,.03,1.3,(0,.3,.9),'metal',v=6); box(t,(.5,.04,.04),(0,.3,1.4),'metal'); box(t,(.36,.04,.04),(0,.3,1.2),'metal'); sph(t,.05,(0,.3,1.58),'glow')
 def hover2(sp):
-    R=hover(sp); return R
+    R=hover(sp); hover_extras(R,sp); return R
 def quad(spec):
     R=Rig(); R.kind='quad'; s=spec.get('scale',1.0); R.root=joint('root'); R.hips=joint('hips',R.root,(0,0,.5*s)); R.hips.scale=(s,s,s); h=R.hips
     R.torso=joint('torso',h,(0,0,0)); t=R.torso
