@@ -321,3 +321,18 @@ body.touch #modal input[type=text],body.touch #modal input[type=search],body.tou
   body.touch .abtn .aname,body.touch #dodge .aname{ letter-spacing:0; font-size:max(11px,var(--fmin)); max-width:calc(100% + 40px); overflow-wrap:normal; }
 }
 @media (max-height:480px) and (orientation:landscape){ body.touch #objective{ left:calc(30vw + 18px); transform:none; max-width:calc(100vw - 30vw - 6*49px - 70px); min-width:150px; text-align:left; } }
+
+/* ---- town HUD: combat-only controls hidden outside a run (fade in on entering one); interact prompt is a bottom-centre badge clear of every control ---- */
+#abilities,#dodge,.bar.heat,#btn-stim{ transition:opacity .45s ease; }
+body.intown #abilities,body.intown #dodge,body.intown .bar.heat,body.intown #btn-stim,body.intown #abtip{ opacity:0; visibility:hidden; pointer-events:none; transition:none; }
+body.intown #btn-stim,body.intown .bar.heat{ display:none; }
+#interact{ position:absolute; right:auto; left:50%; bottom:calc(52px + env(safe-area-inset-bottom)); transform:translateX(-50%); width:max-content; max-width:min(300px,calc(100vw - 2*var(--ixside,380px))); min-width:0; padding:8px 14px; z-index:5; flex-direction:row-reverse; }
+#interact small{ font-size:max(var(--fmin),calc(12px*var(--fs))); padding:1px 8px; border-color:var(--bone); color:#fff; }
+@media (max-width:1000px){ #hud{ --ixside:300px; } }
+body.touch #interact{ bottom:calc(14px + env(safe-area-inset-bottom)); min-height:44px; max-width:calc(100vw - 2*var(--ixside,300px)); }
+body.touch #hud{ --ixside:300px; }
+@media (orientation:portrait){ body.touch #interact{ bottom:calc(150px + env(safe-area-inset-bottom)); max-width:calc(100vw - 24px); } }
+body.touch.intown #interact{ bottom:calc(30px + env(safe-area-inset-bottom)); }
+body.intown #interact{ bottom:calc(52px + env(safe-area-inset-bottom)); }
+body.touch.intown #interact{ left:50%; }
+@media (max-width:1000px){ body:not(.touch):not(.intown) #interact{ bottom:calc(150px + env(safe-area-inset-bottom)); } }

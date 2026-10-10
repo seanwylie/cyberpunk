@@ -159,7 +159,7 @@ export class UI {
     const s=g.save; $('lvl').title='Level, credits, repair bill'; $('lvl').textContent=`Lv ${s.level} · ${s.credits}c`+(s.repairBill>0?` · fix ${s.repairBill}c`:'');
     const inst=g.inst; if(g.mode==='run'&&inst){ const rem=Math.max(0,inst.expiresAt-Date.now()); const h=Math.floor(rem/3600000), m=Math.floor(rem%3600000/60000); $('timer').textContent='Instance '+h+'h'+String(m).padStart(2,'0')+'m'+(rem<1800000?' ⚠':''); $('carry').textContent=`Pack ${g.carriedCount()}/${COMBAT.missionSlots} · +${inst.carried.credits}c`; $('stimn').textContent=String(inst.carried.stims); } else { $('timer').textContent=g.hasLiveInstance()?'Instance live':''; $('carry').textContent=''; $('stimn').textContent=String(s.stims); }
     this.guideHud();
-    const run=g.mode==='run'; $('btn-town').style.display=run?'':'none'; $('btn-inv').style.display=run?'':'none';
+    const run=g.mode==='run'; document.body.classList.toggle('intown',!run); $('btn-town').style.display=run?'':'none'; $('btn-inv').style.display=run?'':'none';
     this.abilityButtons();
     const pr=g.prompt; const ib=$('interact'); ib.style.display=pr&&!this.modal&&!g.downed?'':'none'; if(pr) ib.innerHTML='<span class="ilabel">'+esc(pr.label)+'</span><small>F</small>'; if(pr) ib.title=pr.label;
     const ch=$('channelbar'); if(g.channel){ ch.style.display='block'; (ch.querySelector('.track>div') as HTMLElement).style.width=g.channel.t/g.channel.dur*100+'%'; ch.querySelector('span')!.textContent=g.channel.kind==='town'?'Returning to town…':'Hacking…'; } else ch.style.display='none';
