@@ -133,3 +133,5 @@ small{ font-size:max(var(--fmin),.86em); }
 .repbar{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; } .repb{ border:1px solid var(--ac,#666); border-left-width:4px; background:#2a2c2e; padding:1px 8px; border-radius:3px; font-size:max(var(--fmin),calc(10px*var(--fs))); white-space:nowrap; } .repb b{ color:#f1ecdc; }
 #tiptile{ position:fixed; z-index:80; display:none; max-width:min(300px,60vw); padding:7px 10px; border-radius:6px; background:rgba(16,17,18,.97); border:1px solid #686b6e; font-size:max(var(--fmin),calc(12px*var(--fs))); line-height:1.35; color:#e6e0cc; pointer-events:none; }
 .tag{ white-space:nowrap; display:inline-block; line-height:1.25; }
+
+.actrow{ display:flex; flex-wrap:wrap; align-items:center; gap:6px 8px; margin-top:6px; } .actrow .btn{ margin:0; min-height:calc(2.1em + 4px); white-space:nowrap; } .actrow .stat{ white-space:nowrap; }
