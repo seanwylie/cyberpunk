@@ -63,11 +63,12 @@ const check = () => {
     const ty = (Math.min(...rs.map(r => r.top)) + Math.max(...rs.map(r => r.bottom))) / 2, by = (hb.top + hb.bottom) / 2; if (el.matches('.akey,.abtn .aname,#dodge .aname')) continue;
     if (Math.abs(ty - by) > hb.height * .12 + 1) bad.push(`text not vertically centred (${(ty - by).toFixed(1)}px off in ${hb.height.toFixed(0)}px box): ` + desc(el)); }
   // sibling boxes laid out in the same visual row must have equal height (and socket boxes equal width)
-  for (const par of document.querySelectorAll('#modal *, #hud *')) { if (!vis(par)) continue; const kids = [...par.children].filter(k => vis(k) && k.matches('.sock,.slot,.chip-btn,.btn,.abchip,.tag')); if (kids.length < 2) continue;
+  for (const par of document.querySelectorAll('#modal *, #hud *')) { if (!vis(par)) continue; const kids = [...par.children].filter(k => vis(k) && k.matches('.sock,.slot,.chip-btn,.btn,.abchip,.tag,.pchip,.cchip')); if (kids.length < 2) continue;
     const rects = kids.map(k => [k, k.getBoundingClientRect()]);
     for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) { const [a, ra] = rects[i], [b, rb] = rects[j]; if (a.className !== b.className) continue; const overlap = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top); if (overlap < Math.min(ra.height, rb.height) * .5) continue;
       if (Math.abs(ra.height - rb.height) > 1.5) bad.push(`sibling heights differ (${ra.height.toFixed(0)} vs ${rb.height.toFixed(0)}): ` + desc(a) + ' / ' + desc(b));
       if (a.matches('.sock') && Math.abs(ra.width - rb.width) > 1.5) bad.push('sibling widths differ: ' + desc(a)); } }
+  { const mt = (document.getElementById('modal') || {}).textContent || ''; const m = /\b(kill_mfr|boss_defeated|condition_used|route_used|run_cleared|town_choice|contract_done|Relationship graph|Generation log|Portraits need art)\b/.exec(mt); if (m) bad.push('debug text leaked into UI: ' + m[0]); }
   // scroll containers must not scroll horizontally
   for (const el of document.querySelectorAll('#modal *, #hud *')) if (vis(el)) { const s = getComputedStyle(el); if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && el.scrollWidth > el.clientWidth + 1) bad.push('horizontal scroll: ' + desc(el)); }
   // canvas text captured since the last step
@@ -94,7 +95,7 @@ for (const [w, h] of SIZES) {
   const open = (name, m) => step(name, m => { const u = window.__ui; u.modal = m; u.render(); }, m);
   await step('03-locker', () => { window.__ui.resetDraft(); window.__ui.modal = 'locker'; window.__ui.render(); });
   await step('04-locker-draft', () => { const u = window.__ui; u.draft.torso.chips.push('power'); u.draft.armR.chips.push('speed'); u.render(); });
-  await step('04a-tile-tooltip', () => { const t = document.querySelector('.tile[data-def]'); t.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse', bubbles: true })); const bb = [...document.querySelectorAll('.tile')].map(x => x.getBoundingClientRect()); window.__tiles = bb.map(r => [Math.round(r.width), Math.round(r.height)]); });
+  await step('04a-tile-tooltip', () => { const t = document.querySelector('.tile[data-def]'); t.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse', bubbles: true })); const bb = [...document.querySelectorAll('.body-grid .tile')].map(x => x.getBoundingClientRect()); window.__tiles = bb.map(r => [Math.round(r.width), Math.round(r.height)]); });
   { const tl = await ev(() => window.__tiles); ok(tl.length === 11 && tl.every(x => Math.abs(x[0] - x[1]) <= 1 && x[0] === tl[0][0]), `${tag} body tiles are uniform squares ${JSON.stringify(tl[0])}`); ok(await ev(() => document.querySelectorAll('.tile .pip').length > 10 && document.querySelectorAll('.tile .ticon canvas').length > 0 && document.querySelectorAll('.repb').length === 3 && getComputedStyle(document.getElementById('tiptile')).display === 'block'), `${tag} tiles show pips, icons, 3 rep badges and a hover tooltip`); await ev(() => document.querySelector('.tile').dispatchEvent(new PointerEvent('pointerleave', { bubbles: true }))); }
   await step('04b-locker-sockets', () => { const u = window.__ui, g = window.__game; g.save.lockerChips.coolant = 3; g.save.lockerChips.gridlink = 3; u.sel = 'armR'; u.draft.armR.chips.length = 0; u.draft.armR.chips.push('coolant', 'gridlink', 'power'); u.render(); });
   await open('05-vendor', 'vendor');
@@ -102,7 +103,10 @@ for (const [w, h] of SIZES) {
   { const fsz = await ev(() => parseFloat(getComputedStyle(document.querySelector('#modal .win .body')).fontSize)); (globalThis.__fsz ||= {})[tag] = fsz; }
   await open('06-dungeon-select', 'gate');
   await open('07-contacts', 'contacts');
+  await ev(() => { const st = window.__game.story(); st.clues.A = 'The audit terminal lists a sealed armory.'; st.events.push({ id: 900, kind: 'kill_mfr', key: 'MM', n: 208, t: 0 }); });
   await open('08-fixer', 'fixer');
+  await step('08b-locker-confirm', () => { const u = window.__ui; u.modal = 'locker'; u.render(); const b = document.querySelector('.stgrid .tile'); b && b.click(); const r = document.querySelector('[data-act=replace]'); r && r.click(); });
+  await step('08c-locker-close-confirm', () => { window.__ui.confirm = null; window.__ui.render(); });
   await open('09-store', 'store');
   await open('10-settings-about', 'settings');
   await ev(() => { window.__ui.modal = null; window.__ui.render(); window.__game.startRun(); window.__game.dbg.god = true; window.__game.revealing = false; });
