@@ -7,6 +7,7 @@ import { bodyOf } from './bodyvariants';
 import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
 import type { Level } from './level';
 import { TownArt, GP, decorDepth } from './town';
+import { STATIONS, STATION_BY_ID, drawIcon } from './stations';
 import { Organic } from './organic';
 import { DungeonArt, themeOf } from './dungeon_env';
 import { EnemyArt } from './enemyart';
@@ -375,7 +376,7 @@ export class Renderer {
     for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){ const sw=Math.min(CH*GP,gr.width-cx*CH*GP), sh=Math.min(CH*GP,gr.height-cy*CH*GP); if(sw<=0||sh<=0) continue; this.bakeBlit(gr,cx*CH*GP,cy*CH*GP,sw,sh,kk/2,kk/4,-kk/2,kk/4,this.sx(cx*CH,cy*CH),this.sy(cx*CH,cy*CH),0,1); } }
   private townItems(items:{d:number;f:()=>void}[]){ const t=this.town!, L=this.g.level, c=this.ctx, g=this.g; t.update(Math.min(.1,Math.max(0,g.time-this.tLast)||0),L,g.time,g.px,g.py); this.tLast=g.time;
     for(const d of L.decor||[]){ items.push({d:decorDepth(d),f:()=>{ const w=d.sw*this.TW; const sp=t.scaled(d.spr,w,this.dpr); if(!sp) return; const cx=this.sx(d.x+d.fw/2,d.y+d.fd/2); const base=this.sy(d.x+d.fw,d.y+d.fd); const ay=d.ay??.9; const X=cx-sp.w/2, Y=base-sp.h*ay;
-        let al=1; const pa=this.sx(g.px,g.py), pb=this.sy(g.px,g.py); if(g.px+g.py<decorDepth(d)-.2&&pa>X&&pa<X+sp.w&&pb>Y&&pb<Y+sp.h*.9&&d.spr!=='lamp'&&sp.h>this.TW*1.6) al=.5;
+        let al=1; const pa=this.sx(g.px,g.py), pb=this.sy(g.px,g.py); if(g.px+g.py<decorDepth(d)-.2&&pa>X&&pa<X+sp.w&&pb>Y&&pb<Y+sp.h*.9&&d.spr!=='lamp'&&!d.spr.startsWith('sign_')&&sp.h>this.TW*1.6) al=.5;
         if(X>this.w||X+sp.w<0||Y>this.h||Y+sp.h<0) return; // viewport cull
         if(al!==1){ c.globalAlpha=al; c.drawImage(sp.cv,Math.round(X*this.dpr)/this.dpr,Math.round(Y*this.dpr)/this.dpr,sp.w,sp.h); c.globalAlpha=1; } else c.drawImage(sp.cv,Math.round(X*this.dpr)/this.dpr,Math.round(Y*this.dpr)/this.dpr,sp.w,sp.h); }}); }
     (L.npcs||[]).forEach((n,i)=>{ const s=t.npcPos[i]||{x:n.x,y:n.y,flip:false,moving:false}; items.push({d:s.x+s.y,f:()=>this.drawNpc(n,s)}); }); }
@@ -384,9 +385,20 @@ export class Renderer {
     const a=this.sx(s.x,s.y), b=this.sy(s.x,s.y); const T=g.time+n.ph*3; const breathe=Math.sin(T*1.7)*.012, sway=Math.sin(T*.7)*.015, step=s.moving?Math.abs(Math.sin(T*5))*this.TW*.035:0;
     c.save(); c.fillStyle='rgba(0,0,0,.4)'; c.beginPath(); c.ellipse(a,b,sp.w*.32,sp.w*.11,0,0,7); c.fill();
     c.translate(a,b-step); if(s.flip) c.scale(-1,1); c.transform(1,0,sway+(s.moving?Math.sin(T*5)*.03:0),1+breathe,0,0); c.drawImage(sp.cv,-sp.w/2,-sp.h*.97,sp.w,sp.h); c.restore(); }
-  private townMarker(it:{id:string;x:number;y:number;label:string},a:number,b:number,s:number){ const c=this.ctx, g=this.g; const near=Math.hypot(g.px-it.x,g.py-it.y)<7; const bob=Math.sin(g.time*2.2+it.x)*2*s; const lift=(it.id==='annex'?64:it.id==='locker'?44:52)*s;
-    c.save(); c.globalAlpha=near?.95:.55; c.fillStyle='#cfc6b0'; c.strokeStyle='rgba(10,10,12,.7)'; c.lineWidth=1.5; c.beginPath(); c.moveTo(a,b-lift+8*s+bob); c.lineTo(a-6*s,b-lift+bob); c.lineTo(a+6*s,b-lift+bob); c.closePath(); c.fill(); c.stroke(); c.restore();
-    if(near){ c.save(); const FS=uiFs(); c.font=`600 ${cpx(11*s*1.3*FS)}px ${FONT}`; c.textAlign='center'; c.fillStyle='rgba(15,15,16,.72)'; const tw=c.measureText(it.label).width; c.fillRect(a-tw/2-5,b-lift-22*s-4*(FS-1)*s*3,tw+10,16*s*1.3*FS); c.fillStyle='#d8d2bf'; c.fillText(it.label,a,b-lift-9*s); c.restore(); } }
+  /** station wayfinding in the world: bobbing coloured chevron + a name pill (icon + name) that fades in with proximity */
+  private townMarker(it:{id:string;x:number;y:number;label:string},a:number,b:number,s:number){ const st=STATION_BY_ID[it.id]; const c=this.ctx, g=this.g; if(!st) return; const d=Math.hypot(g.px-it.x,g.py-it.y);
+    const fade=Math.max(0,Math.min(1,(17-d)/7)); const near=d<(it as any).r; const bob=Math.sin(g.time*2.2+it.x)*2*s; const lift=(st.key==='gate'?72:58)*s*(this.TW/64>1.2?1:1);
+    c.save(); c.globalAlpha=Math.max(.5,fade)*(near?1:.9); c.fillStyle=st.color; c.strokeStyle='rgba(10,10,12,.8)'; c.lineWidth=1.5; c.beginPath(); c.moveTo(a,b-lift+10*s+bob); c.lineTo(a-7*s,b-lift+bob); c.lineTo(a+7*s,b-lift+bob); c.closePath(); c.fill(); c.stroke(); c.restore();
+    if(fade>.02){ c.save(); c.globalAlpha=fade; const FS=uiFs(); const fs=cpx(12*s*1.3*FS); c.font=`700 ${fs}px ${FONT}`; c.textAlign='left'; c.textBaseline='middle'; const txt=st.name.toUpperCase(); const tw=c.measureText(txt).width; const ph=fs*1.7, pw=tw+ph+fs*.8; const x0=a-pw/2, y0=b-lift-ph-10*s;
+      c.fillStyle='rgba(10,11,14,.82)'; c.beginPath(); (c as any).roundRect?.(x0,y0,pw,ph,ph/2); if(!(c as any).roundRect) c.rect(x0,y0,pw,ph); c.fill(); c.strokeStyle=st.color; c.lineWidth=1.5; c.stroke();
+      drawIcon(c,st.icon,x0+ph*.55,y0+ph/2,ph*.3,st.color); c.fillStyle='#f4f1e6'; c.fillText(txt,x0+ph*1.05,y0+ph/2+1); c.restore(); } }
+  /** edge-of-screen arrows toward stations that are off screen (Settings: Show station markers) */
+  private drawStationArrows(){ const c=this.ctx, g=this.g; if(g.save.settings.stationMarkers===false||g.mode!=='town') return; const mT=64,mB=112,mL=26,mR=26; const cx=this.w/2, cy=this.h/2; const FS=uiFs(); (window as any).__arrows=[];
+    for(const st of STATIONS){ const d=Math.hypot(g.px-st.x,g.py-st.y); if(d<9) continue; const px=this.sx(st.x,st.y), py=this.sy(st.x,st.y)-this.TW*.6; if(px>mL&&px<this.w-mR&&py>mT&&py<this.h-mB) continue;
+      const ang=Math.atan2(py-cy,px-cx); const kx=(this.w/2-mR)/Math.max(1e-3,Math.abs(Math.cos(ang))), ky=(this.h/2-(py<cy?mT:mB))/Math.max(1e-3,Math.abs(Math.sin(ang))); const kk=Math.min(kx,ky); const ax=cx+Math.cos(ang)*kk, ay=cy+Math.sin(ang)*kk+(py<cy?(mT-mB)*0:0);
+      const R=14*Math.max(1,FS*.9); c.save(); c.translate(ax,Math.min(this.h-mB,Math.max(mT,ay))); c.globalAlpha=.9; c.fillStyle='rgba(10,11,14,.85)'; c.strokeStyle=st.color; c.lineWidth=2; c.beginPath(); c.arc(0,0,R,0,7); c.fill(); c.stroke();
+      drawIcon(c,st.icon,0,0,R*.55,st.color); c.rotate(ang); c.fillStyle=st.color; c.beginPath(); c.moveTo(R+9,0); c.lineTo(R+1,-6); c.lineTo(R+1,6); c.closePath(); c.fill(); c.restore();
+      c.save(); c.globalAlpha=.85; c.font=`700 ${cpx(10.5*FS)}px ${FONT}`; c.textAlign='center'; c.fillStyle=st.color; const lx=Math.min(this.w-40,Math.max(40,ax)), ly=Math.min(this.h-mB,Math.max(mT,ay))+R+13; c.fillText(Math.round(d)+'m',lx,ly); c.restore(); (window as any).__arrows.push(st.key); } }
   /** overhead dressing (awnings, lantern swags, bulb strings, rag lines): drawn after actors, fades while the player is under it; glow anchors are saved for the light pass */
   private ovGlows:{x:number;y:number;r:number;a:number;c:string;ph:number}[]=[];
   private drawTownOverhead(){ const t=this.town!, L=this.g.level, c=this.ctx, g=this.g; this.ovGlows.length=0; const pa=this.sx(g.px,g.py), pb=this.sy(g.px,g.py)-this.TW*.6;
@@ -398,14 +410,18 @@ export class Renderer {
   private ovA=new Map<string,number>();
   private drawTownAmbient(){ const t=this.town!, L=this.g.level, c=this.ctx, g=this.g; const T=g.time; const red=g.save.settings.reducedFx||Q.fx>=1;
     // particles (steam/embers/dust)
-    for(const p of t.parts){ const k=p.t/p.life; const a=this.sx(p.x,p.y), b=this.sy(p.x,p.y,p.z); if(p.k==='steam'){ const r=p.s*this.TW; c.globalAlpha=.3*(1-k)*Math.min(1,p.t*2); c.drawImage(t.glows.puff,a-r*1.4,b-r*1.4,r*2.8,r*2.8); c.globalAlpha=1; } else if(p.k==='ember'){ c.fillStyle=`rgba(255,150,70,${1-k})`; c.fillRect(a,b,2,2); } else if(!red){ c.fillStyle=`rgba(200,190,170,${.25*Math.sin(Math.PI*k)})`; c.fillRect(a,b,1.6,1.6); } }
+    for(const p of t.parts){ const k=p.t/p.life; const a=this.sx(p.x,p.y), b=this.sy(p.x,p.y,p.z); if(p.k==='steam'){ const r=p.s*this.TW; c.globalAlpha=.3*(1-k)*Math.min(1,p.t*2); c.drawImage(t.glows.puff,a-r*1.4,b-r*1.4,r*2.8,r*2.8); c.globalAlpha=1; } else if(p.k==='ember'){ c.fillStyle=`rgba(${p.col||'255,150,70'},${1-k})`; c.fillRect(a,b,2,2); } else if(!red){ c.fillStyle=`rgba(200,190,170,${.25*Math.sin(Math.PI*k)})`; c.fillRect(a,b,1.6,1.6); } }
     // additive light pools with flicker
     c.save(); c.globalCompositeOperation='lighter'; const lstep=Q.fx>=1?2:1; if(Q.fx<2) for(let i=0;i<(L.lights||[]).length;i+=lstep){ const l=L.lights![i]; const a=this.sx(l.x,l.y), b=this.sy(l.x,l.y,l.z); if(a<-300||a>this.w+300||b<-300||b>this.h+300) continue; const fl=l.flick?1+Math.sin(T*(9+i)+i*2.1)*l.flick*.6+Math.sin(T*23+i*5)*l.flick*.4:1; const r=l.r*this.TW*.5*(l.c==='cool'?1:.9+fl*.1); c.globalAlpha=Math.max(0,l.a*fl*(l.c==='cool'?1:.8)); c.drawImage(t.glows[l.c],13,13,102,102,a-r*.8,b-r*.5,r*1.6,r*1.0); }
+    if(Q.fx<2) for(const st of STATIONS){ const sa=this.sx(st.sx+.5,st.sy+.5), sb=this.sy(st.sx+.5,st.sy+.5,3.4); if(sa<-200||sa>this.w+200||sb<-200||sb>this.h+200) continue; const ph=st.lx; let fl=1;
+      if(st.ambient==='screens') fl=Math.sin(T*31+ph)>.55?.45:1-.15*Math.sin(T*7+ph); else if(st.ambient==='neon') fl=(Math.sin(T*2.1+ph)>.93||Math.sin(T*13)>.97)?.35:1; else if(st.ambient==='beacon') fl=.55+.45*Math.max(0,Math.sin(T*3.2)); else if(st.ambient==='scan') fl=.8+.2*Math.sin(T*1.5); else fl=.85+.15*Math.sin(T*5+ph);
+      c.globalAlpha=.34*fl*(red?.6:1); const r=this.TW*(st.key==='gate'?3.2:2.6); c.drawImage(t.glows[st.key],sa-r,sb-r*.6,r*2,r*1.2);
+      if(st.ambient==='scan'){ const u=(T*.45)%1; c.globalAlpha=.55; c.fillStyle=st.color; c.fillRect(sa-this.TW*2.1,sb-this.TW*.55+u*this.TW*1.1,this.TW*4.2,1.5); } }
     if(Q.fx<2) for(const gl of this.ovGlows){ const fl=1+Math.sin(T*8+gl.ph)*.08+Math.sin(T*21+gl.ph*2)*.05; c.globalAlpha=gl.a*fl; c.drawImage(t.glows[gl.c],gl.x-gl.r,gl.y-gl.r,gl.r*2,gl.r*2); } c.restore(); }
   private ovCache:HTMLCanvasElement|null=null; private ovKey='';
   /** town tint + vignette baked once per size into one canvas (one blit per frame instead of a fullscreen fill + fullscreen gradient) */
   private townOverlay(){ const c=this.ctx; const key=this.w+'x'+this.h+'|'+this.dpr; if(key!==this.ovKey||!this.ovCache){ this.ovKey=key; const cv=document.createElement('canvas'); cv.width=Math.ceil(this.w*this.dpr); cv.height=Math.ceil(this.h*this.dpr); const x=cv.getContext('2d')!; x.scale(this.dpr,this.dpr); x.fillStyle='rgba(10,12,20,.2)'; x.fillRect(0,0,this.w,this.h); const gr=x.createRadialGradient(this.w/2,this.h/2,Math.min(this.w,this.h)*.35,this.w/2,this.h/2,Math.max(this.w,this.h)*.75); gr.addColorStop(0,'rgba(10,10,12,0)'); gr.addColorStop(1,'rgba(6,7,10,.72)'); x.fillStyle=gr; x.fillRect(0,0,this.w,this.h); this.ovCache=cv; } c.drawImage(this.ovCache,0,0,this.w,this.h); }
-  drawOverlay(){ const c=this.ctx; if(this.g.level.kind==='town'){ this.townOverlay(); return; } else if(this.env) this.org.drawFogAndVignette(this); const gr=c.createRadialGradient(this.w/2,this.h/2,Math.min(this.w,this.h)*.35,this.w/2,this.h/2,Math.max(this.w,this.h)*.75); gr.addColorStop(0,'rgba(10,10,12,0)'); gr.addColorStop(1,'rgba(10,10,12,.6)'); c.fillStyle=gr; c.fillRect(0,0,this.w,this.h); }
+  drawOverlay(){ const c=this.ctx; if(this.g.level.kind==='town'){ this.townOverlay(); this.drawStationArrows(); return; } else if(this.env) this.org.drawFogAndVignette(this); const gr=c.createRadialGradient(this.w/2,this.h/2,Math.min(this.w,this.h)*.35,this.w/2,this.h/2,Math.max(this.w,this.h)*.75); gr.addColorStop(0,'rgba(10,10,12,0)'); gr.addColorStop(1,'rgba(10,10,12,.6)'); c.fillStyle=gr; c.fillRect(0,0,this.w,this.h); }
 }
 export const ATKD:Record<string,{shape:'cone'|'circle'|'line'|'fan'|'aim';r:number;arc:number;w:number;w_?:number}&{w:number}> = {} as any;
 // telegraph geometry mirrors ATK/resolveAttack in sim.ts

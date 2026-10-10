@@ -1,4 +1,6 @@
 import { flashAllowed, FLASH_ALPHA_CAP } from './flashguard';
+import { STATIONS, STATION_BY_ID, drawIcon, type Station } from './stations';
+const _ico:Record<string,string>={}; function stationIconURL(st:Station){ return _ico[st.key]||(_ico[st.key]=(()=>{ const cv=document.createElement('canvas'); cv.width=cv.height=48; const c=cv.getContext('2d')!; drawIcon(c,st.icon,24,24,17,st.color,3); return cv.toDataURL(); })()); }
 import { Game } from './sim';
 import { applyUiScale } from './config';
 import { specOf, iconCanvas } from './lootart';
@@ -61,7 +63,13 @@ export class UI {
   setMinimap(on:boolean){ this.g.save.settings.minimap=on; persist(this.g.save); this.guideHud(); this.syncTray(); }
   syncTray(){ const on=this.g.save.settings.minimap!==false; const b=$('btn-map'); b.classList.toggle('on',on); b.classList.toggle('off',!on); b.setAttribute('aria-pressed',String(on)); }
   mmCache:{lv:any;cv:HTMLCanvasElement}|null=null;
-  guideHud(){ const g=this.g, ob=$('objective'), mm=$('minimap') as HTMLCanvasElement; const gd=g.mode==='run'?g.guidance():null; if(!gd){ ob.style.display='none'; mm.style.display='none'; return; }
+  /** town minimap: walkable area + coloured function icons per station (same icon language as the world signs) and the player */
+  townMap(mm:HTMLCanvasElement){ const g=this.g, L=g.level; mm.style.display='block'; const W=mm.width,H=mm.height; const k=Math.min(W/L.w,H/L.h); const ox=(W-L.w*k)/2, oy=(H-L.h*k)/2; const c=mm.getContext('2d')!; c.clearRect(0,0,W,H);
+    c.fillStyle='#3a3b3e'; for(let y=0;y<L.h;y++) for(let x=0;x<L.w;x++) if(!L.solid[y*L.w+x]) c.fillRect(ox+x*k,oy+y*k,Math.ceil(k),Math.ceil(k));
+    const mk:{key:string;x:number;y:number}[]=[]; const R=Math.max(5,Math.min(8,k*2.6));
+    for(const st of STATIONS){ const x=ox+st.x*k, y=oy+st.y*k; c.fillStyle='rgba(10,11,14,.9)'; c.beginPath(); c.arc(x,y,R,0,7); c.fill(); c.strokeStyle=st.color; c.lineWidth=1.6; c.stroke(); drawIcon(c,st.icon,x,y,R*.55,st.color,1.2); mk.push({key:st.key,x,y}); }
+    c.fillStyle='#fff'; c.beginPath(); c.arc(ox+g.px*k,oy+g.py*k,2.6,0,7); c.fill(); c.strokeStyle='#000'; c.lineWidth=1; c.stroke(); (window as any).__mmMarkers=mk; }
+  guideHud(){ const g=this.g, ob=$('objective'), mm=$('minimap') as HTMLCanvasElement; const gd=g.mode==='run'?g.guidance():null; if(!gd){ ob.style.display='none'; if(g.mode==='town'&&g.level.kind==='town'&&g.save.settings.minimap!==false) this.townMap(mm); else mm.style.display='none'; return; }
     ob.style.display='block'; (ob.firstElementChild as HTMLElement).textContent='Objective'; ob.querySelector('span')!.textContent=gd.obj.text+(gd.dist>0?' · '+Math.round(gd.dist)+'m':'');
     if(g.save.settings.minimap===false){ mm.style.display='none'; return; } mm.style.display='block'; const L=g.level; const W=mm.width, H=mm.height; const k=Math.min(W/L.w,H/L.h); const ox=(W-L.w*k)/2, oy=(H-L.h*k)/2; const c=mm.getContext('2d')!; c.clearRect(0,0,W,H);
     if(!g.seen) return; const seen=g.seen; c.fillStyle='#2b2c2e'; for(let y=0;y<L.h;y++) for(let x=0;x<L.w;x++){ if(seen[y*L.w+x]&&!L.solid[y*L.w+x]){ c.fillStyle=g.zoneAt(x+.5,y+.5)==='boss'?'#4a2d28':'#46474a'; c.fillRect(ox+x*k,oy+y*k,Math.ceil(k),Math.ceil(k)); } }
@@ -163,7 +171,7 @@ export class UI {
     this.guideHud();
     const run=g.mode==='run'; document.body.classList.toggle('intown',!run); $('btn-town').style.display=run?'':'none'; $('btn-inv').style.display=run?'':'none';
     this.abilityButtons();
-    const pr=g.prompt; const ib=$('interact'); ib.style.display=pr&&!this.modal&&!g.downed?'':'none'; if(pr) ib.innerHTML='<span class="ilabel">'+esc(pr.label)+'</span><small>F</small>'; if(pr) ib.title=pr.label;
+    const pr=g.prompt; const ib=$('interact'); ib.style.display=pr&&!this.modal&&!g.downed?'':'none'; if(pr){ const st=(pr as any).station?STATION_BY_ID[(pr as any).station]:null; ib.innerHTML=(st?'<img class="sico" alt="" src="'+stationIconURL(st)+'">':'')+'<span class="ilabel">'+esc(pr.label)+'</span><small>F</small>'; if(st) ib.style.setProperty('--ac',st.color); else ib.style.removeProperty('--ac'); } if(pr) ib.title=pr.label;
     const ch=$('channelbar'); if(g.channel){ ch.style.display='block'; (ch.querySelector('.track>div') as HTMLElement).style.width=g.channel.t/g.channel.dur*100+'%'; ch.querySelector('span')!.textContent=g.channel.kind==='town'?'Returning to town…':'Hacking…'; } else ch.style.display='none';
     // conditional support panel: only when relevant ability equipped
     const sup=g.build.abilities.includes('revive'); const sp=$('support'); sp.style.display=sup&&g.mode==='run'?'flex':'none'; if(sup&&!sp.innerHTML) sp.innerHTML='<span class="mut">Support</span><div class="portrait">P1</div><div class="portrait">P2</div><div class="portrait">P3</div><div class="portrait">P4</div><div class="portrait guest">G5</div><span class="mut">no teammates (solo)</span>'; if(!sup) sp.innerHTML='';

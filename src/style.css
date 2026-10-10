@@ -426,3 +426,5 @@ body.tutdock #bvgmark{ visibility:hidden; }
 /* touch: larger ability circles with whole-word captions (portrait phones have the width for it) */
 body.touch{ --abs:clamp(56px,16vw,64px); --dds:clamp(62px,16vw,78px); --abgap:12px; }
 body.touch .abtn .aname,body.touch #dodge .aname{ overflow-wrap:normal; max-width:calc(100% + var(--abgap) - 2px); letter-spacing:0; }
+/* station icon in the interact prompt (colour = station accent) */
+#interact .sico{ width:22px; height:22px; flex:none; }

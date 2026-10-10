@@ -30,6 +30,7 @@ export function settingsHtml(ui:UIx):string{
     +row('Replay tutorial','Walk through the first-run guide again: contracts, the locker, the vendor and your first run.',`<button type="button" class="btn" data-act="replaytut">Replay tutorial</button>`)
     +row('Gore','How much blood and debris combat leaves behind.',seg('gore',st.gore,[['off','Off'],['standard','Standard'],['bloody','Bloody']],'Gore'))
     +row('Upgrade recommendations','Show the Recommended panel and ▲ badges in the locker and vendor.',sw('rechide',st.recHidden!==true,'Upgrade recommendations'),{tag:'label',id:'s-rechide'})
+    +row('Show station markers','Town wayfinding: arrows at the screen edge pointing to Job Board, Implant Parts, Gate and the other stations that are off screen.',sw('stationmk',st.stationMarkers!==false,'Show station markers'),{tag:'label',id:'s-stationmk'})
     +row('Recommendations: nudge on town return','Pop a short toast about your best upgrade when you get back to town.',sw('recnudge',st.recNudge!==false,'Recommendations nudge on town return'),{tag:'label',id:'s-recnudge'})
     +row('Damage numbers','Float the damage dealt above enemies.',sw('dmgnum',!!st.damageNumbers,'Damage numbers'),{tag:'label',id:'s-dmgnum'})
     +row('Loot labels','When item names appear above dropped loot.',seg('lootlabels',st.lootLabels,[['off','Off'],['near','Near / hover'],['all','All']],'Loot labels'))
@@ -120,7 +121,7 @@ const sel=(el:HTMLElement)=>{ const d=el.dataset; let s=el.tagName.toLowerCase()
 function keep(ui:UIx,focusEl?:HTMLElement|null,reset=false){ const sb=document.querySelector<HTMLElement>('.sbody'); S.scroll=reset?0:(sb?sb.scrollTop:0); S.focus=focusEl?sel(focusEl):''; ui.render(); }
 function setTab(ui:UIx,id:string,focus=true){ if(!TABS.some(t=>t[0]===id)) return; S.tab=id; S.confirm=null; try{ localStorage.setItem(TAB_KEY,id); }catch{} S.focus=focus?'#stab-'+id:''; S.scroll=0; ui.render(); }
 
-const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','recnudge','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','llmurl','llmkey','llmmodel','devreset']);
+const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','recnudge','stationmk','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','llmurl','llmkey','llmmodel','devreset']);
 /** returns true if handled. v is the new value (string for selects/ranges/text, boolean for switches) */
 function apply(ui:UIx,k:string,v:any,final=true){ const g=ui.g, s=g.save, st=s.settings;
   switch(k){
@@ -131,7 +132,7 @@ function apply(ui:UIx,k:string,v:any,final=true){ const g=ui.g, s=g.save, st=s.s
     case 'musicvol': st.musicVol=+v; ui.audio.setMusicVolume(st.musicVol); break;
     case 'sfxvol': st.sfxVol=+v; ui.audio.setSfxVolume(st.sfxVol); if(final) preview(ui); break;
     case 'llmon': st.llm.enabled=!!v; break; case 'llmurl': st.llm.url=v; break; case 'llmkey': st.llm.key=v; break; case 'llmmodel': st.llm.model=v; break;
-    case 'rechide': st.recHidden=!v; break; case 'recnudge': st.recNudge=!!v; break;
+    case 'rechide': st.recHidden=!v; break; case 'recnudge': st.recNudge=!!v; break; case 'stationmk': st.stationMarkers=!!v; break;
     case 'quality': st.quality=v; Q.setPref(v); break; case 'showfps': st.showFps=!!v; Q.showFps=!!v; break;
     case 'minimap': ui.setMinimap(!!v); return;
     case 'devreset': st.devFreeReset=!!v; break; }

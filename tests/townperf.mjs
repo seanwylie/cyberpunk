@@ -12,7 +12,7 @@ for (const [w, h] of SIZES) for (const rate of [1, 4]) {
   const r = await page.evaluate(async ({ prof }) => {
     const g = window.__game, R = window.__rend; const sec = {}; const gl = document.createElement('canvas').getContext('webgl'); const ext = gl && gl.getExtension('WEBGL_debug_renderer_info'); const sw = !gl || /swiftshader|llvmpipe|software/i.test(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'swiftshader'); const S = [];
     if (prof) for (const m of ['drawFloor', 'drawWorld', 'flushLoot', 'drawOverlay', 'drawTownGround', 'townItems', 'drawNpc', 'drawTownOverhead', 'drawTownAmbient', 'drawProjAndFx', 'drawGroundFx']) { const o = R[m]; R[m] = function (...a) { const t = performance.now(); const v = o.apply(this, a); sec[m] = (sec[m] || 0) + performance.now() - t; return v; }; }
-    const path = [[20, 15], [12, 12], [8, 11], [20, 15], [31, 12], [34, 21], [18, 24], [20, 15]]; const T = [];
+    const path = [[30.5, 22.5], [15, 13], [30.5, 22.5], [41.5, 12], [52, 22.5], [45, 32.6], [30, 35], [12.5, 30.6], [30.5, 22.5]]; const T = [];
     let pi = 0; g.px = path[0][0]; g.py = path[0][1]; for (let i = 0; i < 40; i++) { g.update(.016); R.draw(.016); } for (const k in sec) sec[k] = 0;
     const n = 200; let frames = 0; const rafT = []; let last = performance.now();
     await new Promise(res => { const f = () => { const now = performance.now(); rafT.push(now - last); last = now;

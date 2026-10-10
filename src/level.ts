@@ -1,17 +1,18 @@
 // Handcrafted-room assembly for the Reclamation Annex. Every layout keeps a combat route to objective and boss.
+import { STATIONS, type StationId, stationPrompt, TOWN_W, TOWN_H, TOWN_CX, TOWN_CY, SPAWN, RETURN_SPAWN } from './stations';
 export type Zone = 'yard'|'proc'|'junction'|'boss'|'salvage'|'corridor'|'passage'|'town';
 export interface DoorDef { id:string; tiles:[number,number][]; label:string; }
 export interface Prop { x:number; y:number; kind:'crate'|'conveyor'|'machine'|'pillar'|'rack'; h:number; }
-export interface Interact { id:string; x:number; y:number; r:number; label:string; kind:'terminal'|'hack'|'armory'|'controller'|'door'|'npc'|'locker'|'gate'|'vendor'|'crate'; }
+export interface Interact { id:string; x:number; y:number; r:number; label:string; kind:'terminal'|'hack'|'armory'|'controller'|'door'|'npc'|'locker'|'gate'|'vendor'|'crate'; /** town: screen to open when it differs from id */ opens?:string; /** town: owning station key */ station?:string; }
 export interface SpawnDef { type:string; x:number; y:number; group:number; /** batch-2 elite affixes rolled by the level generator */ affix?:string[]; }
 export interface Hazard { x:number; y:number; r:number; dps:number; heat:number; label:string; }
 export interface Level { /** per-run hazards (seeded for generated dungeons) */ hazards?:Hazard[]; /** layout seed */ seed?:number; w:number; h:number; solid:Uint8Array; zone:Uint8Array; doors:DoorDef[]; props:Prop[]; interacts:Interact[]; spawns:SpawnDef[]; checkpoints:{id:number;x:number;y:number;label:string}[]; sensors:{x0:number;y0:number;x1:number;y1:number}; spawn:{x:number;y:number}; zoneNames:Zone[]; bossSpawn:{x:number;y:number}; revealX:number; salvage:{x:number;y:number};
   /** 'town' enables the illustrated hub renderer (src/town.ts); decor/npcs/lights are visual-only (collision comes from `solid`). */
-  kind?:'town'|'annex'; /** dungeon visual theme ('foundry'|'clinic'|'warehouse'), see src/dungeon_env.ts */ theme?:string; decor?:Decor[]; npcs?:NpcDef[]; lights?:LightDef[]; hide?:Uint8Array; overhead?:Overhead[]; }
+  kind?:'town'|'annex'; returnSpawn?:{x:number;y:number}; /** dungeon visual theme ('foundry'|'clinic'|'warehouse'), see src/dungeon_env.ts */ theme?:string; decor?:Decor[]; npcs?:NpcDef[]; lights?:LightDef[]; hide?:Uint8Array; overhead?:Overhead[]; }
 export interface Overhead { spr:string; x:number; y:number; z:number; sw:number; glow?:'lanterns'|'bulbs'; }
-export interface Decor { spr:string; x:number; y:number; fw:number; fd:number; sw:number; ay?:number; solid?:boolean; flip?:boolean; glow?:string; steam?:boolean; }
+export interface Decor { spr:string; x:number; y:number; fw:number; fd:number; sw:number; ay?:number; solid?:boolean; flip?:boolean; glow?:string; steam?:boolean; station?:string; }
 export interface NpcDef { spr:string; x:number; y:number; wander?:[number,number]; speed?:number; ph:number; h?:number; }
-export interface LightDef { x:number; y:number; z:number; r:number; c:'warm'|'cool'|'fire'; a:number; flick?:number; }
+export interface LightDef { x:number; y:number; z:number; r:number; c:'warm'|'cool'|'fire'|StationId; a:number; flick?:number; }
 export const ZONES:Zone[]=['yard','proc','junction','boss','salvage','corridor','passage','town'];
 
 export function buildAnnex():Level {
@@ -82,64 +83,65 @@ export function buildAnnex():Level {
 }
 
 export function buildTown():Level {
-  const w=40,h=30; const solid=new Uint8Array(w*h).fill(1); const zone=new Uint8Array(w*h).fill(ZONES.indexOf('town')); const hide=new Uint8Array(w*h);
-  // organic plaza: ellipse with angular noise, so the boundary is not a rectangle
-  const RX=16.8, RY=12.8; const edge=(a:number)=>1+.085*Math.sin(a*3+1.3)+.06*Math.sin(a*5+.4)+.04*Math.sin(a*9+2);
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){ const dx=(x+.5-20)/RX, dy=(y+.5-15)/RY; const n=edge(Math.atan2(dy,dx)); if(dx*dx+dy*dy<n*n) solid[y*w+x]=0; }
+  const w=TOWN_W,h=TOWN_H,CX=TOWN_CX,CY=TOWN_CY; const solid=new Uint8Array(w*h).fill(1); const zone=new Uint8Array(w*h).fill(ZONES.indexOf('town')); const hide=new Uint8Array(w*h);
+  // organic plaza: ellipse with angular noise, so the boundary is not a rectangle. Districts sit on its rim, the open plaza is the hub.
+  const RX=25, RY=18.5; const edge=(a:number)=>1+.085*Math.sin(a*3+1.3)+.06*Math.sin(a*5+.4)+.04*Math.sin(a*9+2);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){ const dx=(x+.5-CX)/RX, dy=(y+.5-CY)/RY; const n=edge(Math.atan2(dy,dx)); if(dx*dx+dy*dy<n*n) solid[y*w+x]=0; }
   const carve=(x0:number,y0:number,x1:number,y1:number)=>{ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++) solid[y*w+x]=0; };
-  carve(32,19,36,22); carve(2,16,4,19);
+  carve(48,20,56,24);
   const decor:Decor[]=[]; const props:Prop[]=[];
   const D=(spr:string,x:number,y:number,fw:number,fd:number,sw:number,o:Partial<Decor>={})=>{ decor.push({spr,x,y,fw,fd,sw,solid:true,...o}); if(o.solid!==false) for(let j=0;j<fd;j++)for(let i=0;i<fw;i++){ solid[(y+j)*w+x+i]=1; hide[(y+j)*w+x+i]=1; } };
-  // ---- stalls clustered along the edges (plaza centre stays open) ----
-  // north / top of screen
-  D('stall_goods',11,6,3,3,4.1,{glow:'warm'}); D('stall_clothes',15,4,3,3,3.5); D('stall_noodle',18,3,3,3,4.2,{glow:'warm'}); D('scaffold',21,4,3,3,3.2); D('stall_implant',24,4,3,3,4.2,{glow:'cool'}); D('board_jobs',27,4,2,2,2.7); D('poster_wall',31,5,3,1,3.0);
-  // west: fixer / clinic / outfitter
-  D('stall_a',6,9,3,3,4.1,{glow:'warm'}); D('fixer_booth',3,13,3,3,3.4,{glow:'cool'}); D('stall_clinic',3,17,3,3,4.2,{glow:'warm'}); D('stall_awning',6,21,3,3,3.6);
-  // east: vendor row
-  D('stall_vendor_sign',29,8,3,3,3.4,{glow:'warm'}); D('stall_vendor',33,11,3,3,4.0); D('steam_drums',36,15,2,2,2.5,{steam:true}); D('stall_junk',27,13,3,3,4.1,{glow:'warm'});
-  // south: workbench / junk / weapons / gate
-  D('workbench',15,22,2,2,3.1); D('lockers',12,23,1,2,1.5); D('stall_weapons',26,21,3,3,3.9,{glow:'warm'}); D('gate_arch',33,19,3,1,3.6); D('vending',23,23,1,1,1.25,{glow:'cool'});
-  // clutter + street furniture
-  D('crates',9,24,2,2,2.6); D('crates',21,26,2,2,2.4); D('cables',9,15,1,1,1.5); D('barrels',31,16,2,2,2.4); D('bench',24,19,2,1,2.0); D('bench',12,18,1,2,1.8); D('barrel_fire',9,17,1,1,1.3,{glow:'fire'}); D('banner_pole',13,10,1,1,1.7); D('banner_pole',27,10,1,1,1.7); D('junk',18,26,2,1,2.8,{solid:false});
-  for(const [lx,ly] of [[14,13],[26,13],[17,20],[22,9],[30,16],[10,12]]) D('lamp',lx,ly,1,1,1.0,{glow:'warm'});
-  // ---- perimeter: tenements (back), containers/slabs/barriers/gantries (sides & front) instead of rubble ----
+  const S=(k:string)=>STATIONS.find(s=>s.key===k)!;
+  // ---- DISTRICT: JOB BOARD (NW, amber): job board wall + fixer booth + notice boards, big amber banner tower ----
+  { const s=S('jobs'); D('board_jobs',s.lx,s.ly,2,2,3.6,{station:s.key,glow:'warm'}); D('fixer_booth',s.lx+4,s.ly-1,3,3,3.4,{station:s.key,glow:'warm'}); D('noticeboard',s.lx-2,s.ly+3,1,1,1.4,{station:s.key}); D('poster_wall',s.lx-1,s.ly-2,3,1,3.0,{station:s.key}); D('stall_a',s.lx-4,s.ly+1,3,3,4.1,{glow:'warm'}); D('banner_pole',s.lx+7,s.ly+3,1,1,1.7); D('barrel_fire',s.lx+6,s.ly+5,1,1,1.3,{glow:'fire'}); }
+  // ---- DISTRICT: IMPLANT PARTS (NE, cyan): implant stall + clinic + vending, cool light ----
+  { const s=S('implants'); D('stall_implant',s.lx,s.ly,3,3,4.4,{station:s.key,glow:'cool'}); D('stall_clinic',s.lx+5,s.ly+1,3,3,4.2,{station:s.key,glow:'cool'}); D('vending',s.lx-2,s.ly+2,1,1,1.25,{glow:'cool'}); D('stall_vendor_sign',s.lx+9,s.ly+5,3,3,3.4,{glow:'cool'}); D('steam_drums',s.lx-3,s.ly-1,2,2,2.5,{steam:true}); D('banner_pole',s.lx+4,s.ly+5,1,1,1.7); }
+  // ---- DISTRICT: DUNGEON GATE (E, red): hazard-striped gate arch at the end of a corridor, guards, barriers ----
+  { const s=S('gate'); D('gate_arch',s.lx,s.ly-1,3,1,4.6,{station:s.key,glow:'warm'}); D('barrier',s.lx-5,s.ly-3,3,1,3.0); D('barrier',s.lx-5,s.ly+4,3,1,3.0); D('barrels',s.lx+1,s.ly+3,2,2,2.4); D('barrier_corner',s.lx-9,s.ly-2,2,2,3.2); D('steam_drums',s.lx-9,s.ly+4,2,2,2.5,{steam:true}); }
+  // ---- DISTRICT: REPAIR BAY (SE, violet): workbench + weapons rack + welding drums ----
+  { const s=S('repair'); D('workbench',s.lx,s.ly,2,2,3.4,{station:s.key,glow:'warm'}); D('stall_weapons',s.lx+3,s.ly+1,3,3,3.9,{station:s.key,glow:'warm'}); D('steam_drums',s.lx-3,s.ly+1,2,2,2.5,{steam:true}); D('crates',s.lx+7,s.ly,2,2,2.6); D('gantry',s.lx-5,s.ly-1,2,2,2.3); D('lamp',s.lx+2,s.ly-2,1,1,1.0,{glow:'warm'}); }
+  // ---- DISTRICT: LOCKER (S, green): lockers + stash containers + bench ----
+  { const s=S('locker'); D('lockers',s.lx,s.ly,1,2,1.8,{station:s.key,glow:'cool'}); D('lockers',s.lx+1,s.ly,1,2,1.8,{station:s.key}); D('lockers',s.lx+2,s.ly,1,2,1.8,{station:s.key}); D('container',s.lx+4,s.ly+1,4,2,3.7); D('bench',s.lx-3,s.ly,2,1,2.0); D('crates',s.lx-6,s.ly+1,2,2,2.6); D('lamp',s.lx-1,s.ly-2,1,1,1.0,{glow:'cool'}); }
+  // ---- DISTRICT: OUTFITTER (SW, magenta): clothes + goods stalls, neon ----
+  { const s=S('store'); D('stall_clothes',s.lx,s.ly,3,3,3.5,{station:s.key,glow:'warm'}); D('stall_goods',s.lx+4,s.ly+2,3,3,4.1,{station:s.key,glow:'warm'}); D('stall_noodle',s.lx-4,s.ly-3,3,3,4.2,{glow:'warm'}); D('stall_junk',s.lx+5,s.ly-3,3,3,4.1,{glow:'warm'}); D('lamp',s.lx+3,s.ly-1,1,1,1.0,{glow:'warm'}); }
+  // big readable world-space signs (pole + neon panel with icon and label), one per station
+  for(const s of STATIONS) D('sign_'+s.key,s.sx,s.sy,1,1,3.9,{station:s.key,ay:.93,glow:undefined});
+  // ---- plaza hub furniture (kept low so spawn reads from afar): directory kiosk, benches, fire barrel ring ----
+  D('bench',26,19,2,1,2.0); D('bench',33,25,2,1,2.0); D('bench',23,26,1,2,1.8); D('barrels',36,18,2,2,2.4); D('cables',27,25,1,1,1.5); D('scaffold',22,16,3,3,3.2,{solid:true}); D('steam_drums',37,25,2,2,2.5,{steam:true});
+  for(const [lx,ly] of [[24,14],[36,14],[24,29],[36,29],[19,21],[41,22],[30,11],[30,32]]) D('lamp',lx,ly,1,1,1.0,{glow:'warm'});
+  D('crates',6,22,2,2,2.6); D('crates',19,38,2,2,2.4); D('junk',50,32,2,1,2.8,{solid:false}); D('junk',8,12,2,1,2.8,{solid:false});
+  // ---- perimeter: tenements (back), containers/slabs/barriers/gantries (sides & front) ----
   { let seed=7; const R=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
     const free=(x:number,y:number,fw:number,fd:number)=>{ if(x<0||y<0||x+fw>w||y+fd>h) return false; for(let j=0;j<fd;j++)for(let i=0;i<fw;i++){ const k=(y+j)*w+x+i; if(!solid[k]||hide[k]) return false; } return true; };
-    const kinds:[string,number,number,number][]=[]; // spr, fw, fd, sw
-    for(let a=-Math.PI;a<Math.PI;a+=.075){ const r=1.5+R()*1.2; const cx=20+(RX*edge(a)+r)*Math.cos(a), cy=15+(RY*edge(a)+r)*Math.sin(a); const depth=cx+cy;
+    for(let a=-Math.PI;a<Math.PI;a+=.06){ const r=1.5+R()*1.2; const cx=CX+(RX*edge(a)+r)*Math.cos(a), cy=CY+(RY*edge(a)+r)*Math.sin(a); const depth=cx+cy-(CX+CY)+35;
       const pool:[string,number,number,number][]= depth<30? [['bld1',3,3,3.0],['bld2',3,3,3.0],['bld3',3,3,3.0],['gantry',2,2,2.3]] : depth<39? [['container',4,2,3.7],['slab',2,2,2.6],['barrier',3,1,3.0],['bld1',3,3,2.7],['gantry',2,2,2.2],['barrier_corner',2,2,3.2]] : [['container',4,2,3.7],['slab',2,2,2.6],['barrier',3,1,3.0],['barrier_corner',2,2,3.2],['container',2,4,3.7]];
       const [spr,fw,fd,sw]=pool[(R()*pool.length)|0]; const x=Math.round(cx-fw/2), y=Math.round(cy-fd/2);
-      for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]) if(free(x+dx,y+dy,fw,fd)){ D(spr,x+dx,y+dy,fw,fd,sw); kinds.push([spr,x,y,sw]); break; } }
+      for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]) if(free(x+dx,y+dy,fw,fd)){ D(spr,x+dx,y+dy,fw,fd,sw); break; } }
   }
   const lights:LightDef[]=[];
   for(const d of decor){ if(!d.glow) continue; const cx=d.x+d.fw/2, cy=d.y+d.fd/2; if(d.glow==='warm') lights.push({x:cx,y:cy,z:d.spr==='lamp'?1.5:1.1,r:d.spr==='lamp'?5.4:4.2,c:'warm',a:d.spr==='lamp'?.42:.3,flick:d.spr==='lamp'?.04:.12}); else if(d.glow==='fire') lights.push({x:cx,y:cy,z:.6,r:5.2,c:'fire',a:.45,flick:.3}); else lights.push({x:cx,y:cy,z:1,r:3.4,c:'cool',a:.2,flick:.03}); }
-  lights.push({x:20,y:15,z:0,r:9,c:'cool',a:.07});
+  // coloured function lights: a wide pool on each station's interact pad (baked into the ground) + a flickering sign light
+  for(const s of STATIONS){ lights.push({x:s.x,y:s.y,z:.2,r:7.5,c:s.key,a:.5,flick:s.ambient==='screens'||s.ambient==='neon'?.25:s.ambient==='beacon'?.35:.08}); lights.push({x:s.lx+1,y:s.ly+1,z:2.2,r:5,c:s.key,a:.35,flick:.1}); }
+  lights.push({x:CX,y:CY,z:0,r:11,c:'cool',a:.07});
   // ---- overhead dressing (drawn above actors, fades when the player is underneath) ----
-  const overhead:Overhead[]=[
-    {spr:'awn_red',x:13,y:11,z:2.1,sw:3.3},{spr:'awn_blue',x:24,y:8,z:2.1,sw:3.3},{spr:'awn_green',x:7,y:18,z:2.1,sw:3.2},{spr:'awn_grey',x:31,y:12,z:2.1,sw:3.2},
-    {spr:'awn_blue',x:12,y:22,z:2.1,sw:2.9},{spr:'awn_red',x:29,y:19,z:2.1,sw:3.0},{spr:'awn_green',x:19,y:6,z:2.3,sw:2.9},{spr:'awn_grey',x:10,y:7,z:2.3,sw:2.9},{spr:'awn_red',x:33,y:9,z:2.2,sw:2.8},
-    {spr:'leanto',x:28,y:22.5,z:2.3,sw:3.6},
-    {spr:'swag1',x:14,y:9,z:2.3,sw:3.0,glow:'lanterns'},{spr:'swag2',x:27,y:10,z:2.3,sw:3.0,glow:'lanterns'},{spr:'swag3',x:13,y:20,z:2.4,sw:3.0,glow:'lanterns'},{spr:'swag1',x:28,y:20,z:2.3,sw:2.8,glow:'lanterns'},{spr:'swag2',x:21,y:7,z:2.3,sw:2.8,glow:'lanterns'},
-    {spr:'bulbs',x:20,y:6.5,z:3.0,sw:7.5,glow:'bulbs'},{spr:'bulbs',x:21,y:23.5,z:2.9,sw:7,glow:'bulbs'},
-    {spr:'rags1',x:9,y:12,z:2.7,sw:3.4},{spr:'rags2',x:32,y:16,z:2.7,sw:3.4},
-  ];
+  const AW=['awn_red','awn_blue','awn_green','awn_grey'] as const; const overhead:Overhead[]=[];
+  for(const s of STATIONS){ overhead.push({spr:AW[STATIONS.indexOf(s)%4],x:s.lx+2,y:s.ly+3.3,z:2.2,sw:3.3}); }
+  overhead.push({spr:'swag1',x:S('jobs').lx+4,y:S('jobs').ly+4,z:2.3,sw:3.0,glow:'lanterns'},{spr:'swag2',x:S('implants').lx+4,y:S('implants').ly+4,z:2.3,sw:3.0,glow:'lanterns'},{spr:'swag3',x:S('store').lx+4,y:S('store').ly+1,z:2.4,sw:3.0,glow:'lanterns'},{spr:'swag1',x:S('repair').lx+4,y:S('repair').ly+3,z:2.3,sw:2.8,glow:'lanterns'},
+    {spr:'bulbs',x:CX,y:11,z:3.0,sw:7.5,glow:'bulbs'},{spr:'bulbs',x:CX,y:33,z:2.9,sw:7,glow:'bulbs'},{spr:'rags1',x:S('store').lx-2,y:S('store').ly-1,z:2.7,sw:3.4},{spr:'rags2',x:S('repair').lx+6,y:S('repair').ly+3,z:2.7,sw:3.4},{spr:'leanto',x:S('locker').lx+6,y:S('locker').ly+3.5,z:2.3,sw:3.6});
   const npcs:NpcDef[]=[
-    {spr:'np_pair_talk',x:19,y:12,ph:0,h:1.45},{spr:'np_kid_l',x:23.5,y:14,ph:2.1,wander:[17.5,17],speed:.5,h:1.0},{spr:'np_kid_r',x:22,y:18,ph:3.4,wander:[16,14],speed:.45,h:1.0},
-    {spr:'np_guard_l',x:31,y:18,ph:1.3,h:1.35},{spr:'np_guard_r',x:31.5,y:21,ph:.4,h:1.35},{spr:'np_porter',x:13,y:16,ph:.7,wander:[13,21],speed:.3,h:1.3},
-    {spr:'np_lantern_l',x:25,y:18,ph:5.2,wander:[20,21],speed:.28,h:1.35},{spr:'np_lantern_r',x:16,y:11,ph:2.7,wander:[22,10],speed:.25,h:1.35},
-    {spr:'np_kneel_l',x:10.5,y:14,ph:.6,h:.95},{spr:'np_kneel_r',x:25,y:9,ph:4.1,h:.95},{spr:'np_hooded_wall',x:19.5,y:23.5,ph:1.8,h:1.55},
-    {spr:'npc1',x:18.5,y:15,ph:0,h:1.25},{spr:'npc3',x:21.5,y:16.5,ph:1.3,h:1.25},{spr:'npc2',x:11.5,y:20,ph:.2,wander:[11.5,15],speed:.3,h:1.25},{spr:'npc4',x:29,y:11.5,ph:2.7,h:1.25},{spr:'npc3',x:24,y:11,ph:3.3,wander:[21,13],speed:.3,h:1.25},{spr:'npc1',x:8.5,y:13.5,ph:4.4,h:1.25},{spr:'npc4',x:20,y:18,ph:4.9,wander:[20,12.5],speed:.25,h:1.25},
+    // plaza life (wanderers keep to the hub so stations stay readable)
+    {spr:'np_pair_talk',x:27,y:17,ph:0,h:1.45},{spr:'np_kid_l',x:33.5,y:22,ph:2.1,wander:[26,24],speed:.5,h:1.0},{spr:'np_kid_r',x:28,y:26,ph:3.4,wander:[36,21],speed:.45,h:1.0},
+    {spr:'np_lantern_l',x:34,y:25,ph:5.2,wander:[28,18],speed:.28,h:1.35},{spr:'np_lantern_r',x:25,y:20,ph:2.7,wander:[34,14],speed:.25,h:1.35},{spr:'npc1',x:28.5,y:22,ph:0,h:1.25},{spr:'npc3',x:32,y:23.5,ph:1.3,h:1.25},
+    // job board: Odalys Vane (npc2) + clients
+    {spr:'npc2',x:S('jobs').x-.8,y:S('jobs').y-1.4,ph:.2,h:1.3},{spr:'np_kneel_l',x:S('jobs').x-3.5,y:S('jobs').y+.5,ph:.6,h:.95},{spr:'npc4',x:S('jobs').x+2.5,y:S('jobs').y+.5,ph:2.7,h:1.25},
+    // implants: clinic staff
+    {spr:'np_hooded_wall',x:S('implants').x+3,y:S('implants').y-.5,ph:1.8,h:1.55},{spr:'npc3',x:S('implants').x-2.5,y:S('implants').y+.6,ph:3.3,h:1.25},
+    // gate: guards
+    {spr:'np_guard_l',x:50,y:21,ph:1.3,h:1.35},{spr:'np_guard_r',x:50.5,y:24.2,ph:.4,h:1.35},
+    // repair, locker, store
+    {spr:'np_porter',x:S('repair').x-3,y:S('repair').y-1,ph:.7,wander:[S('repair').x-3,S('repair').y-5],speed:.3,h:1.3},{spr:'np_kneel_r',x:S('repair').x+2.5,y:S('repair').y-.5,ph:4.1,h:.95},
+    {spr:'npc1',x:S('locker').x+3.5,y:S('locker').y-.5,ph:4.4,h:1.25},{spr:'npc2',x:S('store').x+2.5,y:S('store').y-1,ph:4.9,wander:[S('store').x+2.5,S('store').y-4],speed:.25,h:1.25},{spr:'npc4',x:S('store').x-2,y:S('store').y-.5,ph:3.9,h:1.25},
   ];
-  const interacts:Interact[]=[
-    { id:'locker', x:17.8, y:22.8, r:2.2, label:'Body workspace & locker', kind:'locker' },
-    { id:'vendor', x:28.4, y:9.8, r:2.2, label:'Vendor & repair', kind:'vendor' },
-    { id:'fixer', x:8, y:15.6, r:2.2, label:'Fixer: Odalys Vane', kind:'npc' },
-    { id:'annex', x:34.4, y:21.4, r:2.2, label:'Reclamation Annex gate', kind:'gate' },
-    { id:'store', x:9.6, y:22.6, r:2.2, label:'Outfitter (simulated purchases)', kind:'terminal' },
-    // secondary entry points (same ids on purpose: they open the same screens as the primary ones)
-    { id:'vendor', x:26.4, y:7.8, r:2.0, label:'Implant parts (vendor & repair)', kind:'vendor' },
-    { id:'fixer', x:28.6, y:6.6, r:2.0, label:'Jobs board (Fixer contracts)', kind:'npc' },
-    { id:'locker', x:6.6, y:18.6, r:2.0, label:'Clinic chair (body workspace)', kind:'locker' },
-  ];
-  return { w,h,solid,zone,doors:[],props,interacts,spawns:[],checkpoints:[],sensors:{x0:0,y0:0,x1:0,y1:0}, spawn:{x:20.5,y:16.5}, zoneNames:ZONES, bossSpawn:{x:0,y:0}, revealX:0, salvage:{x:0,y:0}, kind:'town', decor, npcs, lights, hide, overhead };
+  const interacts:Interact[]=STATIONS.map(s=>({ id:s.id, x:s.x, y:s.y, r:2.4, label:stationPrompt(s), kind:s.kind, opens:s.opens, station:s.key }));
+  return { w,h,solid,zone,doors:[],props,interacts,spawns:[],checkpoints:[],sensors:{x0:0,y0:0,x1:0,y1:0}, spawn:{...SPAWN}, returnSpawn:{...RETURN_SPAWN}, zoneNames:ZONES, bossSpawn:{x:0,y:0}, revealX:0, salvage:{x:0,y:0}, kind:'town', decor, npcs, lights, hide, overhead };
 }

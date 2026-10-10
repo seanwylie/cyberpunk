@@ -3,23 +3,44 @@
 // Everything heavy is baked once to offscreen canvases; per-frame work is drawImage of cached, pre-scaled sprites.
 // Drop-in: replace any PNG in public/town/props with another of the same name (see public/town/manifest.json); missing files are skipped.
 import type { Level, Decor } from './level';
+import { STATIONS, drawIcon, type Station } from './stations';
 
 export const TOWN_PROPS = ['stall_a','stall_clothes','stall_goods','stall_vendor_sign','fixer_booth','gate_arch','scaffold','steam_drums','npc1','npc2','npc3','npc4','lockers','fence','poster_wall','sign_fixer','stall_vendor','workbench','stall_awning','crates','barrels','lamp','cables','bench','junk','grate','vending','noticeboard','barrel_fire','awn_red','awn_blue','awn_green','awn_grey','swag1','swag2','swag3','bulbs','rags1','rags2','leanto','stall_noodle','stall_implant','stall_clinic','stall_weapons','stall_junk','board_jobs','banner_pole','np_kneel_l','np_kneel_r','np_woman_table','np_pair_talk','np_kid_l','np_kid_r','np_guard_l','np_guard_r','np_porter','np_hooded_wall','np_lantern_l','np_lantern_r','bld1','bld2','bld3','container','slab','gantry','barrier','barrier_corner'];
 const GROUND = ['cobble','planks','debris','plaza'];
 const rng = (seed: number) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const mk = (w: number, h: number) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
 const loadImg = (src: string) => new Promise<HTMLImageElement | null>(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+
+const FONTS = '"Roboto Condensed","Bahnschrift","Arial Narrow",Impact,sans-serif';
+/** world-space station sign (pole + neon panel with the shared icon + big label), baked once to a canvas; 100px per tile */
+export function makeSign(st: Station): HTMLCanvasElement {
+  const W = 480, H = 560, cv = mk(W, H), c = cv.getContext('2d')!; const col = st.color;
+  // pole + base
+  c.fillStyle = '#17191c'; c.fillRect(W / 2 - 9, 200, 18, 330); c.fillStyle = col; c.globalAlpha = .75; c.fillRect(W / 2 - 2, 200, 4, 330); c.globalAlpha = 1; c.fillStyle = '#26292d'; c.fillRect(W / 2 - 34, 520, 68, 18);
+  // panel with glow
+  c.save(); c.shadowColor = col; c.shadowBlur = 26; c.fillStyle = '#0a0c0f'; c.strokeStyle = col; c.lineWidth = 7; const r = 16, x0 = 12, y0 = 18, pw = W - 24, ph = 176; c.beginPath(); c.moveTo(x0 + r, y0); c.arcTo(x0 + pw, y0, x0 + pw, y0 + ph, r); c.arcTo(x0 + pw, y0 + ph, x0, y0 + ph, r); c.arcTo(x0, y0 + ph, x0, y0, r); c.arcTo(x0, y0, x0 + pw, y0, r); c.closePath(); c.fill(); c.stroke(); c.restore();
+  // colour band + icon medallion
+  c.fillStyle = `rgba(${st.rgb},.18)`; c.fillRect(x0 + 6, y0 + 6, 150, ph - 12); c.save(); c.shadowColor = col; c.shadowBlur = 14; drawIcon(c, st.icon, x0 + 81, y0 + ph / 2, 52, col, 8); c.restore();
+  // text
+  c.textAlign = 'left'; c.textBaseline = 'middle'; let fs = 70; c.font = `800 ${fs}px ${FONTS}`; const label = st.name.toUpperCase(); while (c.measureText(label).width > 290 && fs > 36) { fs -= 4; c.font = `800 ${fs}px ${FONTS}`; }
+  c.save(); c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = '#fff'; c.fillText(label, x0 + 170, y0 + 66); c.restore();
+  let vs = 34; c.font = `600 ${vs}px ${FONTS}`; while (c.measureText(st.verb.toUpperCase()).width > 285 && vs > 20) { vs -= 2; c.font = `600 ${vs}px ${FONTS}`; } c.fillStyle = col; c.fillText(st.verb.toUpperCase(), x0 + 170, y0 + 126);
+  // rivets
+  c.fillStyle = '#2c3035'; for (const [rx, ry] of [[24, 30], [W - 24, 30], [24, y0 + ph - 12], [W - 24, y0 + ph - 12]]) { c.beginPath(); c.arc(rx, ry, 5, 0, 7); c.fill(); }
+  return cv;
+}
 export const GP = 40; // ground canvas pixels per world tile
-export interface Part { x: number; y: number; z: number; vx: number; vy: number; vz: number; t: number; life: number; k: 'steam' | 'ember' | 'dust'; s: number; }
+export interface Part { x: number; y: number; z: number; vx: number; vy: number; vz: number; t: number; life: number; k: 'steam' | 'ember' | 'dust'; s: number; col?: string; }
 
 export class TownArt {
   img: Record<string, HTMLImageElement> = {}; gimg: Record<string, HTMLImageElement> = {}; ready = false; ground: HTMLCanvasElement | null = null;
   glows: Record<string, HTMLCanvasElement> = {}; parts: Part[] = []; private sc = new Map<string, HTMLCanvasElement>(); private scKey = ''; private em = 0; private R = rng(7);
   npcPos: { x: number; y: number; flip: boolean; moving: boolean }[] = [];
-  constructor(private base = './town/') { this.load(); for (const [k, c] of [['warm', '255,176,96'], ['fire', '255,128,52'], ['cool', '120,150,160'], ['puff', '190,194,192']] as const) { const cv = mk(128, 128), x = cv.getContext('2d')!; const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, `rgba(${c},1)`); g.addColorStop(.35, `rgba(${c},.38)`); g.addColorStop(1, `rgba(${c},0)`); x.fillStyle = g; x.fillRect(0, 0, 128, 128); this.glows[k] = cv; } }
+  constructor(private base = './town/') { this.load(); for (const [k, c] of [['warm', '255,176,96'], ['fire', '255,128,52'], ['cool', '120,150,160'], ['puff', '190,194,192'], ...STATIONS.map(st => [st.key, st.rgb] as const)] as const) { const cv = mk(128, 128), x = cv.getContext('2d')!; const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, `rgba(${c},1)`); g.addColorStop(.35, `rgba(${c},.38)`); g.addColorStop(1, `rgba(${c},0)`); x.fillStyle = g; x.fillRect(0, 0, 128, 128); this.glows[k] = cv; } }
   loaded = 0; total = 1;
   async load() { this.total = TOWN_PROPS.length + GROUND.length; const tick = () => { this.loaded++; (window as any).__loadPct = this.loaded / this.total; };
     await Promise.all([...TOWN_PROPS.map(async n => { const i = await loadImg(`${this.base}props/${n}.png`); if (i) this.img[n] = i; tick(); }), ...GROUND.map(async n => { const i = await loadImg(`${this.base}ground/${n}.jpg`); if (i) this.gimg[n] = i; tick(); })]);
+    for (const st of STATIONS) this.img['sign_' + st.key] = makeSign(st) as any;
     this.ready = !!this.gimg.cobble && Object.keys(this.img).length > 8;
   }
   /** pre-scaled sprite (one cached canvas per sprite per zoom) so per-frame drawing is a 1:1 blit */
@@ -47,16 +68,15 @@ export class TownArt {
     // 2. debris / dirt patches
     if (gi.debris) layer(c => { c.fillStyle = pat('debris', .9, 17); c.fillRect(0, 0, W, H); }, noiseMask(5, 10, .52, .18), .95);
     // 3. plank + plate walkways: lanes from plaza to each district
-    const lanes: [number, number][][] = [[[20, 15], [12, 12], [8, 11]], [[20, 15], [11, 16], [6, 17]], [[20, 15], [25, 12], [31, 12]], [[20, 15], [22, 20], [18, 24]], [[20, 15], [27, 19], [34, 21]], [[20, 15], [19, 9], [18, 7]], [[20, 15], [13, 20], [9, 22]]];
+    const lanes: [number, number][][] = STATIONS.map(st => [[30.5, 22.5], [(30.5 + st.x) / 2 + Math.sin(st.x) * 1.2, (22.5 + st.y) / 2 + Math.cos(st.y) * 1.2], [st.x, st.y]]);
     if (gi.planks) { const lm = mk(W, H), lx = lm.getContext('2d')!; lx.lineCap = 'round'; lx.lineJoin = 'round'; for (let pass = 0; pass < 5; pass++) { lx.strokeStyle = `rgba(255,255,255,${pass === 4 ? .9 : .22})`; lx.lineWidth = (2.3 - pass * .28) * GP; for (const ln of lanes) { lx.beginPath(); ln.forEach(([px, py], i) => { const jx = Math.sin(px * 3.1 + py) * .35, jy = Math.cos(px + py * 2.7) * .35; i ? lx.lineTo((px + jx) * GP, (py + jy) * GP) : lx.moveTo((px + jx) * GP, (py + jy) * GP); }); lx.stroke(); } }
       const edge = noiseMask(8, 5, .3, .35); lx.globalCompositeOperation = 'destination-in'; lx.drawImage(edge, 0, 0, W, H); layer(c => { c.fillStyle = pat('planks', .8, 27); c.fillRect(0, 0, W, H); }, c => c.drawImage(lm, 0, 0), .9); }
     // 4. central plaza with drain grate (non-tiling image, feathered into the surroundings)
-    if (gi.plaza) { const pw = 17 * GP, ph = 17 * GP, cx = 20 * GP, cy = 15 * GP; const t = mk(pw, ph), tx = t.getContext('2d')!; tx.drawImage(gi.plaza, 0, 0, pw, ph); tx.globalCompositeOperation = 'destination-in'; const g = tx.createRadialGradient(pw / 2, ph / 2, pw * .22, pw / 2, ph / 2, pw * .5); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.7, 'rgba(0,0,0,.85)'); g.addColorStop(1, 'rgba(0,0,0,0)'); tx.fillStyle = g; tx.fillRect(0, 0, pw, ph); x.drawImage(t, cx - pw / 2, cy - ph / 2); }
+    if (gi.plaza) { const pw = 20 * GP, ph = 20 * GP, cx = 30 * GP, cy = 22 * GP; const t = mk(pw, ph), tx = t.getContext('2d')!; tx.drawImage(gi.plaza, 0, 0, pw, ph); tx.globalCompositeOperation = 'destination-in'; const g = tx.createRadialGradient(pw / 2, ph / 2, pw * .22, pw / 2, ph / 2, pw * .5); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.7, 'rgba(0,0,0,.85)'); g.addColorStop(1, 'rgba(0,0,0,0)'); tx.fillStyle = g; tx.fillRect(0, 0, pw, ph); x.drawImage(t, cx - pw / 2, cy - ph / 2); }
     // 5. painted markings and wear
-    x.save(); x.font = `bold ${GP * .8}px "Arial Narrow",Impact,sans-serif`; x.textAlign = 'center'; x.fillStyle = 'rgba(207,198,176,.16)'; x.save(); x.translate(20 * GP, 23 * GP); x.fillText('REPAIR MARKET', 0, 0); x.restore();
-    x.strokeStyle = 'rgba(176,150,70,.22)'; x.lineWidth = GP * .14; x.setLineDash([GP * .5, GP * .4]); x.strokeRect(32.2 * GP, 20.2 * GP, 4.6 * GP, 3.6 * GP); x.setLineDash([]); x.restore();
+    this.paintStationDecals(x);
     // 6. puddles with cool sheen
-    for (let i = 0; i < 14; i++) { const px = (8 + R() * 24) * GP, py = (7 + R() * 17) * GP, rx = (.5 + R() * 1.4) * GP, ry = rx * (.45 + R() * .3); const g = x.createRadialGradient(px, py, 0, px, py, rx); g.addColorStop(0, 'rgba(40,52,60,.55)'); g.addColorStop(.7, 'rgba(30,38,44,.35)'); g.addColorStop(1, 'rgba(30,38,44,0)'); x.save(); x.translate(px, py); x.rotate(R() * 3); x.scale(1, ry / rx); x.translate(-px, -py); x.fillStyle = g; x.beginPath(); x.arc(px, py, rx, 0, 7); x.fill(); x.fillStyle = 'rgba(170,185,195,.1)'; x.beginPath(); x.arc(px - rx * .2, py - rx * .15, rx * .45, 0, 7); x.fill(); x.restore(); }
+    for (let i = 0; i < 14; i++) { const px = (10 + R() * 40) * GP, py = (8 + R() * 28) * GP, rx = (.5 + R() * 1.4) * GP, ry = rx * (.45 + R() * .3); const g = x.createRadialGradient(px, py, 0, px, py, rx); g.addColorStop(0, 'rgba(40,52,60,.55)'); g.addColorStop(.7, 'rgba(30,38,44,.35)'); g.addColorStop(1, 'rgba(30,38,44,0)'); x.save(); x.translate(px, py); x.rotate(R() * 3); x.scale(1, ry / rx); x.translate(-px, -py); x.fillStyle = g; x.beginPath(); x.arc(px, py, rx, 0, 7); x.fill(); x.fillStyle = 'rgba(170,185,195,.1)'; x.beginPath(); x.arc(px - rx * .2, py - rx * .15, rx * .45, 0, 7); x.fill(); x.restore(); }
     // 7. soft contact shadows under every decor footprint, and rim darkening toward solid tiles
     for (const d of L.decor || []) { const cx = (d.x + d.fw / 2) * GP, cy = (d.y + d.fd / 2) * GP, rx = (d.fw + .6) * GP * .65, ry = (d.fd + .6) * GP * .65; const g = x.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry)); g.addColorStop(0, 'rgba(4,4,5,.55)'); g.addColorStop(1, 'rgba(4,4,5,0)'); x.fillStyle = g; x.save(); x.translate(cx + GP * .25, cy + GP * .3); x.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry)); x.translate(-cx, -cy); x.beginPath(); x.arc(cx, cy, Math.max(rx, ry), 0, 7); x.fill(); x.restore(); }
     for (let ty = 0; ty < L.h; ty++) for (let tx = 0; tx < L.w; tx++) { if (!L.solid[ty * L.w + tx]) continue; const px = (tx + .5) * GP, py = (ty + .5) * GP; const g = x.createRadialGradient(px, py, GP * .3, px, py, GP * 1.9); g.addColorStop(0, 'rgba(6,6,8,.8)'); g.addColorStop(1, 'rgba(6,6,8,0)'); x.fillStyle = g; x.fillRect(px - GP * 2, py - GP * 2, GP * 4, GP * 4); }
@@ -64,11 +84,30 @@ export class TownArt {
     x.globalCompositeOperation = 'screen'; for (const l of L.lights || []) { const gl = this.glows[l.c]; const r = l.r * GP * .7; x.globalAlpha = Math.min(.55, l.a * 1.1); x.drawImage(gl, l.x * GP - r, l.y * GP - r, r * 2, r * 2); } x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
     this.ground = cv;
   }
+
+  /** ground decals: coloured pad ring + flat icon + name at each station, dashed colour-coded lane from the plaza hub, hazard stripes at the gate */
+  paintStationDecals(x: CanvasRenderingContext2D) {
+    x.save(); x.lineCap = 'round';
+    for (const st of STATIONS) { const px = st.x * GP, py = st.y * GP;
+      x.strokeStyle = `rgba(${st.rgb},.30)`; x.lineWidth = GP * .22; x.setLineDash([GP * .55, GP * .5]); x.beginPath(); x.moveTo(30.5 * GP, 22.5 * GP); x.quadraticCurveTo((30.5 + st.x) / 2 * GP + Math.sin(st.x) * 1.2 * GP, (22.5 + st.y) / 2 * GP + Math.cos(st.y) * 1.2 * GP, px, py); x.stroke(); x.setLineDash([]);
+      const g = x.createRadialGradient(px, py, 0, px, py, GP * 2.4); g.addColorStop(0, `rgba(${st.rgb},.30)`); g.addColorStop(.7, `rgba(${st.rgb},.12)`); g.addColorStop(1, `rgba(${st.rgb},0)`); x.fillStyle = g; x.beginPath(); x.arc(px, py, GP * 2.4, 0, 7); x.fill();
+      x.strokeStyle = `rgba(${st.rgb},.75)`; x.lineWidth = GP * .12; x.beginPath(); x.arc(px, py, GP * 1.5, 0, 7); x.stroke(); x.strokeStyle = `rgba(${st.rgb},.4)`; x.beginPath(); x.arc(px, py, GP * 1.9, 0, 7); x.stroke();
+      drawIcon(x, st.icon, px, py, GP * .85, `rgba(${st.rgb},.85)`, GP * .1);
+      x.save(); x.font = `bold ${GP * .62}px "Arial Narrow",Impact,sans-serif`; x.textAlign = 'center'; x.fillStyle = `rgba(${st.rgb},.55)`; x.fillText(st.name.toUpperCase(), px, py + GP * 2.9); x.restore(); }
+    // hazard stripes across the gate approach
+    const gs = STATIONS.find(s => s.key === 'gate')!; x.save(); x.beginPath(); x.rect((gs.x - 3.6) * GP, (gs.y + 2) * GP, 7.2 * GP, GP * .7); x.clip(); x.fillStyle = 'rgba(255,68,85,.45)'; for (let i = -10; i < 24; i++) { x.beginPath(); x.moveTo((gs.x - 3.6 + i * .7) * GP, (gs.y + 2.7) * GP); x.lineTo((gs.x - 3.6 + i * .7 + .35) * GP, (gs.y + 2.7) * GP); x.lineTo((gs.x - 3.6 + i * .7 + 1.05) * GP, (gs.y + 2) * GP); x.lineTo((gs.x - 3.6 + i * .7 + .7) * GP, (gs.y + 2) * GP); x.fill(); } x.restore();
+    x.restore();
+  }
   // ---------------- ambient ----------------
   update(dt: number, L: Level, t: number, px: number, py: number) {
     const R = this.R; this.em -= dt;
     if (this.em <= 0) { this.em = .12; for (const d of L.decor || []) { if (d.steam && R() < .8) this.parts.push({ x: d.x + d.fw * .4 + R() * .3, y: d.y + d.fd * .4 + R() * .3, z: 1.4, vx: (R() - .3) * .1, vy: (R() - .3) * .1, vz: .5 + R() * .3, t: 0, life: 2.6 + R(), k: 'steam', s: .25 + R() * .2 }); if (d.glow === 'fire' && R() < .5) this.parts.push({ x: d.x + .5 + (R() - .5) * .3, y: d.y + .5 + (R() - .5) * .3, z: .9, vx: (R() - .5) * .3, vy: (R() - .5) * .3, vz: .8 + R(), t: 0, life: 1.2 + R(), k: 'ember', s: .05 }); }
       if (this.parts.length < 90 && R() < .6) this.parts.push({ x: px + (R() - .5) * 18, y: py + (R() - .5) * 18, z: .3 + R() * 1.6, vx: (R() - .5) * .25, vy: (R() - .5) * .25, vz: (R() - .5) * .05, t: 0, life: 5 + R() * 3, k: 'dust', s: .03 }); }
+    if (this.em > .08 && this.em <= .12) for (const st of STATIONS) { if (Math.hypot(px - st.x, py - st.y) > 20 || this.parts.length > 160) continue; const a = st.ambient;
+      if (a === 'sparks' && R() < .5) this.parts.push({ x: st.lx + 1 + R() * 2, y: st.ly + 1 + R() * 2, z: 1 + R(), vx: (R() - .5) * .8, vy: (R() - .5) * .8, vz: .4 + R() * .6, t: 0, life: .7 + R() * .6, k: 'ember', s: .03, col: st.rgb });
+      else if (a === 'weld' && R() < .4) this.parts.push({ x: st.lx + .8 + R() * .6, y: st.ly + .8 + R() * .6, z: .9, vx: (R() - .5) * 1.6, vy: (R() - .5) * 1.6, vz: .5 + R() * .9, t: 0, life: .5 + R() * .4, k: 'ember', s: .03, col: '210,190,255' });
+      else if (a === 'beacon' && R() < .35) this.parts.push({ x: st.lx + 1.5, y: st.ly - .5, z: 2.4, vx: (R() - .5) * .3, vy: (R() - .5) * .3, vz: .5, t: 0, life: 1.2, k: 'ember', s: .03, col: st.rgb });
+      else if (a === 'screens' && R() < .15) this.parts.push({ x: st.lx + .5 + R() * 1.5, y: st.ly + 1.5, z: 1.4, vx: .1 + R() * .3, vy: .1 + R() * .3, vz: .1, t: 0, life: 2.2, k: 'ember', s: .03, col: st.rgb }); }
     for (const p of this.parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; if (p.k === 'steam') p.s += dt * .22; }
     this.parts = this.parts.filter(p => p.t < p.life);
     // npc wander
