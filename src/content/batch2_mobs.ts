@@ -3,6 +3,7 @@
 // (snipe, mend, ward, hex, detonate, summonlite) whose runtime lives in src/content/mobs.ts. Elite AFFIXES (hasted, volatile, shielded, ...) also live there.
 // PLACEHOLDER balance, like the rest of the prototype. This file is data only (no sim/config imports) so config.ts, boss_moves.ts and the level generator can all read it.
 import type { MoveSpec } from './batch1_bosses';
+import { BAL } from './balance';
 export type Role='swarmer'|'bruiser'|'ranged'|'caster'|'shielded'|'exploder'|'summoner'|'sniper'|'charger'|'healer'|'debuffer'|'support';
 export type FacTag='HB'|'AS'|'KV'|'RC'|'QS'|'RA';
 export interface MobMeta { tier:1|2|3|4; role:Role; fac:FacTag[]; lifesteal?:number; shield?:number; keep?:number; hasted?:boolean; }
@@ -14,7 +15,7 @@ export interface MobSpec {
   /** world height (tiles), hover height */ h:number; hover?:number; /** flat sprite used only while the atlas loads */ spr:string; /** [min,max] pack size hint */ pack:[number,number];
 }
 /** per-tier multipliers applied to the raw numbers in MOBS (hp/dmg are already authored per tier; this documents the intended curve) */
-export const TIER_CURVE:Record<number,{hp:number;dmg:number;elite:number;affixes:number}>={ 1:{hp:1,dmg:1.25,elite:.10,affixes:1}, 2:{hp:1.7,dmg:1.45,elite:.18,affixes:1}, 3:{hp:2.7,dmg:1.65,elite:.28,affixes:2}, 4:{hp:4,dmg:1.9,elite:.40,affixes:3} };
+export const TIER_CURVE:Record<number,{hp:number;dmg:number;elite:number;affixes:number}>={ 1:{hp:1,dmg:1.25,elite:BAL.elite[1]??.10,affixes:1}, 2:{hp:1.7,dmg:1.45,elite:BAL.elite[2]??.18,affixes:1}, 3:{hp:2.7,dmg:1.65,elite:BAL.elite[3]??.28,affixes:2}, 4:{hp:4,dmg:1.9,elite:BAL.elite[4]??.40,affixes:3} };
 const M=(m:MobSpec)=>m;
 export const MOBS:MobSpec[]=[
  // ------------------------------------------------ TIER I
@@ -55,9 +56,9 @@ export const MOB_IDS=MOBS.map(m=>m.id);
 /** mob-only attacks (runtime in mobs.ts). base damage per attack, windup etc. */
 export const MOB_ATK:Record<string,{w:number;rec:number;cd:number;min:number;max:number;lock?:boolean;ranged?:boolean}>={
   snipe:{w:1.5,rec:.9,cd:5.5,min:5,max:18,lock:true,ranged:true}, mend:{w:.8,rec:.5,cd:4.5,min:0,max:60}, ward:{w:.8,rec:.5,cd:7.5,min:0,max:60},
-  hex:{w:.9,rec:.6,cd:6,min:2,max:13,lock:true,ranged:true}, detonate:{w:.9,rec:.1,cd:1,min:0,max:1.9}, detonate_big:{w:1.1,rec:.1,cd:1,min:0,max:2.4}, summonlite:{w:.9,rec:.8,cd:11,min:0,max:40},
+  hex:{w:.9,rec:.6,cd:6,min:2,max:13,lock:true,ranged:true}, detonate:{w:.9,rec:.1,cd:1,min:0,max:1.9}, detonate_big:{w:1.1,rec:.1,cd:1,min:0,max:2.4}, summonlite:{w:.9,rec:.8,cd:BAL.p.summonCd,min:0,max:40},
 };
-export const MOB_DMG:Record<string,number>={ snipe:26, mend:0, ward:0, hex:4, detonate:30, detonate_big:42, summonlite:0 };
+export const MOB_DMG:Record<string,number>={ snipe:BAL.p.snipe, mend:0, ward:0, hex:4, detonate:BAL.p.detonate, detonate_big:BAL.p.detonateBig, summonlite:0 };
 export const MOB_META=(m:MobSpec):MobMeta=>({ tier:m.tier, role:m.role, fac:m.fac, lifesteal:m.lifesteal, shield:m.shield, keep:m.keep, hasted:m.hasted });
 /** Elite affixes: availability escalates with tier (see TIER_CURVE.affixes for how many a pack leader rolls). */
 export type Affix='hasted'|'volatile'|'shielded'|'regenerating'|'vampiric'|'frenzied'|'warded';

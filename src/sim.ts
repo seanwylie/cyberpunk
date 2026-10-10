@@ -10,6 +10,7 @@ import { MOB_ATK } from './content/batch2_mobs';
 import { CONTRACT_BY_ID, Goal } from './content/npcs';
 import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState } from './state';
 import { IDKFA_SET, IDKFA_CHIPS } from './content/idkfa';
+import { BAL } from './content/balance';
 import { record, newStory, EventKind } from './story';
 
 export type Emit = (type:string, payload?:any)=>void;
@@ -185,7 +186,7 @@ export class Game {
     if(this.downed){ this.downT+=dt; this.cast=null; this.aim=null; return; }
     // movement
     let mx=0,my=0; const mag=Math.min(1,Math.hypot(this.inputMove.x,this.inputMove.y)); if(mag>.12){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); mx=v.x*mag; my=v.y*mag; }
-    let speed=COMBAT.playerSpeed*st.move*(this.overheated?COMBAT.heat.overheatSpeedMult:1)*(this.cast?.6:1)*(this.slowT>0?.65:1);
+    let speed=COMBAT.playerSpeed*st.move*(this.overheated?COMBAT.heat.overheatSpeedMult:1)*(this.cast?.6:1)*(this.slowT>0?BAL.p.hexSlowMul:1);
     if(this.dodgeT>0){ this.dodgeT-=dt; const sp=COMBAT.dodge.dist/COMBAT.dodge.time; const p=this.moveCircle(this.px,this.py,this.dodgeDx*sp*dt,this.dodgeDy*sp*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; this.moving=true; }
     else if(this.lungeT>0){ this.lungeT-=dt; const sp=this.lungeDx; const p=this.moveCircle(this.px,this.py,this.lungeDx*dt,this.lungeDy*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; this.lungeBladeHit(); }
     else if(this.slideT>0){ this.slideT-=dt; const p=this.moveCircle(this.px,this.py,this.slideFx*dt,this.slideFy*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; }
@@ -440,7 +441,7 @@ export class Game {
     }
     return out; }
   resolveAttack(e:En,a:string,tx:number,ty:number){
-    const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1);
+    const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1); this.dmgSrc=e.type+':'+a;
     const cone=(r:number,arc:number)=>{ this.fx.push({kind:'slash',x:e.x,y:e.y,a:ang,r,t:0,life:.25,w:arc,c:'#b8b09a'}); for(const o of this.opponents(fac)){ if(dist(e.x,e.y,o.x,o.y)-o.r<=r&&Math.abs(angDiff(Math.atan2(o.y-e.y,o.x-e.x),ang))<=arc/2) o.hurt(dmg,e.x,e.y); } this.emit('sfx','enemy_swing'); };
     const proj=(aa:number,speed:number)=>{ this.projs.push({x:e.x+Math.cos(aa)*.6,y:e.y+Math.sin(aa)*.6,vx:Math.cos(aa)*speed,vy:Math.sin(aa)*speed,dmg,r:.22,life:1.6,faction:fac==='ally'?'ally':'enemy',kind:'bolt'}); this.emit('sfx','enemy_shot'); };
     if(MOB_ATK[a]){ resolveMobAttack(this,e,a,tx,ty,dmg); return; }
@@ -461,7 +462,7 @@ export class Game {
     }
   }
   dashStep(e:En,dt:number){
-    const def=ENEMIES[e.type]; const rt=e._rt; const sp=17; const R=def.radius*.8; const want=sp*dt; const n=Math.max(1,Math.ceil(want/.25)); let moved=0;
+    const def=ENEMIES[e.type]; const rt=e._rt; this.dmgSrc=e.type+':charge'; const sp=17; const R=def.radius*.8; const want=sp*dt; const n=Math.max(1,Math.ceil(want/.25)); let moved=0;
     for(let i=0;i<n;i++){ const sdt=dt/n; const dx=Math.cos(rt.ang)*sp*sdt, dy=Math.sin(rt.ang)*sp*sdt; // full-vector move only: a charge stops at a collider instead of sliding/wedging along it
       if(this.circleHits(e.x+dx,e.y+dy,R)) break; e.x+=dx; e.y+=dy; moved+=Math.hypot(dx,dy); }
     rt.t+=dt;
@@ -469,13 +470,14 @@ export class Game {
     if(moved<want*.95||rt.t>.6){ this.unwedge(e,R); rt.sx=undefined; rt.unstick=0; rt.st='rec'; rt.atk='charge'; rt.t=0; rt.vuln=def.boss?2.8:1.8; this.fx.push({kind:'dust',x:e.x,y:e.y,t:0,life:.5}); this.emit('sfx','slam'); }
   }
   updateProjs(dt:number){
-    for(const p of this.projs){ p.life-=dt; const nx=p.x+p.vx*dt, ny=p.y+p.vy*dt; if(this.solidAt(nx,ny)){ p.life=0; this.fx.push({kind:'spark',x:p.x,y:p.y,t:0,life:.2}); continue; } p.x=nx; p.y=ny;
+    for(const p of this.projs){ this.dmgSrc=(p as any).src||'proj'; p.life-=dt; const nx=p.x+p.vx*dt, ny=p.y+p.vy*dt; if(this.solidAt(nx,ny)){ p.life=0; this.fx.push({kind:'spark',x:p.x,y:p.y,t:0,life:.2}); continue; } p.x=nx; p.y=ny;
       if(p.faction==='enemy'){ for(const o of this.opponents('enemy')) if(dist(p.x,p.y,o.x,o.y)<o.r+p.r){ o.hurt(p.dmg,p.x-p.vx,p.y-p.vy); p.life=0; break; } }
       else { for(const o of this.opponents('ally')) if(dist(p.x,p.y,o.x,o.y)<o.r+p.r){ o.hurt(p.dmg,p.x-p.vx,p.y-p.vy); this.fx.push({kind:'spark',x:p.x,y:p.y,t:0,life:.2}); p.life=0; break; } } }
     this.projs=this.projs.filter(p=>p.life>0);
   }
-  updateZones(dt:number){ for(const z of this.zones){ z.t+=dt; if(z.t>=z.windup&&!this.downed&&!this.revealing&&dist(z.x,z.y,this.px,this.py)<z.r){ this.zoneTick=(this.zoneTick||0)+dt; this.heat=Math.min(COMBAT.heat.max,this.heat+z.heat*dt); if(this.zoneTick>.5){ this.zoneTick=0; this.hurtPlayer(z.dps,z.x,z.y); } } } this.zones=this.zones.filter(z=>z.t<z.life); }
+  updateZones(dt:number){ for(const z of this.zones){ z.t+=dt; this.dmgSrc=(z as any).src||(z.env?'env':'zone'); if(z.t>=z.windup&&!this.downed&&!this.revealing&&dist(z.x,z.y,this.px,this.py)<z.r){ this.zoneTick=(this.zoneTick||0)+dt; this.heat=Math.min(COMBAT.heat.max,this.heat+z.heat*dt); if(this.zoneTick>.5){ this.zoneTick=0; this.hurtPlayer(z.dps,z.x,z.y); } } } this.zones=this.zones.filter(z=>z.t<z.life); }
   zoneTick=0;
+  /** balance instrumentation only: label of whatever is currently damaging the player (tools/balance) */ dmgSrc='';
 
   // ---------- death, loot, XP ----------
   killEnemy(e:En){

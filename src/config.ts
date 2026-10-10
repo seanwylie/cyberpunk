@@ -7,6 +7,7 @@ import { BATCH2_ENEMIES } from './content/batch2_enemies';
 import { MOB_DMG } from './content/batch2_mobs';
 import type { MobMeta } from './content/batch2_mobs';
 import { MOVE_DMG } from './content/boss_moves';
+import { BAL } from './content/balance';
 // Editable gameplay configuration. SEPARATE from save data (see save.ts). All numbers are PLACEHOLDER
 // prototype values, not approved balance (spec: "Numerical examples are not approved balance").
 export const CONFIG_VERSION = '0.1.0-proto';
@@ -184,6 +185,8 @@ export const ENEMIES: Record<string,EnemyDef> = {
   enforcer:{ id:'enforcer', name:'Reclamation Enforcer', hp:1900, speed:3.0, radius:.95, mfr:'HI', boss:true, elite:true, aggro:30, xp:340, rep:25, attacks:['rsweep','charge'] },
 };
 export const ENEMY_DMG: Record<string,number> = { swing:12, shot:10, turretshot:14, cleave:28, charge:34, slam:34, summon:0, zones:6, volley:16, rsweep:32, ...EXTRA_ENEMY_DMG, ...MOVE_DMG, ...MOB_DMG };
+// balance pass (src/content/balance.ts): the four original dungeon bosses are tuned here; batch-1 bosses and batch-2 mobs apply BAL where their defs are generated
+for(const k of ['overseer','teague','surgeon','stockmgr']){ const m=BAL.boss[k], d=ENEMIES[k]; if(m&&d){ d.hp=Math.round(d.hp*(m.hp??1)); d.dmgMul=(d.dmgMul??1)*(m.dmg??1); } }
 
 // Progression placeholders (NOT a 100h curve; see README).
 export const PROGRESSION = { startLevel:12, maxLevel:60, xpForLevel:(l:number)=>Math.round(60*Math.pow(l,1.45)) };

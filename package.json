@@ -18,7 +18,8 @@
     "test:mobs2": "node tests/mobs2.mjs",
     "test:sprites": "node tests/sprites.mjs",
     "test:sprites:real": "node tests/sprites_real.mjs",
-    "shots": "node tests/screenshots.mjs"
+    "shots": "node tests/screenshots.mjs",
+    "test:balance": "node tests/balance.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.50.0",
