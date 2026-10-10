@@ -83,6 +83,12 @@ Plan: Creator, 329,944 credits/month, 1,627 used before work. Whole job (1 probe
 - Manager hysteresis (`src/music.ts`): `HARD_MIN` 15 s minimum on a hard track, `HARD_EXIT_HOLD` 4 s of calm before fading back to a calm track, `CALM_MIN` 20 s before a calm track may rotate. Calm tracks still rotate only after `ROTATE_LOOPS` loops, landing on the loop boundary. Return to town is explicit and not held.
 - Tests: `tests/music.mjs` (fake clock) covers zone walking, ordinary combat, elite proximity vs first hit, elite hurt, boss, delayed disengage, no flapping. Use `URL=http://localhost:PORT/` if the dev server is not on 5173.
 
+### Boss and elite rotation
+- Each boss has a 4-track playlist (`BOSS_PLAYLISTS`, built in `src/music.ts` from `BOSS_MAP` + `INTENSITY`): the signature track first, then 3 others from the boss pool of the same or higher intensity (round-robin across intensity levels, rotated per boss; lower-intensity tracks only fill gaps).
+- Engagement starts on the signature track. After that, at each loop boundary (current track played one full loop, minus the 3 s crossfade) and at least `HARD_MIN` (15 s) after the last switch, the fight crossfades (3 s, equal-power) to the next track of a per-fight shuffle bag: never the same track twice in a row, every track once per cycle. The bag is rebuilt for each new fight.
+- Phase changes and enrage: the sim emits `musicphase` when the boss's `phase` counter changes; `MusicManager.onPhase` crossfades (1.5 s) to the least-intense playlist track that is more intense than the current one (needs `PHASE_MIN` 8 s on the current track; never repeats the current track).
+- Elite fights rotate through the elite pool the same way (loop boundary, 15 s dwell, shuffle bag, no repeat). Disengage still falls back to calm via the 4 s exit hold; reveal -> fight, resolution and town return are unchanged.
+
 ### Runtime (`src/music.ts`, hooked in `src/audio.ts`)
 - States: town, traversal, combat, bossreveal, bosscombat, resolution (driven by `Game` `music` events).
 - Equal-power (sin/cos) crossfades: 3 s town↔run, 1.5 s combat in, 2 s combat out, 2.5 s boss reveal in, 0.6 s reveal→fight, 0.5 s into the clear sting.

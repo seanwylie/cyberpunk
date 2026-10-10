@@ -538,11 +538,12 @@ export class Game {
     return { dungeon:dd.name, id:dd.id, cleared:inst.flags.bossDead, boss:inst.flags.bossKey?ENEMIES[inst.flags.bossKey]?.name:null, time:inst.elapsed, kills:Object.values(inst.kills).reduce((a,b)=>a+b,0), killTypes:inst.kills, xp:inst.xpEarned, credits:inst.carried.credits, repair:inst.repairAdded, carried:inst.carried.items.map(i=>({name:ITEM_BY_ID[i.def].name,rarity:ITEM_BY_ID[i.def].rarity})), chips:{...inst.carried.chips}, stims:inst.carried.stims, ground:inst.drops.length, groundByRarity:byR, route:inst.flags.cond||'combat' }; }
   isElite(e:En){ return !!(ENEMIES[e.type].elite||(e as any).affix?.length); }
   /** Music state (docs/AUDIO.md): only 'traversal' (calm pool), 'elite' (hit/hurt by an elite in the last 8 s), 'bossreveal'/'bosscombat' (boss encounter) and 'resolution'. Ordinary mobs, proximity, alert and map position never change it. */
-  lastKey=''; updateMusic(dt:number){
+  lastKey=''; lastPh=0; updateMusic(dt:number){
     let st='traversal'; if(this.combatHold>0) this.combatHold-=dt; if(this.eliteEng>0) this.eliteEng-=dt; const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal<=0&&this.inst!.flags.bossSpawned);
     const bossRev=this.enemies.some(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal>0);
     if(this.resPending>0){ this.resPending-=dt; st='resolution'; } else if(bossRev) st='bossreveal'; else if(boss) st='bosscombat'; else if(this.eliteEng>0&&this.enemies.some(e=>!e.dead&&e.faction==='enemy'&&this.isElite(e)&&!ENEMIES[e.type].boss)) st='elite';
-    if(st==='bosscombat'&&boss&&this.lastKey!==boss.type){ this.lastKey=boss.type; this.emit('musickey',boss.type); }
+    if(st==='bosscombat'&&boss&&this.lastKey!==boss.type){ this.lastKey=boss.type; this.emit('musickey',boss.type); this.lastPh=0; }
+    if(st==='bosscombat'&&boss){ const ph=(boss as any).phase||0; if(ph!==this.lastPh){ this.lastPh=ph; this.emit('musicphase',ph); } }
     this.musicSet(st);
   }
 }

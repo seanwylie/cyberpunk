@@ -10,7 +10,7 @@ export class AudioSys {
   sfxVol=1; setSfxVolume(v:number){ this.sfxVol=v; if(this.sfxBus) this.sfxBus.gain.value=.8*v; }
   setVolume(v:number){ this.vol=v; if(this.master) this.master.gain.value=v; }
   applyBus(){ if(!this.musicBus) return; const c=this.ctx!, t=c.currentTime; const f=this.useFiles&&this.musicOn?.6:0, p=!this.useFiles&&this.musicOn?.55:0; this.fileBus.gain.setTargetAtTime(f*this.musicVol,t,.3); this.musicBus.gain.setTargetAtTime(p*this.musicVol,t,.3); }
-  musicKey:string|null=null; setMusicKey(k:string|null){ this.musicKey=k; }
+  musicKey:string|null=null; setMusicKey(k:string|null){ this.musicKey=k; } setMusicPhase(n:number){ this.music?.onPhase(n); }
   musicVol=1; setMusicVolume(v:number){ this.musicVol=v; this.applyBus(); } // music-only volume hook (0..1), independent of master
   setMusicOn(on:boolean){ this.musicOn=on; this.applyBus(); }
   setState(s:string){ if(s===this.pending) return; this.pending=s; if(!this.ctx) return; if(this.useFiles){ this.music!.setState(s as MState,this.musicKey); return; } if(s==='elite') s='combat'; if(s==='bossreveal'){ this.state='bossreveal'; this.stateStart=this.ctx.currentTime; this.step=0; this.nextT=this.ctx.currentTime+.05; this.revealMotif(); }

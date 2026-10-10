@@ -20,6 +20,15 @@ export const POOLS:Record<MState,string[]>={
 import { BOSSES } from './content/batch1_bosses';
 import { Q } from './quality';
 export const BOSS_MAP:Record<string,string>={ ...Object.fromEntries(BOSSES.map(b=>[b.id,b.track])), overseer:'boss_fight', warden:'boss_overclock', enforcer:'boss_meltdown', teague:'boss_hydraulic', brannoch:'boss_meltdown', ore9:'boss_fight', surgeon:'boss_overclock', autosurgeon:'boss_hydraulic', recovered:'boss_fight', stockmgr:'boss_meltdown', retrieval:'boss_overclock', reclaimer:'boss_hydraulic' };
+/** Relative intensity of each hard track (1 lightest .. 4 maximum); drives playlist building and phase escalation. */
+export const INTENSITY:Record<string,number>={ elite_siege:1,elite_hunt:1,boss_lineman:1,boss_pitboss:1, boss_fight:2,boss_hydraulic:2,boss_bellfounder:2,boss_cryo:2,boss_auditor:2,boss_apothecary:2,boss_clearance:2, boss_overclock:3,boss_meltdown:3,boss_resonance:3,boss_liquidator:3,boss_courier:3,boss_dispatcher:3,boss_warrantor:3,boss_rattle:3,boss_widow:3, boss_recall:4 };
+const hashS=(s:string)=>{ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))>>>0; return h; };
+/** Per-boss playlist: [signature, +3 others from the boss pool]. Others are the same intensity or higher (lowest first, rotated by a per-boss hash for variety); lower ones only fill the gap. */
+export const BOSS_PLAYLISTS:Record<string,string[]>=Object.fromEntries(Object.entries(BOSS_MAP).map(([id,sig])=>{ const si=INTENSITY[sig]||2; const others=POOLS.bosscombat.filter(t=>t!==sig);
+  const up=others.filter(t=>(INTENSITY[t]||2)>=si).sort((a,b)=>(INTENSITY[a]||2)-(INTENSITY[b]||2)||(a<b?-1:1)), down=others.filter(t=>(INTENSITY[t]||2)<si).sort((a,b)=>(INTENSITY[b]||2)-(INTENSITY[a]||2)||(a<b?-1:1));
+  const h=hashS(id), rot=(a:string[],n:number)=>a.length?a.slice(n%a.length).concat(a.slice(0,n%a.length)):a; const lv=[...new Set(up.map(t=>INTENSITY[t]||2))].sort((a,b)=>a-b), groups=lv.map(L=>rot(up.filter(t=>(INTENSITY[t]||2)===L),h)); const order:string[]=[]; for(let r=0;r<8;r++) for(const g of groups) if(g[r]) order.push(g[r]); // round-robin over intensity levels, lowest first
+  const pick:string[]=[]; for(const t of [...order,...down]) if(pick.length<3&&!pick.includes(t)) pick.push(t);
+  return [id,[sig,...pick]]; }));
 /** Shuffle bag: every item once per cycle, never the same item twice in a row (including across cycle refills). */
 export class ShuffleBag{ private bag:string[]=[]; last:string|null=null;
   constructor(public items:string[], private rnd:()=>number=Math.random){}
@@ -34,7 +43,7 @@ interface Live { name:string; src:AudioBufferSourceNode; gain:GainNode; startedA
 export class MusicManager {
   buffers:Record<string,AudioBuffer>={}; ready=false; loading=false; live:Live[]=[]; pos:Record<string,number>={};
   state:MState|null=null; want:MState='town'; cur:string|null=null; bags:Partial<Record<MState,ShuffleBag>>={}; key:string|null=null; fromTown=true; ROTATE_LOOPS=2; ROTATE_FADE=3;
-  enteredAt=0; leaveSince=-1; log:FadeEvent[]=[]; timer:any=null; onReady:(()=>void)|null=null;
+  enteredAt=0; lastSwitchAt=0; phase=0; PHASE_MIN=8; leaveSince=-1; log:FadeEvent[]=[]; timer:any=null; onReady:(()=>void)|null=null;
   HARD_MIN=15; HARD_EXIT_HOLD=4; CALM_MIN=20; // hysteresis (seconds): min time on a hard track; calm required before leaving it; min time on a calm track before it rotates
   constructor(private ctx:AudioContext, private out:AudioNode, private base='audio/music/'){}
   isReady(){ return this.ready; }
@@ -51,21 +60,31 @@ export class MusicManager {
   // Game-facing: request a state. Hysteresis is applied in tick().
   setState(s:MState,key?:string|null){ this.want=s; if(key!==undefined){ this.key=key; if(key&&BOSS_MAP[key]&&!Q.p.musicVariety) this.ensure(BOSS_MAP[key]); } if(!Q.p.musicVariety&&(s==='combat'||s==='elite'||s==='traversal')){ for(const f of POOLS[s].slice(0,2)) this.ensure(f); } this.tick(); }
   /** Pick the next track for a state: boss key mapping if known, else the state's shuffle bag (no immediate repeat). */
+  playlist():string[]{ const k=this.key&&BOSS_PLAYLISTS[this.key]; return k||POOLS.bosscombat; }
   pick(s:MState):string{ const have=(n:string)=>!!this.buffers[n];
-    if(s==='bosscombat'&&this.key&&BOSS_MAP[this.key]&&have(BOSS_MAP[this.key])) return BOSS_MAP[this.key];
+    if(s==='bosscombat'){ const pl=this.playlist(); const sig=this.key&&BOSS_MAP[this.key]; if(sig&&have(sig)){ this.fightBag=new ShuffleBag(pl); this.fightBag.last=sig; return sig; } }
     const pool=POOLS[s]; if(pool.length===1) return pool[0]; const bag=(this.bags[s]??=new ShuffleBag(pool)); return bag.next(have); }
+  fightBag:ShuffleBag|null=null;
+  /** Boss phase change / enrage: switch to a more intense track from the boss playlist (after PHASE_MIN s on the current one). */
+  onPhase(n:number){ if(n<=this.phase){ this.phase=n; return; } this.phase=n; if(this.state!=='bosscombat'||!this.ready) return; const t=this.now(); if(t-this.lastSwitchAt<this.PHASE_MIN) return;
+    const have=(x:string)=>!!this.buffers[x]&&x!==this.cur; const ci=INTENSITY[this.cur||'']||2; const pl=this.playlist().filter(have);
+    const higher=pl.filter(x=>(INTENSITY[x]||2)>ci), pool=higher.length?higher:pl.filter(x=>(INTENSITY[x]||2)>=ci); if(!pool.length) return;
+    const nx=pool.sort((a,b)=>(INTENSITY[a]||2)-(INTENSITY[b]||2))[0]; this.lastSwitchAt=t; this.crossfade(nx,1.5,'bosscombat'); if(this.fightBag) this.fightBag.last=nx; }
   tick(){ if(!this.ready) return; const t=this.now(); let tgt=this.want;
     const hard=(s:MState|null)=>s==='elite'||s==='bosscombat'||s==='combat';
     if(hard(this.state)&&tgt==='traversal'){ // (town return is explicit and not held) hold hard music: min dwell + sustained calm (exit delay) before fading back to calm
       if(this.leaveSince<0) this.leaveSince=t; if(t-this.enteredAt<this.HARD_MIN||t-this.leaveSince<this.HARD_EXIT_HOLD) tgt=this.state!; }
     else this.leaveSince=-1;
     if(tgt===this.state){ this.maybeRotate(t); return; }
+    if(tgt==='bosscombat'&&this.state!=='bossreveal') this.phase=0; // new fight (a reveal->fight handoff keeps the phase)
     this.enter(tgt); }
   /** Calm states rotate to the next pool track after ROTATE_LOOPS full loops; the fade starts so it lands on the loop boundary. */
-  private maybeRotate(t:number){ if(this.state!=='town'&&this.state!=='traversal') return; if(t-this.enteredAt<this.CALM_MIN) return; const l=this.live.find(x=>!x.ending); if(!l) return; const b=this.buffers[l.name]; if(!b) return;
-    const played=l.offset+(t-l.startedAt); if(played<b.duration*this.ROTATE_LOOPS-this.ROTATE_FADE) return;
-    const n=this.pick(this.state); if(n===l.name) return; this.crossfade(n,this.ROTATE_FADE,this.state); }
-  private enter(s:MState){ const prev=this.state; const t=this.now(); this.state=s; this.enteredAt=t; this.leaveSince=-1; const name=this.pick(s);
+  private maybeRotate(t:number){ const hard=this.state==='elite'||this.state==='bosscombat'; if(!hard&&this.state!=='town'&&this.state!=='traversal') return;
+    if(hard? t-this.lastSwitchAt<this.HARD_MIN : t-this.enteredAt<this.CALM_MIN) return; const l=this.live.find(x=>!x.ending); if(!l) return; const b=this.buffers[l.name]; if(!b) return;
+    const played=l.offset+(t-l.startedAt); if(played<b.duration*(hard?1:this.ROTATE_LOOPS)-this.ROTATE_FADE) return;
+    let n:string; if(this.state==='bosscombat'){ const have=(x:string)=>!!this.buffers[x]; this.fightBag??=new ShuffleBag(this.playlist()); n=this.fightBag.next(have); } else n=this.pick(this.state!);
+    if(n===l.name) return; this.lastSwitchAt=t; this.crossfade(n,this.ROTATE_FADE,this.state!); }
+  private enter(s:MState){ const prev=this.state; const t=this.now(); this.state=s; this.enteredAt=t; this.lastSwitchAt=t; this.leaveSince=-1; const name=this.pick(s);
     let dur=2; if(s==='traversal'&&(prev===null||prev==='town')) dur=3; else if(s==='town') dur=3; else if(s==='bossreveal') dur=2.5; else if(s==='bosscombat') dur=prev==='bossreveal'?.6:1.5; else if(s==='resolution') dur=.5; else if(s==='combat'||s==='elite') dur=1.5; else if(prev==='resolution') dur=2.5;
     this.crossfade(name,dur,s); }
   crossfade(name:string|null,dur:number,s:MState){ const t=this.now(); const out=this.live.filter(l=>!l.ending);
