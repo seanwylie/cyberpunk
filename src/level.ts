@@ -3,7 +3,7 @@ export type Zone = 'yard'|'proc'|'junction'|'boss'|'salvage'|'corridor'|'passage
 export interface DoorDef { id:string; tiles:[number,number][]; label:string; }
 export interface Prop { x:number; y:number; kind:'crate'|'conveyor'|'machine'|'pillar'|'rack'; h:number; }
 export interface Interact { id:string; x:number; y:number; r:number; label:string; kind:'terminal'|'hack'|'armory'|'controller'|'door'|'npc'|'locker'|'gate'|'vendor'|'crate'; }
-export interface SpawnDef { type:string; x:number; y:number; group:number; }
+export interface SpawnDef { type:string; x:number; y:number; group:number; /** batch-2 elite affixes rolled by the level generator */ affix?:string[]; }
 export interface Hazard { x:number; y:number; r:number; dps:number; heat:number; label:string; }
 export interface Level { /** per-run hazards (seeded for generated dungeons) */ hazards?:Hazard[]; /** layout seed */ seed?:number; w:number; h:number; solid:Uint8Array; zone:Uint8Array; doors:DoorDef[]; props:Prop[]; interacts:Interact[]; spawns:SpawnDef[]; checkpoints:{id:number;x:number;y:number;label:string}[]; sensors:{x0:number;y0:number;x1:number;y1:number}; spawn:{x:number;y:number}; zoneNames:Zone[]; bossSpawn:{x:number;y:number}; revealX:number; salvage:{x:number;y:number};
   /** 'town' enables the illustrated hub renderer (src/town.ts); decor/npcs/lights are visual-only (collision comes from `solid`). */

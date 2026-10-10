@@ -1,6 +1,7 @@
 // Data-only move tables derived from batch1_bosses.ts (no sim/config imports so config.ts and sim.ts can both use them).
 import { BOSSES, BOSS_BY_ID } from './batch1_bosses';
 import type { MoveSpec, MoveKind } from './batch1_bosses';
+import { MOBS } from './batch2_mobs';
 export interface AtkLike { w:number; rec:number; cd:number; min:number; max:number; lock?:boolean; ranged?:boolean }
 interface KD { w:number; rec:number; cd:number; min:number; max:number; lock?:boolean; ranged?:boolean; dmg:number }
 export const KIND_DEFAULTS:Record<MoveKind,KD>={
@@ -13,7 +14,8 @@ export interface MoveDef { boss:string; spec:MoveSpec; id:string }
 export const MOVES:Record<string,MoveDef>={};
 export const MOVE_ATK:Record<string,AtkLike>={};
 export const MOVE_DMG:Record<string,number>={};
-for(const b of BOSSES) b.moves.forEach((m,i)=>{ const id=b.id+'.'+i; const d=KIND_DEFAULTS[m.k]; MOVES[id]={boss:b.id,spec:m,id};
+for(const b of [...BOSSES,...MOBS] as {id:string;moves:MoveSpec[]}[]) b.moves.forEach((m,i)=>{ const id=b.id+'.'+i; const d=KIND_DEFAULTS[m.k]; MOVES[id]={boss:b.id,spec:m,id};
   MOVE_ATK[id]={w:m.w??d.w,rec:m.rec??d.rec,cd:m.cd??d.cd,min:m.min??d.min,max:m.max??d.max,lock:d.lock,ranged:d.ranged}; MOVE_DMG[id]=m.dmg??d.dmg; });
-export const moveIdsOf=(boss:string)=>BOSS_BY_ID[boss]?.moves.map((_,i)=>boss+'.'+i)||[];
+import { MOB_BY_ID } from './batch2_mobs';
+export const moveIdsOf=(boss:string)=>(BOSS_BY_ID[boss]||MOB_BY_ID[boss])?.moves.map((_,i)=>boss+'.'+i)||[];
 

@@ -280,6 +280,7 @@ def cart(spec):
         R.height=1.6*s
     R.hipH=.3*s; return R
 ARCH={'humanoid':lambda sp:hum2(sp,False),'bruiser':lambda sp:hum2(sp,True),'turret':turret,'hover':hover2,'quad':quad,'cart':cart}
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'arch_batch2.py')).read())
 # ---------------- animation (procedural, per archetype) ----------------
 def sm(t): t=min(1,max(0,t)); return t*t*(3-2*t)
 def rx(j,d): j.rotation_euler=(math.radians(d),j.rotation_euler[1],j.rotation_euler[2])
@@ -290,6 +291,7 @@ def reset(R):
     R.root.location=(0,0,0); R.root.rotation_euler=(0,0,0)
 def pose(R,spec,anim,f,n):
     reset(R); u=f/n; ph=u*math.tau; hip0=R.hipH if hasattr(R,'hipH') else 0; k=R.kind
+    if k in ('crawler','orb','tread','stilt'): return pose2(R,spec,anim,f,n)
     if k=='turret':
         if anim=='idle': setr(R.gun,math.sin(ph)*2); R.torso.location.z=.55
         elif anim=='walk': setr(R.torso,0,0,math.sin(ph)*8)

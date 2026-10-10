@@ -229,6 +229,7 @@ export class Renderer {
     // dust on emergence
     if(rt.reveal>0&&Math.random()<.5) g.fx.push({kind:'dust',x:e.x+(Math.random()-.5)*2,y:e.y+(Math.random()-.5)*2,t:0,life:.6});
     // health bar only for elites and bosses
+    if(!def.elite&&!def.boss&&rt.reveal<=0&&!e.dead&&(((e as any).affix&&(e as any).affix.length)||(rt.shield&&rt.shield.hp>0))){ /* batch-2 mob: affix tag + hp/shield bar */ const w=36*(this.TW/64); const hx=a-w/2, hy=b-(art?art.top+4:60*(this.TW/64)); c.fillStyle='rgba(10,10,10,.75)'; c.fillRect(hx-1,hy-1,w+2,7); c.fillStyle=(e as any).affix?.length?'#c0703a':'#8a9aa8'; c.fillRect(hx,hy,w*Math.max(0,e.hp/e.maxHp),5); if(rt.shield&&rt.shield.hp>0){ c.fillStyle='#8fb8d8'; c.fillRect(hx,hy-3,w*Math.min(1,rt.shield.hp/rt.shield.max),2); } const lb=mobLabel(e); if(lb){ c.font=`600 ${cpx(10*uiFs())}px ${FONT}`; c.textAlign='center'; c.lineWidth=3; c.strokeStyle='rgba(10,10,10,.85)'; c.strokeText(lb,a,hy-5); c.fillStyle='#e0b070'; c.fillText(lb,a,hy-5); } }
     if(def.elite&&rt.reveal<=0&&!e.dead){ const w=(def.boss?64:44)*(this.TW/64); const hx=a-w/2, hy=b-(art?art.top+4:(def.boss?118:70)*(this.TW/64)); c.fillStyle='rgba(10,10,10,.75)'; c.fillRect(hx-1,hy-1,w+2,7); c.fillStyle=def.boss?'#a2523f':'#b08a4a'; c.fillRect(hx,hy,w*Math.max(0,e.hp/e.maxHp),5); if(rt.vuln>0){ c.fillStyle='#d8d2bf'; c.font=`600 ${cpx(10*uiFs())}px ${FONT}`; c.textAlign='center'; c.fillText('OPENING',a,hy-4); } }
     if(g.target===e.id){ const r=def.radius+.35; this.ring(e.x,e.y,r,'#d8d2bf',.95); const c2=this.ctx; c2.save(); c2.strokeStyle='#d8d2bf'; c2.lineWidth=2; const bx=a, by=b-(art?art.top*.92:(def.boss?100:def.elite?60:42)*(this.TW/64)); c2.beginPath(); c2.moveTo(bx-6,by-8); c2.lineTo(bx,by); c2.lineTo(bx+6,by-8); c2.stroke(); c2.restore(); }
     if(e.stunT>0){ c.fillStyle='#d8d2bf'; c.font=`600 ${cpx(11*uiFs())}px ${FONT}`; c.textAlign='center'; c.fillText('✕',a,b-(art?art.top+8:60*(this.TW/64))); }
@@ -320,6 +321,7 @@ export class Renderer {
 export const ATKD:Record<string,{shape:'cone'|'circle'|'line'|'fan'|'aim';r:number;arc:number;w:number;w_?:number}&{w:number}> = {} as any;
 // telegraph geometry mirrors ATK/resolveAttack in sim.ts
 import { ATK } from './sim';
+import { mobLabel } from './content/mobs';
 export const FONT='"Roboto Condensed","Bahnschrift","Liberation Sans Narrow","Arial Narrow",system-ui,sans-serif';
-const geo:Record<string,any>={ swing:{shape:'cone',r:1.5,arc:Math.PI*.6}, cleave:{shape:'cone',r:2.6,arc:Math.PI*.75}, rsweep:{shape:'cone',r:3.8,arc:Math.PI*.85}, slam:{shape:'circle',r:3.4,arc:0}, charge:{shape:'line',r:9,arc:0,w:1.4}, shot:{shape:'aim',r:10,arc:0}, turretshot:{shape:'aim',r:11,arc:0}, volley:{shape:'fan',r:13,arc:0} };
+const geo:Record<string,any>={ swing:{shape:'cone',r:1.5,arc:Math.PI*.6}, cleave:{shape:'cone',r:2.6,arc:Math.PI*.75}, rsweep:{shape:'cone',r:3.8,arc:Math.PI*.85}, slam:{shape:'circle',r:3.4,arc:0}, charge:{shape:'line',r:9,arc:0,w:1.4}, shot:{shape:'aim',r:10,arc:0}, turretshot:{shape:'aim',r:11,arc:0}, volley:{shape:'fan',r:13,arc:0}, snipe:{shape:'aim',r:18,arc:0}, hex:{shape:'aim',r:13,arc:0}, detonate:{shape:'circle',r:2.6,arc:0}, detonate_big:{shape:'circle',r:3.6,arc:0} };
 for(const k of Object.keys(geo)) (ATKD as any)[k]={ ...geo[k], w:ATK[k].w, wid:geo[k].w };

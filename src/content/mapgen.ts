@@ -68,6 +68,14 @@ export class Gen{
     if(!tl.length) return 0; const c=this.pick(tl); const gid=++this.gid; let placed=0;
     for(const [x,y] of this.shuffle(tl.filter(t=>Math.hypot(t[0]-c[0],t[1]-c[1])<=sp))){ if(placed>=n) break; if(this.spawns.some(s=>Math.hypot(s.x-x,s.y-y)<1.6)) continue; this.spawns.push({type,x,y,group:gid}); placed++; }
     return gid; }
+  /** A mixed-role SQUAD: several types placed around one centre under one alert group (batch-2 pack composition). Each type uses its own clearance class. */
+  squad(zs:Zone[],parts:[string,number][],o:{minD?:number}={}):number{
+    const maxR=Math.max(...parts.map(([t])=>FLOW_R[clsOf(ENEMIES[t]?.radius??.4)])); const minD=o.minD??8; const total=parts.reduce((a,[,n])=>a+n,0); const sp=2.4+Math.sqrt(total)*1.5; const all=this.tiles(zs);
+    const tl=all.filter(([x,y])=>this.clr(x,y,maxR)&&!this.nearHaz(x,y)&&Math.hypot(x+.5-this.sx,y+.5-this.sy)>=minD&&!this.interacts.some(i=>Math.hypot(i.x-x-.5,i.y-y-.5)<2.2)); if(!tl.length) return 0;
+    const c=this.pick(tl); const gid=++this.gid; let placed=0;
+    for(const [type,n] of parts){ const R=FLOW_R[clsOf(ENEMIES[type]?.radius??.4)]; const cand=this.shuffle(all.filter(([x,y])=>Math.hypot(x-c[0],y-c[1])<=sp&&this.clr(x,y,R)&&!this.nearHaz(x,y)&&Math.hypot(x+.5-this.sx,y+.5-this.sy)>=minD-1&&!this.interacts.some(i=>Math.hypot(i.x-x-.5,i.y-y-.5)<2.2))); let k=0;
+      for(const [x,y] of cand){ if(k>=n) break; if(this.spawns.some(s=>Math.hypot(s.x-x,s.y-y)<1.6)) continue; this.spawns.push({type,x,y,group:gid}); k++; placed++; } }
+    return placed?gid:0; }
   /** single static/guard/elite spawn near a preferred point */
   single(type:string,group:number,px:number,py:number,rad=5,zs?:Zone[]){ const R=FLOW_R[clsOf(ENEMIES[type]?.radius??.4)]; const c:[number,number][]=[]; for(let y=Math.floor(py-rad);y<=py+rad;y++)for(let x=Math.floor(px-rad);x<=px+rad;x++){ if(!this.inb(x,y)||!this.clr(x,y,R)||this.nearHaz(x,y)) continue; if(zs&&!zs.map(ZI).includes(this.zone[y*this.w+x])) continue; if(this.spawns.some(s=>Math.hypot(s.x-x,s.y-y)<2)) continue; c.push([x,y]); } if(!c.length) return; c.sort((a,b)=>Math.hypot(a[0]-px,a[1]-py)-Math.hypot(b[0]-px,b[1]-py)); const t=c[Math.min(c.length-1,Math.floor(this.r()*3))]; this.spawns.push({type,x:t[0],y:t[1],group}); }
   /** Interactable on a free tile with clearance near (px,py) (or anywhere in zones). */

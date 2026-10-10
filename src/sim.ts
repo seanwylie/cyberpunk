@@ -5,6 +5,8 @@ import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
 import { MOVES, MOVE_ATK } from './content/boss_moves';
 import { BOSS_BY_ID } from './content/batch1_bosses';
 import { movePattern, resolveMove, bossTick, filterDamage, clearBossAdds } from './content/mechanics';
+import { mobTick, mobDeath, mobAfterHit, resolveMobAttack, mobPattern, MOB_COND } from './content/mobs';
+import { MOB_ATK } from './content/batch2_mobs';
 import { CONTRACT_BY_ID, Goal } from './content/npcs';
 import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState } from './state';
 import { IDKFA_SET, IDKFA_CHIPS } from './content/idkfa';
@@ -30,7 +32,7 @@ export class Game {
   save:Save; level:Level; mode:'town'|'run'='town'; inst:InstanceState|null=null; emit:Emit;
   enemies:En[]=[]; projs:Proj[]=[]; zones:Zone[]=[]; fx:Fx[]=[]; time=0; pickFx:{id:number;x:number;y:number;kind:Drop['kind'];inst?:Drop['inst'];chip?:Drop['chip'];amount:number;t0:number}[]=[];
   // player
-  px=0; py=0; face=0; hp=100; heat=0; overheated=false; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; downed=false; downT=0; defibCd=0; revealing=false;
+  px=0; py=0; face=0; hp=100; heat=0; overheated=false; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; slowT=0; downed=false; downT=0; defibCd=0; revealing=false;
   abCd:number[]=[0,0,0]; cast:{ idx:number; t:number; aim:AimState; ab:AbilityDef }|null=null; aim:AimState|null=null; target:number|null=null; lungeT=0; lungeDx=0; lungeDy=0; lungeHit:Set<number>=new Set();
   slideT=0; slideFx=0; slideFy=0; channel:{ kind:'town'|'hack'; t:number; dur:number; cb:()=>void }|null=null;
   inputMove={x:0,y:0}; build!:BuildResult; moving=false; prompt:Interact|null=null; musicState='traversal'; combatHold=0; toastQ:string[]=[];
@@ -64,7 +66,7 @@ export class Game {
     const inst:InstanceState={ id:'inst-'+seed, dungeon:id, layoutV:LAYOUT_V, createdAt:this.now(), expiresAt:this.now()+retentionMs, seed, enemies:[], drops:[], carried:{items:[],chips:{},stims:0,credits:0},
       flags:{gate1:false,lock2:false,passageSeen:false,controller:false,armory:false,cond:null,bossKey:null,bossRevealed:false,bossSpawned:false,bossDead:false,completed:false,rewardsGranted:false,alarm:false,salvageForeman:false},
       checkpoint:{id:1,x:lv.checkpoints[0].x,y:lv.checkpoints[0].y}, px:lv.spawn.x, py:lv.spawn.y, hp:0, broken:[], protectedSlots:[], repairAdded:0, nextId:1, xpEarned:0, warned:false, kills:{}, claimed:[], elapsed:0 };
-    for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp, maxHp:ENEMIES[sp.type].hp, alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0 }); }
+    for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp, maxHp:ENEMIES[sp.type].hp, alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); }
     { const n=Math.min(2,s.stims); inst.carried.stims=n; s.stims-=n; }
     s.instance=inst; this.inst=inst; s.stats.runs++; this.resumeInstance(true); return true;
   }
@@ -174,7 +176,7 @@ export class Game {
     const st=this.stat(); const revealLock=this.revealing;
     if(this.dodgeCd>0) this.dodgeCd-=dt; if(this.iframes>0) this.iframes-=dt; if(this.atkCd>0) this.atkCd-=dt; if(this.weaponOff>0) this.weaponOff-=dt; if(this.defibCd>0) this.defibCd-=dt;
     for(let i=0;i<3;i++) if(this.abCd[i]>0) this.abCd[i]-=dt;
-    if(this.cloakT>0){ this.cloakT-=dt; } if(this.braceT>0) this.braceT-=dt;
+    if(this.cloakT>0){ this.cloakT-=dt; } if(this.braceT>0) this.braceT-=dt; if(this.slowT>0) this.slowT-=dt;
     // heat
     const cool=(COMBAT.heat.passiveCool)*st.cooling*(this.overheated?1.3:1); this.heat=Math.max(0,this.heat-cool*dt);
     if(this.overheated&&this.heat<=COMBAT.heat.overheatRecover){ this.overheated=false; this.emit('sfx','cooled'); }
@@ -183,7 +185,7 @@ export class Game {
     if(this.downed){ this.downT+=dt; this.cast=null; this.aim=null; return; }
     // movement
     let mx=0,my=0; const mag=Math.min(1,Math.hypot(this.inputMove.x,this.inputMove.y)); if(mag>.12){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); mx=v.x*mag; my=v.y*mag; }
-    let speed=COMBAT.playerSpeed*st.move*(this.overheated?COMBAT.heat.overheatSpeedMult:1)*(this.cast?.6:1);
+    let speed=COMBAT.playerSpeed*st.move*(this.overheated?COMBAT.heat.overheatSpeedMult:1)*(this.cast?.6:1)*(this.slowT>0?.65:1);
     if(this.dodgeT>0){ this.dodgeT-=dt; const sp=COMBAT.dodge.dist/COMBAT.dodge.time; const p=this.moveCircle(this.px,this.py,this.dodgeDx*sp*dt,this.dodgeDy*sp*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; this.moving=true; }
     else if(this.lungeT>0){ this.lungeT-=dt; const sp=this.lungeDx; const p=this.moveCircle(this.px,this.py,this.lungeDx*dt,this.lungeDy*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; this.lungeBladeHit(); }
     else if(this.slideT>0){ this.slideT-=dt; const p=this.moveCircle(this.px,this.py,this.slideFx*dt,this.slideFy*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; }
@@ -376,7 +378,7 @@ export class Game {
   updateEnemies(dt:number){
     this.frame++; this.flowT-=dt; if(this.flowT<=0){ this.flowT=.35; const need=[false,false,false]; for(const e of this.enemies){ if(!e.dead&&e.faction==='enemy'&&e.alert&&!ENEMIES[e.type].static) need[this.flowCls(ENEMIES[e.type].radius)]=true; } need[0]=true; for(let c=0;c<3;c++){ if(need[c]) this.flowField(c); } }
     const alive=this.enemies.filter(e=>!e.dead);
-    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.reveal>0) continue; if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); this.updateEnemy(e,dt); }
+    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.reveal>0) continue; if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); else mobTick(this,e,dt); this.updateEnemy(e,dt); }
     // separation
     for(let i=0;i<alive.length;i++){ const a=alive[i]; if(ENEMIES[a.type].static) continue; for(let j=i+1;j<alive.length;j++){ const b=alive[j]; const dx=b.x-a.x, dy=b.y-a.y; const d2=dx*dx+dy*dy; const rr=(ENEMIES[a.type].radius+ENEMIES[b.type].radius)*.9; if(d2<rr*rr&&d2>1e-4){ const d=Math.sqrt(d2), push=(rr-d)*.5; const nx=dx/d, ny=dy/d; if(!ENEMIES[b.type].static){ const pb=this.moveCircle(b.x,b.y,nx*push,ny*push,ENEMIES[b.type].radius*.8); b.x=pb.x; b.y=pb.y; } const pa=this.moveCircle(a.x,a.y,-nx*push,-ny*push,ENEMIES[a.type].radius*.8); a.x=pa.x; a.y=pa.y; } } }
     this.enemies=this.enemies.filter(e=>!e.dead||e._rt.bornT>-1); // keep dead for persistence
@@ -394,17 +396,17 @@ export class Game {
     const speed=def.speed*(this.zoneSlow(e)?.7:1)*(rt.spdMul||1);
     const ang=Math.atan2(ty-e.y,tx-e.x);
     // state machine
-    if(rt.st==='tele'){ rt.t+=dt; const A=ATK[rt.atk]; if(rt.t<A.w*.6||!A.lock) rt.ang=ang; if(rt.t>=A.w){ this.resolveAttack(e,rt.atk,tx,ty); if(rt.st==='tele'&&!rt.chained){ rt.st='rec'; rt.t=0; } rt.chained=false; } return; }
+    if(rt.st==='tele'){ rt.t+=dt; const A=ATK[rt.atk]; if(rt.t<A.w*.6||!A.lock) rt.ang=ang; if(rt.t>=A.w){ const hp0=this.hp; this.resolveAttack(e,rt.atk,tx,ty); mobAfterHit(this,e,hp0); if(rt.st==='tele'&&!rt.chained){ rt.st='rec'; rt.t=0; } rt.chained=false; } return; }
     if(rt.st==='rec'){ rt.t+=dt; if(rt.t>=(ATK[rt.atk]?.rec??.5)) rt.st='chase'; return; }
     if(rt.st==='dash'){ this.dashStep(e,dt); return; }
     rt.st='chase';
     // attack choice
     if(rt.st==='chase'){
-      const choices=def.attacks.filter(a=>{ const A=ATK[a]; if((rt.acd[a]||0)>0) return false; if(d<A.min||d>A.max) return false; if(A.ranged&&!this.los(e.x,e.y,tx,ty)) return false; if(def.boss&&a==='summon'&&this.enemies.filter(o=>!o.dead&&o.faction==='enemy'&&!ENEMIES[o.type].boss).length>8) return false; return true; });
+      const choices=def.attacks.filter(a=>{ const A=ATK[a]; if((rt.acd[a]||0)>0) return false; if(d<A.min||d>A.max) return false; if(A.ranged&&!this.los(e.x,e.y,tx,ty)) return false; if(MOB_COND[a]&&!MOB_COND[a](this,e)) return false; if(def.boss&&a==='summon'&&this.enemies.filter(o=>!o.dead&&o.faction==='enemy'&&!ENEMIES[o.type].boss).length>8) return false; return true; });
       if(choices.length){ const a=choices[Math.floor(Math.random()*choices.length)]; this.beginAttack(e,a,ang,tx,ty); return; }
     }
     // movement
-    let mx=0,my=0; const wantKeep=def.ranged&&!def.static?(def.boss?7:5.5):0;
+    let mx=0,my=0; const wantKeep=def.ranged&&!def.static?(def.keep??(def.boss?7:5.5)):0;
     if(def.static) { rt.ang=ang; return; }
     if(e.faction==='ally'&&d<1.2) return;
     if(wantKeep&&d<wantKeep-1&&this.los(e.x,e.y,tx,ty)){ mx=-Math.cos(ang); my=-Math.sin(ang); const sd=rt.strafe; mx+= -Math.sin(ang)*sd*.5; my+= Math.cos(ang)*sd*.5; }
@@ -426,7 +428,7 @@ export class Game {
   }
   /** Boss/elite ground-pattern attacks added by dungeon content. Reuses the lingering-zone system (telegraphed windup, then damaging). */
   zonePattern(e:En,a:string,tx:number,ty:number):{x:number;y:number}[]|null{
-    const def=ENEMIES[e.type]; const dps=(ENEMY_DMG[a]||0)*(def.dmgMul||1); const out:{x:number;y:number}[]=[]; const aim=Math.atan2(ty-e.y,tx-e.x);
+    const def=ENEMIES[e.type]; const dps=(ENEMY_DMG[a]||0)*(def.dmgMul||1); const out:{x:number;y:number}[]=[]; const aim=Math.atan2(ty-e.y,tx-e.x); if(MOB_ATK[a]) return mobPattern(this,e,a,tx,ty);
     const add=(x:number,y:number,r:number,windup:number,life:number,heat:number)=>{ if(this.solidAt(x,y)) return; out.push({x,y}); this.zones.push({x,y,r,t:0,life,dps,heat,windup}); };
     switch(a){
       case 'slagpool': for(let i=0;i<4;i++) add(e.x+Math.cos(aim)*(3+i*2),e.y+Math.sin(aim)*(3+i*2),1.6,1.2,7,14); break;
@@ -441,6 +443,7 @@ export class Game {
     const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1);
     const cone=(r:number,arc:number)=>{ this.fx.push({kind:'slash',x:e.x,y:e.y,a:ang,r,t:0,life:.25,w:arc,c:'#b8b09a'}); for(const o of this.opponents(fac)){ if(dist(e.x,e.y,o.x,o.y)-o.r<=r&&Math.abs(angDiff(Math.atan2(o.y-e.y,o.x-e.x),ang))<=arc/2) o.hurt(dmg,e.x,e.y); } this.emit('sfx','enemy_swing'); };
     const proj=(aa:number,speed:number)=>{ this.projs.push({x:e.x+Math.cos(aa)*.6,y:e.y+Math.sin(aa)*.6,vx:Math.cos(aa)*speed,vy:Math.sin(aa)*speed,dmg,r:.22,life:1.6,faction:fac==='ally'?'ally':'enemy',kind:'bolt'}); this.emit('sfx','enemy_shot'); };
+    if(MOB_ATK[a]){ resolveMobAttack(this,e,a,tx,ty,dmg); return; }
     if(MOVES[a]){ resolveMove(this,e,a,tx,ty,dmg); return; }
     switch(a){
       case 'swing': cone(1.5,Math.PI*.6); break; case 'cleave': cone(2.6,Math.PI*.75); break; case 'rsweep': cone(3.8,Math.PI*.85); break;
@@ -476,12 +479,12 @@ export class Game {
 
   // ---------- death, loot, XP ----------
   killEnemy(e:En){
-    if(e.dead) return; const def=ENEMIES[e.type]; e.dead=true; e.hp=0; this.kills++; this.save.stats.kills++; const inst=this.inst!; inst.kills[e.type]=(inst.kills[e.type]||0)+1; this.combatHold=3;
+    if(e.dead) return; const def=ENEMIES[e.type]; e.dead=true; e.hp=0; mobDeath(this,e); this.kills++; this.save.stats.kills++; const inst=this.inst!; inst.kills[e.type]=(inst.kills[e.type]||0)+1; this.combatHold=3;
     this.emit('sfx','death_'+(def.boss?'boss':def.elite?'elite':def.mfr)); const gore=this.save.settings.gore; const n=gore==='off'?0:gore==='standard'?4:14;
     for(let i=0;i<n;i++){ const a=Math.random()*6.28,s=1+Math.random()*(gore==='bloody'?5:2.5); this.fx.push({kind:'blood',x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:0,life:.5+Math.random()*.5,c:def.mfr==='PS'?'#8a8f94':'#6e2a22'}); }
     this.fx.push({kind:'burst',x:e.x,y:e.y,t:0,life:.3});
     if(e.faction==='ally') { return; }
-    this.addXp(def.xp); inst.xpEarned+=def.xp; this.save.rep[def.mfr]+=def.rep; record(this.story(),'kill_mfr',def.mfr); this.contractEvent('kill_mfr',def.mfr); this.contractEvent('kill_type',e.type);
+    { const xpv=def.xp*((e as any).affix?.length?2.5:1); this.addXp(xpv); inst.xpEarned+=xpv; } this.save.rep[def.mfr]+=def.rep; record(this.story(),'kill_mfr',def.mfr); this.contractEvent('kill_mfr',def.mfr); this.contractEvent('kill_type',e.type);
     this.rollLoot(e);
     if(e.type===this.dd.lockElite&&!inst.flags.lock2){ inst.flags.lock2=true; this.openDoor('lock2'); this.toast(def.name+' down: lock released'); }
     if(def.boss) this.onBossDead(e);
@@ -489,7 +492,7 @@ export class Game {
   addXp(n:number){ const s=this.save; s.xp+=n; while(s.level<PROGRESSION.maxLevel&&s.xp>=PROGRESSION.xpForLevel(s.level)){ s.xp-=PROGRESSION.xpForLevel(s.level); s.level++; this.toast('Level up! Level '+s.level); this.recompute(); } }
   pickEntry(pool:LootEntry[]):LootEntry{ const tot=pool.reduce((a,b)=>a+b.w,0); let r=Math.random()*tot; for(const e of pool){ r-=e.w; if(r<=0) return e; } return pool[0]; }
   rollLoot(e:En){
-    const def=ENEMIES[e.type]; const inst=this.inst!; const tier=def.boss?'boss':def.elite?'elite':'ordinary'; const T=LOOT[tier]; const pool=this.dd.loot?this.dd.loot[tier]:T.pool; const rolls=def.boss?LOOT.boss.rolls:def.elite?2:1;
+    const def=ENEMIES[e.type]; const inst=this.inst!; const tier=def.boss?'boss':(def.elite||(e as any).affix?.length)?'elite':'ordinary'; const T=LOOT[tier]; const pool=this.dd.loot?this.dd.loot[tier]:T.pool; const rolls=def.boss?LOOT.boss.rolls:def.elite?2:1;
     const cr=T.credits.map(c=>c*this.dd.creditMul) as [number,number]; if(Math.random()<(def.boss||def.elite?1:.5)) this.addDrop(e.x,e.y,{kind:'credits',amount:Math.round(cr[0]+Math.random()*(cr[1]-cr[0]))});
     for(let i=0;i<rolls;i++){ if(Math.random()>T.chance) continue; this.dropEntry(this.pickEntry(pool),e.x,e.y); }
     const sig=def.boss?(this.dd.id==='annex'?LOOT.signature[e.type]:this.dd.signature?.[e.type]):null; if(sig&&Math.random()<sig.chance) this.dropEntry({item:sig.item,w:1},e.x,e.y);
@@ -546,4 +549,4 @@ export const ATK:Record<string,AtkDef> = {
   bite:{w:.4,rec:.4,cd:1.0,min:0,max:1.3}, slagshot:{w:.9,rec:.6,cd:2.8,min:0,max:10,lock:true,ranged:true}, dart:{w:.7,rec:.5,cd:2.0,min:0,max:10,lock:true,ranged:true}, scalpelfan:{w:.9,rec:.8,cd:3.2,min:2,max:12,lock:true,ranged:true}, chainsweep:{w:1.1,rec:1.0,cd:3.5,min:0,max:4.6}, blink:{w:.8,rec:.2,cd:6.5,min:2.5,max:14}, riposte:{w:.55,rec:.9,cd:0,min:0,max:99}, slagpool:{w:.8,rec:.9,cd:7,min:0,max:16,ranged:true}, gasvent:{w:.8,rec:.9,cd:8,min:0,max:14,ranged:true}, ringpools:{w:1.0,rec:1.0,cd:10,min:0,max:16}, sawlanes:{w:1.0,rec:1.0,cd:9,min:0,max:16,ranged:true}, cratefall:{w:.8,rec:.9,cd:7,min:0,max:16,ranged:true},
   zones:{w:.7,rec:.9,cd:8,min:0,max:16,ranged:true}, volley:{w:1.0,rec:.8,cd:3.4,min:3,max:13,lock:true,ranged:true}, rsweep:{w:1.0,rec:.9,cd:3,min:0,max:3.8},
 };
-Object.assign(ATK,MOVE_ATK); // content batch 1 boss moves (src/content/boss_moves.ts)
+Object.assign(ATK,MOVE_ATK,MOB_ATK); // content batch 1 boss moves (src/content/boss_moves.ts)

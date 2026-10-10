@@ -14,7 +14,7 @@ const { browser, page, errors } = await launch({ viewport: { width: 1280, height
 await sleep(1500); await ev(() => { const g = window.__game; g.save.level = 34; g.dbg.god = true; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.startRun('annex'); }); await sleep(1000);
 await ev(() => { const g = window.__game; g.inst.flags.bossSpawned = true; g.enemies.splice(0); });
 const all = await ev(() => Object.keys(window.__enemies));
-const list = all; ok(list.length >= 36, `${list.length} enemy types under test`);
+const only = process.env.ONLY ? new Set(process.env.ONLY.split(',')) : null; const list = only ? all.filter(t => only.has(t)) : all; ok(only ? list.length === only.size : list.length >= 36, `${list.length} enemy types under test`);
 const noAtlas = list.filter(t => !ids3.includes(t)); ok(noAtlas.length === 0, `every enemy type has a 3D atlas (missing: ${noAtlas.join(',') || 'none'})`);
 const ROW = [6, 7, 0, 1, 2, 3, 4, 5]; const D8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]; // world dirs
 const expRow = (dx, dy) => { const sx = dx - dy, sy = dx + dy; const a = (Math.atan2(sy, sx) + 2 * Math.PI) % (2 * Math.PI); return ROW[Math.round(a / (Math.PI / 4)) % 8]; };

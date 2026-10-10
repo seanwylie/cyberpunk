@@ -14,8 +14,11 @@ import { toScreen, stepDir, variantFor, dirIndex, S, type Variant } from './faci
 interface Art { spr: string; h: number; hover?: number; tint?: string; ground?: boolean; flip0?: boolean; dark?: boolean; }
 const A = (spr: string, h: number, o: Partial<Art> = {}): Art => ({ spr, h, ...o });
 import { BOSSES } from './content/batch1_bosses';
+import { MOBS } from './content/batch2_mobs';
 export const ART: Record<string, Art> = {
   // content batch 1 bosses: 3D atlas art (tools/enemies3d/specs_batch1.py); the flat sprite is only a loading fallback
+  // content batch 2 mobs: 3D atlas art (tools/enemies3d/specs_batch2.py); the flat sprite is only a loading fallback
+  ...Object.fromEntries(MOBS.map(m => [m.id, { spr: m.spr, h: m.h, ...(m.hover ? { hover: m.hover } : {}) } as Art])),
   ...Object.fromEntries(BOSSES.map(b => [b.id, { spr: 'overseer', h: b.h, ...(b.hover ? { hover: b.hover } : {}) } as Art])),
   // Reclamation Annex (original dungeon); drone = spare hover minion art
   worker: A('worker', 1.05), shooter: A('shooter', 1.1), turret: A('turret', .85, { ground: true }), sawhand: A('sawhand', 1.5), foreman: A('foreman', 1.5),

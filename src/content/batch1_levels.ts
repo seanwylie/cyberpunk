@@ -1,5 +1,7 @@
 // CONTENT BATCH 1 (levels): 20 new dungeons as data. Layouts come from src/content/mapgen_batch1.ts (procedural, seeded, validated),
 // bosses from batch1_bosses.ts. See docs/CONTENT_BATCH_1.md for the design table. Zone slots (yard/proc/junction/boss/salvage/passage) are reused by the run logic.
+import { composeSquads, flatten } from './batch2_rosters';
+import type { Squad } from './batch2_rosters';
 export type Shape='open'|'pillars'|'rings'|'diag'|'cave'|'river'|'maze'|'islands'|'colonnade'|'pit'|'zigzag'|'cross';
 export type HazMode='channels'|'scatter'|'ring'|'lanes'|'none';
 export type Motif='stripes'|'grid'|'cracks'|'plates'|'hex'|'tiles'|'water'|'foam'|'crates';
@@ -9,6 +11,7 @@ export interface LevelSpec {
   blurb:string; theme:string; pal:Pal;
   /** room shapes [yard, proc, junction, boss] + sizes [w,h] */ shapes:[Shape,Shape,Shape,Shape]; dims:[[number,number],[number,number],[number,number],[number,number]];
   haz:{ label:string; mode:HazMode; n:number; dps:number; heat:number; r:number };
+  /** batch-2: mixed-role pack templates per zone (composed from batch2_rosters.ts); `roster` below is their flattened per-type totals */ squads?:Record<'yard'|'proc'|'junction'|'salvage',Squad[]>;
   roster:{ yard:[string,number][]; proc:[string,number][]; junction:[string,number][]; salvage:[string,number][] }; gateGuard:string; lockElite:string; alarmType:string;
   objective:{ label:string; relay:string; toast:string; bonus:string }; zoneLabels:Record<string,string>; props:{ crate:number; machine:number; rack:number; conveyor:number };
   unlock:{ after:string[] }; creditMul:number; xp:number; chips:[string,string]; loot:'HI'|'PS'|'MM'|'mix'; intro:string;
@@ -156,4 +159,6 @@ export const LEVELS:LevelSpec[]=[
    objective:{label:'Recall registry',relay:'Registry relay',toast:'Recall registry corrupted. The recall chamber opens.',bonus:'Impounded hardware'}, zoneLabels:{yard:'Impound lot',proc:'Recall rows',junction:'Registry hall',boss:'Recall chamber',salvage:'Impound cage',passage:'Conveyor tunnel'}, props:{crate:8,machine:4,rack:4,conveyor:2},
    unlock:{after:['breaker_yard','radio_mast','warranty_vault']}, creditMul:5.0, xp:1800, chips:['overdrive','quench'], loot:'mix', intro:'Recall Yard: every manufacturer\'s mistakes are here. Corrupt the registry and end the recall.' },
 ];
+// batch 2: tier-progressive mob rosters (docs/MOBS_BATCH_2.md). Overrides the batch-1 placeholder rosters above.
+for(const L of LEVELS){ const zs=['yard','proc','junction','salvage'] as const; const sq:any={}, ro:any={}; for(const z of zs){ sq[z]=composeSquads(L.id,L.tier,z); ro[z]=flatten(sq[z]); } L.squads=sq; L.roster=ro; }
 export const LEVEL_BY_ID:Record<string,LevelSpec>=Object.fromEntries(LEVELS.map(l=>[l.id,l]));

@@ -6,6 +6,15 @@ ANIM_SPEC = {  # n frames, fps (game playback), loop, hit frame (attack)
     'hit':    dict(n=4,  fps=16, loop=False, hit=None),
     'death':  dict(n=10, fps=10, loop=False, hit=None),
 }
+import os
+if os.environ.get('ENEMY_LITE'):  # batch-2 mobs: fewer frames (smaller atlases, faster renders)
+    ANIM_SPEC = {
+        'idle':   dict(n=4,  fps=5,  loop=True,  hit=None),
+        'walk':   dict(n=6,  fps=10, loop=True,  hit=None),
+        'attack': dict(n=7,  fps=14, loop=False, hit=3),
+        'hit':    dict(n=2,  fps=12, loop=False, hit=None),
+        'death':  dict(n=6,  fps=9,  loop=False, hit=None),
+    }
 OLIVE=dict(main='#4a4d34', dark='#262820', accent='#5d6141', metal='#6d6f68', cloth='#3b3e2a')
 RED=dict(main='#6d2a22', dark='#2a1a17', accent='#8c3a2c', metal='#6b6560', cloth='#3a2420', glow='#d8541e')
 SPECS = {
@@ -54,6 +63,10 @@ SPECS.update({
  'drone':      dict(arch='hover', palette=dict(main='#7a7e80', dark='#202428', accent='#4f6479', metal='#8a9094', white='#a8acae', glow='#ff5a3a'), scale=.6),
 })
 
+try:
+    from specs_batch2 import BATCH2
+    SPECS.update(BATCH2)
+except ImportError: pass
 try:
     from specs_batch1 import BATCH1
     SPECS.update(BATCH1)

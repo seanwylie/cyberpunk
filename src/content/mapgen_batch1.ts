@@ -5,6 +5,8 @@ import type { Level, Zone } from '../level';
 import { Gen, chain, link, doorsAt, bossArena, sideRoom, gen, rngOf } from './mapgen';
 import type { Rm, Spec } from './mapgen';
 import type { LevelSpec, Shape } from './batch1_levels';
+import { ENEMIES } from '../config';
+import { rollAffixes } from './batch2_rosters';
 const hf=(n:number)=>Math.floor(n);
 type R4=Rm;
 
@@ -61,9 +63,15 @@ function once(spec:LevelSpec,seed:number):Level{
   const ro=spec.roster; const eq=(t:string)=>t===spec.gateGuard||t===spec.lockElite;
   g.single(spec.gateGuard,90,Y.x1-1,cors[0]-g.ri(4,6)); g.single(spec.gateGuard,91,Y.x1-1,cors[0]+g.ri(4,6));
   const place=(zs:Zone[],list:[string,number][],minD?:number)=>{ for(const [t,n] of list){ if(n<=0||eq(t)) continue; g.pack(zs,n,t,{minD}); } };
-  place(['yard'],ro.yard,7); place(['yard'],ro.yard.map(([t,n])=>[t,Math.ceil(n/2)] as [string,number]),7); place(['proc'],ro.proc,8); place(['proc'],ro.proc.map(([t,n])=>[t,Math.ceil(n/2)] as [string,number]),8); place(['junction'],ro.junction,6); place(['junction'],ro.junction.map(([t,n])=>[t,Math.ceil(n/2)] as [string,number]),6); place(['salvage'],ro.salvage,5);
+  const half=(q:[string,number][])=>q.map(([t,n])=>[t,Math.max(1,Math.ceil(n/2))] as [string,number]);
+  if(spec.squads){ // batch 2: mixed-role squads (shared alert group); a full set plus a half-size second pass, like the batch-1 density
+    const zmap:[Zone,Zone[],number][]=[['yard',['yard'],7],['proc',['proc'],8],['junction',['junction'],6],['salvage',['salvage'],5]];
+    for(const [k,zs,minD] of zmap){ const sq=spec.squads[k as 'yard'|'proc'|'junction'|'salvage']; for(const q of sq) g.squad(zs,q,{minD}); if(k!=='salvage') for(const q of sq) g.squad(zs,half(q),{minD}); } }
+  else {
+  place(['yard'],ro.yard,7); place(['yard'],ro.yard.map(([t,n])=>[t,Math.ceil(n/2)] as [string,number]),7); place(['proc'],ro.proc,8); place(['proc'],ro.proc.map(([t,n])=>[t,Math.ceil(n/2)] as [string,number]),8); place(['junction'],ro.junction,6); place(['junction'],ro.junction.map(([t,n])=>[t,Math.ceil(n/2)] as [string,number]),6); place(['salvage'],ro.salvage,5); }
   g.single(spec.lockElite,50,P.x1-4,cors[1],6,['proc']); g.single(spec.lockElite==='brakeman'?'quenchpriest':spec.lockElite==='quenchpriest'?'brakeman':spec.lockElite==='matron'?'anesthetist':spec.lockElite==='anesthetist'?'matron':spec.lockElite==='shiftlead'?'hobbs':spec.lockElite==='hobbs'?'shiftlead':spec.lockElite==='sawhand'?'foreman':'sawhand',55,hf((J.x0+J.x1)/2),J.cy,5,['junction']);
   g.prune();
+  { const seen=new Set<number>(); for(const sp of g.spawns){ if(sp.group>=90||seen.has(sp.group)) continue; seen.add(sp.group); const mem=g.spawns.filter(m=>m.group===sp.group); const lead=mem.slice().sort((a,b)=>(ENEMIES[b.type]?.hp||0)-(ENEMIES[a.type]?.hp||0))[0]; if(!lead||mem.length<2) continue; const af=rollAffixes(lead.type,spec.tier,()=>g.r()); if(af.length) lead.affix=af; } } // batch 2: elite pack leaders
   const L=g.level({spawn,cps:[{id:1,x:spawn.x,y:spawn.y,label:names.yard},{id:2,x:J.x0+2.5,y:cors[1]+.5,label:names.junction}],bossSpawn:ba.spawn,revealX:B.x0+2,salvage:{x:(S.x0+S.x1)/2,y:S.y0+4}});
   (L as any).noConds=true; L.theme=spec.theme; return L;
 }
