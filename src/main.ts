@@ -11,7 +11,7 @@ import { ENEMIES } from './config';
 const save=load(); if(!save.story) save.story=newStory();
 const audio=new AudioSys(); audio.vol=save.settings.volume; audio.musicOn=save.settings.music;
 let ui:UI;
-const game=new Game(save,(t,p)=>{ if(t==='sfx') audio.sfx(p); else if(t==='music') audio.setState(p); else ui?.handle(t,p); });
+const game=new Game(save,(t,p)=>{ if(t==='sfx') audio.sfx(p); else if(t==='musickey') audio.setMusicKey(p); else if(t==='music') audio.setState(p); else ui?.handle(t,p); });
 ui=new UI(game,audio);
 const canvas=document.getElementById('game') as HTMLCanvasElement; const rend=new Renderer(canvas,game);
 const input=new Input(game,rend,audio,{ modalOpen:()=>ui.modalOpen(), onToggleInv:()=>ui.toggleLive(), onEsc:()=>ui.esc() },canvas);

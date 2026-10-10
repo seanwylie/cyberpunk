@@ -517,10 +517,11 @@ export class Game {
     return {obj:o,wp:this.pathWp!,dist:this.pathLen}; }
   runSummary(){ const inst=this.inst; if(!inst) return null; const dd=this.dd; const byR:Record<string,number>={}; for(const d of inst.drops) if(d.inst){ const r=ITEM_BY_ID[d.inst.def].rarity; byR[r]=(byR[r]||0)+1; }
     return { dungeon:dd.name, id:dd.id, cleared:inst.flags.bossDead, boss:inst.flags.bossKey?ENEMIES[inst.flags.bossKey]?.name:null, time:inst.elapsed, kills:Object.values(inst.kills).reduce((a,b)=>a+b,0), killTypes:inst.kills, xp:inst.xpEarned, credits:inst.carried.credits, repair:inst.repairAdded, carried:inst.carried.items.map(i=>({name:ITEM_BY_ID[i.def].name,rarity:ITEM_BY_ID[i.def].rarity})), chips:{...inst.carried.chips}, stims:inst.carried.stims, ground:inst.drops.length, groundByRarity:byR, route:inst.flags.cond||'combat' }; }
-  updateMusic(dt:number){
+  lastKey=''; updateMusic(dt:number){
     let st='traversal'; if(this.combatHold>0) this.combatHold-=dt; const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal<=0&&this.inst!.flags.bossSpawned);
     const bossRev=this.enemies.some(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal>0);
-    if(this.resPending>0){ this.resPending-=dt; st='resolution'; } else if(bossRev) st='bossreveal'; else if(boss) st='bosscombat'; else { const engaged=this.enemies.some(e=>!e.dead&&e.faction==='enemy'&&e.alert&&dist(e.x,e.y,this.px,this.py)<12&&!ENEMIES[e.type].static); if(engaged||this.combatHold>0) st='combat'; }
+    if(this.resPending>0){ this.resPending-=dt; st='resolution'; } else if(bossRev) st='bossreveal'; else if(boss) st='bosscombat'; else { const engaged=this.enemies.some(e=>!e.dead&&e.faction==='enemy'&&e.alert&&dist(e.x,e.y,this.px,this.py)<12&&!ENEMIES[e.type].static); if(engaged||this.combatHold>0) st='combat'; if(engaged&&this.enemies.some(e=>!e.dead&&e.faction==='enemy'&&e.alert&&ENEMIES[e.type].elite&&!ENEMIES[e.type].boss&&dist(e.x,e.y,this.px,this.py)<12)) st='elite'; }
+    if(st==='bosscombat'&&boss&&this.lastKey!==boss.type){ this.lastKey=boss.type; this.emit('musickey',boss.type); }
     this.musicSet(st);
   }
 }
