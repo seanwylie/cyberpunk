@@ -6,7 +6,7 @@ import { ABILITIES, ABILITY_TYPE_COLOR, ABILITY_TYPE_LABEL, CHIPS, ChipId, COMBA
 import { Layout, cloneLayout, computeBuild, hardConflicts, installedLayout, repRank, wouldConflict } from './build';
 import { Inst, capacityUsed, lockerItems, mkInst, persist, wipe, todayStr, newSave } from './state';
 import { makeProvider, runStoryStep, newStory, MockProvider, record } from './story';
-import { DUNGEON_LIST, DUNGEONS, dungeonOf, inBand } from './content/dungeons';
+import { DUNGEON_LIST, DUNGEONS, dungeonOf, inBand, unlockReason } from './content/dungeons';
 import { CONTACTS, CONTACT_BY_ID, CONTRACT_BY_ID, MAX_ACTIVE_CONTRACTS, ContractDef } from './content/npcs';
 import { EXTRA_ITEMS } from './content/items';
 import { WEAPON_ITEMS } from './content/weapons';
@@ -254,10 +254,11 @@ export class UI {
       <label><input type="checkbox" data-in="dshowall" ${this.showAll?'checked':''}/> Show all dungeons (${all.length-all.filter(d=>inBand(d,s.level)).length} outside your level band)</label>`;
     if(!shown.length) h+='<div class="row mut">No dungeons in your level band. Tick "Show all".</div>';
     for(const d of shown){ const locked=g.dailyLocked(d.id); const isLive=cur===d.id; const lowL=s.level<d.minLevel, hiL=s.level>d.maxLevel; const mf=MFR[d.mfr];
-      h+=`<div class="draftbar" style="margin-top:8px;border-color:${mf.accent}"><b>${esc(d.name)}</b> <span class="tag" style="border-color:${mf.accent}">${mf.short}</span> <span class="tag">${esc(d.district)}</span> <span class="tag">Lv ${d.minLevel}–${d.maxLevel}</span> <span class="tag">~${d.estMinutes[0]}–${d.estMinutes[1]} min</span>
+      h+=`<div class="draftbar" style="margin-top:8px;border-color:${mf.accent}"><b>${esc(d.name)}</b> <span class="tag" style="border-color:${mf.accent}">${mf.short}</span> <span class="tag">${esc(d.district)}</span> ${d.tier?`<span class="tag" title="Content tier">Tier ${['','I','II','III','IV'][d.tier]}</span>`:''}<span class="tag">Lv ${d.minLevel}–${d.maxLevel}</span> <span class="tag">~${d.estMinutes[0]}–${d.estMinutes[1]} min</span>
         <div>${esc(d.blurb)}</div><div class="mut">Areas: ${Object.entries(d.zoneLabels).filter(([k])=>!['passage','salvage'].includes(k)).map(([,v])=>esc(v)).join(' → ')} · item level cap ${d.tierCap}</div>
         ${lowL?'<div class="warn">Under-level: gear above your level will not drop (no downward reroll). XP is the main reward.</div>':''}${hiL?'<div class="mut">Above this dungeon\'s recommended band.</div>':''}`;
       if(isLive){ const f=inst!.flags; const rem=Math.max(0,inst!.expiresAt-Date.now()); h+=`<div style="margin-top:6px"><b>Existing instance</b> · expires in ${Math.floor(rem/3600000)}h ${Math.floor(rem%3600000/60000)}m<br>Boss: ${f.bossDead?'defeated':f.bossSpawned?'alive':'not yet met'} · Objective: ${f.controller?'secured':'not secured'} · Loot on ground: ${inst!.drops.length} · Selected boss: ${f.bossKey?esc(ENEMIES[f.bossKey].name):'none yet'}<br>You re-enter at the entry and must run back through surviving enemies.</div><button class="btn primary" data-act="enter" data-id="${d.id}">${f.completed?'Re-enter to retrieve loot':'Re-enter instance'}</button>${this.resetBlock()}`; }
+      else if(unlockReason(s,d.id,!!s.settings.devFreeReset)) h+=`<div class="warn" style="margin-top:6px">${esc(unlockReason(s,d.id,!!s.settings.devFreeReset)!)}</div><button class="btn" disabled>Locked</button>`;
       else h+=`<div style="margin-top:6px">${locked?'<span class="warn">Daily clear already used. A fresh run unlocks at tomorrow\'s reset (local midnight; timer anchor is an open spec decision).</span>':'Daily clear available.'}</div><button class="btn primary" data-act="enter" data-id="${d.id}" ${locked||cur?'disabled':''}>${cur?'Finish or abandon your other instance first':'Start fresh run'}</button>`;
       h+='</div>'; }
     h+=`<div class="mut" style="margin-top:8px">Party, QR/code fifth guest and co-op networking are not implemented in this prototype (see README and docs/UNIVERSE.md roadmap).</div></div>`; return h; }

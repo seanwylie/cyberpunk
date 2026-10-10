@@ -8,11 +8,16 @@
 import type { Renderer } from './render';
 import type { Level } from './level';
 import type { Zone } from './sim';
+import { LEVEL_BY_ID } from './content/batch1_levels';
+import type { Pal } from './content/batch1_levels';
 const S = 192;
 const rng = (seed: number) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const mk = (w: number, h: number) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
 export const themeOf = (L: Level | null | undefined): string => (L as any)?.theme || (L?.kind === 'annex' ? 'annex' : '');
-export const isDungeonTheme = (t: string) => t === 'foundry' || t === 'clinic' || t === 'warehouse';
+export const isDungeonTheme = (t: string) => t === 'foundry' || t === 'clinic' || t === 'warehouse' || !!LEVEL_BY_ID[t];
+/** content batch 1 themes carry their palette in the level data (src/content/batch1_levels.ts) and use the generic palette renderer below */
+export const palOf = (t: string): Pal | undefined => LEVEL_BY_ID[t]?.pal;
+const rgbOf = (c: string) => { const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(c); return m ? m[1] + ',' + m[2] + ',' + m[3] : '200,200,200'; };
 const loadImg = (src: string) => new Promise<HTMLImageElement | null>(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
 const line = (x: CanvasRenderingContext2D, a: number, b: number, c: number, d: number, col: string, w = 1) => { x.strokeStyle = col; x.lineWidth = w; x.beginPath(); x.moveTo(a, b); x.lineTo(c, d); x.stroke(); };
 function stripes(x: CanvasRenderingContext2D, X: number, Y: number, W: number, H: number, a: string, b: string, step = 14) { x.save(); x.beginPath(); x.rect(X, Y, W, H); x.clip(); x.fillStyle = b; x.fillRect(X, Y, W, H); x.fillStyle = a; for (let i = -H; i < W + H; i += step * 2) { x.beginPath(); x.moveTo(X + i, Y + H); x.lineTo(X + i + step, Y + H); x.lineTo(X + i + step + H, Y); x.lineTo(X + i + H, Y); x.fill(); } x.restore(); }
@@ -42,7 +47,25 @@ export class DungeonArt {
     const cv = mk(S, S), x = cv.getContext('2d')!, r = rng(zone.length * 91 + v * 17 + theme.length * 7); x.drawImage(base, 0, 0);
     const blend = (op: GlobalCompositeOperation, col: string) => { x.globalCompositeOperation = op; x.fillStyle = col; x.fillRect(0, 0, S, S); x.globalCompositeOperation = 'source-over'; };
     const grit = (a: number, name = 'conc', sc = 1.5) => { const p = this.pat(x, name, sc); if (!p) return; x.save(); x.globalAlpha = a; x.globalCompositeOperation = 'overlay'; x.fillStyle = p; x.fillRect(0, 0, S, S); x.restore(); };
-    if (theme === 'foundry') {
+    const pal = palOf(theme);
+    if (pal) {
+      blend('color', zone === 'boss' ? pal.f.replace(/[\d.]+\)$/, '.7)') : pal.f); blend('multiply', pal.fm); grit(.4, pal.motif === 'tiles' ? 'tile' : 'conc', pal.motif === 'tiles' ? 1.2 : 1.5);
+      const ac = pal.accent, dk = 'rgba(8,8,10,.5)';
+      switch (pal.motif) {
+        case 'stripes': if (zone === 'junction' || zone === 'passage' || v % 3 === 0) stripes(x, 0, S - 16, S, 10, ac, 'rgba(20,20,20,.55)', 12); line(x, S - 1, 0, S - 1, S, 'rgba(0,0,0,.3)', 2); break;
+        case 'grid': for (let i = 0; i <= 4; i++) { line(x, i * 48 + 1, 0, i * 48 + 1, S, 'rgba(0,0,0,.34)', 2); line(x, 0, i * 48 + 1, S, i * 48 + 1, 'rgba(0,0,0,.34)', 2); } if (v % 2) { x.fillStyle = ac; x.fillRect(0, 22, S, 3); } break;
+        case 'cracks': if (v % 2 === 0) crackp(x, r, S, S, 'rgba(8,6,5,.75)', ac); stain(x, r, S, S, 'rgba(40,30,24,.4)', 2); break;
+        case 'plates': for (let i = 0; i <= 2; i++) { line(x, i * 96 + 1, 0, i * 96 + 1, S, 'rgba(0,0,0,.42)', 3); line(x, 0, i * 96 + 1, S, i * 96 + 1, 'rgba(0,0,0,.42)', 3); } for (const [px, py] of [[10, 10], [S - 10, 10], [10, S - 10], [S - 10, S - 10]]) rivet(x, px, py, 3); break;
+        case 'hex': x.strokeStyle = 'rgba(0,0,0,.3)'; x.lineWidth = 2; for (let j = 0; j < 7; j++) for (let i = 0; i < 6; i++) { const cx = i * 36 + (j % 2) * 18, cy = j * 31; x.beginPath(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + .52; x.lineTo(cx + Math.cos(a) * 20, cy + Math.sin(a) * 20); } x.closePath(); x.stroke(); } break;
+        case 'tiles': for (const o of [0, S / 2]) { line(x, o, 0, o, S, 'rgba(40,40,40,.4)', 2); line(x, 0, o, S, o, 'rgba(40,40,40,.4)', 2); } stain(x, r, S, S, 'rgba(30,40,50,.25)', 1); break;
+        case 'water': for (let i = 0; i < 5; i++) { x.strokeStyle = ac; x.lineWidth = 2; x.globalAlpha = .25; x.beginPath(); for (let k = 0; k <= S; k += 8) x.lineTo(k, 20 + i * 38 + Math.sin(k / 18 + i + v) * 5); x.stroke(); x.globalAlpha = 1; } stain(x, r, S, S, 'rgba(20,50,56,.35)', 2); break;
+        case 'foam': x.fillStyle = dk; for (let j = 0; j < 6; j++) for (let i = 0; i < 6; i++) { x.beginPath(); x.moveTo(i * 32, j * 32 + 32); x.lineTo(i * 32 + 16, j * 32); x.lineTo(i * 32 + 32, j * 32 + 32); x.closePath(); x.globalAlpha = .25; x.fill(); x.globalAlpha = 1; } break;
+        case 'crates': x.strokeStyle = 'rgba(0,0,0,.36)'; x.lineWidth = 3; for (let i = 0; i < 4; i++) line(x, 0, i * 48 + 4, S, i * 48 + 4, 'rgba(0,0,0,.3)', 3); for (let i = 0; i < 3; i++) line(x, 20 + i * 70, 0, 20 + i * 70, S, 'rgba(0,0,0,.2)', 2); if (v % 3 === 0) stripes(x, 0, 0, S, 10, ac, 'rgba(20,20,20,.55)', 12); break;
+      }
+      if (zone === 'boss') { const g = x.createRadialGradient(S / 2, S / 2, 20, S / 2, S / 2, S * .8); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(6,5,6,.5)'); x.fillStyle = g; x.fillRect(0, 0, S, S); if (v % 2) crackp(x, r, S, S, 'rgba(6,5,6,.6)', ac); }
+      if (zone === 'corridor' || zone === 'passage') { x.fillStyle = ac.replace(/[\d.]+\)$/, '.12)'); x.fillRect(0, 0, S, S); stain(x, r, S, S, 'rgba(8,8,8,.4)', 2); }
+      if (zone === 'junction') { stripes(x, 0, 0, S, 8, ac, 'rgba(20,20,20,.5)', 10); }
+    } else if (theme === 'foundry') {
       blend('color', zone === 'boss' ? 'rgba(104,64,50,.62)' : 'rgba(112,78,64,.5)'); blend('multiply', zone === 'yard' ? 'rgb(176,160,152)' : 'rgb(150,136,130)'); grit(.5);
       if (zone === 'yard' || zone === 'salvage') { if (v === 1 || v === 4 || v === 3) crackp(x, r, S, S, 'rgba(8,6,5,.75)', 'rgba(150,62,30,.38)'); stain(x, r, S, S, 'rgba(60,40,30,.42)', 2); stain(x, r, S, S, 'rgba(10,8,8,.45)', 2, 1.2); }
       if (zone === 'proc') { stain(x, r, S, S, 'rgba(120,70,36,.3)', 2); stain(x, r, S, S, 'rgba(10,8,8,.4)', 2); if (v === 0 || v === 3) { x.fillStyle = 'rgba(150,64,30,.07)'; x.fillRect(0, 0, S, S); } }
@@ -74,7 +97,18 @@ export class DungeonArt {
   wall(base: HTMLCanvasElement, theme: string, style: string, v: number, zone: string): HTMLCanvasElement {
     const W = base.width, H = base.height, cv = mk(W, H), x = cv.getContext('2d')!, r = rng(v * 59 + theme.length * 31 + style.length); x.drawImage(base, 0, 0);
     const blend = (op: GlobalCompositeOperation, col: string) => { x.globalCompositeOperation = op; x.fillStyle = col; x.fillRect(0, 0, W, H); x.globalCompositeOperation = 'source-over'; };
-    if (theme === 'foundry') {
+    const pal = palOf(theme);
+    if (pal) {
+      blend('color', pal.w); blend('multiply', pal.wm); const ac = pal.accent;
+      for (let i = 1; i < 4; i++) { line(x, i * W / 4, 0, i * W / 4, H, 'rgba(0,0,0,.4)', 3); line(x, i * W / 4 + 3, 0, i * W / 4 + 3, H, 'rgba(240,235,225,.07)', 1); for (const yy of [H * .12, H * .88]) rivet(x, i * W / 4 - 9, yy, 2.4); }
+      if (pal.motif === 'foam') { x.fillStyle = 'rgba(0,0,0,.22)'; for (let i = 0; i < 12; i++) { x.beginPath(); x.moveTo(i * W / 12, H * .6); x.lineTo(i * W / 12 + W / 24, H * .3); x.lineTo((i + 1) * W / 12, H * .6); x.closePath(); x.fill(); } }
+      else if (pal.motif === 'water') { const g = x.createLinearGradient(0, H * .55, 0, H); g.addColorStop(0, 'rgba(40,90,96,0)'); g.addColorStop(1, 'rgba(40,90,96,.45)'); x.fillStyle = g; x.fillRect(0, H * .55, W, H * .45); }
+      else if (pal.motif === 'hex') { x.strokeStyle = 'rgba(0,0,0,.28)'; x.lineWidth = 2; for (let j = 0; j < 4; j++) for (let i = 0; i < 8; i++) { const cx = i * 26 + (j % 2) * 13, cy = j * 24 + 10; x.beginPath(); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283 + .52; x.lineTo(cx + Math.cos(a) * 14, cy + Math.sin(a) * 14); } x.closePath(); x.stroke(); } }
+      else if (pal.motif === 'grid' || pal.motif === 'tiles') { for (let j = 1; j < 5; j++) line(x, 0, j * H / 5, W, j * H / 5, 'rgba(0,0,0,.25)', 1.6); }
+      else if (pal.motif === 'cracks') { for (let i = 0; i < 6; i++) { const px = r() * W, wd = 5 + r() * 12, len = H * (.3 + r() * .6); const g = x.createLinearGradient(0, H * .15, 0, H * .15 + len); g.addColorStop(0, ac.replace(/[\d.]+\)$/, '.3)')); g.addColorStop(1, ac.replace(/[\d.]+\)$/, '0)')); x.fillStyle = g; x.fillRect(px, H * .15, wd, len); } }
+      if (v % 3 === 2 || pal.motif === 'stripes') stripes(x, 0, H * .78, W, 12, ac, 'rgba(20,20,20,.62)', 12);
+      if (v % 3 === 0) { x.fillStyle = ac; x.fillRect(W * .12, H * .1, W * .76, 5); x.fillStyle = 'rgba(255,255,255,.12)'; x.fillRect(W * .12, H * .1, W * .76, 1.5); }
+    } else if (theme === 'foundry') {
       blend('color', 'rgba(118,72,56,.55)'); blend('multiply', 'rgb(158,142,136)'); for (let i = 1; i < 4; i++) { line(x, i * W / 4, 0, i * W / 4, H, 'rgba(0,0,0,.45)', 3); line(x, i * W / 4 + 3, 0, i * W / 4 + 3, H, 'rgba(210,150,120,.08)', 1); for (const yy of [H * .1, H * .5, H * .9]) rivet(x, i * W / 4 - 9, yy, 2.4); }
       for (let i = 0; i < 6; i++) { const px = r() * W, wd = 5 + r() * 12, len = H * (.3 + r() * .6); const g = x.createLinearGradient(0, H * .15, 0, H * .15 + len); g.addColorStop(0, 'rgba(110,50,26,.35)'); g.addColorStop(1, 'rgba(110,50,26,0)'); x.fillStyle = g; x.fillRect(px, H * .15, wd, len); }
       if (v % 3 === 1) { const vy = H * .42; x.fillStyle = 'rgba(8,6,6,.85)'; x.fillRect(48, vy, 96, 54); for (let i = 0; i < 5; i++) line(x, 52, vy + 6 + i * 9, 140, vy + 6 + i * 9, 'rgba(120,70,48,.6)', 3); const g = x.createLinearGradient(0, vy + 54, 0, vy + 84); g.addColorStop(0, 'rgba(160,64,30,.28)'); g.addColorStop(1, 'rgba(160,64,30,0)'); x.fillStyle = g; x.fillRect(40, vy + 54, 112, 30); }
@@ -105,7 +139,10 @@ export class DungeonArt {
   prop(base: HTMLCanvasElement, theme: string, kind: string, v: number, top: boolean): HTMLCanvasElement {
     const W = base.width, H = base.height, cv = mk(W, H), x = cv.getContext('2d')!, r = rng(v * 11 + kind.length + theme.length); x.drawImage(base, 0, 0);
     const blend = (op: GlobalCompositeOperation, col: string) => { x.globalCompositeOperation = op; x.fillStyle = col; x.fillRect(0, 0, W, H); x.globalCompositeOperation = 'source-over'; };
-    if (theme === 'foundry') {
+    const pal = palOf(theme);
+    if (pal) {
+      blend('color', kind === 'crate' ? pal.w : pal.f); blend('multiply', pal.wm); if (!top) { x.fillStyle = pal.accent; x.fillRect(0, H * (kind === 'crate' ? .5 : .14), W, 8); if (kind === 'machine') { x.fillStyle = 'rgba(8,8,10,.8)'; x.fillRect(W * .15, H * .35, W * .5, H * .2); x.fillStyle = pal.accent.replace(/[\d.]+\)$/, '.5)'); x.fillRect(W * .17, H * .37, W * .46, H * .06); } if (kind === 'pillar') stripes(x, 0, H * .7, W, 12, pal.accent, 'rgba(20,20,20,.6)', 10); }
+    } else if (theme === 'foundry') {
       blend('color', kind === 'crate' ? (v % 2 ? 'rgba(118,60,44,.65)' : 'rgba(70,64,62,.7)') : 'rgba(108,66,52,.5)'); blend('multiply', 'rgb(168,150,144)');
       if (!top && (kind === 'machine' || kind === 'pillar')) { for (let i = 0; i < 3; i++) { const px = 24 + i * 52, py = H * .55; x.fillStyle = 'rgba(8,6,6,.8)'; x.fillRect(px, py, 36, 10); const g = x.createLinearGradient(px, 0, px + 36, 0); g.addColorStop(0, 'rgba(150,60,28,0)'); g.addColorStop(.5, 'rgba(160,66,30,.5)'); g.addColorStop(1, 'rgba(150,60,28,0)'); x.fillStyle = g; x.fillRect(px, py + 1, 36, 8); } }
       if (!top && kind === 'crate') stencil(x, 'HB', W / 2, H * .68, 20, 'rgba(210,190,170,.35)');
@@ -124,7 +161,7 @@ export class DungeonArt {
   private iso(r: Renderer, f: (c: CanvasRenderingContext2D) => void) { const c = r.ctx, k = r.TW / 2; c.save(); c.transform(k, k / 2, -k, k / 2, r.sx(0, 0), r.sy(0, 0)); f(c); c.restore(); }
   /** Draws a non-warning zone with its themed art. Returns false to fall back to the generic zone drawing. */
   zone(r: Renderer, z: Zone): boolean {
-    const L = r.g.level, th = themeOf(L); if (!isDungeonTheme(th)) return false;
+    const L = r.g.level, th = themeOf(L); if (!isDungeonTheme(th) || palOf(th)) return false;
     const px = r.sx(z.x, z.y); if (px < -r.TW * 4 || px > r.w + r.TW * 4) return false; const py = r.sy(z.x, z.y); if (py < -r.TW * 6 || py > r.h + r.TW * 4) return false;
     let kind = z.env ? LABEL_KIND(this.labelOf(r, z)) : (th === 'foundry' ? 'slagpool' : th === 'clinic' ? 'fluid' : 'shelf'); if (!kind) return false;
     const t = r.g.time, red = r.g.save.settings.reducedFx; const fade = z.env ? 1 : Math.min(1, Math.max(0, (z.life - z.t) / .7)) * Math.min(1, (z.t - z.windup) / .25 + .2);
@@ -196,8 +233,12 @@ export class DungeonArt {
   }
 
   // ============================ arena decals ============================
+  private ac = new WeakMap<Level, { x: number; y: number }>();
+  /** generic arena floor identity for content batch 1 themes: concentric accent rings around the boss-zone centre */
+  private arenaPal(r: Renderer, pal: Pal) { const g = r.g, L = g.level; let c0 = this.ac.get(L); if (!c0) { const zi = L.zoneNames.indexOf('boss'); let sx = 0, sy = 0, n = 0; for (let y = 0; y < L.h; y++) for (let x = 0; x < L.w; x++) if (L.zone[y * L.w + x] === zi && !L.solid[y * L.w + x]) { sx += x; sy += y; n++; } c0 = { x: n ? sx / n + .5 : 0, y: n ? sy / n + .5 : 0 }; this.ac.set(L, c0); }
+    if (Math.hypot(g.px - c0.x, g.py - c0.y) > 26) return; const t = g.time; this.iso(r, c => { c.lineCap = 'butt'; c.strokeStyle = pal.accent; c.globalAlpha = .5 + .12 * Math.sin(t * 1.4); for (const [rad, w, dash] of [[3.4, .12, []], [5.6, .08, [.6, .5]], [7.8, .1, [1.4, .7]]] as [number, number, number[]][]) { c.lineWidth = w; c.setLineDash(dash); c.beginPath(); c.arc(c0!.x, c0!.y, rad, 0, 7); c.stroke(); } c.setLineDash([]); c.globalAlpha = 1; }); }
   arena(r: Renderer) {
-    const g = r.g, L = g.level, th = themeOf(L); if (!isDungeonTheme(th)) return; const key = th === 'foundry' ? 'Furnace heat' : th === 'clinic' ? 'Saw rig' : 'Gantry crane'; const hz = (L.hazards || []).filter(h => h.label === key); if (!hz.length) return;
+    const g = r.g, L = g.level, th = themeOf(L); if (!isDungeonTheme(th)) return; const pal = palOf(th); if (pal) { this.arenaPal(r, pal); return; } const key = th === 'foundry' ? 'Furnace heat' : th === 'clinic' ? 'Saw rig' : 'Gantry crane'; const hz = (L.hazards || []).filter(h => h.label === key); if (!hz.length) return;
     const cx = hz.reduce((a, h) => a + h.x, 0) / hz.length, cy = hz.reduce((a, h) => a + h.y, 0) / hz.length; if (Math.hypot(g.px - cx, g.py - cy) > 24) return; const t = g.time;
     this.iso(r, c => {
       c.lineCap = 'butt'; const ring = (rad: number, col: string, w: number, dash?: number[]) => { c.strokeStyle = col; c.lineWidth = w; if (dash) c.setLineDash(dash); c.beginPath(); c.arc(cx, cy, rad, 0, 7); c.stroke(); c.setLineDash([]); };
@@ -220,8 +261,8 @@ export class DungeonArt {
   private zoneLights(L: Level, th: string): Light[] {
     let v = this.zl.get(L); if (v) return v; v = []; const warm = th === 'foundry' || th === 'annex';
     for (let y = 4; y < L.h; y += 8) for (let x = 4; x < L.w; x += 8) { let fx = -1, fy = -1; for (let dy = -2; dy <= 2 && fx < 0; dy++) for (let dx = -2; dx <= 2; dx++) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < L.w && Y < L.h && !L.solid[Y * L.w + X]) { fx = X; fy = Y; break; } } if (fx < 0) continue; const z = L.zoneNames[L.zone[fy * L.w + fx]];
-      const c: Light['c'] = th === 'foundry' ? (z === 'boss' ? 'red' : (z === 'yard' ? 'warm' : 'cool')) : th === 'clinic' ? (z === 'boss' ? 'warm' : 'pale') : th === 'warehouse' ? (z === 'boss' ? 'cool' : (z === 'yard' ? 'pale' : 'warm')) : (z === 'yard' || z === 'salvage' ? 'warm' : z === 'boss' ? 'red' : 'cool');
-      v.push({ x: fx + .5, y: fy + .5, r: 5.2, c, a: th === 'foundry' ? (c === 'cool' ? .08 : .13) : th === 'clinic' ? .1 : .11, fl: th === 'warehouse' && (x + y) % 3 === 0 ? 1 : 0 }); }
+      const pl = palOf(th); const c: Light['c'] = pl ? (z === 'boss' ? (pl.light === 'red' ? 'warm' : 'red') : pl.light) : th === 'foundry' ? (z === 'boss' ? 'red' : (z === 'yard' ? 'warm' : 'cool')) : th === 'clinic' ? (z === 'boss' ? 'warm' : 'pale') : th === 'warehouse' ? (z === 'boss' ? 'cool' : (z === 'yard' ? 'pale' : 'warm')) : (z === 'yard' || z === 'salvage' ? 'warm' : z === 'boss' ? 'red' : 'cool');
+      v.push({ x: fx + .5, y: fy + .5, r: 5.2, c, a: pl ? .11 : th === 'foundry' ? (c === 'cool' ? .08 : .13) : th === 'clinic' ? .1 : .11, fl: th === 'warehouse' && (x + y) % 3 === 0 ? 1 : 0 }); }
     for (const cp of L.checkpoints) v.push({ x: cp.x, y: cp.y, r: 4, c: 'warm', a: .16 }); void warm; this.zl.set(L, v); return v;
   }
   ambient(r: Renderer) {
@@ -231,7 +272,7 @@ export class DungeonArt {
     for (const l of this.zoneLights(L, th)) draw(l); for (const l of this.lights) draw(l); this.lights.length = 0; c.restore();
     if (red) return;
     // dust motes / ash (screen space, parallax with camera)
-    c.save(); const col = th === 'foundry' ? '200,150,110' : th === 'clinic' ? '215,225,230' : th === 'annex' ? '200,190,170' : '214,200,160'; const n = th === 'foundry' ? 46 : 30; for (let i = 0; i < n && i < this.dust.length; i++) { const d = this.dust[i]; const x = ((d.x * r.w * 1.3 + t * 7 * d.v * (th === 'foundry' ? 1.6 : 1) - r.camx * .12 * d.z) % (r.w * 1.3) + r.w * 1.3) % (r.w * 1.3) - r.w * .15; const y = ((d.y * r.h * 1.2 - t * (th === 'foundry' ? 14 : 3) * d.v * d.z + Math.sin(t * .6 + d.ph) * 6) % (r.h * 1.2) + r.h * 1.2) % (r.h * 1.2) - r.h * .1; c.fillStyle = `rgba(${col},${.16 + .12 * Math.sin(t + d.ph)})`; const s = 1 + d.z * 1.3; c.fillRect(x, y, s, s); } c.restore();
+    c.save(); const col = palOf(th) ? palOf(th)!.dust : th === 'foundry' ? '200,150,110' : th === 'clinic' ? '215,225,230' : th === 'annex' ? '200,190,170' : '214,200,160'; const n = th === 'foundry' ? 46 : 30; for (let i = 0; i < n && i < this.dust.length; i++) { const d = this.dust[i]; const x = ((d.x * r.w * 1.3 + t * 7 * d.v * (th === 'foundry' ? 1.6 : 1) - r.camx * .12 * d.z) % (r.w * 1.3) + r.w * 1.3) % (r.w * 1.3) - r.w * .15; const y = ((d.y * r.h * 1.2 - t * (th === 'foundry' ? 14 : 3) * d.v * d.z + Math.sin(t * .6 + d.ph) * 6) % (r.h * 1.2) + r.h * 1.2) % (r.h * 1.2) - r.h * .1; c.fillStyle = `rgba(${col},${.16 + .12 * Math.sin(t + d.ph)})`; const s = 1 + d.z * 1.3; c.fillRect(x, y, s, s); } c.restore();
     // steam off slag / vents, stateless puffs
     if (th === 'foundry' || th === 'clinic') { const dd = { hazards: L.hazards || [] }; const key = th === 'foundry' ? 'Slag trough' : 'Spilled fluids'; let cnt = 0; c.save(); for (let i = 0; i < dd.hazards.length && cnt < 14; i++) { const h = dd.hazards[i]; if (h.label !== key || Math.hypot(h.x - g.px, h.y - g.py) > 14) continue; cnt++; for (let k = 0; k < 2; k++) { const ph = (t * (.22 + .06 * k) + i * .37 + k * .5) % 1; const [a, b] = pa(h.x + Math.sin(i + k) * .5, h.y + Math.cos(i * 2 + k) * .5); const rad = TW * (.28 + ph * .5); c.globalAlpha = Math.sin(ph * Math.PI) * (th === 'foundry' ? .2 : .08); c.fillStyle = th === 'foundry' ? 'rgb(150,140,132)' : 'rgb(210,222,230)'; c.beginPath(); c.arc(a + Math.sin(ph * 5 + i) * TW * .1, b - ph * TW * 1.4 - TW * .1, rad, 0, 7); c.fill(); } if (th === 'foundry') { const e = (t * .7 + i * .31) % 1; const [a, b] = pa(h.x, h.y); c.globalAlpha = (1 - e); c.fillStyle = 'rgb(220,110,50)'; c.fillRect(a + Math.sin(e * 9 + i) * TW * .3, b - e * TW * 1.2, 2, 2); } } c.restore(); }
     if (th === 'warehouse' && L.zoneNames[L.zone[Math.floor(g.py) * L.w + Math.floor(g.px)]] === 'boss') { c.save(); c.globalCompositeOperation = 'lighter'; for (let i = 0; i < 3; i++) { const a = r.w * (.25 + i * .28) + Math.sin(t * .1 + i) * 14; c.globalAlpha = .045; c.fillStyle = 'rgb(190,200,215)'; c.beginPath(); c.moveTo(a, -10); c.lineTo(a + 70, -10); c.lineTo(a + 190, r.h * .75); c.lineTo(a + 70, r.h * .75); c.fill(); } c.restore(); }
@@ -244,6 +285,7 @@ export function themeScatter(x: CanvasRenderingContext2D, L: Level, OP: number, 
   if (!isDungeonTheme(th)) return; const n = Math.floor(floors.length / 26);
   const blob = (px: number, py: number, rad: number, col: string, a: number, sq = 1, rot = 0) => { const g = x.createRadialGradient(0, 0, 0, 0, 0, rad); g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(.6, `rgba(${col},${a * .5})`); g.addColorStop(1, `rgba(${col},0)`); x.save(); x.translate(px, py); x.rotate(rot); x.scale(1, sq); x.fillStyle = g; x.beginPath(); x.arc(0, 0, rad, 0, 7); x.fill(); x.restore(); };
   for (let i = 0; i < n; i++) { const [tx, ty] = floors[(R() * floors.length) | 0]; const px = (tx + R()) * OP, py = (ty + R()) * OP; const k = R();
+    const pal = palOf(th); if (pal) { if (k < .45) blob(px, py, OP * (.5 + R() * .9), '10,10,12', .35, .55, R() * 3); else if (k < .75) blob(px, py, OP * (.4 + R() * .5), rgbOf(pal.accent), .1, .6, R() * 3); else { for (let j = 0; j < 4; j++) { x.fillStyle = `rgba(${rgbOf(pal.fm)},.5)`; x.beginPath(); x.ellipse(px + (R() - .5) * OP * 1.2, py + (R() - .5) * OP * .8, 1 + R() * 2, .6 + R() * 1.4, R() * 3, 0, 7); x.fill(); } } continue; }
     if (th === 'foundry') { if (k < .35) { blob(px, py, OP * (.5 + R() * .6), '60,26,16', .45, .6, R() * 3); blob(px, py, OP * .25, '150,60,30', .12, .6, R() * 3); } else if (k < .7) blob(px, py, OP * (.8 + R()), '8,6,6', .4, .55, R() * 3); else { for (let j = 0; j < 5; j++) { x.fillStyle = `rgba(${90 + R() * 40 | 0},${60 + R() * 20 | 0},${44},.7)`; x.beginPath(); x.ellipse(px + (R() - .5) * OP * .6, py + (R() - .5) * OP * .5, OP * (.05 + R() * .08), OP * (.03 + R() * .05), R() * 3, 0, 7); x.fill(); } } }
     else if (th === 'clinic') { if (k < .35) { blob(px, py, OP * (.4 + R() * .6), '60,84,104', .32, .5, R() * 3); blob(px - 2, py - 2, OP * .2, '200,220,232', .1, .5, 0); } else if (k < .6) { x.strokeStyle = 'rgba(50,70,90,.35)'; x.lineWidth = 1.4; x.beginPath(); let cx = px, cy = py, a = R() * 6.28; x.moveTo(cx, cy); for (let j = 0; j < 5; j++) { a += (R() - .5) * .8; cx += Math.cos(a) * OP * .3; cy += Math.sin(a) * OP * .3; x.lineTo(cx, cy); } x.stroke(); } else { for (let j = 0; j < 4; j++) { x.fillStyle = `rgba(${200 + R() * 30 | 0},${192 + R() * 24 | 0},${170 + R() * 20 | 0},.5)`; const s = OP * (.04 + R() * .07); x.beginPath(); const cx = px + (R() - .5) * OP * .6, cy = py + (R() - .5) * OP * .5; for (let q = 0; q < 4; q++) { const aa = q / 4 * 6.28 + R(), rr = s * (.7 + R() * .6); q ? x.lineTo(cx + Math.cos(aa) * rr, cy + Math.sin(aa) * rr) : x.moveTo(cx + Math.cos(aa) * rr, cy + Math.sin(aa) * rr); } x.closePath(); x.fill(); } } }
     else { if (k < .3) { x.strokeStyle = 'rgba(10,10,10,.38)'; x.lineWidth = 3; x.beginPath(); x.arc(px, py, OP * (.8 + R()), R() * 6, R() * 6 + 1.2); x.stroke(); } else if (k < .6) { for (let j = 0; j < 4; j++) { x.save(); x.translate(px + (R() - .5) * OP, py + (R() - .5) * OP * .8); x.rotate(R() * 3); x.fillStyle = `rgba(${120 + R() * 30 | 0},${96 + R() * 20 | 0},${64},.7)`; x.fillRect(-OP * .12, -OP * .07, OP * .24, OP * .14); x.restore(); } } else if (k < .8) blob(px, py, OP * (.4 + R() * .5), '12,12,10', .34, .55, R() * 3); else { x.fillStyle = 'rgba(220,225,215,.12)'; x.beginPath(); x.ellipse(px, py, OP * .5, OP * .25, R() * 3, 0, 7); x.fill(); } } }
