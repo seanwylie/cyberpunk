@@ -23,12 +23,12 @@ export class TownArt {
   }
   /** pre-scaled sprite (one cached canvas per sprite per zoom) so per-frame drawing is a 1:1 blit */
   scaled(name: string, wpx: number, dpr: number): { cv: HTMLCanvasElement; w: number; h: number } | null {
-    const im = this.img[name]; if (!im) return null; const key = `${Math.round(wpx)}|${dpr}`; if (key !== this.scKey) { this.scKey = key; this.sc.clear(); }
+    const im = this.img[name]; if (!im) return null; const key = String(dpr); if (key !== this.scKey || this.sc.size > 600) { this.scKey = key; this.sc.clear(); }
     const k = name + '|' + Math.round(wpx * 4); let cv = this.sc.get(k); const w = wpx, h = wpx * im.height / im.width;
     if (!cv) { cv = mk(Math.ceil(w * dpr), Math.ceil(h * dpr)); const x = cv.getContext('2d')!; x.imageSmoothingQuality = 'high'; // two-step downscale keeps detail
       let src: CanvasImageSource = im, sw = im.width; while (sw > cv.width * 2) { const t = mk(sw / 2, (sw / 2) * im.height / im.width); const tx = t.getContext('2d')!; tx.imageSmoothingQuality = 'high'; tx.drawImage(src, 0, 0, t.width, t.height); src = t; sw = t.width; }
       x.drawImage(src, 0, 0, cv.width, cv.height); this.sc.set(k, cv); }
-    return { cv, w, h };
+    return { cv, w: cv.width / dpr, h: cv.height / dpr }; // exact device-pixel size => 1:1 blit, no per-frame resampling
   }
   // ---------------- ground ----------------
   buildGround(L: Level) {
