@@ -18,10 +18,10 @@ const hardTrack = /^(elite_|boss_)/;
 await m('traversal'); await adv(1); L = await log(); const trk0 = L[L.length - 1].to; const n0 = L.length;
 for (let i = 0; i < 20; i++) { await m('traversal'); await adv(1); } L = await log(); ok(L.length === n0, 'repeated traversal requests (zone changes) never change the track');
 await m('elite'); L = await log(); e = L[L.length - 1]; ok(e.state === 'elite' && hardTrack.test(e.to) && e.dur >= 1.5, 'elite engagement -> hard elite pool: ' + e.to);
-const n1 = L.length; await m('traversal'); await adv(2); await m('elite'); await m('traversal'); await adv(3); L = await log(); ok(L.length === n1, 'min dwell + exit delay: no flapping while disengaging (<15 s)');
-await adv(15); L = await log(); ok(L.length === n1 + 1 && L[L.length - 1].state === 'traversal' && !hardTrack.test(L[L.length - 1].to), 'disengage returns to calm after dwell and ~4 s delay');
-await m('traversal'); await adv(1); await m('elite'); await adv(16); await m('traversal'); await adv(1); L = await log(); ok(L[L.length - 1].state === 'elite', 'exit delay: still hard 1 s after calm resumes');
-await adv(4); L = await log(); ok(L[L.length - 1].state === 'traversal', 'exit delay: calm after ~4 s');
+const n1 = L.length; await m('traversal'); await adv(2); await m('elite'); await m('traversal'); await adv(3); L = await log(); ok(L.length === n1, 'min dwell + exit delay: no flapping while disengaging (<45 s)');
+await adv(60); L = await log(); ok(L.length === n1 + 1 && L[L.length - 1].state === 'traversal' && !hardTrack.test(L[L.length - 1].to), 'disengage returns to calm after dwell and ~10 s delay');
+await m('traversal'); await adv(1); await m('elite'); await adv(50); await m('traversal'); await adv(1); L = await log(); ok(L[L.length - 1].state === 'elite', 'exit delay: still hard 1 s after calm resumes');
+await adv(10); L = await log(); ok(L[L.length - 1].state === 'traversal', 'exit delay: calm after ~10 s');
 await m('bossreveal'); await m('bosscombat'); L = await log(); ok(L.slice(-2)[0].to === 'boss_reveal' && /^(boss_|elite_)/.test(L[L.length - 1].to) && L[L.length - 1].state === 'bosscombat', 'boss reveal -> boss fight ' + JSON.stringify(L.slice(-3)));
 await m('resolution'); await m('traversal'); L = await log(); ok(L.slice(-2)[0].to === 'clear' && L[L.length - 1].state === 'traversal', 'resolution -> traversal');
 await m('town'); L = await log(); ok(L[L.length - 1].state === 'town' && L[L.length - 1].dur >= 3, 'return to town: slow fade-out/in');
@@ -48,25 +48,51 @@ const R = await ev(async () => { const mm = window.__audio.music, mod = await im
   await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ...Object.values(B).flat()])].every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
   const o = { ids: Object.keys(B).length, sizes: [...new Set(Object.values(B).map(p => p.length))], sig: Object.keys(B).every(k => B[k][0] === MAP[k]), uniq: Object.values(B).every(p => new Set(p).size === p.length), pool: Object.values(B).flat().every(x => mod.POOLS.bosscombat.includes(x)), notLower: Object.keys(B).every(k => B[k].slice(1).filter(x => (I[x] || 2) >= (I[MAP[k]] || 2)).length >= Math.min(3, mod.POOLS.bosscombat.filter(x => x !== MAP[k] && (I[x] || 2) >= (I[MAP[k]] || 2)).length)) };
   const fight = (key, fn) => { mm.setState('traversal', null); off(40); mm.state = 'traversal'; mm.want = 'traversal'; mm.setState('bossreveal', key); off(3); mm.setState('bosscombat', key); return fn(); };
-  const loop = () => { const l = mm.live.find(x => !x.ending); off(mm.buffers[l.name].duration - (l.offset + (mm.now() - l.startedAt)) - 1); off(2); };
+  const loop = () => { const l = mm.live.find(x => !x.ending); off(Math.max(0, mm.buffers[l.name].duration - ((l.offset + (mm.now() - l.startedAt)) % mm.buffers[l.name].duration) - 1)); off(2); };
   // voss: signature first, then rotation through own playlist at loop boundaries with no immediate repeat
-  const seq = []; fight('warden', () => { seq.push(mm.cur); for (let i = 0; i < 24 && seq.length < 6; i++) { const before = mm.cur; off(10); loop(); if (mm.cur !== before) seq.push(mm.cur); } });
-  { const ts = mm.log.filter(x => x.state === 'bosscombat').slice(0, 7).map(x => x.t); o.gaps = ts.slice(1).map((x, i) => x - ts[i]); } o.seq = seq; o.pl = B.warden; o.dbg = mm.log.slice(-12).map(x => x.to + '@' + x.t.toFixed(0) + x.state);
+  const seq = []; const lg0 = mm.log.length; fight('warden', () => { seq.push(mm.cur); for (let i = 0; i < 40 && seq.length < 5; i++) { const before = mm.cur; off(30); loop(); if (mm.cur !== before) seq.push(mm.cur); } });
+  { const ts = mm.log.slice(lg0).filter(x => x.state === 'bosscombat').slice(0, 7).map(x => x.t); o.gaps = ts.slice(1).map((x, i) => x - ts[i]); } o.seq = seq; o.pl = B.warden; o.dbg = mm.log.slice(-12).map(x => x.to + '@' + x.t.toFixed(0) + x.state);
   const seq2 = []; fight('warden', () => { seq2.push(mm.cur); }); o.sig2 = seq2[0]; // new fight resets: signature again
   // phase change -> more intense
-  fight('lineman', () => { o.pStart = mm.cur; off(20); mm.onPhase(1); o.pEnd = mm.cur; o.pOk = B.lineman.includes(mm.cur); o.pHigher = (I[mm.cur] || 2) > (I[o.pStart] || 2); const n = mm.log.length; mm.onPhase(1); o.pRepeat = mm.log.length === n; off(1); mm.onPhase(2); o.pTooSoon = mm.log.length === n; });
+  fight('lineman', () => { o.pStart = mm.cur; off(25); mm.onPhase(1); o.pEnd = mm.cur; o.pOk = B.lineman.includes(mm.cur); o.pHigher = (I[mm.cur] || 2) > (I[o.pStart] || 2); const n = mm.log.length; mm.onPhase(1); o.pRepeat = mm.log.length === n; off(1); mm.onPhase(2); o.pTooSoon = mm.log.length === n; });
   // elite rotation at loop boundary after min dwell
-  mm.setState('traversal'); off(40); mm.setState('elite'); const e0 = mm.cur; off(5); o.eliteEarly = mm.cur !== e0; loop(); o.e0 = e0; o.e1 = mm.cur; o.eliteInPool = mod.POOLS.elite.includes(mm.cur);
+  mm.setState('traversal'); off(40); mm.setState('elite'); const e0 = mm.cur; off(5); o.eliteEarly = mm.cur !== e0; off(100); loop(); o.e0 = e0; o.e1 = mm.cur; o.eliteInPool = mod.POOLS.elite.includes(mm.cur);
   mm.setState('traversal'); off(30); o.after = mm.state; o.afterTrack = mm.cur; return o; });
 ok(R.ids >= 24 && R.sizes.length === 1 && R.sizes[0] === 4, 'every boss has a 4-track playlist: ' + R.ids + ' bosses, sizes ' + R.sizes);
 ok(R.sig && R.uniq && R.pool && R.notLower, 'playlists: signature first, unique, from boss pool, same-or-higher intensity preferred');
 ok(R.seq[0] === R.pl[0], 'first track on engagement is the signature: ' + R.seq[0]);
 ok(R.seq.length >= 5 && R.seq.every((x, i) => i === 0 || x !== R.seq[i - 1]) && R.seq.every(x => R.pl.includes(x)), 'rotates at loop boundaries within playlist, no immediate repeat: ' + R.seq.join('>') + ' ' + R.dbg.join(' '));
-ok(R.gaps.length >= 4 && R.gaps.every(g => g >= 15), 'min dwell: successive boss tracks >= 15 s apart: ' + R.gaps.map(g => g.toFixed(0)));
+ok(R.gaps.length >= 3 && R.gaps.every(g => g >= 90), 'boss rotation: successive tracks >= 90 s apart: ' + R.gaps.map(g => g.toFixed(0)));
 ok(R.sig2 === R.pl[0], 'new fight resets to signature track');
 ok(R.pOk && R.pHigher && R.pRepeat && R.pTooSoon, 'phase change switches to a more intense playlist track (' + R.pStart + ' -> ' + R.pEnd + '), not repeated/too soon');
 ok(!R.eliteEarly && R.eliteInPool && R.e1 !== R.e0, 'elite pool rotates at loop boundary after dwell: ' + R.e0 + ' -> ' + R.e1);
 ok(R.after === 'traversal' && !/^(elite_|boss_)/.test(R.afterTrack), 'disengage returns to calm: ' + R.afterTrack);
+// --- switch budgets + guaranteed hard fade-in (fake clock) ---
+const C = await ev(async () => { const mm = window.__audio.music, mod = await import('/src/music.ts'); const off = s => { mm.__off += s; mm.tick(); }; const o = {};
+  await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ...Object.values(mod.BOSS_PLAYLISTS).flat()])].every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
+  const settle = () => { mm.setState('traversal', null); off(60); mm.state = 'traversal'; mm.want = 'traversal'; };
+  const loopEnd = () => { const l = mm.live.find(x => !x.ending); off(Math.max(0, mm.buffers[l.name].duration - ((l.offset + (mm.now() - l.startedAt)) % mm.buffers[l.name].duration) - 1)); off(2); };
+  // calm: scripted 10 minutes of exploring (zone-change requests every 5 s)
+  settle(); mm.resetCounts(); const n0 = mm.log.length; for (let t = 0; t < 600; t += 5) { mm.setState('traversal'); off(5); } o.calm = { ...mm.counts }; o.calmLog = mm.log.length - n0;
+  // boss fight: 5 minutes, one phase change at 2:00
+  settle(); mm.setState('bossreveal', 'warden'); off(3); mm.setState('bosscombat', 'warden'); mm.resetCounts(); const b0 = mm.log.length; for (let t = 0; t < 300; t += 1) { if (t === 120) mm.onPhase(1); off(1); } o.boss = { ...mm.counts }; o.bossLog = mm.log.length - b0;
+  // elite fight: 3 minutes of continuous engagement
+  settle(); mm.setState('elite'); mm.resetCounts(); const e0 = mm.log.length; for (let t = 0; t < 180; t += 1) { mm.setState('elite'); off(1); } o.elite = { ...mm.counts }; o.eliteLog = mm.log.length - e0;
+  // fade-in guarantee: elite right after a calm rotation, boss right after elite, repeated engagements
+  const fades = []; const chk = (what) => { const e = mm.log[mm.log.length - 1]; fades.push({ what, ok: /^(elite_|boss_)/.test(e.to) && e.dur >= 1.5 && e.dur <= 2 && (what.startsWith('boss') ? e.state === 'bosscombat' : e.state === 'elite') }); };
+  settle(); mm.state = 'traversal'; mm.enteredAt = mm.now() - 400; mm.lastSwitchAt = mm.now() - 400; { const l = mm.live.find(x => !x.ending); l.startedAt = mm.now() - (mm.buffers[l.name].duration * 4 - 1); mm.tick(); } o.calmRot = mm.log[mm.log.length - 1].state === 'traversal';
+  mm.setState('elite'); chk('elite-after-calm-switch'); // immediately, no dwell
+  for (let i = 0; i < 4; i++) { mm.setState('traversal'); off(1); mm.setState('elite'); off(0.2); const e = mm.log[mm.log.length - 1]; fades.push({ what: 'repeat' + i, ok: mm.state === 'elite' }); mm.setState('traversal'); off(60); mm.state === 'traversal' || (mm.state = 'traversal'); mm.want = 'traversal'; mm.setState('elite'); chk('elite-repeat' + i); mm.setState('traversal'); off(60); }
+  settle(); mm.setState('elite'); off(2); mm.setState('bossreveal', 'warden'); off(3); mm.setState('bosscombat', 'warden'); chk('boss-from-elite');
+  settle(); mm.setState('bossreveal', 'lineman'); off(3); mm.setState('bosscombat', 'lineman'); chk('boss-after-calm'); settle();
+  // not decoded yet: engagement starts the moment the track loads
+  const sig = mod.BOSS_MAP.warden, keep = mm.buffers[sig]; delete mm.buffers[sig]; mm.setState('bossreveal', 'warden'); off(3); const n1 = mm.log.length; mm.setState('bosscombat', 'warden'); off(1); o.pendWait = mm.log.length === n1 && mm.state === 'bosscombat'; mm.buffers[sig] = keep; off(0.3); const e = mm.log[mm.log.length - 1]; o.pendStart = e.to === sig && e.state === 'bosscombat';
+  o.fades = fades; return o; });
+ok(C.calm.total <= 2 && C.calm.hard === 0 && C.calmLog <= 2, 'calm: <= 2 track switches in a scripted 10-minute run: ' + JSON.stringify(C.calm));
+ok(C.boss.hard <= 4 && C.boss.phase <= 1 && C.bossLog <= 4, 'boss fight (5 min, 1 phase): <= 4 switches: ' + JSON.stringify(C.boss));
+ok(C.elite.total <= 2 && C.eliteLog <= 2, 'elite fight (3 min): <= 2 switches: ' + JSON.stringify(C.elite));
+ok(C.calmRot && C.fades.every(f => f.ok), 'every elite/boss engagement fades in 1.5-2 s immediately, incl. right after a calm switch and on repeats: ' + JSON.stringify(C.fades.filter(f => !f.ok)));
+ok(C.pendWait && C.pendStart, 'boss track not yet decoded: waits, then fades in as soon as it loads');
 // --- rotation logic + asset existence (variety pack) ---
 import fs from 'fs';
 const M = await ev(async () => { const m = await import('/src/music.ts'); return { pools: m.POOLS, boss: m.BOSS_MAP, core: m.CORE_TRACKS }; });
@@ -86,7 +112,7 @@ ok(bag.one && bag.avail, 'shuffle bag: single item ok, availability filter respe
 // manager-level: elite pool, boss mapping, calm rotation at loop boundary
 const mgr = await ev(async () => { const a = window.__audio, mm = a.music; await new Promise(r => { const f = () => Object.keys(mm.buffers).length >= 31 ? r() : setTimeout(f, 200); f(); setTimeout(r, 15000); });
   const r = {}; mm.setState('town'); mm.setState('traversal'); mm.setState('elite'); r.elite = mm.cur; mm.setState('bosscombat', 'warden'); r.boss = mm.cur; mm.setState('bossreveal'); mm.state = null; mm.setState('bosscombat', 'unknownboss'); r.boss2 = mm.cur;
-  mm.state = null; mm.want = 'town'; mm.setState('town'); r.town0 = mm.cur; const live = mm.live.find(l => !l.ending); const d = mm.buffers[live.name].duration; mm.ROTATE_LOOPS = 1; mm.enteredAt -= 30; live.startedAt = mm.now() - (d - 1); mm.tick(); r.rot = mm.cur; r.rotLog = mm.log[mm.log.length - 1];
+  mm.state = null; mm.want = 'town'; mm.setState('town'); r.town0 = mm.cur; const live = mm.live.find(l => !l.ending); const d = mm.buffers[live.name].duration; mm.ROTATE_LOOPS = 1; mm.enteredAt -= 300; mm.lastSwitchAt -= 300; live.startedAt = mm.now() - (d - 1); mm.tick(); r.rot = mm.cur; r.rotLog = mm.log[mm.log.length - 1];
   return r; });
 ok(['elite_siege', 'elite_hunt', 'boss_overclock', 'boss_meltdown'].includes(mgr.elite), 'elite state picks elite/boss pool: ' + mgr.elite);
 ok(mgr.boss === 'boss_overclock', 'warden maps to its boss track: ' + mgr.boss);
