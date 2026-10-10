@@ -23,9 +23,9 @@ await ev(() => { document.querySelector('#modal [data-act="reset-ask"]').click()
 ok(/Confirm reset/.test(t) && /Cancel/.test(t), 'reset asks for confirmation');
 await ev(() => { document.querySelector('#modal [data-act="reset-go"]').click(); });
 ok(await ev(() => window.__game.save.instance === null), 'confirm reset abandons the instance from the gate');
-await ev(() => { window.__ui.open('settings'); }); t = await ev(() => document.getElementById('modal').textContent);
+await ev(() => { window.__ui.open('settings'); document.getElementById('stab-about').click(); }); t = await ev(() => document.getElementById('modal').textContent);
 ok(/PROTOTYPE:/.test(t), 'settings has the clearly-labelled prototype reset toggle');
-await fresh('annex', 12); await ev(() => { window.__ui.open('settings'); }); t = await ev(() => document.getElementById('modal').textContent);
+await fresh('annex', 12); await ev(() => { window.__ui.open('settings'); document.getElementById('stab-instance').click(); }); t = await ev(() => document.getElementById('modal').textContent);
 ok(/Reset instance/.test(t) && /Restart from checkpoint/.test(t), 'in-run menu offers Reset instance and Restart from checkpoint');
 await ev(() => { window.__game.devRestartFromStart(); }); ok(await ev(() => window.__game.mode === 'run' && window.__game.inst.elapsed < 1), 'dev restart-from-start works');
 

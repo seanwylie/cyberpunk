@@ -10,9 +10,9 @@ for (const [name, o] of [['desktop', { viewport: { width: 1280, height: 720 } }]
   await page.evaluate(() => { document.getElementById('splash').remove(); }); await sleep(800);
   await page.screenshot({ path: `${out}/${name}_game.png` }); ok(await page.evaluate(() => !document.querySelector('#hud .bvg, canvas ~ .bvg')), name + ' no logo in HUD');
   ok(await page.evaluate(() => { const m=document.getElementById('bvgmark'); const h=document.getElementById('hud'); return getComputedStyle(m).pointerEvents==='none' && (m.compareDocumentPosition(h) & 4)>0 && +getComputedStyle(m).zIndex===0; }), name + ' mark inert, behind HUD');
-  await page.evaluate(() => window.__ui.open('settings')); await sleep(400);
+  await page.evaluate(() => { window.__ui.open('settings'); document.getElementById('stab-about').click(); }); await sleep(400);
   await page.screenshot({ path: `${out}/${name}_settings.png` });
-  ok(await page.evaluate(() => document.querySelectorAll('#modal .bvg img').length >= 2), name + ' about + footer logos');
+  ok(await page.evaluate(() => document.querySelectorAll('#modal .bvg img').length >= 1), name + ' about logo');
   ok(errors.length === 0, name + ' no errors ' + errors.slice(0, 2));
   await browser.close();
 }

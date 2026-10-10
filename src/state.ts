@@ -2,7 +2,7 @@ import { chipFits, Slot, ChipId, SLOTS, STARTING, PROGRESSION, ITEM_BY_ID, Mfr, 
 import type { StoryState } from './story';
 
 export interface Inst { uid:string; def:string; chips:ChipId[]; }
-export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolean; damageNumbers:boolean; reducedFx:boolean; uiSize:'S'|'M'|'L'|'XL'; minimap?:boolean; recHidden?:boolean; recNudge?:boolean; hintsSeen?:Record<string,number>; lootLabels:'off'|'near'|'all'; lootMin:import('./config').Rarity; devFreeReset?:boolean; volume:number; music:boolean; llm:{ enabled:boolean; url:string; key:string; model:string } }
+export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolean; damageNumbers:boolean; reducedFx:boolean; uiSize:'S'|'M'|'L'|'XL'; minimap?:boolean; recHidden?:boolean; recNudge?:boolean; hintsSeen?:Record<string,number>; lootLabels:'off'|'near'|'all'; lootMin:import('./config').Rarity; devFreeReset?:boolean; volume:number; musicVol?:number; sfxVol?:number; music:boolean; llm:{ enabled:boolean; url:string; key:string; model:string } }
 export interface Carried { items:Inst[]; chips:Partial<Record<ChipId,number>>; stims:number; credits:number; }
 export interface EnemyState { id:number; type:string; x:number; y:number; hp:number; maxHp:number; alert:boolean; dead:boolean; home:{x:number;y:number}; group:number; faction:'enemy'|'ally'; ctrlT:number; stunT:number; name?:string; /** boss phase index (content batch 1) */ phase?:number; /** spawned by a boss (tether node / add): cleaned up with the boss */ bossAdd?:boolean; pylon?:boolean; /** batch-2 elite affixes (src/content/mobs.ts) */ affix?:string[]; eliteDone?:boolean; /** id of the summoner that spawned this minion */ minionOf?:number; }
 export interface Drop { id:number; x:number; y:number; kind:'item'|'chip'|'stim'|'credits'; inst?:Inst; chip?:ChipId; amount:number; marker?:boolean; born?:number; }
@@ -28,7 +28,7 @@ export const todayStr = (t=Date.now())=>{ const d=new Date(t); return d.getFullY
 export function newSave():Save {
   const s:Save = { version:1, level:PROGRESSION.startLevel, xp:0, credits:STARTING.credits, repairBill:0, rep:{HI:0,PS:0,MM:0},
     items:[], installed:{}, lockerChips:{...STARTING.chips}, stims:2, lockerCap:STARTING.lockerSlots,
-    settings:{ gore:'standard', joystickFixed:false, damageNumbers:false, reducedFx:false, uiSize:'M', minimap:true, lootLabels:'near', lootMin:'grey', volume:.6, music:true, llm:{enabled:false,url:'',key:'',model:''} },
+    settings:{ gore:'standard', joystickFixed:false, damageNumbers:false, reducedFx:false, uiSize:'M', minimap:true, lootLabels:'near', lootMin:'grey', volume:.6, musicVol:1, sfxVol:1, music:true, llm:{enabled:false,url:'',key:'',model:''} },
     purchases:{ lockerBlocks:0, skins:[], equippedSkin:null }, lastClearDay:null, instance:null, story:null, uidN:1, stats:{runs:0,clears:0,kills:0}, lockouts:{}, contracts:{active:{},done:[],doneDay:{}} };
   for (const sl of SLOTS) { const it = mkInst(s,'stock_'+sl); s.items.push(it); s.installed[sl]=it.uid; }
   return s;

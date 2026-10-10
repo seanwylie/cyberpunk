@@ -108,7 +108,11 @@ for (const [w, h] of SIZES) {
   await step('08b-locker-confirm', () => { const u = window.__ui; u.modal = 'locker'; u.render(); const b = document.querySelector('.stgrid .tile'); b && b.click(); const r = document.querySelector('[data-act=replace]'); r && r.click(); });
   await step('08c-locker-close-confirm', () => { window.__ui.confirm = null; window.__ui.render(); });
   await open('09-store', 'store');
-  await open('10-settings-about', 'settings');
+  await open('10-settings', 'settings');
+  for (const t of ['gameplay', 'display', 'audio', 'controls', 'instance', 'story', 'about']) await step('10-settings-' + t, t => { document.getElementById('stab-' + t).click(); if (t === 'about') document.querySelector('[data-act="s-adv"]').click(); }, t);
+  await step('10-settings-confirm', () => { document.querySelector('[data-act="s-ask"][data-c="wipe1"]').click(); });
+  await step('10-settings-story-fields', () => { document.getElementById('stab-story').click(); document.querySelector('label[for="s-llmon"]').click(); });
+  await ev(() => { window.__game.save.settings.llm.enabled = false; window.__game.save.settings.uiSize = 'L'; });
   await ev(() => { window.__ui.modal = null; window.__ui.render(); window.__game.startRun(); window.__game.dbg.god = true; window.__game.revealing = false; });
   await sleep(800);
   await step('11-hud-run', () => { const u = window.__ui; u.toast('Picked up: Overclocked Servo (rare)'); u.toast('Objective updated'); u.banner('Foundry', 'Clear the floor and reach the boss', 30); });
