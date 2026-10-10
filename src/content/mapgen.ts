@@ -31,7 +31,7 @@ export function validate(L:Level):string[]{
   const r=[0,1,2].map(c=>reachMap(L,L.spawn,c));
   for(const i of L.interacts) if(!r[0][tile(i)]) bad.push('interact '+i.id);
   for(const c of L.checkpoints) if(!r[0][tile(c)]) bad.push('checkpoint '+c.id);
-  for(const id of ['hackproc','controller','cratechip',...(L.kind==='annex'?['terminal','armoryfuse']:['cond_A','cond_B'])]) if(!L.interacts.some(i=>i.id===id)) bad.push('missing '+id);
+  for(const id of ['hackproc','controller','cratechip',...(L.kind==='annex'?['terminal','armoryfuse']:(L as any).noConds?[]:['cond_A','cond_B'])]) if(!L.interacts.some(i=>i.id===id)) bad.push('missing '+id);
   for(const s of L.spawns){ const c=clsOf(ENEMIES[s.type]?.radius??.4); if(!r[c][s.y*w+s.x]) bad.push('spawn '+s.type+'@'+s.x+','+s.y); }
   if(!r[2][tile(L.bossSpawn)]) bad.push('boss spawn not reachable at boss clearance');
   if(!r[0][tile(L.salvage)]) bad.push('salvage');
@@ -79,30 +79,30 @@ export class Gen{
     return { w:this.w,h:this.h,solid:this.solid,zone:this.zone,doors:this.doors,props:this.props,interacts:this.interacts,spawns:this.spawns,checkpoints:o.cps,sensors:o.sensors||{x0:0,y0:0,x1:0,y1:0},spawn:o.spawn,zoneNames:ZONES,bossSpawn:o.bossSpawn,revealX:o.revealX,salvage:o.salvage,hazards:this.hazards,seed:this.seed }; }
 }
 
-interface Rm{ zone:Zone; x0:number;y0:number;x1:number;y1:number; cy:number }
-interface Spec{ zone:Zone; w:number; h:number; cy:number }
+export interface Rm{ zone:Zone; x0:number;y0:number;x1:number;y1:number; cy:number }
+export interface Spec{ zone:Zone; w:number; h:number; cy:number }
 /** Lay rooms left-to-right joined by 2-long, 3-wide door corridors. cys optionally fixes the corridor row per boundary. */
-function chain(g:{ri:(a:number,b:number)=>number}|null,specs:Spec[],cys:(number|undefined)[]=[]){
+export function chain(g:{ri:(a:number,b:number)=>number}|null,specs:Spec[],cys:(number|undefined)[]=[]){
   const rooms:Rm[]=[]; let x=2; for(const s of specs){ const y0=Math.round(s.cy-s.h/2); rooms.push({zone:s.zone,x0:x,y0,x1:x+s.w-1,y1:y0+s.h-1,cy:s.cy}); x+=s.w+2; }
   const cors:number[]=[]; for(let i=0;i<rooms.length-1;i++){ const a=rooms[i], b=rooms[i+1]; const lo=Math.max(a.y0,b.y0)+3, hi=Math.min(a.y1,b.y1)-3; cors.push(cys[i]??(hi>=lo&&g?g.ri(lo,hi):Math.round((lo+hi)/2))); }
   return { rooms, cors, W:x+1 };
 }
-function link(g:Gen,rooms:Rm[],cors:number[]){ for(let i=0;i<cors.length;i++){ const x=rooms[i].x1+1, cy=cors[i]; g.carve(x,cy-1,x+1,cy+1,'corridor'); g.reserve(x-4,cy-3,x+5,cy+3); } }
-function doorsAt(g:Gen,rooms:Rm[],cors:number[],names:[string,string,string]){ const ids=['gate1','lock2','boss']; for(let i=0;i<3;i++){ const x=rooms[i].x1+1, cy=cors[i]; g.door(ids[i],names[i],[[x,cy-1],[x,cy],[x,cy+1]]); } }
+export function link(g:Gen,rooms:Rm[],cors:number[]){ for(let i=0;i<cors.length;i++){ const x=rooms[i].x1+1, cy=cors[i]; g.carve(x,cy-1,x+1,cy+1,'corridor'); g.reserve(x-4,cy-3,x+5,cy+3); } }
+export function doorsAt(g:Gen,rooms:Rm[],cors:number[],names:[string,string,string]){ const ids=['gate1','lock2','boss']; for(let i=0;i<3;i++){ const x=rooms[i].x1+1, cy=cors[i]; g.door(ids[i],names[i],[[x,cy-1],[x,cy],[x,cy+1]]); } }
 const hf=(n:number)=>Math.floor(n);
 
-function bossArena(g:Gen,b:Rm,kind:'ring'|'dais'|'hall'|'lanes',cy:number){
+export function bossArena(g:Gen,b:Rm,kind:'ring'|'dais'|'hall'|'lanes',cy:number){
   const cx=hf((b.x0+b.x1)/2)+2; const spawn={x:b.x0+4.5,y:b.cy+.5};
   g.reserve(b.x0,cy-3,b.x0+8,cy+3); g.reserve(hf(spawn.x)-3,hf(spawn.y)-3,hf(spawn.x)+3,hf(spawn.y)+3);
   if(kind==='ring'||kind==='dais'){ g.block(cx-2,b.cy-2,'machine',kind==='ring'?2.4:2,5,5); }
   const n=g.ri(3,5); for(let k=0;k<n*20&&k<120;k++){ const x=g.ri(b.x0+6,b.x1-2), y=g.ri(b.y0+2,b.y1-2); if(Math.hypot(x-cx,y-b.cy)<(kind==='hall'?2:4.5)||!g.clr(x,y,4.2)) continue; const my=2*b.cy-y; if(my===y) continue; const ph=kind==='hall'?2.4:2.2; if(g.block(x,y,"pillar",ph,1,1,4)){ g.block(x,my,'pillar',ph,1,1,3); } }
   return { spawn, cx };
 }
-function packs(g:Gen,spec:[Zone[],number,string,number?][]){ for(const [z,n,t,minD] of spec) g.pack(z,n,t,{minD}); }
-function sideRoom(g:Gen,x:number,y1:number,w:number,h:number,corLen=4){ const rx=Math.max(3,Math.min(g.w-w-3,x)); const cx=Math.max(rx+2,Math.min(rx+w-5,x+g.ri(0,w-5))); g.carve(cx,y1+1,cx+2,y1+corLen,'corridor'); g.carve(rx,y1+corLen+1,rx+w-1,y1+corLen+h,'salvage'); return {x0:rx,y0:y1+corLen+1,x1:rx+w-1,y1:y1+corLen+h,cx}; }
+export function packs(g:Gen,spec:[Zone[],number,string,number?][]){ for(const [z,n,t,minD] of spec) g.pack(z,n,t,{minD}); }
+export function sideRoom(g:Gen,x:number,y1:number,w:number,h:number,corLen=4){ const rx=Math.max(3,Math.min(g.w-w-3,x)); const cx=Math.max(rx+2,Math.min(rx+w-5,x+g.ri(0,w-5))); g.carve(cx,y1+1,cx+2,y1+corLen,'corridor'); g.carve(rx,y1+corLen+1,rx+w-1,y1+corLen+h,'salvage'); return {x0:rx,y0:y1+corLen+1,x1:rx+w-1,y1:y1+corLen+h,cx}; }
 
 /** deterministic retry wrapper: perturb the seed until the layout validates */
-function gen(seed:number,once:(s:number)=>Level,tag:string):Level{ let last:Level|null=null; for(let k=0;k<40;k++){ const s=(seed+k*7919)>>>0; const L=once(s); (L as any).attempt=k; (L as any).seed=seed; last=L; if(!validate(L).length) return L; } console.warn('mapgen: '+tag+' seed '+seed+' failed validation: '+validate(last!).slice(0,3).join('; ')); return last!; }
+export function gen(seed:number,once:(s:number)=>Level,tag:string):Level{ let last:Level|null=null; for(let k=0;k<40;k++){ const s=(seed+k*7919)>>>0; const L=once(s); (L as any).attempt=k; (L as any).seed=seed; last=L; if(!validate(L).length) return L; } console.warn('mapgen: '+tag+' seed '+seed+' failed validation: '+validate(last!).slice(0,3).join('; ')); return last!; }
 
 // ============================== FOUNDRY: open furnace halls, slag channels, catwalk bridges ==============================
 export const genFoundry=(seed:number)=>gen(seed,foundryOnce,'foundry');

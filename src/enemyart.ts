@@ -13,7 +13,10 @@ import { toScreen, stepDir, variantFor, dirIndex, S, type Variant } from './faci
 /** sprite file, height in tiles (x TW), optional hover height (tiles), tint multiply for variants */
 interface Art { spr: string; h: number; hover?: number; tint?: string; ground?: boolean; flip0?: boolean; dark?: boolean; }
 const A = (spr: string, h: number, o: Partial<Art> = {}): Art => ({ spr, h, ...o });
+import { BOSSES } from './content/batch1_bosses';
 export const ART: Record<string, Art> = {
+  // content batch 1 bosses: 3D atlas art (tools/enemies3d/specs_batch1.py); the flat sprite is only a loading fallback
+  ...Object.fromEntries(BOSSES.map(b => [b.id, { spr: 'overseer', h: b.h, ...(b.hover ? { hover: b.hover } : {}) } as Art])),
   // Reclamation Annex (original dungeon); drone = spare hover minion art
   worker: A('worker', 1.05), shooter: A('shooter', 1.1), turret: A('turret', .85, { ground: true }), sawhand: A('sawhand', 1.5), foreman: A('foreman', 1.5),
   overseer: A('overseer', 2.4), warden: A('warden', 2.3, { hover: .8 }), enforcer: A('enforcer', 2.4), drone: A('drone', .8, { hover: .5 }),

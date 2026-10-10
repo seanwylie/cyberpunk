@@ -17,7 +17,8 @@ export const POOLS:Record<MState,string[]>={
   bosscombat:['boss_fight','boss_overclock','boss_meltdown','boss_hydraulic'],
   resolution:['clear'] };
 /** Boss id -> fixed fight track, so each boss has its own identity (unmapped bosses draw from the pool). */
-export const BOSS_MAP:Record<string,string>={ overseer:'boss_fight', warden:'boss_overclock', enforcer:'boss_meltdown', teague:'boss_hydraulic', brannoch:'boss_meltdown', ore9:'boss_fight', surgeon:'boss_overclock', autosurgeon:'boss_hydraulic', recovered:'boss_fight', stockmgr:'boss_meltdown', retrieval:'boss_overclock', reclaimer:'boss_hydraulic' };
+import { BOSSES } from './content/batch1_bosses';
+export const BOSS_MAP:Record<string,string>={ ...Object.fromEntries(BOSSES.map(b=>[b.id,b.track])), overseer:'boss_fight', warden:'boss_overclock', enforcer:'boss_meltdown', teague:'boss_hydraulic', brannoch:'boss_meltdown', ore9:'boss_fight', surgeon:'boss_overclock', autosurgeon:'boss_hydraulic', recovered:'boss_fight', stockmgr:'boss_meltdown', retrieval:'boss_overclock', reclaimer:'boss_hydraulic' };
 /** Shuffle bag: every item once per cycle, never the same item twice in a row (including across cycle refills). */
 export class ShuffleBag{ private bag:string[]=[]; last:string|null=null;
   constructor(public items:string[], private rnd:()=>number=Math.random){}

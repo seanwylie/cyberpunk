@@ -7,6 +7,9 @@
 import { buildAnnex } from '../level';
 import type { Level, Interact, Hazard } from '../level';
 import { genFoundry, genClinic, genWarehouse, varyAnnex } from './mapgen';
+import { genBatch1 } from './mapgen_batch1';
+import { LEVELS } from './batch1_levels';
+import type { LevelSpec } from './batch1_levels';
 export type { Hazard };
 import type { LootEntry, ChipId, Mfr } from '../config';
 
@@ -20,6 +23,7 @@ export interface DungeonDef {
   relayLabel:string; objectiveLabel:string; objectiveToast:string; cache:{ label:string; chips:ChipId[] };
   hazards:Hazard[]; loot?:{ ordinary:LootEntry[]; elite:LootEntry[]; boss:LootEntry[] }; signature:Record<string,{item:string;chance:number}>|null;
   creditMul:number; clearXp:number; intro:string; generalClue:string; needsArt:string[];
+  /** content batch 1: difficulty tier (I-IV) and the dungeons that must have been cleared before this one unlocks */ tier?:1|2|3|4; unlock?:string[]; faction?:string; boss?:string;
 }
 
 // ---------------- loot pools (replace the global pools in these dungeons) ----------------
@@ -34,6 +38,17 @@ const WAREHOUSE_LOOT={ ordinary:L({item:'mm_pallet_torso',w:6},{item:'mm_stocker
   elite:L({item:'mm_cutter_hand',w:2},{item:'mm_returns_torso',w:2},{item:'mm_barcode_brain',w:1.5},{item:'mm_nailgun',w:2},{item:'mm_autopistol_b',w:1.5},{item:'mm_shocktack',w:1.5},{chip:'gridlink',w:3},{chip:'fineedge',w:2},{chip:'ablative',w:3},{stim:true,w:3}),
   boss:L({item:'mm_returns_torso',w:3},{item:'mm_barcode_brain',w:3},{item:'mm_cutter_hand',w:3},{item:'mm_autopistol_b',w:2},{item:'mm_shocktack',w:2},{chip:'fineedge',w:2},{chip:'quench',w:2},{chip:'gridlink',w:2},{stim:true,w:3}) };
 
+
+// ---------------- content batch 1: 20 data-driven dungeons (docs/CONTENT_BATCH_1.md) ----------------
+const FIXER:Record<string,string>={ HI:'ten_hallowell', PS:'noor_abiodun', MM:'handler_cole' };
+const mixPool=(k:'ordinary'|'elite'|'boss')=>[...FOUNDRY_LOOT[k],...CLINIC_LOOT[k],...WAREHOUSE_LOOT[k]];
+const LOOT_BY:Record<string,{ordinary:LootEntry[];elite:LootEntry[];boss:LootEntry[]}>={ HI:FOUNDRY_LOOT, PS:CLINIC_LOOT, MM:WAREHOUSE_LOOT, mix:{ordinary:mixPool('ordinary'),elite:mixPool('elite'),boss:mixPool('boss')} };
+export function makeBatch1Dungeon(sp:LevelSpec):DungeonDef{
+  const indep=!['Harrow-Brandt','Aldane Surgical','Kestrel Value'].includes(sp.faction);
+  return { id:sp.id, name:sp.name, short:sp.short, mfr:sp.mfr, district:sp.district, fixer:indep?'odalys_vane':FIXER[sp.mfr], blurb:sp.blurb, minLevel:sp.minLevel, maxLevel:sp.maxLevel, tierCap:sp.maxLevel, estMinutes:sp.est,
+    build:(s=sp.id.length*977+sp.tier*131)=>genBatch1(sp,s), zoneLabels:sp.zoneLabels, defaultBoss:sp.boss, conds:[], gateGuard:sp.gateGuard, lockElite:sp.lockElite, alarmType:sp.alarmType,
+    relayLabel:sp.objective.relay, objectiveLabel:sp.objective.label, objectiveToast:sp.objective.toast, cache:{label:sp.objective.bonus,chips:sp.chips as ChipId[]}, hazards:[], loot:LOOT_BY[sp.loot], signature:null,
+    creditMul:sp.creditMul, clearXp:sp.xp, intro:sp.intro, generalClue:sp.blurb, needsArt:[], tier:sp.tier, unlock:sp.unlock.after, faction:sp.faction, boss:sp.boss } as DungeonDef; }
 // ---------------- registry ----------------
 const annexConds:CondDef[]=[]; // Annex keeps its legacy terminal/armory handling in sim.ts (ids 'terminal' and 'armoryfuse').
 export const DUNGEONS:Record<string,DungeonDef> = {
@@ -75,7 +90,9 @@ export const DUNGEONS:Record<string,DungeonDef> = {
     ], signature:{ retrieval:{item:'sig_r0_lifter',chance:.1}, reclaimer:{item:'sig_lazarus_rack',chance:.08} },
     generalClue:'Shrinkage at Hub 9 is up again. Cole says the numbers do not add up in either direction.', needsArt:['Warehouse floor/wall textures per warehouse.jpg (loading dock decals, shelving, stamped plate)','Enemy sprites: picker, loader, forkbot, scanner, camgun, shiftlead, hobbs','Boss sprites: stockmgr, retrieval (large mech per sheet), reclaimer','Gantry-crane/stamping-press hazard rendering','Signature orange animations: Lazarus Rack, R-0 Lifter'] },
 };
-export const DUNGEON_LIST:DungeonDef[]=['warehouse','annex','foundry','clinic'].map(k=>DUNGEONS[k]);
+for(const sp of LEVELS) DUNGEONS[sp.id]=makeBatch1Dungeon(sp);
+export const BATCH1_IDS=LEVELS.map(l=>l.id);
+export const DUNGEON_LIST:DungeonDef[]=[...['warehouse','annex','foundry','clinic'].map(k=>DUNGEONS[k]),...[...LEVELS].sort((a,b)=>a.tier-b.tier||a.minLevel-b.minLevel).map(l=>DUNGEONS[l.id])];
 export const DUNGEON_IDS=DUNGEON_LIST.map(d=>d.id);
 export const dungeonOf=(id?:string|null):DungeonDef=>DUNGEONS[id||'annex']||DUNGEONS.annex;
 /** Level-appropriate band used by the dungeon select filter. Low-level players may still enter (carry/party); they just get fewer eligible drops. */
@@ -90,3 +107,8 @@ export function reachable(lv:Level,from:{x:number;y:number},to:{x:number;y:numbe
 
 // THEME TAG: visual theme id on each built level (consumed by src/dungeon_env.ts via themeOf); purely cosmetic.
 for(const id of ['foundry','clinic','warehouse']){ const d=DUNGEONS[id]; const b=d.build; d.build=(s?:number)=>({ ...b(s), theme:id }); }
+
+/** Unlock path (content batch 1): a dungeon with `unlock` needs every listed dungeon cleared once (save.cleared, or an existing daily-lock record from before this field existed). Returns a player-facing reason or null. */
+export function unlockReason(save:{cleared?:Record<string,number>;lockouts?:Record<string,string>;lastClearDay?:string|null},id:string,bypass=false):string|null{
+  const d=DUNGEONS[id]; if(!d||!d.unlock||bypass) return null; const done=(k:string)=>!!save.cleared?.[k]||(k==='annex'?!!save.lastClearDay:!!save.lockouts?.[k]);
+  const need=d.unlock.filter(k=>!done(k)); if(!need.length) return null; return 'Locked: clear '+need.map(k=>DUNGEONS[k]?.name||k).join(' and ')+' first.'; }

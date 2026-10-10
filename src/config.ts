@@ -2,6 +2,8 @@ import { EXTRA_CHIPS, EXTRA_ITEMS, EXTRA_CONFLICTS } from './content/items';
 import { WEAPON_ITEMS } from './content/weapons';
 import { IDKFA_ITEMS } from './content/idkfa';
 import { EXTRA_ENEMIES, EXTRA_ENEMY_DMG } from './content/enemies';
+import { BATCH1_ENEMIES } from './content/batch1_enemies';
+import { MOVE_DMG } from './content/boss_moves';
 // Editable gameplay configuration. SEPARATE from save data (see save.ts). All numbers are PLACEHOLDER
 // prototype values, not approved balance (spec: "Numerical examples are not approved balance").
 export const CONFIG_VERSION = '0.1.0-proto';
@@ -154,7 +156,7 @@ export const COMBAT = {
 
 export interface EnemyDef { id:string; name:string; hp:number; speed:number; radius:number; mfr:Mfr; elite?:boolean; boss?:boolean; ranged?:boolean; static?:boolean; aggro:number; xp:number; rep:number; attacks:string[]; dmgMul?:number; summon?:string; }
 export const ENEMIES: Record<string,EnemyDef> = {
-  ...EXTRA_ENEMIES,
+  ...EXTRA_ENEMIES, ...BATCH1_ENEMIES,
   worker:{ id:'worker', name:'Salvage Worker', hp:10, speed:3.0, radius:.36, mfr:'MM', aggro:7, xp:6, rep:1, attacks:['swing'] },
   shooter:{ id:'shooter', name:'Security Contractor', hp:10, speed:2.6, radius:.36, mfr:'MM', ranged:true, aggro:9, xp:8, rep:1, attacks:['shot'] },
   turret:{ id:'turret', name:'Gate Turret', hp:70, speed:0, radius:.5, mfr:'HI', static:true, ranged:true, aggro:10, xp:15, rep:2, attacks:['turretshot'] },
@@ -164,7 +166,7 @@ export const ENEMIES: Record<string,EnemyDef> = {
   warden:{ id:'warden', name:'Neural Warden', hp:1700, speed:2.4, radius:.8, mfr:'PS', boss:true, elite:true, ranged:true, aggro:30, xp:340, rep:25, attacks:['zones','volley'] },
   enforcer:{ id:'enforcer', name:'Reclamation Enforcer', hp:1900, speed:3.0, radius:.95, mfr:'HI', boss:true, elite:true, aggro:30, xp:340, rep:25, attacks:['rsweep','charge'] },
 };
-export const ENEMY_DMG: Record<string,number> = { swing:12, shot:10, turretshot:14, cleave:28, charge:34, slam:34, summon:0, zones:6, volley:16, rsweep:32, ...EXTRA_ENEMY_DMG };
+export const ENEMY_DMG: Record<string,number> = { swing:12, shot:10, turretshot:14, cleave:28, charge:34, slam:34, summon:0, zones:6, volley:16, rsweep:32, ...EXTRA_ENEMY_DMG, ...MOVE_DMG };
 
 // Progression placeholders (NOT a 100h curve; see README).
 export const PROGRESSION = { startLevel:12, maxLevel:60, xpForLevel:(l:number)=>Math.round(60*Math.pow(l,1.45)) };

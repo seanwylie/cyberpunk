@@ -4,7 +4,7 @@ import type { StoryState } from './story';
 export interface Inst { uid:string; def:string; chips:ChipId[]; }
 export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolean; damageNumbers:boolean; reducedFx:boolean; uiSize:'S'|'M'|'L'|'XL'; lootLabels:'off'|'near'|'all'; lootMin:import('./config').Rarity; devFreeReset?:boolean; volume:number; music:boolean; llm:{ enabled:boolean; url:string; key:string; model:string } }
 export interface Carried { items:Inst[]; chips:Partial<Record<ChipId,number>>; stims:number; credits:number; }
-export interface EnemyState { id:number; type:string; x:number; y:number; hp:number; maxHp:number; alert:boolean; dead:boolean; home:{x:number;y:number}; group:number; faction:'enemy'|'ally'; ctrlT:number; stunT:number; name?:string; }
+export interface EnemyState { id:number; type:string; x:number; y:number; hp:number; maxHp:number; alert:boolean; dead:boolean; home:{x:number;y:number}; group:number; faction:'enemy'|'ally'; ctrlT:number; stunT:number; name?:string; /** boss phase index (content batch 1) */ phase?:number; /** spawned by a boss (tether node / add): cleaned up with the boss */ bossAdd?:boolean; pylon?:boolean; }
 export interface Drop { id:number; x:number; y:number; kind:'item'|'chip'|'stim'|'credits'; inst?:Inst; chip?:ChipId; amount:number; marker?:boolean; born?:number; }
 export const LAYOUT_V=2;
 export interface Flags { gate1:boolean; lock2:boolean; passageSeen:boolean; controller:boolean; armory:boolean; cond:null|'A'|'B'; bossKey:string|null; bossRevealed:boolean; bossSpawned:boolean; bossDead:boolean; completed:boolean; rewardsGranted:boolean; alarm:boolean; salvageForeman:boolean; }
@@ -18,6 +18,7 @@ export interface Save {
   settings:Settings; purchases:{ lockerBlocks:number; skins:string[]; equippedSkin:string|null }; lastClearDay:string|null;
   instance:InstanceState|null; story:StoryState|null; uidN:number; stats:{ runs:number; clears:number; kills:number };
   /** Set by the idkfa dev cheat; leaderboards/MMO must ignore flagged saves. */ cheated?:boolean; cheatLog?:string[];
+  /** Dungeons cleared at least once (content batch 1 unlock path). */ cleared?:Record<string,number>;
   /** Per-dungeon daily lockout days (annex keeps using lastClearDay for backward compatibility). */ lockouts?:Record<string,string>;
   /** Contracts: active progress by id, once-only completions, daily completion day by id. */ contracts?:{ active:Record<string,number>; done:string[]; doneDay:Record<string,string> };
 }

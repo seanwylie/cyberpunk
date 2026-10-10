@@ -1,7 +1,10 @@
 import { ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES } from './config';
 import { computeBuild, installedLayout, BuildResult } from './build';
 import { buildTown, Level, Interact } from './level';
-import { dungeonOf, DungeonDef } from './content/dungeons';
+import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
+import { MOVES, MOVE_ATK } from './content/boss_moves';
+import { BOSS_BY_ID } from './content/batch1_bosses';
+import { movePattern, resolveMove, bossTick, filterDamage, clearBossAdds } from './content/mechanics';
 import { CONTRACT_BY_ID, Goal } from './content/npcs';
 import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState } from './state';
 import { IDKFA_SET, IDKFA_CHIPS } from './content/idkfa';
@@ -13,6 +16,7 @@ export interface Zone { x:number; y:number; r:number; t:number; life:number; dps
 export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; }
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
 export interface Rt { // enemy transient runtime fields
+  /** content batch 1 boss mechanics (src/content/mechanics.ts) */ spdMul?:number; cdMul?:number; shield?:any; gim?:any; gimT?:number; q?:any[]; pylPrev?:number; tl?:number;
   st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; wpT?:number; wp?:{x:number;y:number}|null; sx?:number; sy?:number; sT?:number; unstick?:number; side?:number; dashed:boolean; strafe:number; chained?:boolean;
 }
 export type En = EnemyState & { _rt:Rt };
@@ -54,6 +58,7 @@ export class Game {
     if(s.instance && s.instance.expiresAt<=this.now()){ this.expireInstance(); }
     if(s.instance&&s.instance.layoutV!==LAYOUT_V&&s.instance.expiresAt>this.now()){ this.expireInstance(); this.toast('Dungeon layouts changed: your old instance was discarded.'); }
     if(s.instance){ const cur=s.instance.dungeon||'annex'; if(cur!==id){ this.toast('You have a live instance in '+dungeonOf(cur).name+'. Re-enter or abandon it before starting another.'); return false; } this.inst=s.instance; this.resumeInstance(); return true; }
+    { const lk=unlockReason(this.save,id,!!this.save.settings.devFreeReset); if(lk){ this.toast(lk); return false; } }
     if(this.dailyLocked(id)){ this.toast('Daily clear used for '+dungeonOf(id).name+'. A fresh run unlocks tomorrow (dev panel can reset).'); return false; }
     const dd=dungeonOf(id); const seed=(Math.random()*1e9)|0; const lv=dd.build(seed);
     const inst:InstanceState={ id:'inst-'+seed, dungeon:id, layoutV:LAYOUT_V, createdAt:this.now(), expiresAt:this.now()+retentionMs, seed, enemies:[], drops:[], carried:{items:[],chips:{},stims:0,credits:0},
@@ -95,7 +100,7 @@ export class Game {
   abandonInstance(){ this.save.instance=null; this.inst=null; persist(this.save); this.toast('Instance abandoned.'); }
   applyDoors(){ const inst=this.inst!; const f=inst.flags; const open:Record<string,boolean>={ gate1:f.gate1, lock2:f.lock2, armory:f.armory, boss:f.controller }; for(const d of this.level.doors){ if(open[d.id]) for(const [x,y] of d.tiles) this.level.solid[y*this.level.w+x]=0; } }
   openDoor(id:string){ const d=this.level.doors.find(d=>d.id===id); if(!d) return; for(const [x,y] of d.tiles) this.level.solid[y*this.level.w+x]=0; this.emit('sfx','door'); }
-  resetBossIfAlive(){ const inst=this.inst; if(!inst) return; const bi=inst.enemies.findIndex(e=>ENEMIES[e.type].boss&&!e.dead); if(bi>=0){ const b=inst.enemies[bi]; inst.enemies.splice(bi,1); this.enemies=this.enemies.filter(e=>e.id!==b.id); inst.flags.bossSpawned=false; inst.flags.bossRevealed=false; } this.revealing=false; }
+  resetBossIfAlive(){ const inst=this.inst; if(!inst) return; clearBossAdds(this); const bi=inst.enemies.findIndex(e=>ENEMIES[e.type].boss&&!e.dead); if(bi>=0){ const b=inst.enemies[bi]; inst.enemies.splice(bi,1); this.enemies=this.enemies.filter(e=>e.id!==b.id); inst.flags.bossSpawned=false; inst.flags.bossRevealed=false; } this.revealing=false; }
 
   saveNow(){ if(this.inst){ this.inst.px=this.px; this.inst.py=this.py; this.inst.hp=this.hp; this.inst.enemies=this.enemies as EnemyState[]; } this.save.instance=this.inst; persist(this.save); }
 
@@ -249,7 +254,7 @@ export class Game {
 
   // ---------- damage ----------
   hurtEnemy(e:En,dmg:number,sx:number,sy:number,knock=0){
-    if(e.dead||e._rt.reveal>0) return; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; e.hp-=dmg; e.alert=true; e._rt.hit=.12; if(!ENEMIES[e.type].boss) e._rt.lost=0;
+    if(e.dead||e._rt.reveal>0) return; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; dmg=filterDamage(this,e,dmg); e.hp-=dmg; e.alert=true; e._rt.hit=.12; if(!ENEMIES[e.type].boss) e._rt.lost=0;
     this.emit('sfx','hit'); this.combatHold=3;
     if(this.save.settings.damageNumbers) this.fx.push({kind:'text',x:e.x,y:e.y,t:0,life:.7,text:String(Math.round(dmg)),c:'#d8d2bf'});
     if(knock&&!ENEMIES[e.type].boss){ const a=Math.atan2(e.y-sy,e.x-sx); const p=this.moveCircle(e.x,e.y,Math.cos(a)*knock,Math.sin(a)*knock,ENEMIES[e.type].radius); e.x=p.x; e.y=p.y; }
@@ -371,7 +376,7 @@ export class Game {
   updateEnemies(dt:number){
     this.frame++; this.flowT-=dt; if(this.flowT<=0){ this.flowT=.35; const need=[false,false,false]; for(const e of this.enemies){ if(!e.dead&&e.faction==='enemy'&&e.alert&&!ENEMIES[e.type].static) need[this.flowCls(ENEMIES[e.type].radius)]=true; } need[0]=true; for(let c=0;c<3;c++){ if(need[c]) this.flowField(c); } }
     const alive=this.enemies.filter(e=>!e.dead);
-    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.reveal>0) continue; this.updateEnemy(e,dt); }
+    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.reveal>0) continue; if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); this.updateEnemy(e,dt); }
     // separation
     for(let i=0;i<alive.length;i++){ const a=alive[i]; if(ENEMIES[a.type].static) continue; for(let j=i+1;j<alive.length;j++){ const b=alive[j]; const dx=b.x-a.x, dy=b.y-a.y; const d2=dx*dx+dy*dy; const rr=(ENEMIES[a.type].radius+ENEMIES[b.type].radius)*.9; if(d2<rr*rr&&d2>1e-4){ const d=Math.sqrt(d2), push=(rr-d)*.5; const nx=dx/d, ny=dy/d; if(!ENEMIES[b.type].static){ const pb=this.moveCircle(b.x,b.y,nx*push,ny*push,ENEMIES[b.type].radius*.8); b.x=pb.x; b.y=pb.y; } const pa=this.moveCircle(a.x,a.y,-nx*push,-ny*push,ENEMIES[a.type].radius*.8); a.x=pa.x; a.y=pa.y; } } }
     this.enemies=this.enemies.filter(e=>!e.dead||e._rt.bornT>-1); // keep dead for persistence
@@ -386,7 +391,7 @@ export class Game {
     const d=dist(e.x,e.y,tx,ty); const cloaked=tgtIsPlayer&&this.cloakT>0;
     if(!e.alert){ const rad=def.aggro*(cloaked?.18:1); if(e.faction==='enemy'&&tgtIsPlayer&&d<rad&&this.los(e.x,e.y,tx,ty)){ e.alert=true; this.alertGroup(e); this.emit('sfx','alert'); } else return; }
     if(cloaked&&d>1.7&&rt.st!=='tele'&&rt.st!=='dash'){ rt.lost+=dt; if(rt.lost>1.5){ e.alert=false; rt.lost=0; rt.st='idle'; } return; }
-    const speed=def.speed*(this.zoneSlow(e)?.7:1);
+    const speed=def.speed*(this.zoneSlow(e)?.7:1)*(rt.spdMul||1);
     const ang=Math.atan2(ty-e.y,tx-e.x);
     // state machine
     if(rt.st==='tele'){ rt.t+=dt; const A=ATK[rt.atk]; if(rt.t<A.w*.6||!A.lock) rt.ang=ang; if(rt.t>=A.w){ this.resolveAttack(e,rt.atk,tx,ty); if(rt.st==='tele'&&!rt.chained){ rt.st='rec'; rt.t=0; } rt.chained=false; } return; }
@@ -429,13 +434,14 @@ export class Game {
       case 'ringpools': { const g=Math.floor(Math.random()*10); for(let i=0;i<10;i++){ if(i===g||i===(g+1)%10) continue; const aa=i/10*Math.PI*2; add(e.x+Math.cos(aa)*5.5,e.y+Math.sin(aa)*5.5,1.5,1.6,7,14); } break; }
       case 'sawlanes': for(let lane=0;lane<2;lane++){ const cx=tx+Math.cos(aim)*lane*3.6, cy=ty+Math.sin(aim)*lane*3.6; for(let i=-3;i<=3;i++){ if(i===(lane?2:0)) continue; add(cx-Math.sin(aim)*i*2.2,cy+Math.cos(aim)*i*2.2,1.2,1.5,5,12); } } break;
       case 'cratefall': add(tx,ty,1.7,1.3,1.9,8); for(let i=0;i<6;i++){ const aa=Math.random()*6.28, rr=1.5+Math.random()*4; add(tx+Math.cos(aa)*rr,ty+Math.sin(aa)*rr,1.7,1.3,1.9,8); } break;
-      default: return null;
+      default: return movePattern(this,e,a,tx,ty,dps,ATK[a]?.w||1);
     }
     return out; }
   resolveAttack(e:En,a:string,tx:number,ty:number){
     const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1);
     const cone=(r:number,arc:number)=>{ this.fx.push({kind:'slash',x:e.x,y:e.y,a:ang,r,t:0,life:.25,w:arc,c:'#b8b09a'}); for(const o of this.opponents(fac)){ if(dist(e.x,e.y,o.x,o.y)-o.r<=r&&Math.abs(angDiff(Math.atan2(o.y-e.y,o.x-e.x),ang))<=arc/2) o.hurt(dmg,e.x,e.y); } this.emit('sfx','enemy_swing'); };
     const proj=(aa:number,speed:number)=>{ this.projs.push({x:e.x+Math.cos(aa)*.6,y:e.y+Math.sin(aa)*.6,vx:Math.cos(aa)*speed,vy:Math.sin(aa)*speed,dmg,r:.22,life:1.6,faction:fac==='ally'?'ally':'enemy',kind:'bolt'}); this.emit('sfx','enemy_shot'); };
+    if(MOVES[a]){ resolveMove(this,e,a,tx,ty,dmg); return; }
     switch(a){
       case 'swing': cone(1.5,Math.PI*.6); break; case 'cleave': cone(2.6,Math.PI*.75); break; case 'rsweep': cone(3.8,Math.PI*.85); break;
       case 'slam': this.fx.push({kind:'ring',x:e.x,y:e.y,r:3.4,t:0,life:.4,c:'#b8b09a'}); for(const o of this.opponents(fac)) if(dist(e.x,e.y,o.x,o.y)-o.r<=3.4) o.hurt(dmg,e.x,e.y); this.emit('sfx','slam'); break;
@@ -507,7 +513,7 @@ export class Game {
   }
   rm(d:Drop){ const inst=this.inst!; inst.drops=inst.drops.filter(x=>x.id!==d.id); }
   onBossDead(e:En){
-    const inst=this.inst!; const f=inst.flags; if(f.bossDead) return; f.bossDead=true; f.completed=true; this.projs=[]; this.zones=[];
+    const inst=this.inst!; const f=inst.flags; if(f.bossDead) return; f.bossDead=true; f.completed=true; this.projs=[]; this.zones=[]; clearBossAdds(this); this.save.cleared={...(this.save.cleared||{}),[this.dd.id]:Date.now()};
     if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Collect loot; the instance persists until it expires.'); }
     this.emit('boss-dead'); this.resPending=5; this.saveNow();
   }
@@ -540,3 +546,4 @@ export const ATK:Record<string,AtkDef> = {
   bite:{w:.4,rec:.4,cd:1.0,min:0,max:1.3}, slagshot:{w:.9,rec:.6,cd:2.8,min:0,max:10,lock:true,ranged:true}, dart:{w:.7,rec:.5,cd:2.0,min:0,max:10,lock:true,ranged:true}, scalpelfan:{w:.9,rec:.8,cd:3.2,min:2,max:12,lock:true,ranged:true}, chainsweep:{w:1.1,rec:1.0,cd:3.5,min:0,max:4.6}, blink:{w:.8,rec:.2,cd:6.5,min:2.5,max:14}, riposte:{w:.55,rec:.9,cd:0,min:0,max:99}, slagpool:{w:.8,rec:.9,cd:7,min:0,max:16,ranged:true}, gasvent:{w:.8,rec:.9,cd:8,min:0,max:14,ranged:true}, ringpools:{w:1.0,rec:1.0,cd:10,min:0,max:16}, sawlanes:{w:1.0,rec:1.0,cd:9,min:0,max:16,ranged:true}, cratefall:{w:.8,rec:.9,cd:7,min:0,max:16,ranged:true},
   zones:{w:.7,rec:.9,cd:8,min:0,max:16,ranged:true}, volley:{w:1.0,rec:.8,cd:3.4,min:3,max:13,lock:true,ranged:true}, rsweep:{w:1.0,rec:.9,cd:3,min:0,max:3.8},
 };
+Object.assign(ATK,MOVE_ATK); // content batch 1 boss moves (src/content/boss_moves.ts)
