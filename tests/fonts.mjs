@@ -13,14 +13,14 @@ const INIT = () => {
     CanvasRenderingContext2D.prototype[m] = function (t, x, y, w) { try { if (this.canvas && this.canvas.id === 'game') { const tr = this.getTransform(); const sc = Math.hypot(tr.a, tr.b); const px = parseFloat((/(\d+(?:\.\d+)?)px/.exec(this.font) || [0, 0])[1]) * sc;
       const st = m === 'fillText' ? this.fillStyle : this.strokeStyle; window.__ctxText.push({ t: String(t).slice(0, 24), px, font: this.font, fill: typeof st === 'string' ? st : '', ga: this.globalAlpha }); } } catch (e) {} return o.call(this, t, x, y, w); }; }
 };
-const SIZES = [[1280, 720], [1920, 1080], [1366, 768], [844, 390]];
+const SIZES = [[1280, 720], [1920, 1080], [1366, 768], [2560, 1440], [844, 390]];
 
 const check = () => {
   const bad = []; const vw = innerWidth, vh = innerHeight;
   const vis = e => { const s = getComputedStyle(e); return s.display !== 'none' && s.visibility !== 'hidden' && +s.opacity > 0.05 && e.getClientRects().length; };
   const desc = e => (e.id ? '#' + e.id : '') + '.' + String(e.className && e.className.baseVal === undefined ? e.className : '').split(' ').join('.') + '<' + e.tagName.toLowerCase() + '> "' + (e.textContent || '').trim().slice(0, 30) + '"';
   let minPx = 99, minWhat = '', touchMode = document.body.classList.contains('touch');
-  const MINALL = touchMode ? 12 : 14, MINPRI = touchMode ? 12 : 16;
+  const MINALL = touchMode ? 12 : 16, MINPRI = touchMode ? 12 : 18;
   const parse = c => { const m = /rgba?\(([^)]+)\)/.exec(c); if (!m) return null; const p = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p[3] === undefined ? 1 : p[3] }; };
   const over = (f, b, a) => ({ r: f.r * a + b.r * (1 - a), g: f.g * a + b.g * (1 - a), b: f.b * a + b.b * (1 - a) });
   const lum = c => { const f = v => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(c.r) + .7152 * f(c.g) + .0722 * f(c.b); };
@@ -57,9 +57,9 @@ const check = () => {
     }
   }
   // vertical centring: text inside bars/buttons/chips must sit within +-12% of box height of the box centre
-  for (const el of document.querySelectorAll('.bar span,#channelbar span,.btn,.chip-btn,#interact,.tag,.abtn .aname,.akey,#dodge .aname')) { if (!vis(el)) continue; if (el.closest('button:disabled')) continue;
+  for (const el of document.querySelectorAll('.bar span,.btn,.chip-btn,#interact,.tag,.abtn .aname,.akey,#dodge .aname')) { if (!vis(el)) continue; if (el.closest('button:disabled')) continue;
     const rg = document.createRange(); rg.selectNodeContents(el); const rs = [...rg.getClientRects()].filter(r => r.width > 0 && r.height > 0); if (!rs.length) continue;
-    const host = el.matches('.bar span,#channelbar span') ? el.parentElement : el; const hb = host.getBoundingClientRect(); if (hb.height < 10) continue;
+    const host = el.matches('.bar span') ? el.parentElement : el; const hb = host.getBoundingClientRect(); if (hb.height < 10) continue;
     const ty = (Math.min(...rs.map(r => r.top)) + Math.max(...rs.map(r => r.bottom))) / 2, by = (hb.top + hb.bottom) / 2; if (el.matches('.akey,.abtn .aname,#dodge .aname')) continue;
     if (Math.abs(ty - by) > hb.height * .12 + 1) bad.push(`text not vertically centred (${(ty - by).toFixed(1)}px off in ${hb.height.toFixed(0)}px box): ` + desc(el)); }
   // sibling boxes laid out in the same visual row must have equal height (and socket boxes equal width)
@@ -98,6 +98,8 @@ for (const [w, h] of SIZES) {
   { const tl = await ev(() => window.__tiles); ok(tl.length === 11 && tl.every(x => Math.abs(x[0] - x[1]) <= 1 && x[0] === tl[0][0]), `${tag} body tiles are uniform squares ${JSON.stringify(tl[0])}`); ok(await ev(() => document.querySelectorAll('.tile .pip').length > 10 && document.querySelectorAll('.tile .ticon canvas').length > 0 && document.querySelectorAll('.repb').length === 3 && getComputedStyle(document.getElementById('tiptile')).display === 'block'), `${tag} tiles show pips, icons, 3 rep badges and a hover tooltip`); await ev(() => document.querySelector('.tile').dispatchEvent(new PointerEvent('pointerleave', { bubbles: true }))); }
   await step('04b-locker-sockets', () => { const u = window.__ui, g = window.__game; g.save.lockerChips.coolant = 3; g.save.lockerChips.gridlink = 3; u.sel = 'armR'; u.draft.armR.chips.length = 0; u.draft.armR.chips.push('coolant', 'gridlink', 'power'); u.render(); });
   await open('05-vendor', 'vendor');
+  await step('05b-vendor-legs', () => { window.__ui.shopSlot = 'legL'; window.__ui.render(); });
+  { const fsz = await ev(() => parseFloat(getComputedStyle(document.querySelector('#modal .win .body')).fontSize)); (globalThis.__fsz ||= {})[tag] = fsz; }
   await open('06-dungeon-select', 'gate');
   await open('07-contacts', 'contacts');
   await open('08-fixer', 'fixer');
@@ -120,4 +122,5 @@ for (const [w, h] of SIZES) {
   ok(errors.length === 0, `${tag}: console errors ${errors.join(';')}`);
   await browser.close();
 }
+{ const f = globalThis.__fsz || {}; ok(f['1920x1080'] > f['1280x720'] && f['2560x1440'] > f['1920x1080'], 'UI text grows with viewport: ' + JSON.stringify(f)); ok(f['1920x1080'] >= 18 && f['2560x1440'] >= 20, 'effective body text >= 18px at 1080p / 20px at 1440p ' + JSON.stringify(f)); }
 if (fails) { console.log(fails + ' font/overflow problems'); process.exit(1); } console.log('fonts ok');

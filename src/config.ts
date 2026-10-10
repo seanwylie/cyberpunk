@@ -191,10 +191,15 @@ export const LOOT = {
 export const STARTER_ABILITIES:AbilityId[]=['sweep','brace','reposition'];
 export const STARTING = { credits:600, chips:{ speed:2, coolant:2, sustain:2, power:1 } as Partial<Record<ChipId,number>>, lockerSlots:60, lockerPerPurchase:20 };
 
-/** Desktop UI text scale (canvas-drawn text). CSS uses --fs in style.css; keep both in sync. Touch stays 1. */
+/** Desktop UI text scale. CSS reads --fs / --fmin (set by applyUiScale on :root); canvas text reads uiFs()/minPx(). Touch stays 1 / 12px. */
+export const UI_SIZES={ S:.92, M:1, L:1.15, XL:1.32 } as const; export type UiSize=keyof typeof UI_SIZES;
+let curSize:UiSize='L', curFs=1.4*1.15, curMin=16;
+/** scale grows with the viewport (sqrt of min(w/1280,h/720), 1..1.6) times the user's UI size choice */
+export function applyUiScale(size?:UiSize){ if(size) curSize=size; const vf=typeof innerWidth==='undefined'?1:Math.min(1.6,Math.max(1,Math.sqrt(Math.min(innerWidth/1280,innerHeight/720))));
+  curFs=+(1.4*UI_SIZES[curSize]*vf).toFixed(3); curMin=Math.round(14*UI_SIZES[curSize]*vf*10)/10; if(typeof document!=='undefined'){ const r=document.documentElement.style; r.setProperty('--fs',String(curFs)); r.setProperty('--fmin',curMin+'px'); } }
 export const DESKTOP_FS = 1.4;
-export function uiFs(): number { return typeof document!=='undefined' && document.body && document.body.classList.contains('touch') ? 1 : DESKTOP_FS; }
+export function uiFs(): number { return typeof document!=='undefined' && document.body && document.body.classList.contains('touch') ? 1 : curFs; }
 
-/** Minimum canvas text size in px (desktop 14, touch 12). Every ctx.font in the HUD layer goes through cpx(). */
-export function minPx(): number { return uiFs()===1 ? 12 : 14; }
+/** Minimum canvas text size in px (desktop ~16 at Large, touch 12). Every ctx.font in the HUD layer goes through cpx(). */
+export function minPx(): number { return uiFs()===1 ? 12 : curMin; }
 export function cpx(n:number): number { return Math.round(Math.max(minPx(), n)); }

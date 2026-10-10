@@ -6,17 +6,17 @@ import { AudioSys } from './audio';
 import { load, persist } from './state';
 import { newStory } from './story';
 import './dungeon_fx';
-import { ENEMIES } from './config';
+import { ENEMIES, applyUiScale } from './config';
 
 try{ (document as any).fonts?.load('600 14px "Roboto Condensed"'); }catch{}
 const save=load(); if(!save.story) save.story=newStory();
-const audio=new AudioSys(); audio.vol=save.settings.volume; audio.musicOn=save.settings.music;
+applyUiScale(save.settings.uiSize||'L'); const audio=new AudioSys(); audio.vol=save.settings.volume; audio.musicOn=save.settings.music;
 let ui:UI;
 const game=new Game(save,(t,p)=>{ if(t==='sfx') audio.sfx(p); else if(t==='musickey') audio.setMusicKey(p); else if(t==='music') audio.setState(p); else ui?.handle(t,p); });
 ui=new UI(game,audio);
 const canvas=document.getElementById('game') as HTMLCanvasElement; const rend=new Renderer(canvas,game);
 const input=new Input(game,rend,audio,{ modalOpen:()=>ui.modalOpen(), onToggleInv:()=>ui.toggleLive(), onEsc:()=>ui.esc() },canvas);
-const resize=()=>{ rend.resize(); }; window.addEventListener('resize',resize); resize();
+const resize=()=>{ applyUiScale(); rend.resize(); }; window.addEventListener('resize',resize); resize();
 // Resume an existing, unexpired instance suspended by an interruption (solo save/suspend): offer it at the gate.
 if(save.instance&&save.instance.expiresAt>Date.now()){ game.inst=save.instance; setTimeout(()=>ui.toast('Suspended run found: re-enter via the Annex gate. Boss state resets; loot and kills persist.'),400); }
 else if(save.instance){ save.instance=null; persist(save); }
