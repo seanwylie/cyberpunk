@@ -70,10 +70,11 @@ export class Gen{
     return gid; }
   /** A mixed-role SQUAD: several types placed around one centre under one alert group (batch-2 pack composition). Each type uses its own clearance class. */
   squad(zs:Zone[],parts:[string,number][],o:{minD?:number}={}):number{
+    const reach=(c:number)=>{ const k='_reach'+c; if(!(this as any)[k]) (this as any)[k]=reachMap(this as any,{x:this.sx,y:this.sy},c); return (this as any)[k] as Uint8Array; }; const rOk=(t:string,x:number,y:number)=>reach(clsOf(ENEMIES[t]?.radius??.4))[y*this.w+x]===1;
     const maxR=Math.max(...parts.map(([t])=>FLOW_R[clsOf(ENEMIES[t]?.radius??.4)])); const minD=o.minD??8; const total=parts.reduce((a,[,n])=>a+n,0); const sp=2.4+Math.sqrt(total)*1.5; const all=this.tiles(zs);
-    const tl=all.filter(([x,y])=>this.clr(x,y,maxR)&&!this.nearHaz(x,y)&&Math.hypot(x+.5-this.sx,y+.5-this.sy)>=minD&&!this.interacts.some(i=>Math.hypot(i.x-x-.5,i.y-y-.5)<2.2)); if(!tl.length) return 0;
+    const tl=all.filter(([x,y])=>this.clr(x,y,maxR)&&parts.every(([t])=>rOk(t,x,y))&&!this.nearHaz(x,y)&&Math.hypot(x+.5-this.sx,y+.5-this.sy)>=minD&&!this.interacts.some(i=>Math.hypot(i.x-x-.5,i.y-y-.5)<2.2)); if(!tl.length) return 0;
     const c=this.pick(tl); const gid=++this.gid; let placed=0;
-    for(const [type,n] of parts){ const R=FLOW_R[clsOf(ENEMIES[type]?.radius??.4)]; const cand=this.shuffle(all.filter(([x,y])=>Math.hypot(x-c[0],y-c[1])<=sp&&this.clr(x,y,R)&&!this.nearHaz(x,y)&&Math.hypot(x+.5-this.sx,y+.5-this.sy)>=minD-1&&!this.interacts.some(i=>Math.hypot(i.x-x-.5,i.y-y-.5)<2.2))); let k=0;
+    for(const [type,n] of parts){ const R=FLOW_R[clsOf(ENEMIES[type]?.radius??.4)]; const cand=this.shuffle(all.filter(([x,y])=>Math.hypot(x-c[0],y-c[1])<=sp&&this.clr(x,y,R)&&rOk(type,x,y)&&!this.nearHaz(x,y)&&Math.hypot(x+.5-this.sx,y+.5-this.sy)>=minD-1&&!this.interacts.some(i=>Math.hypot(i.x-x-.5,i.y-y-.5)<2.2))); let k=0;
       for(const [x,y] of cand){ if(k>=n) break; if(this.spawns.some(s=>Math.hypot(s.x-x,s.y-y)<1.6)) continue; this.spawns.push({type,x,y,group:gid}); k++; placed++; } }
     return placed?gid:0; }
   /** single static/guard/elite spawn near a preferred point */

@@ -54,9 +54,9 @@ ok(er[0] < er[1] && er[1] < er[2] && er[2] < er[3] && er[0] > 0, 'elite pack-lea
 // ---------------- in-sim behaviour ----------------
 const fresh = id => ev(id => { const g = window.__game; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lastClearDay = null; g.save.lockouts = {}; g.save.cleared = {}; g.save.level = 45; g.recompute(); g.dbg.god = false; g.dbg.oneShot = false; g.save.settings.devFreeReset = true; return g.startRun(id); }, id);
 await fresh('coke_ovens');
-const sim = await ev(async () => { const g = window.__game, C = await import('/src/config.ts'); const R = {}; for (const e of g.enemies) e.dead = true; g.enemies.length = 0; g.px = 20; g.py = 20; for (let i = 0; i < 4; i++) g.update(.016);
+const sim = await ev(async () => { const g = window.__game, C = await import('/src/config.ts'); const R = {}; for (const e of g.enemies) e.dead = true; g.enemies.length = 0; const L = g.level; let best = null, bs = -1; for (let y = 6; y < L.h - 6; y += 2) for (let x = 6; x < L.w - 6; x += 2) { let n = 0; for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) if (!g.solidAt(x + dx + .5, y + dy + .5) && !g.circleHits(x + dx + .5, y + dy + .5, .5)) n++; if (n > bs) { bs = n; best = [x + .5, y + .5]; } } R.openArena = bs > 90; g.px = best ? best[0] : 20; g.py = best ? best[1] : 20; for (let i = 0; i < 4; i++) g.update(.016);
   const open = () => { let best = null; for (let r = 3; r < 9 && !best; r++) for (let a = 0; a < 16; a++) { const x = g.px + Math.cos(a / 16 * 6.28) * r, y = g.py + Math.sin(a / 16 * 6.28) * r; if (!g.solidAt(x, y) && !g.circleHits(x, y, .5)) { best = [x, y]; break; } } return best; };
-  const mk = (t, dx = 4, dy = 0) => { const e = g.spawnEnemy(t, g.px + dx, g.py + dy); e.alert = true; e._rt.reveal = 0; return e; };
+  const mk = (t, dx = 4, dy = 0) => { let bx = g.px + dx, by = g.py + dy, bd = 1e9; for (let ox = -3; ox <= 3; ox += .5) for (let oy = -3; oy <= 3; oy += .5) { const x = g.px + dx + ox, y = g.py + dy + oy; if (g.solidAt(x, y) || g.circleHits(x, y, .6) || Math.hypot(x - g.px, y - g.py) < 1.2) continue; const dd = Math.hypot(ox, oy); if (dd < bd && g.los(x, y, g.px, g.py)) { bd = dd; bx = x; by = y; } } const e = g.spawnEnemy(t, bx, by); e.alert = true; e._rt.reveal = 0; return e; };
   const tick = n => { for (let i = 0; i < n; i++) g.update(.016); };
   g.hp = g.maxHp; g.heat = 0;
   // mend
@@ -79,7 +79,7 @@ const sim = await ev(async () => { const g = window.__game, C = await import('/s
     const v = mk('rebarcrusher', -6, -5); v.affix = ['volatile']; tick(2); const z0 = g.zones.length; g.dbg.oneShot = true; v.hp = 1; g.hurtEnemy(v, 5, g.px, g.py, 0); g.dbg.oneShot = false; R.vol = v.dead && g.zones.length > z0;
     const f = mk('coalheaver', 6, -5); f.affix = ['frenzied']; tick(2); f.hp = f.maxHp * .3; tick(2); R.frenzy = f._rt.spdMul > 1.3;
     const w = mk('coalheaver', 7, 6); w.affix = ['warded']; tick(2); w.hp = w.maxHp * .4; tick(3); const hp0 = w.hp; g.hurtEnemy(w, 20, g.px, g.py, 0); R.ward2 = w.hp === hp0; tick(150); const hp1 = w.hp; g.hurtEnemy(w, 5, g.px, g.py, 0); R.ward3 = w.hp < hp1;
-    const r = mk('coalheaver', -7, 6); r.affix = ['regenerating']; tick(2); r.hp = r.maxHp * .5; tick(300); R.regen = r.hp > r.maxHp * .55;
+    const r = mk('coalheaver', -7, 6); r.affix = ['regenerating']; tick(2); r.hp = r.maxHp * .5; tick(900); R.regen = r.hp > r.maxHp * .55;
     const Mb = await import('/src/content/mobs.ts'); const l = mk('leechorderly', 1, 0); l.hp = l.maxHp * .5; const lh0 = l.hp; const hpA = g.hp; g.hp -= 20; Mb.mobAfterHit(g, l, hpA); R.leech = l.hp - lh0 > 15; const nv = mk('coalheaver', 2, 0); nv.hp = nv.maxHp * .5; const nh = nv.hp; const hpB = g.hp; g.hp -= 20; Mb.mobAfterHit(g, nv, hpB); R.noLeech = nv.hp === nh; g.hp = g.maxHp; }
   return R; function ENEMIES0(C, t) { return C.ENEMIES[t].hp; } });
 for (const [k, v] of Object.entries(sim)) ok(k === 'sum' ? v >= 2 && v <= 4 : !!v, 'behaviour: ' + k + (k === 'sum' ? ' (' + v + ' minions, cap 4)' : ''));

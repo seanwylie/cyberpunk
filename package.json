@@ -14,6 +14,7 @@
     "test:dungeons": "node tests/dungeons.mjs",
     "test:mapvary": "node tests/mapvary.mjs",
     "test:music": "node tests/music.mjs",
+    "test:mobs2": "node tests/mobs2.mjs",
     "test:sprites": "node tests/sprites.mjs",
     "test:sprites:real": "node tests/sprites_real.mjs",
     "shots": "node tests/screenshots.mjs"
