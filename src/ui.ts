@@ -165,7 +165,7 @@ export class UI {
       <div>${socks}</div>${chipList}
       <h3>Storage ${capacityUsed(s)}/${cap}</h3><input type="search" placeholder="Search storage (name, slot)…" value="${esc(this.search)}" data-in="search" /><div class="mut">Chips in stock: ${chipStock}</div>
       <div class="list">${rows}</div>
-      <div style="margin-top:6px"><button class="btn" data-act="sellgrey">Dispose of all grey in storage (sell)</button> <span class="mut">free organization tool, explicit</span></div></div>
+      <div style="margin-top:6px">${(()=>{ const gl=this.greyDisposable(); return `<button class="btn" data-act="sellgrey" ${gl.length?'':'disabled'}>Dispose of all grey (${gl.length} · ${gl.length*SELL_VALUE.grey}c)</button> `; })()}${this.repairBtn()} <span class="mut">Repair bill ${s.repairBill}c</span></div></div>
     <div class="col"><div class="draftbar"><b>${dirty?'DRAFT (unapplied)':'No staged changes'}</b> ${dirty?'<span class="warn">Leaving the workspace or entering a mission discards it.</span>':''}<div><button class="btn primary" data-act="apply" ${dirty?'':'disabled'}>Apply chip configuration</button><button class="btn" data-act="discard" ${dirty?'':'disabled'}>Discard</button></div></div>
       <h3>Preview</h3><div>${fmtStats(prev.stats)}</div><div class="mut" style="margin-top:4px">Installed: ${fmtStats(cur.stats)}</div>
       <div style="margin-top:6px">Abilities: <b>${abPrev.join(', ')||'none'}</b>${abPrev.join()!==abNow.join()?` <span class="mut">(installed: ${abNow.join(', ')||'none'})</span>`:''}</div>
@@ -186,9 +186,15 @@ export class UI {
     const used:Record<string,number>={}; for(const sl of SLOTS){ const it=D[sl]; if(!it) continue; if(it.chips.length>SLOT_SOCKETS[sl]){ g.toast('Over socket capacity on '+SLOT_LABEL[sl]); return; } for(const c of it.chips) used[c]=(used[c]||0)+1; }
     for(const c in used) if(used[c]>owned[c]){ g.toast('Not enough '+CHIPS[c as ChipId].name+' chips'); return; }
     for(const sl of SLOTS){ const it=D[sl]; const real=inst[sl]; if(it&&real) real.chips=[...it.chips]; } for(const c in owned) s.lockerChips[c as ChipId]=owned[c]-(used[c]||0); persist(s); g.recompute(); this.resetDraft(); g.toast('Chip configuration applied.'); }
+  /** Unequipped grey items (excludes installed; keeps one Standard Issue per slot when a non-stock part is installed so you can always revert). */
+  greyDisposable():Inst[]{ const s=this.g.save; const keep=new Set<string>(); for(const sl of SLOTS){ const cur=s.items.find(i=>i.uid===s.installed[sl]); if(cur&&!ITEM_BY_ID[cur.def].id.startsWith('stock_')){ const st=lockerItems(s).find(i=>i.def==='stock_'+sl); if(st) keep.add(st.uid); } }
+    return lockerItems(s).filter(i=>ITEM_BY_ID[i.def].rarity==='grey'&&!keep.has(i.uid)); }
+  disposeGrey(){ const g=this.g,s=g.save; const list=this.greyDisposable(); if(!list.length){ g.toast('No unequipped grey items to dispose.'); return; } let v=0; const ids=new Set(list.map(i=>i.uid)); for(const i of list){ v+=SELL_VALUE.grey; for(const c of i.chips) s.lockerChips[c]=(s.lockerChips[c]||0)+1; } s.items=s.items.filter(x=>!ids.has(x.uid)); s.credits+=v; persist(s); this.resetDraft(); g.toast(`Disposed ${list.length} grey item${list.length>1?'s':''} for ${v}c`); }
+  repairAll(){ const g=this.g,s=g.save; if(s.repairBill<=0){ g.toast('Nothing needs repair.'); return; } if(s.credits<=0){ g.toast('Not enough credits to repair.'); return; } const pay=Math.min(s.credits,s.repairBill); s.credits-=pay; s.repairBill-=pay; persist(s); g.toast(s.repairBill>0?`Partial repair: paid ${pay}c, ${s.repairBill}c still owed.`:`Repaired everything for ${pay}c`); }
+  repairBtn():string{ const s=this.g.save; const b=s.repairBill; const why=b<=0?'Nothing damaged':s.credits<=0?'No credits':''; const lbl=b<=0?'Repair all':s.credits>=b?`Repair all (${b}c)`:`Repair what I can (${s.credits}c of ${b}c)`; return `<button class="btn primary" data-act="repairall" ${why?'disabled':''}>${lbl}</button>${why?` <span class="mut">${why}</span>`:''}`; }
   // ----- Vendor -----
   vendor():string{ const s=this.g.save; const items=lockerItems(s).filter(i=>!ITEM_BY_ID[i.def].id.startsWith('stock_')||true);
-    return `<div class="col"><h3>Repairs</h3><div>Repair bill: <b>${s.repairBill}c</b> · Credits: <b>${s.credits}c</b></div><button class="btn primary" data-act="repair" ${s.repairBill>0&&s.credits>0?'':'disabled'}>Pay repair bill${s.repairBill>s.credits?' (partial)':''}</button>
+    return `<div class="col"><h3>Repairs</h3><div>Repair bill: <b>${s.repairBill}c</b> · Credits: <b>${s.credits}c</b></div>${this.repairBtn()}
       <div class="mut">Downs add random hardware damage and a repair bill; checkpoints restore function but the bill stays until paid here.</div><h3>Consumables</h3><button class="btn" data-act="buystim" ${s.credits>=30?'':'disabled'}>Buy stim (30c)</button> Locker stims: ${s.stims}</div>
       <div class="col"><h3>Sell hardware from storage</h3><div class="list">${items.map(i=>{ const d=ITEM_BY_ID[i.def]; return `<div class="row" style="border-color:${rc(d.rarity)}"><span>${esc(d.name)} <span class="tag">${d.rarity}</span></span><button class="btn" data-act="sell" data-uid="${i.uid}">Sell ${SELL_VALUE[d.rarity]}c</button></div>`; }).join('')||'<div class="row mut">Nothing to sell</div>'}</div><div class="mut">Convenience sales are storage-only (no remote vendor mid-run).</div></div>`; }
   // ----- Gate -----
@@ -278,7 +284,8 @@ export class UI {
       case 'apply': this.applyDraft(); this.render(); return; case 'discard': this.resetDraft(); this.render(); return;
       case 'replace': this.prepareReplace(el.dataset.uid!); this.render(); return; case 'cancel-confirm': this.confirm=null; this.render(); return; case 'confirm-replace': this.doReplace(); this.render(); return;
       case 'unload': this.unload(); this.render(); return;
-      case 'sellgrey': { let n=0,v=0; for(const i of lockerItems(s)){ const d=ITEM_BY_ID[i.def]; if(d.rarity==='grey'&&!d.id.startsWith('stock_')){ s.items=s.items.filter(x=>x.uid!==i.uid); v+=SELL_VALUE.grey; n++; } } s.credits+=v; persist(s); g.toast(`Sold ${n} grey items for ${v}c`); this.render(); return; }
+      case 'sellgrey': this.disposeGrey(); this.render(); return;
+      case 'repairall': this.repairAll(); this.render(); return;
       case 'repair': { const pay=Math.min(s.credits,s.repairBill); s.credits-=pay; s.repairBill-=pay; persist(s); this.render(); return; }
       case 'buystim': if(s.credits>=30){ s.credits-=30; s.stims++; persist(s); } this.render(); return;
       case 'sell': { const i=s.items.find(x=>x.uid===el.dataset.uid); if(i&&!Object.values(s.installed).includes(i.uid)){ s.credits+=SELL_VALUE[ITEM_BY_ID[i.def].rarity]; for(const c of i.chips) s.lockerChips[c]=(s.lockerChips[c]||0)+1; s.items=s.items.filter(x=>x!==i); persist(s); } this.render(); return; }
