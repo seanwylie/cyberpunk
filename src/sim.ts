@@ -1,4 +1,4 @@
-import { ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE} from './config';
+import { ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING} from './config';
 import { computeBuild, installedLayout, BuildResult } from './build';
 import { buildTown, Level, Interact } from './level';
 import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
@@ -8,11 +8,12 @@ import { movePattern, resolveMove, bossTick, filterDamage, clearBossAdds } from 
 import { mobTick, mobDeath, mobAfterHit, resolveMobAttack, mobPattern, MOB_COND } from './content/mobs';
 import { MOB_ATK } from './content/batch2_mobs';
 import { CONTRACT_BY_ID, Goal } from './content/npcs';
-import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState } from './state';
+import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState, capacityUsed } from './state';
 import { IDKFA_SET, IDKFA_CHIPS } from './content/idkfa';
 import { BAL } from './content/balance';
 import { record, newStory, EventKind } from './story';
 
+export const TOWN_KEY='B'; // keep in sync with input.ts (central KEYS map pending)
 export type Emit = (type:string, payload?:any)=>void;
 export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:number; life:number; faction:'enemy'|'ally'; kind:'bolt'|'slug'|'pop'|'pistol'|'needle'|'shard'; c?:string; }
 export interface Zone { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }
@@ -39,7 +40,7 @@ export class Game {
   inputMove={x:0,y:0}; build!:BuildResult; moving=false; prompt:Interact|null=null; musicState='traversal'; combatHold=0; eliteEng=0; toastQ:string[]=[];
   dbg={god:false,oneShot:false};
   flow:Int16Array|null=null; flows:(Int16Array|null)[]=[null,null,null]; clr:(Uint8Array|null)[]=[null,null,null]; clrLevel:Level|null=null; q:Int32Array|null=null; frame=0; flowT=0; kills=0; saveT=0; sensorFlag=false; lastRoute='';
-  constructor(save:Save, emit:Emit){ this.save=save; this.emit=emit; this.level=buildTown(); this.recompute(); this.enterTown(true); }
+  constructor(save:Save, emit:Emit){ this.save=save; this.emit=emit; this.level=buildTown(); this.migrateInstance(); this.recompute(); this.enterTown(true); }
 
   // ---------- build / stats ----------
   recompute(){ const L=installedLayout(this.save); this.build=computeBuild(L,this.save.level,this.save.rep,this.inst?this.inst.broken:[]); const mx=this.build.stats.maxHp; if(this.hp>mx||this.hp<=0&&!this.downed) this.hp=mx; }
@@ -49,6 +50,7 @@ export class Game {
 
   // ---------- mode transitions ----------
   enterTown(first=false){
+    this.settleCompleted();
     this.mode='town'; this.level=buildTown(); for(const it of this.level.interacts) if(it.id==='annex') it.label='Dungeon gates (select a dungeon)'; this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; this.px=this.level.spawn.x; this.py=this.level.spawn.y; this.channel=null; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.');
   }
@@ -60,6 +62,7 @@ export class Game {
     const s=this.save;
     if(s.instance && s.instance.expiresAt<=this.now()){ this.expireInstance(); }
     if(s.instance&&s.instance.layoutV!==LAYOUT_V&&s.instance.expiresAt>this.now()){ this.expireInstance(); this.toast('Dungeon layouts changed: your old instance was discarded.'); }
+    if(s.instance&&this.instDone(s.instance)&&(s.instance.dungeon||'annex')!==id){ if(!this.retireForNew(id)) return false; }
     if(s.instance){ const cur=s.instance.dungeon||'annex'; if(cur!==id){ this.toast('You have a live instance in '+dungeonOf(cur).name+'. Re-enter or abandon it before starting another.'); return false; } this.inst=s.instance; this.resumeInstance(); return true; }
     { const lk=unlockReason(this.save,id,!!this.save.settings.devFreeReset); if(lk){ this.toast(lk); return false; } }
     if(this.dailyLocked(id)){ this.toast('Daily clear used for '+dungeonOf(id).name+'. A fresh run unlocks tomorrow (dev panel can reset).'); return false; }
@@ -84,6 +87,23 @@ export class Game {
     this.toast(fresh?this.dd.intro:'Re-entered existing instance. Surviving enemies and loot remain.');
   }
   wrap(e:EnemyState):En{ const x=e as En; x._rt={ st:'idle',t:0,atk:'',acd:{},ang:0,tx:0,ty:0,lost:0,vuln:0,reveal:0,bornT:0,fire:0,shots:[],hit:0,dashed:false,strafe:Math.random()<.5?1:-1 }; return x; }
+  /** True when the saved instance's boss is dead (a finished run). A finished instance never blocks starting another dungeon. */
+  instDone(i:InstanceState|null=this.save.instance):boolean{ return !!i&&(!!i.flags.bossDead||!!i.flags.completed&&!!i.flags.rewardsGranted); }
+  /** Save migration: an instance whose boss is dead (dead boss enemy but flags unset, or half-set flags) is marked completed, its rewards and per-dungeon lockout are applied, so it is never stuck "live". */
+  migrateInstance(){ const i=this.save.instance; if(!i) return; const id=i.dungeon||'annex'; const bossDead=i.flags.bossDead||i.enemies.some(e=>e.dead&&ENEMIES[e.type]?.boss&&e.faction!=='ally');
+    if(!bossDead) return; i.flags.bossDead=true; i.flags.completed=true; if(!i.flags.rewardsGranted){ i.flags.rewardsGranted=true; } if(lockDay(this.save,id)!==todayStr()) setLockDay(this.save,id,todayStr()); persist(this.save); }
+  /** Move carried credits/stims/items/chips into the locker as capacity allows. Returns how many carried entries did not fit. */
+  bankCarried():number{ const s=this.save, c=s.instance?.carried; if(!c) return 0; const cap=s.lockerCap+s.purchases.lockerBlocks*STARTING.lockerPerPurchase; s.credits+=c.credits; c.credits=0; const rest:Inst[]=[]; for(const it of c.items){ if(capacityUsed(s)<cap) s.items.push(it); else rest.push(it); } c.items=rest;
+    for(const [k,v] of Object.entries(c.chips)){ const kk=k as ChipId; if((s.lockerChips[kk]||0)>0||capacityUsed(s)<cap){ s.lockerChips[kk]=(s.lockerChips[kk]||0)+(v||0); delete c.chips[kk]; } } s.stims+=c.stims; c.stims=0; persist(s); return c.items.length+Object.keys(c.chips).length; }
+  /** Finished instance on arrival in town: bank the pack; retire the instance when nothing is left in it (otherwise it stays for loot retrieval but never blocks other dungeons). */
+  settleCompleted(){ const s=this.save; const i=s.instance; if(!i||!this.instDone(i)) return; const left=this.bankCarried(); if(!left&&!i.drops.length){ s.instance=null; this.inst=null; persist(s); } }
+  /** Leaving a finished instance for another dungeon: bank what fits; leftover pack items or ground loot need one confirming repeat (within 30 s). */
+  retireForNew(id:string):boolean{ const s=this.save, i=s.instance!; const left=this.bankCarried(); const lost=left+i.drops.length;
+    if(lost>0&&!(this.retireArm&&this.retireArm.id===id&&Date.now()-this.retireArm.t<30000)){ this.retireArm={id,t:Date.now()}; this.toast(lost+' item(s) from your cleared '+dungeonOf(i.dungeon||'annex').name+' instance will be discarded. Press Start again to confirm, or re-enter it first to pick them up.'); return false; }
+    s.stims+=i.carried.stims; s.instance=null; this.inst=null; this.retireArm=null; persist(s); return true; }
+  retireArm:{id:string;t:number}|null=null;
+  /** Pick up everything on the ground that fits (credits always) so a finished run does not leave loot behind by accident. */
+  autoCollectAll(){ const inst=this.inst; if(!inst) return 0; const c=inst.carried; let n=0; for(const d of [...inst.drops]){ if(d.kind==='credits'){ c.credits+=d.amount; this.rm(d); n++; continue; } const stacksOk=(d.kind==='chip'&&(c.chips[d.chip!]||0)>0)||(d.kind==='stim'&&c.stims>0); if(!stacksOk&&this.carriedCount()>=COMBAT.missionSlots) continue; if(d.kind==='item') c.items.push(d.inst!); else if(d.kind==='chip') c.chips[d.chip!]=(c.chips[d.chip!]||0)+1; else if(d.kind==='stim') c.stims++; this.rm(d); n++; } return n; }
   expireInstance(){ const s=this.save; s.instance=null; this.inst=null; this.toast('The instance expired. Leftover loot and state are gone.'); this.emit('expired'); persist(s); }
   /** What a reset would do and whether the spec allows it. Spec (Instances & lockouts): entry alone never consumes the daily clear; boss completion does, and a completed instance never grants a new boss kill. So an unfinished instance can be reset freely; a completed one only with the clearly-labelled prototype toggle (Settings). */
   resetInfo(){ const inst=this.save.instance; if(!inst||inst.expiresAt<=this.now()) return {has:false,allowed:false,dev:false,completed:false,id:'',lost:0,why:'No live instance.'};
@@ -153,7 +173,7 @@ export class Game {
     if(this.channel&&this.channel.kind==='town'){ this.channel=null; this.toast('Town return interrupted'); }
   }
   interact(){ if(!this.prompt||this.downed) return; this.doInteract(this.prompt); }
-  townReturn(){ if(this.mode!=='run'||this.downed) return; if(this.channel&&this.channel.kind==='town'){ this.channel=null; this.toast('Town return cancelled'); return; } this.channel={kind:'town',t:0,dur:COMBAT.townChannel,cb:()=>{ this.saveNow(); this.enterTown(); }}; this.toast('Returning to town... movement or damage interrupts. No invulnerability.'); this.emit('sfx','channel'); }
+  townReturn(){ if(this.mode!=='run'||this.downed) return; if(this.channel&&this.channel.kind==='town'){ this.channel=null; this.toast('Town return cancelled'); return; } this.channel={kind:'town',t:0,dur:COMBAT.townChannel,cb:()=>{ const done=this.instDone(this.inst); let got=0; if(done) got=this.autoCollectAll(); const left=this.inst?this.inst.drops.length:0; this.saveNow(); this.enterTown(); if(done&&got) this.toast('Auto-collected '+got+' drop(s) on the way out.'); if(done&&left&&this.save.instance) this.toast(left+' item(s) left in the cleared instance (pack full). Re-enter to pick them up; starting another dungeon discards them.'); }}; this.toast(this.instDone(this.inst)&&this.inst!.drops.length?'Returning to town... loot on the ground is auto-collected if it fits.':'Returning to town... movement or damage interrupts. No invulnerability.'); this.emit('sfx','channel'); }
   /** Dev cheat (typed "idkfa"): orange hardware + best chips in every slot, stims/credits top-up, full heal. Old gear goes to storage. Marks the save cheated. */
   cheatIdkfa(){ const s=this.save; const keep=new Set<string>();
     for(const sl of SLOTS){ const def=IDKFA_SET[sl]; let it=s.items.find(i=>i.def===def&&s.installed[sl]===i.uid); if(!it) it=mkInst(s,def); if(!s.items.includes(it)) s.items.push(it); it.chips=[...IDKFA_CHIPS[sl]]; s.installed[sl]=it.uid; keep.add(it.uid); }
@@ -527,17 +547,17 @@ export class Game {
   rm(d:Drop){ const inst=this.inst!; inst.drops=inst.drops.filter(x=>x.id!==d.id); }
   onBossDead(e:En){
     const inst=this.inst!; const f=inst.flags; if(f.bossDead) return; f.bossDead=true; f.completed=true; this.projs=[]; this.zones=[]; clearBossAdds(this); this.save.cleared={...(this.save.cleared||{}),[this.dd.id]:Date.now()};
-    if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Collect loot; the instance persists until it expires.'); }
+    if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Return to town any time: your pack is banked and you can start another dungeon.'); }
     this.emit('boss-dead'); this.resPending=5; this.saveNow();
   }
   resPending=0; zoneShown:Record<string,number>={}; zoneAnyAt=-1e9; lastZone=''; seenT=0; seen:Uint8Array|null=null; seenFor:Level|null=null; pathT=0; pathWp:{x:number;y:number}|null=null; pathLen=0;
   markSeen(){ const L=this.level; if(this.seenFor!==L||!this.seen){ this.seen=new Uint8Array(L.w*L.h); this.seenFor=L; } const R=9; const px=Math.floor(this.px), py=Math.floor(this.py); for(let y=Math.max(0,py-R);y<=Math.min(L.h-1,py+R);y++) for(let x=Math.max(0,px-R);x<=Math.min(L.w-1,px+R);x++) if((x-px)**2+(y-py)**2<=R*R) this.seen[y*L.w+x]=1; }
   /** Current dungeon objective (text + world target) derived from instance flags; used by the HUD arrow, minimap and zone banners. */
   objective():{text:string;x:number;y:number;kind:string}|null{ const inst=this.inst; if(this.mode!=='run'||!inst) return null; const f=inst.flags, L=this.level, dd=this.dd; const it=(id:string)=>L.interacts.find(i=>i.id===id);
-    if(f.bossDead){ let best:Drop|null=null,bd=1e9; for(const d of inst.drops){ const k=dist(this.px,this.py,d.x,d.y); if(k<bd){ bd=k; best=d; } } if(best) return {text:'Collect loot ('+inst.drops.length+' on the ground), then return to town (T)',x:best.x,y:best.y,kind:'loot'}; return {text:'Run complete. Return to town (T) and unload loot',x:L.spawn.x,y:L.spawn.y,kind:'exit'}; }
+    if(f.bossDead){ let best:Drop|null=null,bd=1e9; for(const d of inst.drops){ const k=dist(this.px,this.py,d.x,d.y); if(k<bd){ bd=k; best=d; } } const near=inst.drops.filter(d=>dist(this.px,this.py,d.x,d.y)<=16).length; if(best) return {text:'Boss defeated! Pick up your loot ('+(near||inst.drops.length)+(near?' nearby':' left')+'), then press '+TOWN_KEY+' to return to town',x:best.x,y:best.y,kind:'loot'}; return {text:'Dungeon cleared. Press '+TOWN_KEY+' to return to town.',x:L.spawn.x,y:L.spawn.y,kind:'exit'}; }
     if(f.bossSpawned&&!f.bossDead){ const b=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead); return {text:'Defeat the boss',x:b?b.x:L.bossSpawn.x,y:b?b.y:L.bossSpawn.y,kind:'boss'}; }
-    if(f.controller){ const bd=L.doors.find(d=>d.id==='boss'); if(bd&&bd.tiles.length){ let sx=0,sy=0; for(const [tx,ty] of bd.tiles){ sx+=tx; sy+=ty; } return {text:'Boss chamber is open: enter it',x:sx/bd.tiles.length+.5,y:sy/bd.tiles.length+.5,kind:'boss'}; } return {text:'Boss chamber is open: enter it',x:L.bossSpawn.x,y:L.bossSpawn.y,kind:'boss'}; }
-    const c=it('controller'); if(c) return {text:'Secure the '+dd.objectiveLabel+(f.lock2?'':' (break through the locked gate)'),x:c.x,y:c.y,kind:'controller'}; return null; }
+    if(f.controller){ const bd=L.doors.find(d=>d.id==='boss'); if(bd&&bd.tiles.length){ let sx=0,sy=0; for(const [tx,ty] of bd.tiles){ sx+=tx; sy+=ty; } return {text:'Enter the open boss chamber',x:sx/bd.tiles.length+.5,y:sy/bd.tiles.length+.5,kind:'boss'}; } return {text:'Enter the open boss chamber',x:L.bossSpawn.x,y:L.bossSpawn.y,kind:'boss'}; }
+    const c=it('controller'); if(c) return {text:(f.lock2?'Secure the ':'Break through the locked gate, then secure the ')+dd.objectiveLabel,x:c.x,y:c.y,kind:'controller'}; return null; }
   /** BFS next-waypoint toward a world target so the arrow follows walkable routes rather than pointing through walls. */
   guidance(){ const o=this.objective(); if(!o) return null; this.pathT-=1/60; if(this.pathT<=0||!this.pathWp){ this.pathT=.4; const L=this.level, w=L.w, h=L.h; const sx0=Math.floor(this.px), sy0=Math.floor(this.py), tx=Math.floor(o.x), ty=Math.floor(o.y); const prev=new Int32Array(w*h).fill(-1); const q=[sy0*w+sx0]; prev[sy0*w+sx0]=sy0*w+sx0; let found=-1; for(let qi=0;qi<q.length;qi++){ const cur=q[qi], cx=cur%w, cy=(cur/w)|0; if(Math.abs(cx-tx)<=1&&Math.abs(cy-ty)<=1){ found=cur; break; } for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=cx+dx, ny=cy+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; const ni=ny*w+nx; if(prev[ni]>=0||L.solid[ni]) continue; prev[ni]=cur; q.push(ni); } }
       if(found<0){ this.pathWp={x:o.x,y:o.y}; this.pathLen=dist(this.px,this.py,o.x,o.y); } else { const path:number[]=[]; let c=found; while(c!==sy0*w+sx0){ path.push(c); c=prev[c]; } path.reverse(); this.pathLen=path.length; const wp=path[Math.min(path.length-1,5)]; this.pathWp=path.length?{x:(wp%w)+.5,y:((wp/w)|0)+.5}:{x:o.x,y:o.y}; } }

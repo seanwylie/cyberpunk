@@ -23,3 +23,13 @@ Rarity multiplies weapon damage (grey 1.0, green 1.1, blue 1.25, purple 1.45, or
 
 ## Dungeon guidance
 Objective strip + pathed arrow (BFS around walls), objective beacon/edge marker, minimap with fog-of-war, checkpoints, objective and alerted enemies. Zone-entry banners with the next objective. Checkpoint rings show reached/current; first touch heals 40% and vents heat (pacing). Stronger enemy telegraphs (brighter fill ramp, flash in the last 30%, "!" marker). End-of-run summary modal (time, kills, loot recap, return/re-run).
+
+## Finished instances never block other dungeons (fix)
+Cause of "can't enter another instance unless I abandon": after the boss died the instance stayed `live` (so the gate disabled every other dungeon with "Finish or abandon your other instance first"), and Reset was refused because the clear had consumed the lockout.
+Rules now:
+- Boss defeat marks the instance `bossDead/completed/rewardsGranted` immediately and sets the lockout for **that dungeon only**.
+- A finished instance is non-blocking. Returning to town (B) auto-collects ground loot that fits, banks the pack into the locker, and retires the instance when nothing is left. If loot remains (pack/locker full or ground loot), the instance stays for retrieval via "Re-enter", but starting another dungeon is allowed.
+- Starting another dungeon with leftovers shows a warning and requires pressing Start a second time within 30 s; leftovers are then discarded.
+- Save migration (`Game.migrateInstance`): a saved instance with a dead boss but unset flags is marked cleared with the lockout applied.
+- Post-boss objective: "Boss defeated! Pick up your loot (N nearby), then press B to return to town" (loot optional), then "Dungeon cleared. Press B to return to town." The summary panel retries until it can open (it no longer gets skipped when another modal is open).
+- Test: `tests/instance_clear.mjs` (all dungeons, return paths, reload, migration, objective text).
