@@ -1,4 +1,4 @@
-import { ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES } from './config';
+import { ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE} from './config';
 import { computeBuild, installedLayout, BuildResult } from './build';
 import { buildTown, Level, Interact } from './level';
 import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
@@ -501,8 +501,10 @@ export class Game {
   pickEntry(pool:LootEntry[]):LootEntry{ const tot=pool.reduce((a,b)=>a+b.w,0); let r=Math.random()*tot; for(const e of pool){ r-=e.w; if(r<=0) return e; } return pool[0]; }
   rollLoot(e:En){
     const def=ENEMIES[e.type]; const inst=this.inst!; const tier=def.boss?'boss':(def.elite||(e as any).affix?.length)?'elite':'ordinary'; const T=LOOT[tier]; const pool=this.dd.loot?this.dd.loot[tier]:T.pool; const rolls=def.boss?LOOT.boss.rolls:def.elite?2:1;
-    const cr=T.credits.map(c=>c*this.dd.creditMul) as [number,number]; if(Math.random()<(def.boss||def.elite?1:.5)) this.addDrop(e.x,e.y,{kind:'credits',amount:Math.round(cr[0]+Math.random()*(cr[1]-cr[0]))});
-    for(let i=0;i<rolls;i++){ if(Math.random()>T.chance) continue; this.dropEntry(this.pickEntry(pool),e.x,e.y); }
+    const sc=DROP.scale, ord=tier==='ordinary', pile=ord?Math.min(1,DROP.creditPile*sc):1, cm=ord?(sc>=1?1:Math.min(4,DROP.creditKeep/sc)):1;
+    const cr=T.credits.map(c=>c*this.dd.creditMul*cm) as [number,number]; if(Math.random()<pile) this.addDrop(e.x,e.y,{kind:'credits',amount:Math.round(cr[0]+Math.random()*(cr[1]-cr[0]))});
+    const guar=def.boss?DROP.bossGuaranteed:def.elite||tier==='elite'?DROP.eliteGuaranteed:0, extra=def.boss?DROP.bossExtra:tier==='elite'?DROP.eliteExtra:0;
+    for(let i=0;i<rolls;i++){ const ch=ord?T.chance*Math.min(1,sc):i<guar?1:Math.min(1,extra*(sc/DROP_RATE_SCALE)); if(Math.random()>ch) continue; this.dropEntry(this.pickEntry(pool),e.x,e.y); }
     const sig=def.boss?(this.dd.id==='annex'?LOOT.signature[e.type]:this.dd.signature?.[e.type]):null; if(sig&&Math.random()<sig.chance) this.dropEntry({item:sig.item,w:1},e.x,e.y);
   }
   /** Personal loot, filtered against the recipient level. Ineligible items are NOT rerolled downward (spec). */

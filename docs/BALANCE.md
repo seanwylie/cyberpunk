@@ -145,3 +145,17 @@ sweep 18.3, cloak 7.6, control 16.3, bladeburst 18.5, reposition 15.0, brace 0.7
 - Gear gap is intentional: under-geared kits fail (tier III with blue 15%, mid 6%; starter 0% everywhere), the next kit up clears.
 - Reclaim Walker, Relay Node, Sedative Bloom, Mortar Tread and Arc Flinger still time out in 3-of-a-kind duels (ranged/support mobs the bot cannot corner or that heal each other); they were not made weaker again because they are rarely alone in generated packs.
 - Balance numbers are still placeholders until human playtesting.
+
+## Drop rates (`DROP_RATE_SCALE`, `src/config.ts`)
+Complaint: loot was far too frequent. Measured with `node tools/balance/drops.mjs --seeds 24 [--scale 1]` (kills every enemy in each dungeon at its max level on a seeded RNG; counts ground items, chips, stims, credits; raw tables in `tools/balance/out/drops_before.json|txt` and `drops_after.*`). `tests/drops.mjs` asserts the per-run range and the elite/boss guarantees.
+
+What changed (`DROP` object; `DROP_RATE_SCALE` = 0.3):
+- Ordinary mobs: item/chip/stim chance 0.16 -> 0.16 x 0.3. Credit piles: chance 0.5 -> 0.5 x 0.3, pile size x(0.5/0.3), so ordinary credit income is about half (and ground piles go from ~45 to ~15 per Annex run).
+- Elites (def or affixed): 1 guaranteed roll + 1 extra at 40% (was 2 guaranteed). Bosses: 2 guaranteed rolls + 1 extra at 40% (was 3). Extras scale with `DROP.scale / DROP_RATE_SCALE`; signature drops, rarity weights (purple/orange stay rare), tutorial grants and idkfa are untouched. `DROP.scale = 1` restores old ordinary behaviour for comparisons.
+
+Gear drops per run (items + chips + stims), before -> after (full table in the out files):
+- Annex 13.2 -> 5.4 (items 6.0 -> 2.8); Foundry 15.6 -> 7.0; Clinic 12.3 -> 5.3; Warehouse 13.0 -> 6.0.
+- Tier I levels ~18.4 -> ~8.1 avg; tier II ~19 -> ~8.5; tier III ~22 -> ~10.8; tier IV Recall Yard 27.9 -> 14.5. Overall total is ~47% of before (items alone ~52%).
+- Purple items per run stay 0-1.7 and orange ~0 (rarity curve unchanged).
+
+Economy check: sell-all value of an Annex run (credits + selling every item) 858c -> 483c; vendor blue gear costs 300c, install 80/400c for blue/purple removals, stim 30c, so a run still funds roughly one blue purchase; tier III/IV runs give 1.6-3.6k. Credit income overall is ~76% of before because elite/boss credit piles are unchanged. Still placeholders pending human playtests.

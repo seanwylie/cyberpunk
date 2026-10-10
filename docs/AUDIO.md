@@ -66,7 +66,7 @@ Tests: `npm run test:music` now also checks that the 20 batch-1 bosses have >= 1
 #### Pools and rotation (`POOLS`, `BOSS_MAP`, `ShuffleBag` in `src/music.ts`)
 - Each state draws from its pool through a shuffle bag: every track once per cycle, never the same track twice in a row (also across refills).
 - town: town, calm_drift, calm_rust, calm_vents. traversal: traversal_a/_b + calm_neon/static/drift/rust/vents. combat: combat_a/_b. elite (engagement with a non-boss elite): elite_siege/hunt, boss_overclock/meltdown. combat_a/b are no longer used by the game (the `combat` state is kept in the manager but the sim never emits it). bosscombat: boss_fight + 3 new.
-- Calm states (town, traversal) rotate after `ROTATE_LOOPS` (2) full loops of the current track (~2.4 min): a 3 s equal-power crossfade is scheduled to land on the loop boundary.
+- Calm states (town, traversal) rotate only after `ROTATE_LOOPS` (4) full loops of the current track AND `CALM_MIN` (240 s, ~4 min) since the last switch, never while a hard state is wanted or a disengage is pending: a 3 s equal-power crossfade is scheduled to land on the loop boundary.
 - Bosses have a fixed track via `BOSS_MAP` (sim emits `musickey` with the boss id); unmapped bosses draw from the pool.
 - Core 8 original tracks must load for file music to activate; the 10 new ones stream in after start and are skipped in pools until decoded or if missing.
 - Tests: `npm run test:music` covers bag logic, pool/boss-map/asset existence, elite and boss picks, calm rotation.
@@ -80,14 +80,17 @@ Plan: Creator, 329,944 credits/month, 1,627 used before work. Whole job (1 probe
 - Calm pool (town / traversal tracks) plays everywhere in town and runs. Map position, room/zone changes, proximity, enemy alert and ordinary-mob combat never change the track.
 - `elite` (hard pool) starts only when the player damages an elite (`ENEMIES[].elite` or an affixed elite pack member) or is damaged by one, and lasts 8 s after the last such exchange (`eliteEng`). Mere proximity or alert does not count.
 - `bossreveal` -> `bosscombat` start with the boss encounter (boss spawn from entering the arena / boss aggro); `resolution` after the kill.
-- Manager hysteresis (`src/music.ts`): `HARD_MIN` 15 s minimum on a hard track, `HARD_EXIT_HOLD` 4 s of calm before fading back to a calm track, `CALM_MIN` 20 s before a calm track may rotate. Calm tracks still rotate only after `ROTATE_LOOPS` loops, landing on the loop boundary. Return to town is explicit and not held.
-- Tests: `tests/music.mjs` (fake clock) covers zone walking, ordinary combat, elite proximity vs first hit, elite hurt, boss, delayed disengage, no flapping. Use `URL=http://localhost:PORT/` if the dev server is not on 5173.
+- **Entering hard music is never gated.** Every elite engagement and every boss reveal/fight crossfades in (1.5 s fight / 2.5 s reveal) immediately, even right after a calm switch or a previous engagement. If the track is not decoded yet it is fetched and starts the moment it loads (any decoded track of the pool after 4 s). Hysteresis applies only to exit and rotation.
+- Manager hysteresis (`src/music.ts`): `HARD_MIN` 45 s minimum on a hard track, `HARD_EXIT_HOLD` 10 s of sustained calm before fading back, `HARD_ROTATE` 90 s between track switches inside a hard state, `PHASE_MIN` 20 s before a phase change may switch, `CALM_MIN` 240 s. Return to town is explicit and not held.
+- Elite re-trigger: each exchange re-arms the 8 s `eliteEng` window (plus the 10 s manager exit hold), so sporadic hits stay on the hard track instead of toggling.
+- Debug: `MusicManager.counts` ({calm, hard, phase, total, entries}) and `resetCounts()`; `log` records every crossfade.
+- Tests: `tests/music.mjs` (fake clock) covers zone walking, ordinary combat, elite proximity vs first hit, elite hurt, boss, delayed disengage, no flapping. Budgets asserted: <= 2 switches in a scripted 10-minute calm run, <= 4 in a 5-minute boss fight with one phase change, <= 2 in a 3-minute elite fight, and every elite/boss engagement fades in. Use `URL=http://localhost:PORT/` if the dev server is not on 5173.
 
 ### Boss and elite rotation
 - Each boss has a 4-track playlist (`BOSS_PLAYLISTS`, built in `src/music.ts` from `BOSS_MAP` + `INTENSITY`): the signature track first, then 3 others from the boss pool of the same or higher intensity (round-robin across intensity levels, rotated per boss; lower-intensity tracks only fill gaps).
-- Engagement starts on the signature track. After that, at each loop boundary (current track played one full loop, minus the 3 s crossfade) and at least `HARD_MIN` (15 s) after the last switch, the fight crossfades (3 s, equal-power) to the next track of a per-fight shuffle bag: never the same track twice in a row, every track once per cycle. The bag is rebuilt for each new fight.
-- Phase changes and enrage: the sim emits `musicphase` when the boss's `phase` counter changes; `MusicManager.onPhase` crossfades (1.5 s) to the least-intense playlist track that is more intense than the current one (needs `PHASE_MIN` 8 s on the current track; never repeats the current track).
-- Elite fights rotate through the elite pool the same way (loop boundary, 15 s dwell, shuffle bag, no repeat). Disengage still falls back to calm via the 4 s exit hold; reveal -> fight, resolution and town return are unchanged.
+- Engagement starts on the signature track. After that, rotation happens at a loop boundary and at most once per `HARD_ROTATE` (90 s): crossfade (3 s) to the next track of a per-fight shuffle bag (no immediate repeat; bag rebuilt for each fight).
+- Phase changes and enrage: the sim emits `musicphase`; `MusicManager.onPhase` crossfades (1.5 s) to a more intense playlist track (needs `PHASE_MIN` 20 s on the current one; never repeats).
+- Elite fights rotate through the elite pool the same way (90 s). Disengage falls back to calm after the 45 s minimum + 10 s exit hold.
 
 ### Runtime (`src/music.ts`, hooked in `src/audio.ts`)
 - States: town, traversal, combat, bossreveal, bosscombat, resolution (driven by `Game` `music` events).
