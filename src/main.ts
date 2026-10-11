@@ -26,7 +26,7 @@ const canvas=document.getElementById('game') as HTMLCanvasElement; const rend=ne
 tut=new Tutorial(game,ui,rend); ui.tut=tut;
 game.townPreload=async id=>{ if(id==='harrow') await rend.preloadTown(id,buildHarrow()); };
 const input=new Input(game,rend,audio,{ modalOpen:()=>ui.modalOpen(), onToggleInv:()=>ui.toggleLive(), onEsc:()=>ui.esc() },canvas);
-const resize=()=>{ applyUiScale(); rend.resize(); }; window.addEventListener('resize',resize); Q.onChange=()=>{ rend.resize(); }; resize();
+const resize=()=>{ applyUiScale(); rend.resize(); (ui as any).fitModal?.(); }; window.visualViewport?.addEventListener('resize',()=>(ui as any).fitModal?.()); window.visualViewport?.addEventListener('scroll',()=>(ui as any).fitModal?.()); window.addEventListener('resize',resize); Q.onChange=()=>{ rend.resize(); }; resize();
 registerSW(); initMobile(game,audio,()=>{ applyUiScale(); rend.resize(); });
 // Resume an existing, unexpired instance suspended by an interruption (solo save/suspend): offer it at the gate.
 if(save.instance&&save.instance.expiresAt>Date.now()){ game.inst=save.instance; setTimeout(()=>ui.toast('Suspended run found: re-enter via the Annex gate. Boss state resets; loot and kills persist.'),400); }

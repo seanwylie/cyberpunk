@@ -1,0 +1,32 @@
+// Every modal window keeps its Close button fully inside the viewport and clickable on short / zoomed viewports (1366x768, 1280x720, 1280x600, 1024x600, 800x500, DPR 1.25/1.5),
+// Esc closes, and there is a floating close fallback (#modalx). NPC dialog buttons are checked too.
+import { launch, sleep } from './lib.mjs';
+let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const VPS = [[1366, 768, 1.25], [1366, 768, 1.5], [1280, 720, 1.25], [1280, 720, 1.5], [1280, 600, 1], [1024, 600, 1], [800, 500, 1], [1093, 614, 1]];
+const MODALS = ['locker', 'vendor', 'bank', 'fixer', 'store', 'contacts', 'settings', 'wardrobe', 'codex', 'help', 'travel', 'guild', 'gate'];
+const only = process.env.VPI ? VPS.filter((_, i) => process.env.VPI.split(',').includes(String(i))) : VPS;
+for (const [w, h, dpr] of only) {
+  const { browser, page, errors } = await launch({ viewport: { width: w, height: h }, dpr, query: '?splash=hold' }); const ev = (f, a) => page.evaluate(f, a);
+  await ev(() => { document.getElementById('splash')?.remove(); const g = window.__game; g.save.level = 30; g.save.credits = 99999; g.checkTownUnlocks?.(); g.enterTown(); }); await sleep(1500);
+  for (const m of MODALS) {
+    await ev(m => { const u = window.__ui; u.open(null); u.open(m); }, m); await sleep(250);
+    const r = await ev(() => { const b = document.querySelector('#modal [data-act=close]'); const x = document.getElementById('modalx'); const vv = window.visualViewport; const vw = vv ? vv.width : innerWidth, vh = vv ? vv.height : innerHeight;
+      const info = e => { if (!e) return null; const r = e.getBoundingClientRect(); const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { l: r.left, t: r.top, r: r.right, b: r.bottom, hit: !!top && (top === e || e.contains(top) || top.contains(e)) }; };
+      return { vw, vh, btn: info(b), fx: info(x && getComputedStyle(x).display !== 'none' ? x : null), open: getComputedStyle(document.getElementById('modal')).display !== 'none' }; });
+    const inside = i => i && i.l >= -.5 && i.t >= -.5 && i.r <= r.vw + .5 && i.b <= r.vh + .5;
+    ok(r.open && inside(r.btn) && r.btn.hit, `${w}x${h}@${dpr} ${m}: Close button inside viewport (${r.btn ? [r.btn.l, r.btn.t, r.btn.r, r.btn.b].map(Math.round) : 'none'} in ${Math.round(r.vw)}x${Math.round(r.vh)}) and clickable`);
+    ok(inside(r.btn) || (inside(r.fx) && r.fx.hit), `${w}x${h}@${dpr} ${m}: header Close on screen or floating fallback shown`);
+    await page.keyboard.press('Escape'); await sleep(120); ok(await ev(() => getComputedStyle(document.getElementById('modal')).display === 'none'), `${w}x${h}@${dpr} ${m}: Esc closes`);
+  }
+  // fallback: push the header off screen on purpose; the floating close must appear, be clickable and close the window
+  await ev(() => { const u = window.__ui; u.open(null); u.open('locker'); }); await sleep(250); await ev(() => { document.querySelector('#modal .win>header').style.transform = 'translateY(-900px)'; window.__ui.fitModal(); });
+  const fb = await ev(() => { const x = document.getElementById('modalx'); const r = x.getBoundingClientRect(); const t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { on: getComputedStyle(x).display !== 'none', inside: r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight, hit: t === x }; });
+  ok(fb.on && fb.inside && fb.hit, `${w}x${h}@${dpr}: floating close appears when the header is off screen (${JSON.stringify(fb)})`);
+  await page.mouse.click(...await ev(() => { const r = document.getElementById('modalx').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })); await sleep(150); ok(await ev(() => getComputedStyle(document.getElementById('modal')).display === 'none'), `${w}x${h}@${dpr}: floating close closes the window`);
+  // NPC dialog
+  await ev(() => { window.__ui.open(null); window.__ui.showDialog({ title: 'Odalys Vane', body: 'Floor sweep contract available. '.repeat(6), options: [{ label: 'Accept the contract' }, { label: 'Not now' }] }); }); await sleep(300);
+  const d = await ev(() => { const el = document.getElementById('dialog'); if (!el || getComputedStyle(el).display === 'none') return null; const bs = [...el.querySelectorAll('button')].map(b => { const r = b.getBoundingClientRect(); return { t: b.textContent.slice(0, 12), ok: r.top >= 0 && r.bottom <= innerHeight && r.left >= 0 && r.right <= innerWidth }; }); const r = el.getBoundingClientRect(); return { bs, top: r.top, bottom: r.bottom, vh: innerHeight }; });
+  ok(!d || (d.top >= 0 && d.bottom <= d.vh + 1 && d.bs.every(b => b.ok)), `${w}x${h}@${dpr} NPC dialog and its buttons fit (${d ? Math.round(d.top) + '-' + Math.round(d.bottom) + ' of ' + d.vh : 'not shown'})`);
+  ok(errors.length === 0, `${w}x${h}@${dpr}: no page errors ${errors[0] || ''}`); await browser.close();
+}
+console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
