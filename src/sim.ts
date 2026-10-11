@@ -109,9 +109,10 @@ export class Game {
     this.lastZone=''; this.zoneShown={}; this.zoneAnyAt=-1e9; this.pathWp=null; this.applyDoors();
     if(!fresh&&!inst.enemies.length&&!this.instDone(inst)&&!inst.flags.bossDead&&!inst.flags.bossSpawned){ /* repair an instance whose enemy list was wiped by an old save-in-town bug: respawn the roster */ const lv=this.level; inst.enemies=[]; for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp*this.hpMul(), maxHp:ENEMIES[sp.type].hp*this.hpMul(), alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); } }
     this.enemies=inst.enemies.map(e=>this.wrap(e));
+    for(const e of this.enemies){ const r=ENEMIES[e.type]?.radius||.4; this.snapWalkable(e,r); if(e.home&&this.stranded(e.home.x,e.home.y,r)) e.home={x:e.x,y:e.y}; }
     // Boss attempts always replay the full reveal: reset a living boss on (re)entry.
     this.resetBossIfAlive(); this.fixStuckDrops();
-    const cp=this.level.checkpoints[0]; this.px=fresh?this.level.spawn.x:cp.x; this.py=fresh?this.level.spawn.y:cp.y;
+    const cp=this.level.checkpoints[0]; this.px=fresh?this.level.spawn.x:cp.x; this.py=fresh?this.level.spawn.y:cp.y; { const me={x:this.px,y:this.py}; if(this.snapWalkable(me,COMBAT.playerRadius)){ this.px=me.x; this.py=me.y; } }
     if(!fresh && (inst.checkpoint.id!==1)){ /* re-entry always from entry point: must run back through surviving enemies */ }
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.braceT=0; this.defibCd=0; this.abCd=[0,0,0]; this.dodgeCd=0;
     this.musicSet('traversal'); this.emit('mode','run'); this.saveNow();
@@ -167,6 +168,17 @@ export class Game {
   circleHits(x:number,y:number,r:number){ const x0=Math.floor(x-r), x1=Math.floor(x+r), y0=Math.floor(y-r), y1=Math.floor(y+r); for(let iy=y0;iy<=y1;iy++)for(let ix=x0;ix<=x1;ix++){ if(!this.solidAt(ix+.5,iy+.5)) continue; const cx=clamp(x,ix,ix+1), cy=clamp(y,iy,iy+1); const dx=x-cx, dy=y-cy; if(dx*dx+dy*dy<r*r-1e-6) return true; } return false; }
   /** Swept circle clearance between two points (used for wide-LOS and path smoothing). */
   clearFor(ax:number,ay:number,bx:number,by:number,r:number){ const d=dist(ax,ay,bx,by); const n=Math.max(1,Math.ceil(d/.3)); for(let i=1;i<=n;i++){ const t=i/n; if(this.circleHits(ax+(bx-ax)*t,ay+(by-ay)*t,r)) return false; } return true; }
+  /** Nearest tile centre (spiral search) where a circle of radius r fits; null only if the level has no walkable tile within 20 tiles. */
+  nearestWalkable(x:number,y:number,r=.2):{x:number;y:number}|null{ const L=this.level; if(!isFinite(x)||!isFinite(y)){ x=L.spawn.x; y=L.spawn.y; } const cx=clamp(Math.floor(x),0,L.w-1), cy=clamp(Math.floor(y),0,L.h-1); let best:{x:number;y:number}|null=null, bd=1e9;
+    for(let ring=0;ring<=20&&!best;ring++){ for(let dy=-ring;dy<=ring;dy++)for(let dx=-ring;dx<=ring;dx++){ if(Math.max(Math.abs(dx),Math.abs(dy))!==ring) continue; const nx=cx+dx, ny=cy+dy; if(nx<0||ny<0||nx>=L.w||ny>=L.h||L.solid[ny*L.w+nx]) continue; const px=nx+.5, py=ny+.5; if(r>0&&this.circleHits(px,py,r)) continue; const d=(px-x)**2+(py-y)**2; if(d<bd){ bd=d; best={x:px,y:py}; } } }
+    return best; }
+  stranded(x:number,y:number,r:number){ return !isFinite(x)||!isFinite(y)||this.solidAt(x,y)||this.circleHits(x,y,r*.5); }
+  /** Move an entity standing on a non-walkable spot to the nearest walkable one. Returns true when it was moved. */
+  snapWalkable(o:{x:number;y:number},r:number):boolean{ if(!this.stranded(o.x,o.y,r)) return false; const p=this.nearestWalkable(o.x,o.y,r*.5)||this.nearestWalkable(o.x,o.y,0); if(!p) return false; o.x=p.x; o.y=p.y; this.rescued++; return true; }
+  rescued=0; resT=0;
+  /** Safety net (runs ~2x/s in a run): rescue any entity found on a non-walkable tile (spawn, restore, knockback, dash, teleport, party start). */
+  rescueStranded(){ if(this.mode!=='run') return; const me={x:this.px,y:this.py}; if(this.snapWalkable(me,COMBAT.playerRadius)){ this.px=me.x; this.py=me.y; this.toast('Repositioned onto walkable ground.'); }
+    for(const e of this.enemies){ if(e.dead||e._rt.reveal>0) continue; const r=ENEMIES[e.type]?.radius||.4; if(this.snapWalkable(e,r)&&e.home&&this.stranded(e.home.x,e.home.y,r)){ e.home={x:e.x,y:e.y}; } } }
   /** Push an entity out of any collider it ended up inside (dash end, knockback, spawn). */
   unwedge(o:{x:number;y:number},r:number){ if(!this.circleHits(o.x,o.y,r)) return; for(let ring=1;ring<=12;ring++){ const rr=ring*.15; for(let k=0;k<8;k++){ const a=k*Math.PI/4; const nx=o.x+Math.cos(a)*rr, ny=o.y+Math.sin(a)*rr; if(!this.circleHits(nx,ny,r)){ o.x=nx; o.y=ny; return; } } } }
   los(ax:number,ay:number,bx:number,by:number){ const d=dist(ax,ay,bx,by); const n=Math.ceil(d/.4); for(let i=1;i<n;i++){ const t=i/n; if(this.solidAt(ax+(bx-ax)*t,ay+(by-ay)*t)) return false; } return true; }
@@ -241,7 +253,7 @@ export class Game {
     const dt=Math.min(dtRaw,.05); this.time+=dt;
     if(this.mode==='run'&&this.inst){ this.inst.elapsed+=dt; const rem=this.inst.expiresAt-this.now(); if(rem<=0){ this.expireInstance(); this.enterTown(); return; } if(!this.inst.warned&&rem<INSTANCE_WARN_MINUTES*60000){ this.inst.warned=true; this.toast('Instance expires in under '+INSTANCE_WARN_MINUTES+' minutes. Retrieve loot.'); } }
     this.updatePlayer(dt); abxTick(this,dt); this.codexT-=dt; if(this.codexT<=0){ this.codexT=1; this.codexScan(); }
-    if(this.mode==='run'){ if((this.sanT-=dt)<=0){ this.sanT=1; this.sanitizeGround(); } this.updateEnemies(dt); this.updateProjs(dt); this.updateZones(dt); this.autoPickup(); this.updateRun(dt); this.updateMusic(dt); this.abilityHints(dt); this.saveT+=dt; if(this.saveT>4){ this.saveT=0; this.saveNow(); } }
+    if(this.mode==='run'){ if((this.sanT-=dt)<=0){ this.sanT=1; this.sanitizeGround(); } if((this.resT-=dt)<=0){ this.resT=.5; this.rescueStranded(); } this.updateEnemies(dt); this.updateProjs(dt); this.updateZones(dt); this.autoPickup(); this.updateRun(dt); this.updateMusic(dt); this.abilityHints(dt); this.saveT+=dt; if(this.saveT>4){ this.saveT=0; this.saveNow(); } }
     this.updatePrompt(); this.updateFx(dt);
   }
   updateFx(dt:number){ for(const f of this.fx){ f.t+=dt; if(f.vx){ f.x+=f.vx*dt; f.y+=(f.vy||0)*dt; } } this.fx=this.fx.filter(f=>f.t<f.life); if(this.fx.length>260) this.fx.splice(0,this.fx.length-260); }
@@ -462,7 +474,7 @@ export class Game {
     this.emit('dialog',{ title:c.title, body:clue+'\n\n'+c.body+' Combat continues while this is open.', options:[
       { label:c.confirm, cb:()=>{ if(f.cond) return; this.channel={kind:'hack',t:0,dur:1.5,cb:()=>{ if(f.cond) return; f.cond=id; f.bossKey=c.boss; this.note('condition_used',id); this.note('route_used',c.cap); this.toast(c.toast); this.saveNow(); }}; }},{label:'Cancel'} ] }); }
   story(){ if(!this.save.story) this.save.story=newStory(); return this.save.story; }
-  spawnEnemy(type:string,x:number,y:number):En{ const inst=this.inst!; const d=ENEMIES[type]; const e=this.wrap({ id:inst.nextId++,type,x,y,hp:d.hp*this.hpMul(),maxHp:d.hp*this.hpMul(),alert:false,dead:false,home:{x,y},group:99,faction:'enemy',ctrlT:0,stunT:0 }); inst.enemies.push(e); this.enemies.push(e); return e; }
+  spawnEnemy(type:string,x:number,y:number):En{ const inst=this.inst!; const d=ENEMIES[type]; const e=this.wrap({ id:inst.nextId++,type,x,y,hp:d.hp*this.hpMul(),maxHp:d.hp*this.hpMul(),alert:false,dead:false,home:{x,y},group:99,faction:'enemy',ctrlT:0,stunT:0 }); this.snapWalkable(e,d.radius); e.home={x:e.x,y:e.y}; inst.enemies.push(e); this.enemies.push(e); return e; }
   spawnBoss(){
     const inst=this.inst!; const f=inst.flags; if(!f.bossKey){ f.bossKey=this.dd.defaultBoss; } // arbitration: first confirmed condition wins; none => Overseer
     f.bossSpawned=true; f.bossRevealed=true; const b=this.spawnEnemy(f.bossKey!,this.level.bossSpawn.x,this.level.bossSpawn.y); b._rt.reveal=COMBAT.bossRevealSeconds; b.alert=false; this.revealing=true; this.projs=[]; this.emit('reveal',{ key:f.bossKey, name:ENEMIES[f.bossKey!].name }); this.toast(ENEMIES[f.bossKey!].name+' emerges. You are safe during the reveal.'); this.emit('sfx','boss_reveal');
@@ -503,7 +515,7 @@ export class Game {
   flowCls(r:number){ return r<=.5?0:r<=.72?1:2; }
   flowField(cls=0){ const L=this.level; const n=L.w*L.h; if(!this.flows[cls]||this.flows[cls]!.length!==n) this.flows[cls]=new Int16Array(n); const fl=this.flows[cls]!; fl.fill(-1); const R=Game.FLOW_R[cls]; if(cls===0) this.flow=fl;
     if(!this.clr[cls]||this.clr[cls]!.length!==n||this.clrLevel!==L){ if(this.clrLevel!==L){ this.clrLevel=L; this.clr=[null,null,null]; } const m=new Uint8Array(n); for(let y=0;y<L.h;y++)for(let x=0;x<L.w;x++) m[y*L.w+x]=(!L.solid[y*L.w+x]&&(R===0||!this.circleHits(x+.5,y+.5,R)))?1:0; this.clr[cls]=m; }
-    const ok=this.clr[cls]!; const sx=clamp(Math.floor(this.px),0,L.w-1), sy=clamp(Math.floor(this.py),0,L.h-1); if(!this.q||this.q.length!==n) this.q=new Int32Array(n); const q=this.q; let h=0,tl=0; q[tl++]=sy*L.w+sx; fl[sy*L.w+sx]=0;
+    const ok=this.clr[cls]!; let sx=clamp(Math.floor(this.px),0,L.w-1), sy=clamp(Math.floor(this.py),0,L.h-1); if(L.solid[sy*L.w+sx]){ const np=this.nearestWalkable(this.px,this.py,0); if(np){ sx=Math.floor(np.x); sy=Math.floor(np.y); } } /* A* start on a non-walkable tile: snap to the nearest walkable one */ if(!this.q||this.q.length!==n) this.q=new Int32Array(n); const q=this.q; let h=0,tl=0; q[tl++]=sy*L.w+sx; fl[sy*L.w+sx]=0;
     while(h<tl){ const c=q[h++]; const cx=c%L.w, cy=(c/L.w)|0; const d=fl[c]; for(let k=0;k<4;k++){ const nx=cx+(k===0?1:k===1?-1:0), ny=cy+(k===2?1:k===3?-1:0); if(nx<0||ny<0||nx>=L.w||ny>=L.h) continue; const ni=ny*L.w+nx; if(fl[ni]>=0||L.solid[ni]) continue; if(!ok[ni]&&!(Math.abs(nx-sx)<=2&&Math.abs(ny-sy)<=2)) continue; fl[ni]=d+1; q[tl++]=ni; } } }
   flowDir(e:En,cls=0):{x:number;y:number}|null{ const L=this.level; const fl=this.flows[cls]; if(!fl) return null; const r=ENEMIES[e.type].radius*.85; let cx=clamp(Math.floor(e.x),0,L.w-1), cy=clamp(Math.floor(e.y),0,L.h-1); const val=(x:number,y:number)=>fl[y*L.w+x];
     // step greedily down the field, keeping the farthest waypoint that is still swept-clear for this radius
