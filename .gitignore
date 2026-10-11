@@ -19,3 +19,4 @@ tools/balance/out/*.json
 
 node_modules
 !.env.example
+server/dist/
