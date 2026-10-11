@@ -17,20 +17,20 @@ export async function runJob(job) {
     for (const sl of SLOTS) { const st = g.save.items.find(i => i.def === 'stock_' + sl); if (st) g.save.installed[sl] = st.uid; else { const it = St.mkInst(g.save, 'stock_' + sl); g.save.items.push(it); g.save.installed[sl] = it.uid; } }
     for (const it of g.save.items) if (!it.def.startsWith('stock_')) it.chips = [];
     // abmid/abpurple: same rarity ceiling as mid/purple, but hardware is the augment-ability set (src/abilities/hw.ts) so abilities are exercised
-    const AB = job.kit === 'abmid' || job.kit === 'abpurple'; const kitMax = { starter: -1, mid: 2, blue: 2, purple: 3, orange: 4, abmid: 2, abpurple: 3 }[job.kit];
+    const HEATMAX = job.kit === 'heatmax'; const AB = job.kit === 'abmid' || job.kit === 'abpurple' || HEATMAX; const kitMax = { starter: -1, mid: 2, blue: 2, purple: 3, orange: 4, abmid: 2, abpurple: 3, heatmax: 3 }[job.kit];
     if (job.kit === 'orange') { g.recompute(); g.cheatIdkfa(); g.save.level = job.level; }
     else if (kitMax >= 0) {
-      const chipMax = (job.kit === 'mid' || job.kit === 'blue' || job.kit === 'abmid') ? 2 : 3;
+      const chipMax = HEATMAX ? 3 : (job.kit === 'mid' || job.kit === 'blue' || job.kit === 'abmid') ? 2 : 3;
       for (const sl of SLOTS) {
         const cands = ITEMS.filter(i => i.slot === sl && !i.id.startsWith('stock_') && RAR.indexOf(i.rarity) <= kitMax && RAR.indexOf(i.rarity) >= 1 && i.lvl <= job.level && !/cheat|sig_/.test(i.id) && (AB ? true : !i.id.startsWith('ab_')));
-        if (AB) cands.sort((a, b) => (+b.id.startsWith('ab_') - +a.id.startsWith('ab_')) || RAR.indexOf(b.rarity) - RAR.indexOf(a.rarity) || (b.abilities?.length || 0) - (a.abilities?.length || 0) || b.lvl - a.lvl || (a.id < b.id ? -1 : 1)); else cands.sort((a, b) => RAR.indexOf(b.rarity) - RAR.indexOf(a.rarity) || b.lvl - a.lvl || (a.id < b.id ? -1 : 1));
+        if (HEATMAX) cands.sort((a, b) => ((b.stats?.cooling || 0) - (a.stats?.cooling || 0)) || (+b.id.startsWith('ab_') - +a.id.startsWith('ab_')) || RAR.indexOf(b.rarity) - RAR.indexOf(a.rarity) || (a.id < b.id ? -1 : 1)); else if (AB) cands.sort((a, b) => (+b.id.startsWith('ab_') - +a.id.startsWith('ab_')) || RAR.indexOf(b.rarity) - RAR.indexOf(a.rarity) || (b.abilities?.length || 0) - (a.abilities?.length || 0) || b.lvl - a.lvl || (a.id < b.id ? -1 : 1)); else cands.sort((a, b) => RAR.indexOf(b.rarity) - RAR.indexOf(a.rarity) || b.lvl - a.lvl || (a.id < b.id ? -1 : 1));
         for (const c of cands) { const inst = St.mkInst(g.save, c.id); const keep = g.save.installed[sl]; g.save.installed[sl] = inst.uid; g.save.items.push(inst); const L = {}; for (const s2 of SLOTS) { const u = g.save.installed[s2]; L[s2] = g.save.items.find(i => i.uid === u); }
           const bad = (() => { try { const { hardConflicts } = window.__buildmod || {}; return false; } catch { return false; } })();
           break; }
       }
       // chips: top-rarity fitting chips, sockets filled (mid: half)
       for (const sl of SLOTS) { const it = g.save.items.find(i => i.uid === g.save.installed[sl]); if (!it || it.def.startsWith('stock_')) continue; const cap = SLOT_SOCKETS[sl]; const n = (job.kit === 'mid' || job.kit === 'abmid') ? Math.ceil(cap / 2) : cap;
-        const list = Object.keys(CHIPS).filter(c => chipFits(c, sl) && RAR.indexOf(CHIPS[c].rarity) <= chipMax).sort((a, b) => RAR.indexOf(CHIPS[b].rarity) - RAR.indexOf(CHIPS[a].rarity) || (a < b ? -1 : 1)); it.chips = []; for (let i = 0; i < n && list.length; i++) it.chips.push(list[i % Math.min(list.length, 4)]); }
+        const list = Object.keys(CHIPS).filter(c => chipFits(c, sl) && RAR.indexOf(CHIPS[c].rarity) <= chipMax && (!HEATMAX || /^(coolant|quench)$/.test(c))).sort((a, b) => RAR.indexOf(CHIPS[b].rarity) - RAR.indexOf(CHIPS[a].rarity) || (a < b ? -1 : 1)); it.chips = []; for (let i = 0; i < n && list.length; i++) it.chips.push(list[i % Math.min(list.length, 4)]); }
     }
     g.recompute();
     const kitInfo = () => ({ hp: Math.round(g.maxHp), dmg: +g.stat().dmg.toFixed(2), armor: +g.stat().armor.toFixed(1), atk: +g.stat().atkSpeed.toFixed(2), weapon: g.build.weapon.kind, abilities: g.build.abilities.slice() });
@@ -42,7 +42,7 @@ export async function runJob(job) {
     g.beginAttack = (e, a, ang, tx, ty) => { const z0 = g.zones.length; const r = origBegin(e, a, ang, tx, ty); for (let i = z0; i < g.zones.length; i++) g.zones[i].src = e.type + ':' + a; return r; };
     g.resolveAttack = (e, a, tx, ty) => { const p0 = g.projs.length, z0 = g.zones.length; const r = origResolve(e, a, tx, ty); for (let i = p0; i < g.projs.length; i++) g.projs[i].src = e.type + ':' + a; for (let i = z0; i < g.zones.length; i++) if (!g.zones[i].src) g.zones[i].src = e.type + ':' + a; return r; };
     g.hurtPlayer = (dmg, sx, sy) => { const hp0 = g.hp; const dead0 = g.downed; origHurt(dmg, sx, sy); const d = hp0 - g.hp; if (d > 0 && !dead0) { const k = g.dmgSrc || '?'; R.src[k] = (R.src[k] || 0) + d; if (d > R.maxHit) { R.maxHit = d; R.maxHitSrc = k; } } };
-    g.executeAbility = c => { R.abil[c.ab.id] = (R.abil[c.ab.id] || 0) + 1; const p = g.curTag; g.curTag = c.ab.id; try { return origExec(c); } finally { g.curTag = p; } };
+    g.executeAbility = c => { R.abil[c.ab.id] = (R.abil[c.ab.id] || 0) + 1; H.casts++; const p = g.curTag; g.curTag = c.ab.id; try { return origExec(c); } finally { g.curTag = p; } };
     { const lb = g.lungeBladeHit.bind(g); g.lungeBladeHit = () => { const p = g.curTag; g.curTag = 'bladeburst'; try { return lb(); } finally { g.curTag = p; } }; }
     const firstAlert = new Map(); let simT = 0;
     g.killEnemy = e => { if (!e.dead && e.faction === 'enemy') { const t0 = firstAlert.get(e.id); const k = e.type; const def = ENEMIES[k]; if (t0 !== undefined) { (R.mobTtk[k] ||= []).push(+(simT - t0).toFixed(2)); if (def.boss) R.bossTtk = +(simT - t0).toFixed(1); } R.killsByType[k] = (R.killsByType[k] || 0) + 1; } return origKill(e); };
@@ -59,13 +59,17 @@ export async function runJob(job) {
     // ---- run setup ----
     const dt = 1 / 30; let result = { id: job.id, kit: job.kit, level: job.level, seed: job.seed, kitInfo: null };
     const maxT = job.maxT || (job.bossOnly ? 420 : 1100), maxDeaths = job.maxDeaths ?? 4;
-    const stepSim = () => { g.update(dt); simT += dt; };
+    const H = { over: 0, overT: 0, heatSum: 0, n: 0, was: false, casts: 0 };
+    const stepSim = () => { g.update(dt); simT += dt; H.n++; H.heatSum += g.heat; if (g.overheated) { H.overT += dt; if (!H.was) H.over++; } H.was = g.overheated; };
     const trackAlert = () => { for (const e of g.enemies) if (!e.dead && e.faction === 'enemy' && e.alert && !firstAlert.has(e.id) && e._rt.reveal <= 0) firstAlert.set(e.id, simT); };
+    const SPAM = job.profile === 'spam' || job.profile === 'sloppy', VENTER = job.profile === 'sloppy' || (job.profile !== 'spam' && !!job.vent !== false && job.mode === 'heat'); /* heat bench: casts every ready ability regardless of heat (only the overheat lockout stops it) */
     const TANK = job.profile === 'tank'; // tank-and-spank: stands next to its target, auto-attacks only: never dodges, never uses abilities, never repositions (stims only)
     const heroLogic = (threatsOnly) => {
       // stims
       if (g.hp < g.maxHp * 0.4 && g.inst.carried.stims > 0 && !g.downed && !(g.stimCd > 0)) { const s0 = g.inst.carried.stims; g.useStim(); if (g.inst.carried.stims < s0) R.stims++; }
       if (TANK) return null;
+      // vent: the heat-management skill. Vent when overheated, or when hot and not mid-dodge (12 s cooldown)
+      if (job.noVent !== true && g.ventNow && g.ventCd <= 0 && g.ventLock <= 0 && !g.downed && (g.overheated || g.heat >= 90)) g.ventNow();
       // dodge telegraphs by simple rule: leave telegraphed/active zones, dodge when a melee windup is close
       let fx = 0, fy = 0, flee = false;
       for (const z of g.zones) { if (z.env || z.dps <= 0) continue; const d = dist(g.px, g.py, z.x, z.y); if (d < z.r + 1.0 && (z.t < z.windup + .6 || true)) { const w = 1 / Math.max(.5, d); fx += (g.px - z.x) * w; fy += (g.py - z.y) * w; flee = true; } }
@@ -78,7 +82,7 @@ export async function runJob(job) {
     const useAbilities = (near, alive) => {
       if (TANK) return;
       if (g.aim || g.cast || g.overheated || g.downed) return;
-      const AB = g.build.abilities; const has = id => AB.indexOf(id); const rdy = id => { const i = has(id); return i >= 0 && g.abCd[i] <= 0 && g.heat + Cfg.ABILITIES[id].heat <= 96 ? i : -1; };
+      const AB = g.build.abilities; const has = id => AB.indexOf(id); const BUD = (ENEMIES[near.type].boss || ENEMIES[near.type].elite) ? 106 : 96; /* greedy burst: against bosses/elites the bot will push into overheat */ const hc = id => Cfg.ABILITIES[id].heat * (1 - Math.min(.3, 0)); const rdy = id => { const i = has(id); return i >= 0 && g.abCd[i] <= 0 && (SPAM || g.heat + hc(id) <= BUD) ? i : -1; };
       const fire = (i, tx, ty) => { try { g.beginAim(i); if (g.aim) { g.updateAim(tx, ty, true); g.releaseAim(); return true; } } catch (e) {} return false; };
       const d = dist(g.px, g.py, near.x, near.y); const near8 = alive.filter(e => dist(e.x, e.y, g.px, g.py) < 8);
       const shielded = near8.find(e => e._rt.shield && e._rt.shield.hp > 0), healer = near8.find(e => /healer|mender|warder|summoner|matron|relay/.test(e.type));
@@ -95,9 +99,9 @@ export async function runJob(job) {
         if ((i = rdy('brace')) >= 0 && (tele || g.hp < g.maxHp * .6) && d < 3.5) { if (fire(i, g.px, g.py)) return; }
         if ((i = rdy('sweep')) >= 0 && d < 3.4) { if (fire(i, near.x, near.y)) return; }
         if ((i = rdy('bladeburst')) >= 0 && d < 5.5) { if (fire(i, near.x, near.y)) return; }
-        if ((i = rdy('forcedcool')) >= 0 && g.heat > 55) { if (fire(i, g.px, g.py)) return; }
+        if ((i = rdy('forcedcool')) >= 0 && g.heat > (SPAM ? 101 : 55)) { if (fire(i, g.px, g.py)) return; }
         // data-driven augment abilities (src/abilities): defence/self when hurt or crowded, everything else at the target when in range
-        for (let k = 0; k < AB.length; k++) { const def = Cfg.ABILITIES[AB[k]]; if (!def || !def.ext || g.abCd[k] > 0 || g.heat + def.heat > 96) continue; const self = def.aim === 'self' || def.aim === 'toggle'; if (def.type === 'defense' && !(g.hp < g.maxHp * .7 || near8.length >= 2)) continue; if (self ? d > 6 : d > Math.min(def.range + 1, 9)) continue; if (fire(k, near.x, near.y)) return; }
+        for (let k = 0; k < AB.length; k++) { const def = Cfg.ABILITIES[AB[k]]; if (!def || !def.ext || g.abCd[k] > 0 || (!SPAM && g.heat + def.heat > BUD)) continue; const self = def.aim === 'self' || def.aim === 'toggle'; if (def.type === 'defense' && !(g.hp < g.maxHp * .7 || near8.length >= 2)) continue; if (self ? d > 6 : d > Math.min(def.range + 1, 9)) continue; if (fire(k, near.x, near.y)) return; }
       }
     };
     const ranged = () => g.build.weapon.range;
@@ -124,6 +128,18 @@ export async function runJob(job) {
       R.kitInfo = kitInfo();
       while (t < 60 && g.enemies.some(e => !e.dead && e.faction === 'enemy' && (e.type === job.id || e.minionOf)) && !g.downed) { const hpb = g.hp; trackAlert(); const act = heroLogic(); if (!act && !fight()) g.setMove(0, 0); stepSim(); t += dt; if (g.hp < g.maxHp * .3) g.hp = g.maxHp, R.refills = (R.refills || 0) + 1; }
       return { id: job.id, kit: job.kit, level: job.level, seed: job.seed, par: job.par, n, t: +t.toFixed(1), downed: g.downed, kitInfo: R.kitInfo, src: R.src, maxHit: R.maxHit, maxHitSrc: R.maxHitSrc, mobTtk: R.mobTtk, abil: R.abil, dealt: { ...g.dealt }, refills: R.refills || 0, mobHp: ENEMIES[job.id].hp };
+    }
+
+
+    if (job.mode === 'heat') {
+      // heat bench: stand in front of an unkillable dummy (god mode) for job.secs seconds, bot spams everything it can; measures casts/min, overheat count and lockout share
+      if (!g.startRun('annex')) return { error: 'startRun annex failed' };
+      for (let i = 0; i < 20; i++) stepSim(); L = g.level; g.enemies.forEach(e => { e.dead = true; }); g.enemies = []; g.inst.carried.stims = 0; g.revealing = false; g.dbg.god = true;
+      const e0 = g.spawnEnemy(job.dummy || 'slaghauler', g.px + 1.5, g.py); e0.alert = true; e0.hp = e0.maxHp = 1e8; R.kitInfo = kitInfo();
+      Object.assign(H, { over: 0, overT: 0, heatSum: 0, n: 0, casts: 0, was: g.overheated }); for (const k of Object.keys(R.abil)) delete R.abil[k]; for (const k of Object.keys(g.dealt)) delete g.dealt[k]; let t = 0; let castsIn = 0;
+      const secs = job.secs || 120; while (t < secs) { g.hp = g.maxHp; if (e0.dead) break; trackAlert(); g.setMove(0, 0); const alive = [e0]; g.target = e0.id; if (!g.aim && !g.cast && !g.overheated && !g.downed) { for (let k = 0; k < g.build.abilities.length; k++) { const def = Cfg.ABILITIES[g.build.abilities[k]]; if (!def || def.id === 'defib' || g.abCd[k] > 0 || (!SPAM && g.heat + def.heat > 96)) continue; try { g.beginAim(k); if (g.aim) { g.updateAim(e0.x, e0.y, true); g.releaseAim(); } } catch (e) {} break; } } if (VENTER && g.ventNow && g.ventCd <= 0 && (g.overheated || (job.profile !== 'sloppy' && g.heat >= 90))) g.ventNow(); stepSim(); t += dt; e0.x = g.px + 1.5; e0.y = g.py; e0.hp = e0.maxHp; }
+      const dmg = { ...g.dealt }; const tot = Object.values(dmg).reduce((a, b) => a + b, 0), auto = dmg.auto || 0;
+      return { id: job.id, kit: job.kit, profile: job.profile, level: job.level, seed: job.seed, secs, kitInfo: R.kitInfo, heat: { overheats: H.over, overheatT: +H.overT.toFixed(1), overheatShare: +(H.overT / secs).toFixed(3), avgHeat: +(H.heatSum / Math.max(1, H.n)).toFixed(1), casts: H.casts, castsPerMin: +(H.casts * 60 / secs).toFixed(1), cooling: +g.build.stats.cooling.toFixed(2), abShare: tot ? +((tot - auto) / tot).toFixed(3) : 0, dps: +(tot / secs).toFixed(1) }, abil: { ...R.abil } };
     }
 
     // ---- full level run ----
@@ -160,6 +176,6 @@ export async function runJob(job) {
     }
     const cleared = !!g.inst.flags.bossDead; const bossDef = ENEMIES[dd.defaultBoss];
     const bossRun = g.enemies.find(e => ENEMIES[e.type].boss);
-    return { ...result, cleared, deaths: R.deaths, t: +simT.toFixed(1), bossReached: bossSeen ? +bossSeen.toFixed(1) : null, bossTtk: R.bossTtk, bossFightT: bossSeen && cleared ? +(simT - bossSeen).toFixed(1) : null, bossHpLeft: bossRun && !cleared ? +(bossRun.hp / bossRun.maxHp).toFixed(2) : 0, boss: bossRun?.type || dd.defaultBoss, src: R.src, abil: R.abil, dealt: { ...g.dealt }, mobTtk: R.mobTtk, maxHit: +R.maxHit.toFixed(1), maxHitSrc: R.maxHitSrc, dodges: R.dodges, stims: R.stims, stuck: R.stuck || 0, nEnemies, kills: g.kills, tier: dd.tier || 0, maxHp: Math.round(g.maxHp), stuckAt: R.stuckAt, trace: R.trace, failWhy: cleared ? '' : (R.stuck ? 'stuck' : R.deaths >= maxDeaths ? 'deaths' : 'timeout') };
+    return { ...result, cleared, deaths: R.deaths, t: +simT.toFixed(1), bossReached: bossSeen ? +bossSeen.toFixed(1) : null, bossTtk: R.bossTtk, bossFightT: bossSeen && cleared ? +(simT - bossSeen).toFixed(1) : null, bossHpLeft: bossRun && !cleared ? +(bossRun.hp / bossRun.maxHp).toFixed(2) : 0, boss: bossRun?.type || dd.defaultBoss, heat: { overheats: H.over, overheatT: +H.overT.toFixed(1), avgHeat: +(H.heatSum / Math.max(1, H.n)).toFixed(1), casts: H.casts, mult: g.build.stats.cooling }, src: R.src, abil: R.abil, dealt: { ...g.dealt }, mobTtk: R.mobTtk, maxHit: +R.maxHit.toFixed(1), maxHitSrc: R.maxHitSrc, dodges: R.dodges, stims: R.stims, stuck: R.stuck || 0, nEnemies, kills: g.kills, tier: dd.tier || 0, maxHp: Math.round(g.maxHp), stuckAt: R.stuckAt, trace: R.trace, failWhy: cleared ? '' : (R.stuck ? 'stuck' : R.deaths >= maxDeaths ? 'deaths' : 'timeout') };
   } finally { Math.random = realRandom; }
 }
