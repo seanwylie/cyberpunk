@@ -62,7 +62,7 @@ export class MusicManager {
   buffers:Record<string,AudioBuffer>={}; ready=false; loading=false; live:Live[]=[]; pos:Record<string,number>={};
   state:MState|null=null; want:MState='town'; cur:string|null=null; bags:Partial<Record<MState,ShuffleBag>>={}; key:string|null=null; fromTown=true; ROTATE_LOOPS=1; ROTATE_FADE=3; area:string|null=null; nextUp:Record<string,string>={};
   enteredAt=0; lastSwitchAt=0; phase=0; PHASE_MIN=20; leaveSince=-1; log:FadeEvent[]=[]; timer:any=null; onReady:(()=>void)|null=null;
-  HARD_MIN=45; HARD_EXIT_HOLD=10; CALM_MIN=140; HARD_ROTATE=90; counts={calm:0,hard:0,phase:0,total:0,entries:0}; resetCounts(){ this.counts={calm:0,hard:0,phase:0,total:0,entries:0}; } // hysteresis (seconds): min time on a hard track; calm required before leaving it; min time on a calm track before it rotates
+  HARD_MIN=45; HARD_EXIT_HOLD=10; CALM_MIN=140; HARD_ROTATE=300; counts={calm:0,hard:0,phase:0,total:0,entries:0}; resetCounts(){ this.counts={calm:0,hard:0,phase:0,total:0,entries:0}; } // hysteresis (seconds): min time on a hard track; calm required before leaving it; min time on a calm track before it rotates
   constructor(private ctx:AudioContext, private out:AudioNode, private base='audio/music/'){ if(typeof document!=='undefined') document.addEventListener('visibilitychange',()=>{ if(document.hidden){ this.hideT=setTimeout(()=>{ if(document.hidden) this.dropIdle(); },20000); } else { clearTimeout(this.hideT); } }); }
   private hideT:any=0;
   isReady(){ return this.ready; }
@@ -111,21 +111,24 @@ export class MusicManager {
   setTownTheme(id:string){ if(id===this.townId) return; this.townId=id; const pool=TOWN_POOLS[id]||TOWN_POOLS.rustline; POOLS.town.splice(0,POOLS.town.length,...pool); delete this.bags['town:'+id as MState]; delete this.nextUp['town:'+id]; if(!this.ready) return; for(const f of pool) if(!LAZY.has(f)) this.ensure(f);
     if(this.state==='town'||this.want==='town'){ const t=this.now(); const nx=this.pick('town'); this.lastSwitchAt=t; this.enteredAt=t; if(this.buffers[nx]) this.crossfade(nx,3,'town'); else if(this.state==='town') this.pend={name:nx,dur:3,s:'town',at:t}; } }
   /** Boss phase change / enrage: switch to a more intense track from the boss playlist (after PHASE_MIN s on the current one). */
-  onPhase(n:number){ if(n<=this.phase){ this.phase=n; return; } this.phase=n; if(this.state!=='bosscombat'||!this.ready) return; const t=this.now(); if(t-this.lastSwitchAt<this.PHASE_MIN) return;
+  onPhase(n:number){ if(n<=this.phase){ this.phase=n; return; } this.phase=n; this.phaseDue=true; this.applyPhase(); }
+  phaseDue=false;
+  /** A phase change is never dropped: if it lands within PHASE_MIN of the last switch it fires as soon as that has elapsed. */
+  private applyPhase(){ if(!this.phaseDue||this.state!=='bosscombat'||!this.ready) return; const t=this.now(); if(t-this.lastSwitchAt<this.PHASE_MIN) return; this.phaseDue=false;
     let nx:string|null=null; const sg=this.sig;
     if(sg){ if(sg.p2&&!this.p2done&&this.cur!==sg.p2) nx=sg.p2; else return; } // signature bosses keep their own theme; the phase-two variant (if any) takes over once
     else { const ci=INTENSITY[this.cur||'']||2; const c=POOLS.bosscombat.filter(x=>x!==this.cur&&x!==this.lastHard); const higher=c.filter(x=>(INTENSITY[x]||2)>ci), pool=higher.length?higher:c.filter(x=>(INTENSITY[x]||2)>=ci); if(!pool.length) return;
       const lo=Math.min(...pool.map(x=>INTENSITY[x]||2)); const g=pool.filter(x=>(INTENSITY[x]||2)===lo); nx=g[Math.floor(Math.random()*g.length)]; }
     if(!this.buffers[nx]){ this.ensure(nx); this.phasePend={name:nx}; return; } this.doPhase(nx); }
   private doPhase(nx:string){ const t=this.now(); this.phasePend=null; this.lastSwitchAt=t; this.counts.phase++; this.counts.hard++; this.counts.total++; this.crossfade(nx,1.5,'bosscombat'); if(this.sig&&nx===this.sig.p2) this.p2done=true; if(this.fightBag) this.fightBag.last=nx; this.setHard(nx); }
-  tick(){ if(!this.ready) return; const t=this.now(); this.flushPending(t); if(this.phasePend){ if(this.state!=='bosscombat') this.phasePend=null; else if(this.buffers[this.phasePend.name]&&this.phasePend.name!==this.cur) this.doPhase(this.phasePend.name); else this.ensure(this.phasePend.name); }
+  tick(){ if(!this.ready) return; const t=this.now(); this.flushPending(t); this.applyPhase(); if(this.phasePend){ if(this.state!=='bosscombat') this.phasePend=null; else if(this.buffers[this.phasePend.name]&&this.phasePend.name!==this.cur) this.doPhase(this.phasePend.name); else this.ensure(this.phasePend.name); }
     if(this.state==='bosscombat'&&this.sig?.p2&&!this.p2done) this.ensure(this.sig.p2); let tgt=this.want;
     const hard=(s:MState|null)=>s==='elite'||s==='bosscombat'||s==='combat';
     if(hard(this.state)&&tgt==='traversal'){ // (town return is explicit and not held) hold hard music: min dwell + sustained calm (exit delay) before fading back to calm
       if(this.leaveSince<0) this.leaveSince=t; if(t-this.enteredAt<this.HARD_MIN||t-this.leaveSince<this.HARD_EXIT_HOLD) tgt=this.state!; }
     else this.leaveSince=-1;
     if(tgt===this.state){ const k=this.state==='town'||this.state==='traversal'?this.bagKey(this.state):null; if(k&&this.nextUp[k]) this.ensure(this.nextUp[k]); this.maybeRotate(t); return; }
-    if(tgt==='bosscombat'&&this.state!=='bossreveal') this.phase=0; if(tgt==='bosscombat'&&this.state!=='bossreveal'&&!this.fightNext) this.planFight(); // new fight (a reveal->fight handoff keeps the phase)
+    if(tgt==='bosscombat'&&this.state!=='bossreveal'){ this.phase=0; this.phaseDue=false; } if(tgt==='bosscombat'&&this.state!=='bossreveal'&&!this.fightNext) this.planFight(); // new fight (a reveal->fight handoff keeps the phase)
     this.enter(tgt); }
   /** Calm states rotate to the next pool track after ROTATE_LOOPS full loops; the fade starts so it lands on the loop boundary. */
   private maybeRotate(t:number){ const hard=this.state==='elite'||this.state==='bosscombat'; if(!hard&&this.state!=='town'&&this.state!=='traversal') return; if(this.state==='bosscombat'&&this.sig) return; // signature fights never rotate
@@ -137,7 +140,7 @@ export class MusicManager {
   pend:{name:string;dur:number;s:MState;at:number}|null=null;
   /** Entering hard music is never gated by dwell/cooldowns. If the wanted track isn't decoded yet it is fetched and started the moment it loads (any decoded hard track after 4 s). */
   private flushPending(t:number){ const p=this.pend; if(!p) return; if(this.state!==p.s){ this.pend=null; return; } let n=p.name; if(!this.buffers[n]){ if(t-p.at<4){ this.ensure(n); return; } const alt=POOLS[p.s].find(x=>this.buffers[x]); if(!alt) return; n=alt; } this.pend=null; this.counts.entries++; this.crossfade(n,p.dur,p.s); }
-  private enter(s:MState){ const prev=this.state; if(s==='resolution'||s==='town') this.retry=false; if(s!=='bossreveal'&&s!=='bosscombat'){ this.fightNext=null; this.sig=null; this.phasePend=null; delete this.nextUp.boss; this.hold.clear(); } const t=this.now(); this.state=s; this.enteredAt=t; this.lastSwitchAt=t; this.leaveSince=-1; this.pend=null; const name=this.pick(s);
+  private enter(s:MState){ const prev=this.state; if(s==='resolution'||s==='town') this.retry=false; if(s!=='bossreveal'&&s!=='bosscombat'){ this.phaseDue=false; this.fightNext=null; this.sig=null; this.phasePend=null; delete this.nextUp.boss; this.hold.clear(); } const t=this.now(); this.state=s; this.enteredAt=t; this.lastSwitchAt=t; this.leaveSince=-1; this.pend=null; const name=this.pick(s);
     let dur=2; if(s==='traversal'&&(prev===null||prev==='town')) dur=3; else if(s==='town') dur=3; else if(s==='bossreveal') dur=2.5; else if(s==='bosscombat') dur=1.5; else if(s==='resolution') dur=.5; else if(s==='combat'||s==='elite') dur=1.5; else if(prev==='resolution') dur=2.5;
     if(!this.buffers[name]&&(s==='elite'||s==='bosscombat')){ this.ensure(name); this.pend={name,dur,s,at:t}; return; }
     if(s==='elite'||s==='bosscombat') this.counts.entries++; this.crossfade(name,dur,s); }

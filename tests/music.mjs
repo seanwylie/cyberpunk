@@ -57,11 +57,11 @@ const R = await ev(async () => { const mm = window.__audio.music, mod = await im
   // phase change -> more intense track from the pool, not repeated, not too soon (non-signature boss)
   fight('lineman', () => { o.pStart = mm.cur; off(25); mm.onPhase(1); off(0.5); o.pEnd = mm.cur; o.pOk = pool.includes(mm.cur) && mm.cur !== o.pStart; o.pHigher = (I[mm.cur] || 2) >= (I[o.pStart] || 2); const n = mm.log.length; mm.onPhase(1); o.pRepeat = mm.log.length === n; off(1); mm.onPhase(2); o.pTooSoon = mm.log.length === n; });
   // elite rotation at loop boundary after min dwell
-  mm.setState('traversal'); off(40); mm.setState('elite'); const e0 = mm.cur; off(5); o.eliteEarly = mm.cur !== e0; off(100); loop(); o.e0 = e0; o.e1 = mm.cur; o.eliteInPool = mod.POOLS.elite.includes(mm.cur);
+  mm.setState('traversal'); off(40); mm.setState('elite'); const e0 = mm.cur; off(5); o.eliteEarly = mm.cur !== e0; off(100); o.eliteMid = mm.cur === e0; off(300); loop(); o.e0 = e0; o.e1 = mm.cur; o.eliteInPool = mod.POOLS.elite.includes(mm.cur);
   mm.setState('traversal'); off(30); o.after = mm.state; o.afterTrack = mm.cur; return o; });
 ok(R.seq.length >= 4 && R.pl.includes(R.seq[0]), 'boss fight opens with a boss-pool track: ' + R.seq[0]);
 ok(R.seq.length >= 4 && R.seq.every((x, i) => i === 0 || x !== R.seq[i - 1]) && R.seq.every(x => R.pl.includes(x)), 'rotates at loop boundaries through the boss pool, no immediate repeat: ' + R.seq.join('>') + ' ' + R.dbg.join(' '));
-ok(R.gaps.length >= 3 && R.gaps.every(g => g >= 90), 'boss rotation: successive tracks >= 90 s apart: ' + R.gaps.map(g => g.toFixed(0)));
+ok(R.gaps.length >= 3 && R.gaps.every(g => g >= 300), 'boss mid-fight rotation only after >= 300 s: ' + R.gaps.map(g => g.toFixed(0)));
 ok(R.pOk && R.pHigher && R.pRepeat && R.pTooSoon, 'phase change switches to a more intense playlist track (' + R.pStart + ' -> ' + R.pEnd + '), not repeated/too soon');
 ok(!R.eliteEarly && R.eliteInPool && R.e1 !== R.e0, 'elite pool rotates at loop boundary after dwell: ' + R.e0 + ' -> ' + R.e1);
 ok(R.after === 'traversal' && !/^(elite_|boss_)/.test(R.afterTrack), 'disengage returns to calm: ' + R.afterTrack);
@@ -201,6 +201,37 @@ ok(mgr.rot && mgr.rot !== mgr.town0 && mgr.rotLog.state === 'town' && mgr.rotLog
   ok(Sg.rStart === 'boss_sig_resonance' && Sg.rStay, 'signature boss without a variant keeps its theme through phase changes');
   ok(Sg.decoded <= Math.max(Sg.cap, 40) || Sg.cap >= 1e9, 'decoded track count bounded by cap (' + Sg.decoded + ' / ' + Sg.cap + ')');
   const sigFiles = await ev(async () => (await import('/src/music.ts')).SIG_TRACKS); ok(sigFiles.length >= 11 && sigFiles.every(n => files.has(n)), 'signature mp3s exist (' + sigFiles.length + ')'); }
+// --- sim-driven boss fights: no fade-out/restart of the fight track except at deliberate points (phase change, 5-min rotation, boss death, leaving) ---
+{ const F = await ev(async () => { const g = window.__game, mm = window.__audio.music, { ENEMIES } = await import('/src/config.ts'); const m = await import('/src/music.ts');
+    clearInterval(mm.timer); { const base = mm.ctx.currentTime + (mm.__off || 0); mm.__off = 0; mm.now = () => base + mm.__off; } // pure fake clock: only the simulated seconds count
+    const wait = async (c, ms = 20000) => { const t0 = performance.now(); while (!c() && performance.now() - t0 < ms) { await new Promise(r => setTimeout(r, 100)); mm.tick(); } return c(); };
+    const runFight = async (dungeon, key, secs, phases, o) => { localStorage.clear(); if (g.inst) g.abandonInstance(); mm.state = null; mm.want = 'town'; g.save.settings.minimap ??= true; g.startRun(dungeon); const f = g.inst.flags; f.controller = true; if (key) f.bossKey = key; g.spawnBoss(); const b = g.enemies.find(e => ENEMIES[e.type].boss); const L = g.level, dt = 1 / 30; const n0 = mm.log.length; const adds = [];
+      for (let i = 0; i < 30 * secs; i++) { mm.__off += dt; if (i % 15 === 0) await new Promise(r => setTimeout(r, 0)); g.update(dt); mm.tick(); b.hp = b.maxHp = 1e9; if (!g.downed) g.hp = g.maxHp; const t = i * dt;
+        g.px = L.bossSpawn.x + 3 * Math.cos(i / 40); g.py = L.bossSpawn.y + 3 * Math.sin(i / 40); // player strafes through the room
+        if (i % 300 === 150) { b.x = L.bossSpawn.x + 2.5 * Math.sign(Math.sin(i)); b.y = L.bossSpawn.y - 2; b.alert = true; } // boss dashes/teleports
+        if (i % 450 === 200) { b.alert = false; } if (i % 450 === 220) b.alert = true; // aggro flaps
+        if (i % 600 === 100) g.knock?.(2, 0); // knockback if available
+        if (t > 20 && Math.abs(t - 70) < .02) { g.downed = true; } if (t > 20 && Math.abs(t - 76) < .02) { g.downed = false; g.hp = g.maxHp; } // downed and revived in place (no checkpoint return)
+        if (i === 30 * 90) { mm.dropIdle(); mm.trim(); document.dispatchEvent(new Event('visibilitychange')); } // memory handlers while fighting
+        for (const [ts, ph] of phases) if (Math.abs(t - ts) < .02) b.phase = ph;
+        if (i % 30 === 0 && !g.enemies.some(e => e === b && !e.dead)) { o.bossGone = true; break; } }
+      const lg = mm.log.slice(n0); const live = mm.live.filter(x => !x.ending).map(x => x.name); return { log: lg.map(x => ({ s: x.state, to: x.to, from: x.from, t: +x.t.toFixed(1) })), live, key: g.inst?.flags.bossKey, state: mm.state }; };
+    const o = {};
+    // 1) 5-minute pool-boss fight (annex overseer), two phase changes
+    await wait(() => Object.keys(mm.buffers).length > 0); o.a = await runFight('annex', 'overseer', 300, [[120, 1], [200, 2]], o);
+    // 2) 5-minute fight, no phases (no rotation expected before 300 s)
+    o.b = await runFight('annex', 'overseer', 290, [], o);
+    // 3) very long fight with no phases: exactly one smooth rotation after 5 minutes
+    o.c = await runFight('annex', 'overseer', 330, [], o);
+    // 4) signature boss (needs its lazy track)
+    o.d = await runFight('annex', null, 5, [], o); return o; });
+  const bc = (r) => r.log.filter(x => x.s === 'bosscombat'); const fightTracks = (r) => bc(r).map(x => x.to);
+  ok(!F.a.bossGone && bc(F.a).length >= 1 && bc(F.a).length <= 3, '5-min fight with strafing, dashes, aggro flaps, downed/revived, memory handlers: fight-track changes only at the opening + 2 phase changes: ' + fightTracks(F.a).join('>'));
+  ok(fightTracks(F.a).every((x, i, a) => i === 0 || x !== a[i - 1]), 'no restart of the same fight track');
+  ok(F.a.log.every(x => x.s === 'bossreveal' || x.s === 'bosscombat' || x.s === 'town'), 'no fade to calm/other states mid-fight: ' + F.a.log.map(x => x.s + ':' + x.to + '@' + x.t).join(' '));
+  ok(F.a.live.length === 1, 'exactly one active track after the fight');
+  ok(bc(F.b).length === 1, '290 s fight without phases: the fight track never changes (' + fightTracks(F.b).join('>') + ')');
+  ok(bc(F.c).length === 2 && F.c.log.filter(x => x.s === 'bosscombat')[1].t - F.c.log.filter(x => x.s === 'bosscombat')[0].t >= 295, '330 s fight without phases: exactly one smooth rotation, not before 5 minutes (' + fightTracks(F.c).join('>') + ')'); }
 ok(!errors.length, 'no page errors ' + errors.join('|'));
 // fallback: block music files
 const b2 = await launch({ query: '' }); await b2.page.route('**/audio/music/*', r => r.abort());
