@@ -199,6 +199,7 @@ function once(spec:LevelSpec,seed:number):Level{
   for(const w of lay.wings) if(w.kind==='wing'){ const src=ro.proc.filter(([tp])=>!eq(tp)); if(src.length) g.pack(['passage'],Math.max(3,Math.ceil(src[0][1]/2)),src[0][0],{minD:6}); }
   const pe=lP.p.from; const jc=mid(J);
   g.single(spec.lockElite,50,pe.x,pe.y,6,['proc']); g.single(spec.lockElite==='brakeman'?'quenchpriest':spec.lockElite==='quenchpriest'?'brakeman':spec.lockElite==='matron'?'anesthetist':spec.lockElite==='anesthetist'?'matron':spec.lockElite==='shiftlead'?'hobbs':spec.lockElite==='hobbs'?'shiftlead':spec.lockElite==='sawhand'?'foreman':'sawhand',55,jc.x,jc.y,5,['junction']);
+  for(const rad of [12,20]) if(!g.spawns.some(s=>s.type===spec.lockElite)) g.single(spec.lockElite,50,pe.x,pe.y,rad,['proc']); // the lock elite must always exist: widen the search when the procedure room is cramped
   g.prune();
   { const seen=new Set<number>(); for(const s of g.spawns){ if(s.group>=90||seen.has(s.group)) continue; seen.add(s.group); const mem=g.spawns.filter(m=>m.group===s.group); const lead=mem.slice().sort((a,b)=>(ENEMIES[b.type]?.hp||0)-(ENEMIES[a.type]?.hp||0))[0]; if(!lead||mem.length<2) continue; const af=rollAffixes(lead.type,spec.tier,()=>g.r()); if(af.length) lead.affix=af; } }
   const cp2=inDir(links[1].dir,3,lP.p.to);
