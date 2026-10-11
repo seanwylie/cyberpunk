@@ -483,7 +483,7 @@ body:has(#dialog[style*="block"]) #banner{ visibility:hidden; }
 @media (max-width:520px){ #banner{ top:max(15%,240px); } }
 
 /* below 900px the NPC dialog sits under the objective bar / live panel instead of covering them */
-@media (max-width:819px){ #dialog,#banner{ --hud-side:0px; } }
+@media (max-width:819px){ #dialog{ --hud-side:0px; } }
 @media (max-width:899px){ #dialog{ top:max(14%,112px); max-height:calc(var(--vh,100vh) - max(14%,112px) - 10px); } }
 @media (max-width:899px) and (max-height:480px){ #dialog{ top:max(8%,84px); max-height:calc(100vh - 100px); } }
 @media (max-width:520px){ #dialog{ top:max(14%,244px); } }
