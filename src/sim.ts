@@ -88,7 +88,7 @@ export class Game {
   dailyLocked(id='annex'){ return lockDay(this.save,id)===todayStr(); }
   get dd():DungeonDef{ return dungeonOf(this.inst?.dungeon); }
   envZones():Zone[]{ return this.mode==='run'?(this.level.hazards||[]).map(h=>({x:h.x,y:h.y,r:h.r,t:0,life:1e9,dps:h.dps,heat:h.heat,windup:0,env:true})):[]; }
-  startRun(id='annex'){
+  startRun(id='annex',fixedSeed?:number){
     const s=this.save;
     if(s.instance && s.instance.expiresAt<=this.now()){ this.expireInstance(); }
     if(s.instance&&s.instance.layoutV!==LAYOUT_V&&s.instance.expiresAt>this.now()){ this.expireInstance(); this.toast('Dungeon layouts changed: your old instance was discarded.'); }
@@ -96,7 +96,7 @@ export class Game {
     if(s.instance){ const cur=s.instance.dungeon||'annex'; if(cur!==id){ this.toast('You have a live instance in '+dungeonOf(cur).name+'. Re-enter or abandon it before starting another.'); return false; } this.inst=s.instance; this.resumeInstance(); return true; }
     { const lk=unlockReason(this.save,id,!!this.save.settings.devFreeReset); if(lk){ this.toast(lk); return false; } }
     if(this.dailyLocked(id)){ this.toast('Daily clear used for '+dungeonOf(id).name+'. A fresh run unlocks tomorrow (dev panel can reset).'); return false; }
-    const dd=dungeonOf(id); const seed=(Math.random()*1e9)|0; const lv=dd.build(seed);
+    const dd=dungeonOf(id); const seed=fixedSeed!==undefined?fixedSeed:(Math.random()*1e9)|0; const lv=dd.build(seed);
     const inst:InstanceState={ id:'inst-'+seed, dungeon:id, layoutV:LAYOUT_V, createdAt:this.now(), expiresAt:this.now()+retentionMs, seed, enemies:[], drops:[], carried:{items:[],chips:{},stims:0,credits:0},
       flags:{gate1:false,lock2:false,passageSeen:false,controller:false,armory:false,cond:null,bossKey:null,bossRevealed:false,bossSpawned:false,bossDead:false,completed:false,rewardsGranted:false,alarm:false,salvageForeman:false},
       checkpoint:{id:1,x:lv.checkpoints[0].x,y:lv.checkpoints[0].y}, px:lv.spawn.x, py:lv.spawn.y, hp:0, broken:[], protectedSlots:[], repairAdded:0, nextId:1, xpEarned:0, warned:false, kills:{}, claimed:[], elapsed:0 };
