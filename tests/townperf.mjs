@@ -24,7 +24,7 @@ for (const [w, h] of SIZES) for (const rate of [1, 4]) {
   }, { prof: !!BREAK });
   // Two budgets. (1) JS submit time (draw() without raster) p95: 8ms @1x, 32ms @4x CPU. (2) draw+raster p95: 16.7ms @1x on a GPU-backed canvas;
   // this box's headless Chrome rasterises in software, so there the ceiling is a regression guard (60ms/250ms; before the fixes p95 was 79-108ms / 330-490ms), not the real target.
-  const budget = r.sw ? (rate === 1 ? 60 : 250) : (rate === 1 ? 16.7 : 50); const subB = rate === 1 ? 8 : 32; const ok = r.p95 < budget && (r.sw || r.sub < subB); if (!ok) fail++;
+  const px = Math.max(1, w * h / (1280 * 720)); /* software (SwiftShader) raster cost scales with pixel count, so its budget does too; GPU budgets are fixed */ const budget = r.sw ? Math.round((rate === 1 ? 60 : 250) * px) : (rate === 1 ? 16.7 : 50); const subB = rate === 1 ? 8 : 32; const ok = r.p95 < budget && (r.sw || r.sub < subB); if (!ok) fail++;
   console.log(`${w}x${h} cpu x${rate}: draw+raster med ${r.med}ms p95 ${r.p95}ms (submit p95 ${r.sub}ms, ${r.sw ? 'software' : 'gpu'} raster) max ${r.max}ms | raf med ${r.rafMed} p95 ${r.rafP95} | budget ${budget} ${ok ? 'OK' : 'FAIL'}${BREAK ? '\n   ' + JSON.stringify(r.sec) : ''}`);
   if (errors.length) { console.log(errors.slice(0, 3)); fail++; }
   await browser.close();
