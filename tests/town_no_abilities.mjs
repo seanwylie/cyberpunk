@@ -23,7 +23,7 @@ await ev(() => { window.__game.enterTown(true); }); await sleep(200); const p0 =
 // remote players in town: no ability effects (their attack flag is only an animation and is never sent from a town)
 const net = await ev(async () => { const g = window.__game; g.mode = 'town'; g.atkCd = 1; const s = await import('/src/net/session.ts'); return typeof s === 'object'; }); ok(net, 'net session module loads'); await ev(() => { window.__game.atkCd = 0; });
 // the same cast works in a run
-await ev(() => { const g = window.__game; g.startRun(); g.dbg.god = true; g.revealing = false; g.save.settings.reducedFx = false; g.build.abilities = ['sweep', 'brace', 'pulse']; g.heat = 0; g.abCd = [0, 0, 0]; g.enemies.forEach(e => { e.dead = true; }); g.enemies = []; window.__vfx.reset(); g.beginAim(0); g.updateAim(g.px + 3, g.py, true); g.releaseAim(); }); await sleep(600);
+await ev(() => { const g = window.__game; g.startRun(); g.dbg.god = true; g.revealing = false; g.save.settings.reducedFx = false; g.build.abilities = ['sweep', 'brace', 'pulse']; g.heat = 0; g.abCd = [0, 0, 0]; g.enemies.forEach(e => { e.dead = true; }); g.enemies = []; window.__vfx.reset(); g.beginAim(0); g.updateAim(g.px + 3, g.py, true); g.releaseAim(); }); await page.waitForFunction(() => window.__game.heat > 0, null, { timeout: 8000 }).catch(() => {}); await sleep(200);
 const run = await snap(); const ev2 = await ev(() => Object.keys(window.__vfx.stats.events).some(k => k.startsWith('sweep.')));
 ok(run.mode === 'run' && run.heat > 0 && run.cd[0] > 0, `run: sweep casts (heat ${run.heat.toFixed(1)}, cd ${run.cd[0].toFixed(2)})`); ok(ev2, 'run: sweep VFX spawned');
 ok(errors.filter(e => !/429/.test(e)).length === 0, 'no page errors ' + errors.join('|'));
