@@ -521,3 +521,5 @@ body:has(#dialog[style*="block"]) #banner{ visibility:hidden; }
 .toast.storycard b{ font-size:max(var(--fmin),calc(11px*var(--fs))); opacity:.8; font-weight:600; }
 .toast.storycard .scx{ position:absolute; top:1px; right:2px; border:0; background:none; color:inherit; opacity:.7; font-size:16px; line-height:1; padding:2px 5px; cursor:pointer; }
 @keyframes scfade{ 0%,90%{opacity:1} 100%{opacity:0} }
+.stprompt{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+[data-store] .cosw{ color:#f6f3ea; text-shadow:0 0 2px #000,0 0 3px #000,0 1px 1px #000; }

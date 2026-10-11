@@ -23,6 +23,8 @@ import { currentTown, dungeonAccess, isUnlocked, unlockProgress } from './towns'
 import { travelHtml, guildHtml, townClick, TV } from './townui';
 import { bankHtml, bankClick, bankInput, BK } from './bankui';
 import { wardrobeHtml, wardrobeClick, wardrobeAfter } from './wardrobeui';
+import { storeHtml, storeClick } from './storeui';
+import { storagePromptHtml } from './store';
 import { settingsHtml, settingsAfterRender, settingsReset, settingsEsc, settingsInput, settingsClick, settingsKey, settingsTab } from './settingsui';
 import { HEAT, heatCost, heatBand, dissipation } from './heat';
 
@@ -279,8 +281,8 @@ export class UI {
       ${prev.conflicts.map(c=>`<div class="bad">Hard conflict: ${esc(c)}</div>`).join('')}`;
     return `<div class="col narrow"><h3>Body (11 slots)</h3>${grid}${this.recPanel()}<div class="repbar">${(['HI','PS','MM'] as const).map(m=>`<span class="repb" data-tip="${esc('<b>'+MFR[m].short+'</b><br>Reputation rank '+repRank(s.rep[m])+' (rep '+Math.round(s.rep[m])+')')}" style="--ac:${MFR[m].accent}">${MFR[m].short.split(' ')[0]} <b>${repRank(s.rep[m])}</b></span>`).join('')}</div></div>
     <div class="col">
-      <div class="hdrrow ${dirty?'dirty':''}">${hasCarry?`<span class="pack">Pack ${carried!.items.length}▪ ${Object.values(carried!.chips).reduce((a,b)=>a+(b||0),0)}◈ ${carried!.stims}✚ ${carried!.credits}c</span><button class="btn" data-act="unload">Unload</button><i class="sep"></i>`:''}<b>${dirty?'DRAFT (unapplied)':'No staged changes'}</b>${dirty?`<span class="warnb" data-tip="${esc('Leaving the workspace or entering a mission discards the draft.')}" tabindex="0">⚠</span>`:''}<button class="btn primary" data-act="apply" ${dirty?'':'disabled'}>Apply</button><button class="btn" data-act="discard" ${dirty?'':'disabled'}>Discard</button><button class="btn" data-act="wd-open" data-tip="${esc('Change your look: hair, headgear, skin mods, auras. Cosmetic only.')}">Wardrobe</button><span class="help" data-tip="${help}" tabindex="0">?</span></div>
-      ${conf}
+      <div class="hdrrow ${dirty?'dirty':''}">${hasCarry?`<span class="pack">Pack ${carried!.items.length}▪ ${Object.values(carried!.chips).reduce((a,b)=>a+(b||0),0)}◈ ${carried!.stims}✚ ${carried!.credits}c</span><button class="btn" data-act="unload">Unload</button><i class="sep"></i>`:''}<b>${dirty?'DRAFT (unapplied)':'No staged changes'}</b>${dirty?`<span class="warnb" data-tip="${esc('Leaving the workspace or entering a mission discards the draft.')}" tabindex="0">⚠</span>`:''}<button class="btn primary" data-act="apply" ${dirty?'':'disabled'}>Apply</button><button class="btn" data-act="discard" ${dirty?'':'disabled'}>Discard</button><button class="btn" data-act="wd-open" data-tip="${esc('Change your look: hair, headgear, skin mods, auras. Cosmetic only.')}">Wardrobe</button><button class="btn" data-act="st-open" data-tip="${esc('Outfitter: simulated skins and storage purchases')}">Store</button><span class="help" data-tip="${help}" tabindex="0">?</span></div>
+      ${conf}${storagePromptHtml(g,'locker')}
       <h3 class="selhead nm2h" ${dd?`data-tip="${esc('<b>'+esc(dd.name)+'</b><br>'+esc(MFR[dd.mfr].name)+' · req Lv '+dd.lvl+(dd.weapon?'<br>Weapon: '+esc(WEAPONS[dd.weapon]?.label||dd.weapon)+' ('+WEAPONS[dd.weapon].dmg+' dmg ×'+WEAPON_RARITY_MUL[dd.rarity]+', range '+WEAPONS[dd.weapon].range+', heat '+WEAPONS[dd.weapon].heat+')':'')+(dd.caps?'<br>Capability: '+dd.caps.join(', '):'')+(dd.blurb?'<br><span class="mut">'+esc(dd.blurb)+'</span>':''))}"`:''}>${SLOT_LABEL[sl]}: ${dd?esc(dd.name):'empty'} ${dd?`<span class="tag" style="border-color:${rc(dd.rarity)}">${dd.rarity}</span>`:''}${dd?' <span class="mut hov">ⓘ</span>':''}</h3>
       <div class="sockrow">${socks}</div><div class="sockinfo mut">${di?di.chips.length+'/'+SLOT_SOCKETS[sl]+' sockets · accepts '+Object.entries(CHIP_FITS).filter(([c])=>chipFits(c as ChipId,sl)).length+' chip types':''}</div>
       ${chipStock}
@@ -442,9 +444,7 @@ export class UI {
       <div class="actrow"><button class="btn primary" data-act="story" ${this.storyBusy?'disabled':''}>${this.storyBusy?'Requesting…':'Ask for a story update'}</button><button class="btn" data-act="opencontacts">Contracts</button></div>
       <div id="storymsg" class="mut">${esc(this.storyMsg)}</div>${dev}</div>`; }
   // ----- Store -----
-  store():string{ const s=this.g.save; const skins=[['salvage_grey','Salvage Grey finish'],['ivory_ward','Ivory Ward finish'],['oxide_work','Oxide Workwear']]; return `<div class="col"><h3>Simulated entitlements</h3><div class="mut">No real checkout. Only skins and permanent account-wide locker capacity are sold. Purchases persist across seasons.</div>
-    <div style="margin-top:8px"><b>Locker capacity</b>: ${s.lockerCap+s.purchases.lockerBlocks*STARTING.lockerPerPurchase} slots (bought blocks: ${s.purchases.lockerBlocks})<br><button class="btn primary" data-act="buylocker">Buy +${STARTING.lockerPerPurchase} slots (simulated)</button></div>
-    <h3>Skins</h3>${skins.map(([id,n])=>`<div class="row"><span>${n} ${s.purchases.skins.includes(id)?'<span class="tag good">owned</span>':''}</span>${s.purchases.skins.includes(id)?`<button class="btn" data-act="skin" data-id="${id}">${s.purchases.equippedSkin===id?'Unequip':'Equip'}</button>`:`<button class="btn" data-act="buyskin" data-id="${id}">Buy (simulated)</button>`}</div>`).join('')}<div class="mut">Skins are entitlement records only in this prototype (no skin art yet).</div></div>`; }
+  store():string{ return storeHtml(this); }
   // ----- Settings -----
   settings():string{ return settingsHtml(this); }
   dev():string{ return `<div class="col"><h3>Prototype helpers</h3><div class="mut">Grants items into the locker for testing the three example builds. These are test shortcuts, not saved loadout presets.</div>
@@ -460,7 +460,7 @@ export class UI {
     if(k==='uisize'){ st.uiSize=t.value as any; applyUiScale(st.uiSize); this.render(); } else if(k==='minimap'){ this.setMinimap(t.checked); } else if(k==='gore') st.gore=t.value as any; else if(k==='dmgnum') st.damageNumbers=t.checked; else if(k==='reduced') st.reducedFx=t.checked; else if(k==='lootlabels') st.lootLabels=t.value as any; else if(k==='lootmin') st.lootMin=t.value as any; else if(k==='devreset'){ st.devFreeReset=t.checked; this.resetAsk=false; persist(s); this.render(); return; } else if(k==='joyfixed'){ st.joystickFixed=t.checked; }
     else if(k==='music'){ st.music=t.checked; this.audio.setMusicOn(t.checked); } else if(k==='vol'){ st.volume=+t.value; this.audio.setVolume(st.volume); }
     else if(k==='llmon') st.llm.enabled=t.checked; else if(k==='llmurl') st.llm.url=t.value; else if(k==='llmkey') st.llm.key=t.value; else if(k==='llmmodel') st.llm.model=t.value; persist(s); }
-  click(e:MouseEvent){ if(this.modal==='help'&&(e.target as HTMLElement).id==='modal'){ this.close(); return; } const el=(e.target as HTMLElement).closest('[data-act]') as HTMLElement|null; if(!el) return; const a=el.dataset.act!; const g=this.g, s=g.save; this.audio.resume(); if(a.startsWith('s-')&&settingsClick(this,el,a)) return; if(a.startsWith('bk-')&&bankClick(this,el,a,e.shiftKey)) return; if(a.startsWith('wd-')&&wardrobeClick(this,el,a)) return; if((a.startsWith('tv-')||a.startsWith('gd-'))&&townClick(this,el,a)) return;
+  click(e:MouseEvent){ if(this.modal==='help'&&(e.target as HTMLElement).id==='modal'){ this.close(); return; } const el=(e.target as HTMLElement).closest('[data-act]') as HTMLElement|null; if(!el) return; const a=el.dataset.act!; const g=this.g, s=g.save; this.audio.resume(); if(a.startsWith('s-')&&settingsClick(this,el,a)) return; if(a.startsWith('bk-')&&bankClick(this,el,a,e.shiftKey)) return; if(a.startsWith('wd-')&&wardrobeClick(this,el,a)) return; if(a.startsWith('st-')&&storeClick(this,el,a)) return; if((a.startsWith('tv-')||a.startsWith('gd-'))&&townClick(this,el,a)) return;
     switch(a){
       case 'close': this.close(); return;
       case 'sel': this.sel=el.dataset.slot as Slot; this.chipSel=null; this.render(); return;
@@ -504,7 +504,7 @@ export class UI {
       case 'devrestart': g.devRestartFromStart(); this.devOpen=false; this.close(); return;
       case 'townchoice': { const st=g.story(); record(st,'town_choice',el.dataset.boost!); st.arc=el.dataset.boost!; const ed=st.edges.find(x=>x.from==='player'&&x.to==='odalys_vane'); if(ed) ed.w+=1; st.town=null; persist(s); this.msg='Odalys will push the "'+el.dataset.boost+'" lead.'; this.render(); return; }
       case 'story': this.runStory(); return;
-      case 'buylocker': s.purchases.lockerBlocks++; persist(s); this.render(); return; case 'buyskin': s.purchases.skins.push(el.dataset.id!); persist(s); this.render(); return; case 'skin': s.purchases.equippedSkin=s.purchases.equippedSkin===el.dataset.id?null:el.dataset.id!; persist(s); this.render(); return;
+      case 'skin': s.purchases.equippedSkin=s.purchases.equippedSkin===el.dataset.id?null:el.dataset.id!; persist(s); this.render(); return;
       case 'helpreplay': this.close(); this.tut?.replay(); return;
       case 'helphints': try{ localStorage.removeItem('wv_hints'); }catch{} this.hintCtx=''; this.hintPeek=false; this.toast('Hints will show again'); return;
       case 'helpsettings': this.open('settings'); settingsTab(this,'controls'); return;

@@ -27,6 +27,7 @@ export interface Save {
   /** Player's chosen Q/E/R ability ids from the granted set (null = auto). */ abPick?:(string|null)[];
   /** Abilities codex: ability id -> discovery time (0 = known from the start). */ codex?:Record<string,number>;
   /** Ability acquisition counters: pickups of ability-bearing augments and consecutive finished runs without one (pity timer). */ abAcq?:{ total:number; dry:number };
+  /** Simulated store (src/store.ts): receipts (idempotent grants), tier counters, simulated spend. No real payments. */ store?:import('./store').StoreState;
   /** Wardrobe: owned and equipped cosmetics (src/content/appearance.ts). Cosmetic only, never affects stats. */ cosmetics?:import('./content/appearance').CosState;
   /** Story journal (src/story_beats.ts): generated or authored short beats, newest last. */ journal?:import('./story_beats').JournalEntry[]; beatMeta?:import('./story_beats').BeatMeta;
   /** Contracts: active progress by id, once-only completions, daily completion day by id. */ contracts?:{ active:Record<string,number>; done:string[]; doneDay:Record<string,string> };

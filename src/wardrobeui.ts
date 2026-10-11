@@ -4,6 +4,7 @@ import { COSMETICS, COS_BY_ID, COS_SLOTS, COS_SLOT_ICON, COS_SLOT_LABEL, COS_THE
 import { applyCosmeticVariants, bodyOf } from './bodyvariants';
 import { drawCosmetics, drawTrail } from './cosmetics';
 import { persist } from './state';
+import { track } from './analytics';
 type UIx = any;
 const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export const WD = { tab: 'all' as 'all' | CosSlot, sel: '', show: 'owned' as 'owned' | 'all', msg: '' };
@@ -15,9 +16,10 @@ const SRC_HINT = (d: CosDef): string => { const s = d.src; switch (s.k) {
   case 'boss': return 'Drops from any boss';
   case 'bossId': return 'Drops from one specific boss';
   case 'ach': return 'Achievement: ' + (ACHIEVEMENTS.find(a => a.key === s.key)?.label || s.key);
+  case 'premium': return 'Outfitter skin: preview it here, buy in the Store (simulated, $' + (s.cents / 100).toFixed(2) + ')';
   case 'event': return 'Extremely rare: a tiny chance on any boss kill'; } };
 /** Discovery: owned, sold by the vendor, or equipped is "known"; everything else shows only slot/rarity/source until found. */
-export const isKnown = (s: any, d: CosDef) => ownsCos(s, d.id) || d.src.k === 'vendor';
+export const isKnown = (s: any, d: CosDef) => ownsCos(s, d.id) || d.src.k === 'vendor' || d.src.k === 'premium';
 const tipOf = (s: any, d: CosDef) => { const known = isKnown(s, d); return `<b style="color:${rc(d.rarity)}">${known ? esc(d.name) : '???'}</b><br>${esc(COS_SLOT_LABEL[d.slot])} · ${d.rarity}${known ? ' · ' + esc(COS_THEME_LABEL[d.theme]) : ''}<br>` + (known ? `${esc(d.desc)}<br><span class="mut">${esc(d.lore)}</span><br>` : '') + `<span class="mut">${ownsCos(s, d.id) ? 'Owned' : esc(SRC_HINT(d))}</span>`; };
 const swatch = (d: CosDef, known: boolean) => known ? `<span class="cosw" style="--c:${d.c};--c2:${d.c2 || d.c}">${COS_SLOT_ICON[d.slot]}</span>` : `<span class="cosw unk">?</span>`;
 
@@ -26,12 +28,12 @@ export function wardrobeHtml(ui: UIx): string {
   const tabBtn = (id: string, label: string, title: string) => `<button class="btn tabb ${WD.tab === id ? 'primary' : ''}" data-act="wd-tab" data-tab="${id}" data-tip="${esc(title)}" aria-label="${esc(title)}">${label}</button>`;
   const tabs = tabBtn('all', 'All', 'All slots') + COS_SLOTS.map(sl => tabBtn(sl, COS_SLOT_ICON[sl], COS_SLOT_LABEL[sl])).join('');
   const inTab = (d: CosDef) => WD.tab === 'all' || d.slot === WD.tab;
-  const list = COSMETICS.filter(d => inTab(d) && (WD.show === 'all' || ownsCos(s, d.id) || d.src.k === 'vendor')).sort((a, b) => RARITIES.indexOf(b.rarity) - RARITIES.indexOf(a.rarity) || a.name.localeCompare(b.name));
+  const list = COSMETICS.filter(d => inTab(d) && (WD.show === 'all' || ownsCos(s, d.id) || d.src.k === 'vendor' || d.src.k === 'premium')).sort((a, b) => RARITIES.indexOf(b.rarity) - RARITIES.indexOf(a.rarity) || a.name.localeCompare(b.name));
   const tiles = list.map(d => { const own = ownsCos(s, d.id), on = eq[d.slot] === d.id, known = isKnown(s, d);
     return `<button class="slot tile st cos ${WD.sel === d.id ? 'sel' : ''} ${own ? '' : 'off'} ${on ? 'worn' : ''}" data-act="wd-sel" data-id="${d.id}" data-tip="${esc(tipOf(s, d))}" aria-label="${esc((known ? d.name : 'Undiscovered ' + COS_SLOT_LABEL[d.slot]) + ', ' + d.rarity + (own ? (on ? ', equipped' : ', owned') : ', not owned'))}" style="border-color:${rc(d.rarity)}"><span class="ticon">${swatch(d, known)}</span>${on ? '<i class="wornb" title="Equipped">●</i>' : ''}${own ? '' : d.src.k === 'vendor' ? `<i class="pricb">${d.src.price}c</i>` : ''}</button>`; }).join('') || '<div class="mut">Nothing here yet. Cosmetics drop from elites and bosses, or can be bought at the counter. Use "Show all" to see what is out there.</div>';
   const d = WD.sel ? COS_BY_ID[WD.sel] : null;
   const detail = d ? (() => { const own = ownsCos(s, d.id), on = eq[d.slot] === d.id, known = isKnown(s, d);
-    const act = own ? `<button class="btn primary" data-act="wd-equip" data-id="${d.id}">${on ? 'Unequip' : 'Equip'}</button>` : d.src.k === 'vendor' ? `<button class="btn primary" data-act="wd-buy" data-id="${d.id}" ${s.credits >= d.src.price ? '' : 'disabled'}>Buy ${d.src.price}c</button>` : `<span class="mut">${esc(SRC_HINT(d))}</span>`;
+    const act = own ? `<button class="btn primary" data-act="wd-equip" data-id="${d.id}">${on ? 'Unequip' : 'Equip'}</button>` : d.src.k === 'vendor' ? `<button class="btn primary" data-act="wd-buy" data-id="${d.id}" ${s.credits >= d.src.price ? '' : 'disabled'}>Buy ${d.src.price}c</button>` : d.src.k === 'premium' ? `<span class="mut">Previewing on your character.</span> <button class="btn primary" data-act="st-open" data-sku="skin_${d.id}">Buy $${(d.src.cents / 100).toFixed(2)} <small>SIMULATED</small></button>` : `<span class="mut">${esc(SRC_HINT(d))}</span>`;
     return `<div class="wdsel"><b style="color:${rc(d.rarity)}">${known ? esc(d.name) : '???'}</b> <span class="tag" style="border-color:${rc(d.rarity)}">${d.rarity}</span> <span class="mut">${esc(COS_SLOT_LABEL[d.slot])}${known ? ' · ' + esc(COS_THEME_LABEL[d.theme]) : ''}</span><div>${known ? esc(d.desc) : 'Not discovered yet.'}</div>${known ? `<div class="mut">${esc(d.lore)}</div>` : ''}<div class="wdact">${act}${d.variant ? '<span class="mut"> uses real body-part art</span>' : known ? '<span class="mut"> procedural look</span>' : ''}</div></div>`; })()
     : '<div class="mut wdsel">Select an item to preview it on your character. Hover tiles for details.</div>';
   const have = COSMETICS.filter(x => c.owned[x.id]).length;
@@ -40,7 +42,7 @@ export function wardrobeHtml(ui: UIx): string {
       <div class="wdworn">${COS_SLOTS.map(sl => { const id = eq[sl], w = id && c.owned[id] ? COS_BY_ID[id] : null; return `<button class="slot tile mini wslot ${WD.tab === sl ? 'sel' : ''}" data-act="${w ? 'wd-unslot' : 'wd-tab'}" data-tab="${sl}" data-slot="${sl}" data-tip="${esc(w ? '<b style="color:' + rc(w.rarity) + '">' + esc(w.name) + '</b><br>' + COS_SLOT_LABEL[sl] + '<br><i>Click: unequip</i>' : '<b>' + COS_SLOT_LABEL[sl] + '</b><br>Nothing equipped. Click to browse.')}" style="border-color:${w ? rc(w.rarity) : '#555'}" aria-label="${esc(COS_SLOT_LABEL[sl] + ': ' + (w ? w.name : 'empty'))}"><span class="ticon">${w ? swatch(w, true) : '<span class="tempty">·</span>'}</span></button>`; }).join('')}</div>
       <div class="wdcount mut">Collected ${have}/${COSMETICS.length}</div><div class="repbar">${per}</div></div>
     <div class="wdright"><div class="wdtabs">${tabs}</div>
-      <div class="trayhead"><span class="mut">Cosmetics never change stats. ${ui.g.save.credits}c</span><span class="trayctl"><button class="btn ${WD.show === 'all' ? 'primary' : ''}" data-act="wd-show" aria-pressed="${WD.show === 'all'}">Show all</button><button class="btn" data-act="wd-clear">Clear all</button><button class="btn" data-act="wd-back">Back to locker</button></span></div>
+      <div class="trayhead"><span class="mut">Cosmetics never change stats. ${ui.g.save.credits}c</span><span class="trayctl"><button class="btn ${WD.show === 'all' ? 'primary' : ''}" data-act="wd-show" aria-pressed="${WD.show === 'all'}">Show all</button><button class="btn" data-act="wd-clear">Clear all</button><button class="btn" data-act="st-open" data-tip="Outfitter: simulated purchases">Store</button><button class="btn" data-act="wd-back">Back to locker</button></span></div>
       <div class="stgrid wdgrid">${tiles}</div>${detail}${WD.msg ? `<div class="bkmsg" role="status">${esc(WD.msg)}</div>` : ''}</div></div>`;
 }
 
@@ -50,7 +52,7 @@ export function wardrobeClick(ui: UIx, el: HTMLElement, a: string): boolean {
     case 'wd-open': for (const d of checkAchievements(s)) g.toast('Wardrobe unlocked: ' + d.name); ui.open('wardrobe'); return true;
     case 'wd-tab': WD.tab = (el.dataset.tab as any) || 'all'; break;
     case 'wd-show': WD.show = WD.show === 'all' ? 'owned' : 'all'; break;
-    case 'wd-sel': WD.sel = el.dataset.id!; WD.msg = ''; break;
+    case 'wd-sel': WD.sel = el.dataset.id!; WD.msg = ''; { const d = COS_BY_ID[WD.sel]; if (d && !ownsCos(s, d.id)) track('wardrobe_locked_item_click', d.id, { src: d.src.k, rarity: d.rarity }); } break;
     case 'wd-equip': { const id = el.dataset.id!, d = COS_BY_ID[id]; if (d && cosOf(s).equipped[d.slot] === id) equipCos(s, null, d.slot); else equipCos(s, id); persist(s); WD.msg = ''; break; }
     case 'wd-unslot': equipCos(s, null, el.dataset.slot as CosSlot); persist(s); break;
     case 'wd-clear': cosOf(s).equipped = {}; persist(s); break;

@@ -2,6 +2,7 @@
 import { CHIPS, ChipId, ITEM_BY_ID, MFR, RARITY_COLOR, SLOT_LABEL } from './config';
 import { BANK_TABS_MAX, BANK_TAB_SLOTS, bankCapacity, bankOf, bankUsed, depositChip, depositCredits, depositItem, depositMany, entryName, entryRarity, filterEntries, lockerCapOf, lockerFree, lockerUsed, nextTabPrice, sortTab, storedItems, tabUsed, unlockTab, withdraw, withdrawCredits, withdrawMany, BankFilter } from './bank';
 import { persist } from './state';
+import { storagePromptHtml } from './store';
 type UIx = any;
 const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export const BK = { tab: 0 as number, q: '', type: 'all' as 'all' | 'item' | 'chip', rarity: 'all', sort: 'slot' as 'slot' | 'rarity' | 'name' | 'new', msg: '' };
@@ -27,6 +28,7 @@ export function bankHtml(ui: UIx): string {
   const free = lockerFree(s);
   return `<div class="bankwrap" data-bank>
     <div class="bkhead"><span class="bkcred"><b>Wallet</b> ${s.credits}c</span><span class="bkcred vault"><b>Vault</b> ${b.credits}c <small>(safe from loss)</small></span><span class="mut">Bank ${bankUsed(b)}/${bankCapacity(b)} slots · Locker ${lockerUsed(s)}/${lockerCapOf(s)}</span></div>
+    ${storagePromptHtml(ui.g, 'bank')}
     ${BK.msg ? `<div class="bkmsg" role="status">${esc(BK.msg)}</div>` : ''}
     <div class="bkcols">
       <section class="col bkbank"><div class="sttabs bktabs">${tabs}<button class="btn tabb ${all ? 'primary' : ''}" data-act="bk-tab" data-tab="-1">All</button></div>

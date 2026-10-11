@@ -16,6 +16,7 @@ export type CosTheme = 'HI'|'PS'|'MM'|'ST'|'EV';
 export const COS_THEME_LABEL: Record<CosTheme,string> = { HI:'Harrow-Brandt Heavy Works', PS:'Aldane Surgical', MM:'Kestrel Value Systems', ST:'Independent / street', EV:'Basin legends & events' };
 export type CosSource =
   | { k:'vendor'; price:number }          // Outfitter / Wardrobe counter, credits
+  | { k:'premium'; cents:number }         // simulated IAP skin (src/store.ts). grey/green/blue only, never purple/orange, never rolled from drops
   | { k:'drop' }                          // any elite/boss/ordinary cosmetic roll
   | { k:'elite' }                         // elite+ rolls only
   | { k:'boss' }                          // any boss kill
@@ -149,9 +150,18 @@ const R:Row[]=[
 ['trail_ghost','Afterimage Ghost','trail','blue','PS','ghost','#9fb8d0','','Pale afterimages that linger a moment.','Old Aldane stride-tech glitch.','e'],
 ['trail_ember','Ember Wake','trail','purple','HI','embers','#ff7a30','','Glowing embers fall behind you.','From the lineman\'s last switch.','b:lineman'],
 ['trail_glitch','Data-Glitch Trail','trail','purple','MM','glitch','#70e0e0','','Pixel glitches stutter behind you.','Dropped frames from a radio mast.','b:widow'],
+// ---- PREMIUM (simulated store skins: appearance only, grey/green/blue, sold via src/store.ts) ----
+['pm_skin_cobalt','Cobalt Anodize','skin','blue','PS','chrome','#3a6ad0','#bcd4ff','Deep cobalt anodised plating with a slow sheen.','Aldane\'s limited colourway. Inspected twice.','p:299'],
+['pm_skin_jade','Jade Patina','skin','green','HI','patina','#3a9a78','#1f6a50','Verdigris bloom over the whole frame.','Copper ages kindly if you let it.','p:199'],
+['pm_hair_signal','Signal-Flare Crest','hair','blue','HI','spikes','#ff3a6a','#ffb0c0','A crest of hot-pink flare spikes.','Visible from the far end of the Basin.','p:299'],
+['pm_aura_brine','Brine Mist','aura','blue','PS','mist','#50d0b0','','Sea-green mist curling off the shoulders.','Smells of a harbour that drained decades ago.','p:299'],
+['pm_trail_sodium','Sodium Spark Trail','trail','blue','HI','sparks','#ffd040','','Yellow sodium sparks fall behind you.','Streetlamp light, spent and scattered.','p:299'],
+['pm_back_hazard','Hazard-Stripe Cape','back','green','ST','cape','#d0a020','','A yellow-black striped safety cape.','Cheaper than a warning sign.','p:199'],
+['pm_head_nightvisor','Night-Shift Visor','head','blue','MM','visor','#c060e0','#f0d0ff','A violet visor for the long shift.','Kestrel night crews swear by the tint.','p:299'],
+['pm_eyes_lime','Lime Diagnostic Lenses','eyes','green','PS','dots','#a0e040','','Bright lime lenses with a scan flicker.','Calibration green, never meant to be a look.','p:199'],
 ];
 
-function parseSrc(s:string):CosSource{ if(s.startsWith('v:')) return {k:'vendor',price:+s.slice(2)}; if(s==='d') return {k:'drop'}; if(s==='e') return {k:'elite'}; if(s==='b') return {k:'boss'}; if(s.startsWith('b:')) return {k:'bossId',boss:s.slice(2)}; if(s.startsWith('a:')) return {k:'ach',key:s.slice(2)}; return {k:'event',key:s.slice(3)}; }
+function parseSrc(s:string):CosSource{ if(s.startsWith('v:')) return {k:'vendor',price:+s.slice(2)}; if(s.startsWith('p:')) return {k:'premium',cents:+s.slice(2)}; if(s==='d') return {k:'drop'}; if(s==='e') return {k:'elite'}; if(s==='b') return {k:'boss'}; if(s.startsWith('b:')) return {k:'bossId',boss:s.slice(2)}; if(s.startsWith('a:')) return {k:'ach',key:s.slice(2)}; return {k:'event',key:s.slice(3)}; }
 const VAR:Record<string,Variant>={ torso_mm:'market',torso_hi:'heavy',torso_ps:'surgical', arms_mm:'market',arms_hi:'heavy',arms_ps:'surgical', hands_hi:'heavy',hands_ps:'surgical', legs_mm:'market',legs_hi:'heavy',legs_ps:'surgical' };
 export const COSMETICS:CosDef[]=R.map(r=>({ id:r[0],name:r[1],slot:r[2],rarity:r[3],theme:r[4],style:r[5],c:r[6],c2:r[7]||undefined,desc:r[8],lore:r[9],src:parseSrc(r[10]),variant:VAR[r[0]] }));
 export const COS_BY_ID:Record<string,CosDef>=Object.fromEntries(COSMETICS.map(c=>[c.id,c]));
