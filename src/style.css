@@ -513,4 +513,4 @@ body:has(#dialog[style*="block"]) #banner{ visibility:hidden; }
 .win{ width:min(1400px,calc(var(--vvw,100vw) - 12px)); max-width:calc(var(--vvw,100vw) - 12px); min-width:0; box-sizing:border-box; }
 .win.settingswin{ width:min(1040px,calc(var(--vvw,100vw) - 12px)); }
 .win>header,.win>footer{ min-width:0; } .win>header>span:first-child{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .win>header>span:last-child{ flex:none; }
-.win>.body,.win .sbody,.win .stgrid,.win .col{ overflow-x:hidden; min-width:0; }
+.win>.body,.win .sbody,.win .stgrid{ overflow-x:hidden; min-width:0; } .win .col{ overflow-x:clip; min-width:0; } /* clip (not hidden): hidden would make .col a scroll container, whose zero min-content contribution collapses auto grid rows and overlaps the locker panels */
