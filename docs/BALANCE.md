@@ -277,3 +277,57 @@ Tuning history for `powerMul`: 1.7 gave par 89% / skilled 77%; 1.5 gave par 78% 
 The first heat pass (x2.0 cost, no bot vent) showed the cost of getting heat wrong: 2.6 overheats/min and 39% lockout. The shipped numbers keep overheat a recurring, survivable event (about 1.4 a minute for the greedy bot that pushes into overheat on elites and bosses, with vent as the answer).
 
 **Re-run:** `node tools/balance/heat.mjs --secs 120`, `node tools/balance/run.mjs --par --seeds 2`, `node tools/balance/abilshare.mjs out.json`, `node tools/balance/heatsum.mjs out.json`; `npm run test:heat` for the assertions (caps, consequences, vent, HUD bands, bench cast-rate limits).
+
+
+## Boss pass (bosses decided by mechanics, not only stats)
+
+**Harness navigation fixed.** The stuck runs were a level-generation bug, not bot navigation alone: in the archetype layouts (`mapgen_arch.ts`) one of the two gate guards was placed along the exit axis, i.e. *behind* the gate, so the gate (which opens when the guards die) could never open for anyone. Both guards now spawn on the spawn side of the gate. The harness also uses `revealPoint()` for the boss room. Par runs stuck: 30-40% -> 0/72, so every run is measured.
+
+**Double-listing bug fixed.** `Game.saveNow()` stored the live `enemies` array as `inst.enemies`, so `spawnEnemy` pushed late boss/alarm adds into the same array twice (updated and hit twice). It now stores a copy.
+
+**Mechanics (`HARD.mech`, `HARD.press`, `BAL.boss`)**
+- Tier mechanic scaling: boss move tempo x[1,1,1.12,1.25,1.35] and hazard-under-player tempo x[1,1,1.2,1.4,1.55] by dungeon tier 0-4.
+- Echo: tier II+ bosses below 75% HP repeat every 2nd zone move where you stand after 1.15 s with a full telegraph (same windup, flashguard-safe). Camping in the gap is punished.
+- Enrage is a DPS check: starts at 100 s (was 140 s), ramp .02/s (was .012), cap 2.4x; ground hazards under the player hit for 11% max HP (was 9%).
+- Boss HP normalised toward fight-length targets (base 100 s, T1 130, T2 140, T3 150, T4 170) with clamp .75-1.5x, so short fights get longer and mechanics matter; boss damage class mult 1.05 -> 1.2. Teague (0% clear before: slam wiped the par kit) HP x.9, dmg x.8.
+
+**Results (skilled bot, boss only, 4 seeds x 24 bosses; tank 2 seeds)**
+
+| metric | before | after | target |
+|---|---|---|---|
+| skilled clears boss with <=1 death | 88% | 66% | 50-70% |
+| tank bot clears | 0% | 4% (loses 96%) | loses >80% |
+| par full-run clear (72 runs, none stuck) | 89% (stuck-free) | 71% | 70-90% |
+| ability damage share | 74% | 74% | >60% |
+
+Per boss (after; tank clear column is 2 seeds):
+
+| level | tier | boss | skilled clear | <=1 death | deaths/run | boss fight (s) | top damage source | tank clear |
+|---|---|---|---|---|---|---|---|---|
+| annex | base | overseer | 50% | 25% | 2.0 | 137 | overseer:slam | 0% |
+| foundry | base | teague | 100% | 100% | 0.0 | 61 | teague:slam | 100% |
+| clinic | base | surgeon | 0% | 0% | 4.0 | - | surgeon:chainsweep | 0% |
+| warehouse | base | stockmgr | 100% | 100% | 0.5 | 197 | stockmgr:slam | 0% |
+| coke_ovens | 1 | voss | 100% | 100% | 0.5 | 137 | voss:slam | 0% |
+| substation_12 | 1 | lineman | 100% | 100% | 0.0 | 115 | lineman:lineman.1 | 0% |
+| scrap_gantry | 1 | gantrymother | 100% | 75% | 1.0 | 140 | gantrymother:slam | 0% |
+| tailings_pit | 1 | pitboss | 100% | 75% | 0.5 | 140 | pitboss:quake | 0% |
+| bell_foundry | 2 | bellfounder | 75% | 50% | 0.8 | 217 | bellfounder:slam | 0% |
+| cold_archive | 2 | cryo | 100% | 100% | 0.0 | 135 | cryo:riposte | 0% |
+| audit_tower | 2 | auditor | 100% | 100% | 0.0 | 125 | auditor:cleave | 0% |
+| aesthetic_ward | 2 | mirrorpt | 75% | 50% | 1.5 | 252 | mirrorpt:cleave | 0% |
+| pharmacy_vault | 2 | apothecary | 50% | 50% | 1.0 | 246 | apothecary:cleave | 0% |
+| anechoic_lab | 3 | resonance | 100% | 75% | 0.8 | 171 | resonance:resonance.1 | 0% |
+| outlet_mall | 2 | clearance | 75% | 50% | 1.0 | 189 | clearance:slam | 0% |
+| liquidation_floor | 3 | liquidator | 75% | 75% | 0.8 | 121 | liquidator:rsweep | 0% |
+| parcel_tower | 3 | courier | 0% | 0% | 3.5 | - | courier:courier.0 | 0% |
+| freight_depot | 3 | dispatcher | 100% | 100% | 0.0 | 83 | dispatcher:dispatcher.0 | 0% |
+| warranty_vault | 3 | warrantor | 50% | 50% | 1.3 | 240 | warrantor:rsweep | 0% |
+| drained_reservoir | 2 | tidewarden | 75% | 75% | 1.0 | 167 | tidewarden:rsweep | 0% |
+| night_tunnels | 3 | rattle | 50% | 0% | 3.0 | 273 | rattle:rattle.0 | 0% |
+| breaker_yard | 3 | breaker | 100% | 50% | 1.5 | 284 | breaker:chainsweep | 0% |
+| radio_mast | 3 | widow | 100% | 100% | 0.3 | 177 | widow:widow.1 | 0% |
+| recall_yard | 4 | recall | 75% | 75% | 0.8 | 209 | recall:hazard | 0% |
+
+overall: clear 77%, <=1 death 66%; per tier (<=1 death): base 56%, 1 88%, 2 68%, 3 56%, 4 75%
+

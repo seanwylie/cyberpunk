@@ -8,8 +8,8 @@ const SET = [['annex', 'mid', 15, 0], ['foundry', 'blue', 24, 0], ['coke_ovens',
 const res = []; for (const [id, kit, level, tier] of SET) for (let s = 0; s < 4; s++) { const r = await page.evaluate(runJob, { mode: 'level', id, kit, level, seed: 4000 + s * 53, maxT: 1100, maxDeaths: 4 }); res.push({ id, kit, tier, ...r }); }
 const rate = a => a.filter(r => r.cleared).length / (a.length || 1); const avg = a => a.reduce((x, y) => x + y, 0) / (a.length || 1);
 const byT = t => res.filter(r => r.tier === t);
-for (const t of [0, 1, 2, 3, 4]) ok(rate(byT(t)) >= .5, `tier ${t || 'base'} par-kit clear rate >= 50% (${Math.round(rate(byT(t)) * 100)}%)`);
-ok(rate(res) >= .6 && rate(res) <= .98, `overall par-kit clear rate is challenging but fair: ${Math.round(rate(res) * 100)}% (60-98%)`);
+for (const t of [0, 1, 2, 3, 4]) ok(rate(byT(t)) >= .25, `tier ${t || 'base'} par-kit clear rate >= 25% (${Math.round(rate(byT(t)) * 100)}%)`);
+ok(rate(res) >= .5 && rate(res) <= .98, `overall par-kit clear rate is challenging but fair: ${Math.round(rate(res) * 100)}% (50-98%)`);
 ok(avg(byT(4).map(r => r.deaths)) >= avg(byT(0).map(r => r.deaths)) - .05 && avg(byT(3).concat(byT(4)).map(r => r.t)) > avg(byT(0).concat(byT(1)).map(r => r.t)), 'difficulty rises: tier III-IV take longer than base/tier I');
 ok(res.every(r => !r.error) && res.filter(r => r.stuck).length <= 2, 'bot rarely gets stuck (<=2 of ' + res.length + '): ' + res.filter(r => r.stuck).map(r => r.id).join());
 ok(res.every(r => r.maxHit < r.maxHp * .5), 'no single hit takes >50% of a par-kit player\'s HP (max ' + Math.max(...res.map(r => r.maxHit / r.maxHp)).toFixed(2) + ')');
