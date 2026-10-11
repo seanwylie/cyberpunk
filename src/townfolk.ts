@@ -113,12 +113,17 @@ const ringToDir = (k: number): Dir8 => ((((k - 2) % 8) + 8) % 8) as Dir8;
 
 // ---------- drawing ----------
 let tmp: HTMLCanvasElement | null = null;
+const frameCache = new Map<string, HTMLCanvasElement>();
 let tmpM: HTMLCanvasElement | null = null;
 /** Draw one walker with feet at (x,y) screen px. unit = TW/64 (same scale basis as the player). Returns false if the atlas has no walk/idle sheets. */
 export function drawWalker(c: CanvasRenderingContext2D, A: LoadedAtlas, w: Walker, x: number, y: number, unit: number): boolean {
   const walk = A.images.walk, idle = A.images.idle, wd = A.atlas.anims.walk, id = A.atlas.anims.idle; if (!walk || !idle || !wd || !id) return false;
   const W = A.atlas.frame.w, H = A.atlas.frame.h; const s = unit * w.scale * A.atlas.scale * (48 / (H * .6));
   c.save(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(x, y, 13 * s / w.scale * .95, 6 * s / w.scale * .95, 0, 0, 7); c.fill();
+  // fast path: tinted single frames are cached (bounded LRU) so a steady walker costs one scaled blit instead of ~6 canvas ops
+  if (!(w.prev && w.fade < 1)) { const mode = w.mode, n = mode === 'walk' ? WALK_FRAMES : IDLE_FRAMES, p = mode === 'walk' ? ((w.cyc % 1) + 1) % 1 * n : (w.idleT * IDLE_FPS) % n, f = Math.floor(p + .5) % n; const key = w.tint + mode + w.dir + '_' + f + '_' + W; let e = frameCache.get(key);
+    if (e) { frameCache.delete(key); frameCache.set(key, e); } else { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d')!; x.drawImage(mode === 'walk' ? walk : idle, f * W, w.dir * H, W, H, 0, 0, W, H); x.globalCompositeOperation = 'multiply'; x.fillStyle = w.tint; x.fillRect(0, 0, W, H); x.globalCompositeOperation = 'destination-in'; x.drawImage(mode === 'walk' ? walk : idle, f * W, w.dir * H, W, H, 0, 0, W, H); e = cv; frameCache.set(key, e); if (frameCache.size > 360) frameCache.delete(frameCache.keys().next().value!); }
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(e, 0, 0, W, H, x - A.atlas.anchor.x * s, y - A.atlas.anchor.y * s, W * s, H * s); c.restore(); return true; }
   if (!tmp) { tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H; } const t = tmp.getContext('2d')!; t.clearRect(0, 0, W, H);
   const one = (mode: 'walk' | 'idle', cyc: number, it: number, dir: Dir8, al: number) => { const im = mode === 'walk' ? walk : idle, n = mode === 'walk' ? WALK_FRAMES : IDLE_FRAMES; const p = mode === 'walk' ? ((cyc % 1) + 1) % 1 * n : (it * IDLE_FPS) % n; const f = Math.floor(p) % n, fr = p - Math.floor(p), nf = (f + 1) % n; t.globalAlpha = al; t.drawImage(im, f * W, dir * H, W, H, 0, 0, W, H); if (fr > .004) { t.globalAlpha = al * fr; t.drawImage(im, nf * W, dir * H, W, H, 0, 0, W, H); } };
   if (w.prev && w.fade < 1) { one(w.prev.mode, w.prev.cyc, w.prev.idleT, w.prev.dir, 1); const f = w.fade * w.fade * (3 - 2 * w.fade); one(w.mode, w.cyc, w.idleT, w.dir, f); } else one(w.mode, w.cyc, w.idleT, w.dir, 1);
