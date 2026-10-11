@@ -358,7 +358,7 @@ export class Game {
         let n=0; for(const o of this.enemies){ if(o===e||o.dead||o.faction!=='enemy'||o._rt.reveal>0) continue; const dd=dist(e.x,e.y,o.x,o.y); if(dd>AB.ctrlR) continue; n++; this.hurtEnemy(o,AB.ctrlDmg*dmgM,e.x,e.y,0); if(o.dead) continue; if(!ENEMIES[o.type].boss&&!(o as any).pylon&&!ENEMIES[o.type].static){ const a2=Math.atan2(e.y-o.y,e.x-o.x); const pull=Math.min(1.4,Math.max(0,dd-.9)); const pp=this.moveCircle(o.x,o.y,Math.cos(a2)*pull,Math.sin(a2)*pull,ENEMIES[o.type].radius); o.x=pp.x; o.y=pp.y; o.stunT=Math.max(o.stunT,AB.ctrlStun); } o._rt.hack=AB.hackT; o.alert=true; this.vfx('control.hit',o.x,o.y); }
         this.fx.push({kind:'ring',x:e.x,y:e.y,r:AB.ctrlR,t:0,life:.5,c:'#7f9bb8'}); if(n>=2) this.popup(e.x,e.y,'MASS STUN x'+(n+1),'#8fb8d8'); break; }
       case 'pulse': { const tx=v.tx!, ty=v.ty!; this.castLook('pulse',tx,ty,{r:AB.pulseR,c:'#6d90b0'}); this.vfx('pulse.cast',tx,ty,{r:AB.pulseR}); let broke=0; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(dist(tx,ty,e.x,e.y)<=AB.pulseR+ENEMIES[e.type].radius){ const had=!!(e._rt.shield&&e._rt.shield.hp>0); this.hurtEnemy(e,AB.pulseDmg*dmgM,tx,ty,.5); if(had&&!(e._rt.shield&&e._rt.shield.hp>0)) broke++; if(!e.dead) e.stunT=Math.max(e.stunT,ENEMIES[e.type].boss?.8:AB.pulseStun); } } if(broke) this.vfx('pulse.shatter',tx,ty); if(broke) this.popup(tx,ty,'SHIELD BREAK'+(broke>1?' x'+broke:''),'#e8d890'); break; }
-      case 'revive': { this.hp=Math.min(this.maxHp,this.hp+this.maxHp*.3); this.castLook('brace',this.px,this.py,{r:2.2,c:'#9fd0f0'}); this.vfx('revive.fire',this.px,this.py); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius<3){ this.hurtEnemy(e,60*dmgM,this.px,this.py,1.8); if(!e.dead&&!ENEMIES[e.type].boss) e.stunT=Math.max(e.stunT,1.2); } } this.popup(this.px,this.py-1,'RALLY +30% HP','#9fd0f0'); break; }
+      case 'revive': { this.hp=Math.min(this.maxHp,this.hp+this.maxHp*.3); this.castLook('brace',this.px,this.py,{r:2.2,c:'#9fd0f0'}); this.vfx('revive.fire',this.px,this.py); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; if(dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius<3){ this.hurtEnemy(e,60*dmgM,this.px,this.py,1.8); if(!e.dead&&!ENEMIES[e.type].boss) e.stunT=Math.max(e.stunT,1.2); } } this.popup(this.px,this.py-1,'RALLY +30% HP','#9fd0f0'); this.onTeamRevive?.(); break; }
       default: break;
     } } finally{ this.curTag='auto'; }
   }
@@ -429,16 +429,21 @@ export class Game {
     { const zn=this.zoneAt(this.px,this.py); if(zn!==this.lastZone){ const lab=(this.dd.zoneLabels as any)[zn]; if(lab&&this.lastZone!==''&&zn!=='none'){ const nowT=performance.now(); const last=this.zoneShown[zn]||-1e9; if(nowT-last>20000&&nowT-this.zoneAnyAt>3000){ this.zoneShown[zn]=nowT; this.zoneAnyAt=nowT; this.emit('zone',{label:lab,zone:zn,hint:this.objective()?.text||''}); } } this.lastZone=zn; } this.seenT-=dt; if(this.seenT<=0){ this.seenT=.25; this.markSeen(); } }
     // sensors (cloak route)
     const sn=L.sensors; if(this.px>=sn.x0&&this.px<=sn.x1+1&&this.py>=sn.y0&&this.py<=sn.y1+1){ if(this.cloakT<=0&&!f.alarm){ f.alarm=true; this.toast('SENSOR ALARM: security responding'); this.emit('sfx','alarm'); for(let i=0;i<4;i++){ const e=this.spawnEnemy(this.dd.alarmType,this.px+(i<2?-3:3)+(i%2)*.6,this.py+.5+(i%2)*.7); e.alert=true; } } else if(this.cloakT>0&&!this.sensorFlag){ this.sensorFlag=true; this.note('route_used','cloak'); } }
-    // zone based doors
-    if(!f.gate1&&this.enemies.filter(e=>e.type===this.dd.gateGuard&&!e.dead).length===0){ f.gate1=true; this.openDoor('gate1'); this.toast('Security gate released'); }
     // boss reveal trigger
     if(f.controller&&!f.bossSpawned&&!f.bossDead&&(L.reveal?dist(L.reveal.x,L.reveal.y,this.px,this.py)<=L.reveal.r:this.px>=L.revealX)&&this.zoneAt(this.px,this.py)==='boss') this.spawnBoss();
+    this.updateWorldRun(dt,this.zoneAt(this.px,this.py)==='boss');
+  }
+  /** Instance-wide run logic that must tick once per world (not once per player): gate release, boss reveal timer, boss leash, ally expiry. inBoss = some living player is in the boss zone. */
+  updateWorldRun(dt:number,inBoss:boolean){
+    const f=this.inst!.flags;
+    // zone based doors
+    if(!f.gate1&&this.enemies.filter(e=>e.type===this.dd.gateGuard&&!e.dead).length===0){ f.gate1=true; this.openDoor('gate1'); this.toast('Security gate released'); }
     // reveal timer
     const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead);
     if(boss&&boss._rt.reveal>0){ boss._rt.reveal-=dt; this.revealing=true; this.projs=[]; this.zones=this.zones.filter(z=>z.env); if(boss._rt.reveal<=0){ boss._rt.reveal=0; this.revealing=false; boss.alert=true; this.emit('reveal-end'); this.toast('Fight!'); } }
     else if(!boss) this.revealing=false;
     // boss leash: reset if player left the boss room for >6s
-    if(boss&&!this.revealing){ if(this.zoneAt(this.px,this.py)!=='boss'){ boss._rt.lost+=dt; if(boss._rt.lost>6){ this.resetBossIfAlive(); this.toast('Boss reset. It will emerge again.'); } } else boss._rt.lost=0; }
+    if(boss&&!this.revealing){ if(!inBoss){ boss._rt.lost+=dt; if(boss._rt.lost>6){ this.resetBossIfAlive(); this.toast('Boss reset. It will emerge again.'); } } else boss._rt.lost=0; }
     // ally expiry
     for(const e of this.enemies){ if(e.faction==='ally'){ e.ctrlT-=dt; if(e.ctrlT<=0){ e.faction='enemy'; } } if(e.stunT>0) e.stunT-=dt; }
   }
@@ -513,10 +518,12 @@ export class Game {
   opponents(faction:'enemy'|'ally'):{x:number;y:number;r:number;hurt:(d:number,sx:number,sy:number)=>void}[]{
     if(faction==='enemy'){ const out:any[]=[]; if(!this.downed) out.push({x:this.px,y:this.py,r:COMBAT.playerRadius,hurt:(d:number,sx:number,sy:number)=>this.hurtPlayer(d,sx,sy)}); for(const a of this.enemies) if(a.faction==='ally'&&!a.dead) out.push({x:a.x,y:a.y,r:ENEMIES[a.type].radius,hurt:(d:number,sx:number,sy:number)=>this.hurtEnemy(a,d*.7,sx,sy)}); return out; }
     return this.enemies.filter(e=>e.faction==='enemy'&&!e.dead&&e._rt.reveal<=0).map(e=>({x:e.x,y:e.y,r:ENEMIES[e.type].radius,hurt:(d:number,sx:number,sy:number)=>this.hurtEnemy(e,d,sx,sy,.4)})); }
+  /** Party hooks (src/core/party.ts): re-aim the shared enemy AI at the player an enemy is fighting, and keep one flow field per player. Undefined in solo. */
+  bindTarget?:(e:En)=>void; flowHook?:()=>void; onTeamRevive?:()=>void;
   updateEnemies(dt:number){
-    this.frame++; this.flowT-=dt; if(this.flowT<=0){ this.flowT=.35; const need=[false,false,false]; for(const e of this.enemies){ if(!e.dead&&e.faction==='enemy'&&e.alert&&!ENEMIES[e.type].static) need[this.flowCls(ENEMIES[e.type].radius)]=true; } need[0]=true; for(let c=0;c<3;c++){ if(need[c]) this.flowField(c); } }
+    this.frame++; this.flowT-=dt; if(this.flowHook) this.flowHook(); else if(this.flowT<=0){ this.flowT=.35; const need=[false,false,false]; for(const e of this.enemies){ if(!e.dead&&e.faction==='enemy'&&e.alert&&!ENEMIES[e.type].static) need[this.flowCls(ENEMIES[e.type].radius)]=true; } need[0]=true; for(let c=0;c<3;c++){ if(need[c]) this.flowField(c); } }
     const alive=this.enemies.filter(e=>!e.dead);
-    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.hack>0) rt.hack-=dt; if(rt.reveal>0) continue; if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); else mobTick(this,e,dt); this.updateEnemy(e,dt); }
+    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.hack>0) rt.hack-=dt; if(rt.reveal>0) continue; this.bindTarget?.(e); if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); else mobTick(this,e,dt); this.updateEnemy(e,dt); }
     // separation
     for(let i=0;i<alive.length;i++){ const a=alive[i]; if(ENEMIES[a.type].static) continue; for(let j=i+1;j<alive.length;j++){ const b=alive[j]; const dx=b.x-a.x, dy=b.y-a.y; const d2=dx*dx+dy*dy; const rr=(ENEMIES[a.type].radius+ENEMIES[b.type].radius)*.9; if(d2<rr*rr&&d2>1e-4){ const d=Math.sqrt(d2), push=(rr-d)*.5; const nx=dx/d, ny=dy/d; if(!ENEMIES[b.type].static){ const pb=this.moveCircle(b.x,b.y,nx*push,ny*push,ENEMIES[b.type].radius*.8); b.x=pb.x; b.y=pb.y; } const pa=this.moveCircle(a.x,a.y,-nx*push,-ny*push,ENEMIES[a.type].radius*.8); a.x=pa.x; a.y=pa.y; } } }
     this.enemies=this.enemies.filter(e=>!e.dead||e._rt.bornT>-1); // keep dead for persistence
@@ -631,16 +638,19 @@ export class Game {
 
   // ---------- death, loot, XP ----------
   killEnemy(e:En){
-    if(e.dead) return; const def=ENEMIES[e.type]; e.dead=true; e.hp=0; mobDeath(this,e); this.kills++; this.save.stats.kills++; const inst=this.inst!; inst.kills[e.type]=(inst.kills[e.type]||0)+1; this.combatHold=3;
+    if(e.dead) return; const def=ENEMIES[e.type]; e.dead=true; e.hp=0; mobDeath(this,e); this.combatHold=3;
     this.emit('sfx','death_'+(def.boss?'boss':def.elite?'elite':def.mfr)); const gore=this.save.settings.gore; const n=gore==='off'?0:gore==='standard'?4:14;
     for(let i=0;i<n;i++){ const a=Math.random()*6.28,s=1+Math.random()*(gore==='bloody'?5:2.5); this.fx.push({kind:'blood',x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:0,life:.5+Math.random()*.5,c:def.mfr==='PS'?'#8a8f94':'#6e2a22'}); }
     this.fx.push({kind:'burst',x:e.x,y:e.y,t:0,life:.3});
     if(e.faction==='ally') { return; }
-    { const xpv=def.xp*((e as any).affix?.length?2.5:1); this.addXp(xpv); inst.xpEarned+=xpv; } this.save.rep[def.mfr]+=def.rep; record(this.story(),'kill_mfr',def.mfr); this.contractEvent('kill_mfr',def.mfr); this.contractEvent('kill_type',e.type);
-    this.rollLoot(e);
+    this.grantKill(e); const inst=this.inst!;
     if(e.type===this.dd.lockElite&&!inst.flags.lock2){ inst.flags.lock2=true; this.openDoor('lock2'); this.toast(def.name+' down: lock released'); }
     if(def.boss) this.onBossDead(e);
   }
+  /** Per-player kill rewards: counters, XP, reputation, contract credit and this player's OWN loot/cosmetic/ability rolls. Solo calls it once; a party calls it once per participating member (each with their own save, pity timers and rng). */
+  grantKill(e:En){ const def=ENEMIES[e.type]; const inst=this.inst!; this.kills++; this.save.stats.kills++; inst.kills[e.type]=(inst.kills[e.type]||0)+1;
+    { const xpv=def.xp*((e as any).affix?.length?2.5:1); this.addXp(xpv); inst.xpEarned+=xpv; } this.save.rep[def.mfr]+=def.rep; record(this.story(),'kill_mfr',def.mfr); this.contractEvent('kill_mfr',def.mfr); this.contractEvent('kill_type',e.type);
+    this.rollLoot(e); }
   addXp(n:number){ const s=this.save; s.xp+=n; while(s.level<PROGRESSION.maxLevel&&s.xp>=PROGRESSION.xpForLevel(s.level)){  s.xp-=PROGRESSION.xpForLevel(s.level); s.level++; this.toast('Level up! Level '+s.level); this.recompute(); } this.checkTownUnlocks(); }
   pickEntry(pool:LootEntry[]):LootEntry{ const tot=pool.reduce((a,b)=>a+b.w,0); let last=pool[0];
     for(let tries=0;tries<10;tries++){ let r=Math.random()*tot, pick=pool[0]; for(const e of pool){ r-=e.w; if(r<=0){ pick=e; break; } } last=pick;
@@ -706,7 +716,9 @@ export class Game {
   }
   rm(d:Drop){ const inst=this.inst!; inst.drops=inst.drops.filter(x=>x.id!==d.id); }
   onBossDead(e:En){
-    const inst=this.inst!; const f=inst.flags; if(f.bossDead) return; f.bossDead=true; f.completed=true; this.projs=[]; this.zones=[]; clearBossAdds(this); this.save.cleared={...(this.save.cleared||{}),[this.dd.id]:Date.now()};
+    const inst=this.inst!; const f=inst.flags; if(!f.bossDead){ f.bossDead=true; f.completed=true; this.projs=[]; this.zones=[]; clearBossAdds(this); } this.grantClear(e); }
+  /** Per-player clear rewards (clear XP, lockout, contracts, achievements). */
+  grantClear(e:En){ const inst=this.inst!; const f=inst.flags; if((inst as any)._cg) return; (inst as any)._cg=true; f.completed=true; this.save.cleared={...(this.save.cleared||{}),[this.dd.id]:Date.now()};
     if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Return to town any time: your pack is banked and you can start another dungeon.'); }
     for(const d of checkAchievements(this.save)) this.toast('Wardrobe unlocked: '+d.name+' ('+d.rarity+')'); this.emit('boss-dead'); this.resPending=5; this.saveNow();
   }
