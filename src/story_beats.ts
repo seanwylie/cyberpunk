@@ -42,7 +42,7 @@ export function authoredBeat(s:Save, req:BeatReq, newMfr?:Mfr):string{ const m=n
 
 export type Fetcher=(url:string,init:any)=>Promise<{ok:boolean;json:()=>Promise<any>}>;
 export class StoryBeats {
-  private fired=0; private last=0; busy=false; fetcher:Fetcher; endpoint='api/story-beat'; rng:()=>number=Math.random; now:()=>number=Date.now;
+  private fired=0; private last=0; busy=false; fetcher:Fetcher; endpoint:string=((import.meta as any).env?.VITE_WV_STORY_URL as string)||'api/story-beat'; /* AWS: the story Lambda Function URL (build-time VITE_WV_STORY_URL) */ rng:()=>number=Math.random; now:()=>number=Date.now;
   onEntry:((e:JournalEntry)=>void)|null=null;
   constructor(private save:()=>Save, private abilities:()=>string[], fetcher?:Fetcher){ this.fetcher=fetcher||((u,i)=>fetch(u,i) as any); }
   private mfrSetCheck():Mfr|null{ const s=this.save(); const d=dominantMfr(s); if(d&&!metaOf(s).seenMfr.includes(d)) return d; return null; }
