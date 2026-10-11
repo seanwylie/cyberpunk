@@ -19,6 +19,7 @@ export interface Save {
   settings:Settings; purchases:{ lockerBlocks:number; skins:string[]; equippedSkin:string|null }; lastClearDay:string|null;
   instance:InstanceState|null; story:StoryState|null; uidN:number; stats:{ runs:number; clears:number; kills:number };
   /** Set by the idkfa dev cheat; leaderboards/MMO must ignore flagged saves. */ cheated?:boolean; cheatLog?:string[];
+  /** Current town id and unlock flags (src/towns.ts). */ town?:string; towns?:{ harrow?:{ unlocked:boolean } };
   /** Town bank (src/bank.ts): long-term storage + credits vault. */ bank?:import('./bank').Bank;
   /** First-run tutorial progress (src/tutorial.ts). */ tutorial?:import('./tutorial').TutState;
   /** Dungeons cleared at least once (content batch 1 unlock path). */ cleared?:Record<string,number>;

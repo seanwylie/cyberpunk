@@ -8,6 +8,7 @@ import { bodyOf } from './bodyvariants';
 import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
 import type { Level } from './level';
 import { TownArt, GP, decorDepth } from './town';
+import { harrowCfg } from './town2';
 import { STATIONS, STATION_BY_ID, drawIcon } from './stations';
 import { Organic } from './organic';
 import { DungeonArt, themeOf } from './dungeon_env';
@@ -20,8 +21,8 @@ const hash=(x:number,y:number)=>{ let h=(x*374761393+y*668265263)|0; h=(h^(h>>>1
 
 export class Renderer {
   ctx:CanvasRenderingContext2D; w=0; h=0; dpr=1; TW=64; baseTW=64; camx=0; camy=0; shake=0;
-  anim:PlayerAnimator|null=null; lastT=0; dart=new DungeonArt(); eart=new EnemyArt(); private theme=''; env:Env|null=null; town:TownArt|null=null; org=new Organic(); private wallCache=new WeakMap<Level,Map<number,{style:'concrete'|'steel';v:number;zone:string}>>();
-  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); if(this.env) this.env.da=this.dart; if(this.env) this.town=new TownArt(); loadAtlas().then(l=>{ if(l){ this.anim=new PlayerAnimator(l); this.anim.onImpact=k=>this.impact(k); } }); }
+  anim:PlayerAnimator|null=null; lastT=0; dart=new DungeonArt(); eart=new EnemyArt(); private theme=''; env:Env|null=null; town:TownArt|null=null; town1:TownArt|null=null; town2:TownArt|null=null; org=new Organic(); private wallCache=new WeakMap<Level,Map<number,{style:'concrete'|'steel';v:number;zone:string}>>();
+  constructor(public canvas:HTMLCanvasElement, public g:Game){ this.ctx=canvas.getContext('2d')!; this.env=new URLSearchParams(location.search).has('flat')?null:makeEnv(); this.env?.warmAsync(['yard','town']); if(this.env) this.env.da=this.dart; if(this.env) this.town=this.town1=new TownArt(); loadAtlas().then(l=>{ if(l){ this.anim=new PlayerAnimator(l); this.anim.onImpact=k=>this.impact(k); } }); }
   resize(){ const w=window.innerWidth,h=window.innerHeight; const dpr=Q.dpr(window.devicePixelRatio||1,w,h); const cw=Math.round(w*dpr), ch=Math.round(h*dpr); this.dpr=dpr; /* never touch the backing store unless its size really changed: assigning width clears the canvas (visible flash) */ if(this.canvas.width!==cw||this.canvas.height!==ch){ this.canvas.width=cw; this.canvas.height=ch; (window as any).__canvasResizes=((window as any).__canvasResizes||0)+1; } this.canvas.style.width=w+'px'; this.canvas.style.height=h+'px'; this.w=w; this.h=h; this.TW=this.baseTW=Math.max(40,Math.min(92,Math.min(h/8.2,w/13))); }
   // projection
   sx(x:number,y:number){ return (x-y)*this.TW/2 + this.w/2 - this.camx; }
@@ -42,7 +43,7 @@ export class Renderer {
   }
   tile(x:number,y:number,col:string){ const c=this.ctx; const a=this.sx(x,y), b=this.sy(x,y); const hw=this.TW/2, hh=this.TW/4; c.fillStyle=col; c.beginPath(); c.moveTo(a,b); c.lineTo(a+hw,b+hh); c.lineTo(a,b+2*hh); c.lineTo(a-hw,b+hh); c.closePath(); c.fill(); }
   drawFloor(){
-    const g=this.g, L=g.level, c=this.ctx; if(L.kind==='town'&&this.town?.ready){ this.drawTownGround(); return; }
+    const g=this.g, L=g.level, c=this.ctx; if(L.kind==='town') this.syncTown(L); if(L.kind==='town'&&this.town?.ready){ this.drawTownGround(); return; }
     const R=Math.ceil(Math.max(this.w,this.h)/this.TW*1.1)+3; const x0=Math.max(0,Math.floor(g.px-R)), x1=Math.min(L.w-1,Math.ceil(g.px+R)), y0=Math.max(0,Math.floor(g.py-R)), y1=Math.min(L.h-1,Math.ceil(g.py+R));
     for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ const i=y*L.w+x; if(L.solid[i]&&!this.isDoorTile(x,y)) continue; const z=L.zoneNames[L.zone[i]]; const pal=ZCOL[z]||ZCOL.yard; const hv=hash(x,y); if(this.env){ this.floorTile(x,y,z,i); continue; } this.tile(x,y,pal[(x+y)&1]); if(hv>.86){ c.fillStyle='rgba(20,20,22,.16)'; const a=this.sx(x+.5,y+.5), b=this.sy(x+.5,y+.5); c.beginPath(); c.ellipse(a,b,this.TW*.12*(.5+hv),this.TW*.05*(.5+hv),0,0,7); c.fill(); }
       if(hv<.04){ c.strokeStyle='rgba(30,30,30,.25)'; c.lineWidth=1; c.beginPath(); c.moveTo(this.sx(x+.2,y+.3),this.sy(x+.2,y+.3)); c.lineTo(this.sx(x+.7,y+.8),this.sy(x+.7,y+.8)); c.stroke(); }
@@ -376,6 +377,8 @@ export class Renderer {
 
   // ---------- illustrated town ----------
   private groundBuilt:HTMLCanvasElement|null=null;
+  /** use the art set that belongs to the current town (Rustline vs Harrow Reach); Harrow art loads lazily on first visit */
+  private syncTown(L:Level){ if(!this.env) return; const want=L.theme==='harrow'?(this.town2??=new TownArt('./town2/',harrowCfg())):this.town1; if(want&&this.town!==want) this.town=want; }
   private drawTownGround(){ const t=this.town!, L=this.g.level; if(!t.ground) t.buildGround(L); const gr=t.ground!; const CH=5, kk=this.TW/GP; const R=Math.ceil(Math.max(this.w,this.h)/this.TW*1.1)+4; const g=this.g;
     const cx0=Math.max(0,Math.floor((g.px-R)/CH)), cx1=Math.min(Math.ceil(L.w/CH)-1,Math.floor((g.px+R)/CH)), cy0=Math.max(0,Math.floor((g.py-R)/CH)), cy1=Math.min(Math.ceil(L.h/CH)-1,Math.floor((g.py+R)/CH));
     for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){ const sw=Math.min(CH*GP,gr.width-cx*CH*GP), sh=Math.min(CH*GP,gr.height-cy*CH*GP); if(sw<=0||sh<=0) continue; this.bakeBlit(gr,cx*CH*GP,cy*CH*GP,sw,sh,kk/2,kk/4,-kk/2,kk/4,this.sx(cx*CH,cy*CH),this.sy(cx*CH,cy*CH),0,1); } }

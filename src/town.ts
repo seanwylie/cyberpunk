@@ -4,9 +4,9 @@
 // Drop-in: replace any PNG in public/town/props with another of the same name (see public/town/manifest.json); missing files are skipped.
 import type { Level, Decor } from './level';
 import { makeVault } from './town_vault';
-import { STATIONS, drawIcon, type Station } from './stations';
+import { RUSTLINE_STATIONS, drawIcon, type Station } from './stations';
 
-export const TOWN_PROPS = ['stall_a','stall_clothes','stall_goods','stall_vendor_sign','fixer_booth','gate_arch','scaffold','steam_drums','npc1','npc2','npc3','npc4','lockers','fence','poster_wall','sign_fixer','stall_vendor','workbench','stall_awning','crates','barrels','lamp','cables','bench','junk','grate','vending','noticeboard','barrel_fire','awn_red','awn_blue','awn_green','awn_grey','swag1','swag2','swag3','bulbs','rags1','rags2','leanto','stall_noodle','stall_implant','stall_clinic','stall_weapons','stall_junk','board_jobs','banner_pole','np_kneel_l','np_kneel_r','np_woman_table','np_pair_talk','np_kid_l','np_kid_r','np_guard_l','np_guard_r','np_porter','np_hooded_wall','np_lantern_l','np_lantern_r','bld1','bld2','bld3','container','slab','gantry','barrier','barrier_corner'];
+export const TOWN_PROPS = ['stall_a','stall_clothes','stall_goods','stall_vendor_sign','fixer_booth','gate_arch','scaffold','steam_drums','npc1','npc2','npc3','npc4','lockers','fence','poster_wall','sign_fixer','stall_vendor','workbench','stall_awning','crates','barrels','lamp','cables','bench','junk','grate','vending','noticeboard','barrel_fire','awn_red','awn_blue','awn_green','awn_grey','swag1','swag2','swag3','bulbs','rags1','rags2','leanto','stall_noodle','stall_implant','stall_clinic','stall_weapons','stall_junk','board_jobs','banner_pole','np_kneel_l','np_kneel_r','np_woman_table','np_pair_talk','np_kid_l','np_kid_r','np_guard_l','np_guard_r','np_porter','np_hooded_wall','np_lantern_l','np_lantern_r','bld1','bld2','bld3','container','slab','gantry','barrier','barrier_corner','tram_platform'];
 const GROUND = ['cobble','planks','debris','plaza'];
 const rng = (seed: number) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const mk = (w: number, h: number) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
@@ -33,17 +33,20 @@ export function makeSign(st: Station): HTMLCanvasElement {
 export const GP = 40; // ground canvas pixels per world tile
 export interface Part { x: number; y: number; z: number; vx: number; vy: number; vz: number; t: number; life: number; k: 'steam' | 'ember' | 'dust'; s: number; col?: string; }
 
+/** Per-town art configuration. Defaults reproduce Rustline Market exactly. */
+export interface TownCfg { stations?: Station[]; hub?: [number, number]; props?: string[]; ground?: string[]; /** logical ground slots -> file names */ g?: Partial<Record<'base' | 'debris' | 'planks' | 'plaza', string>>; /** secondary prop dir used for files missing in `base` */ fallbackBase?: string; puddles?: boolean; plazaSize?: number; /** extra ground passes drawn after the plaza (ember cracks etc.) */ extra?: (x: CanvasRenderingContext2D, W: number, H: number, art: TownArt) => void; }
 export class TownArt {
   img: Record<string, HTMLImageElement> = {}; gimg: Record<string, HTMLImageElement> = {}; ready = false; ground: HTMLCanvasElement | null = null;
   glows: Record<string, HTMLCanvasElement> = {}; parts: Part[] = []; private sc = new Map<string, HTMLCanvasElement>(); private scKey = ''; private em = 0; private R = rng(7);
   npcPos: { x: number; y: number; flip: boolean; moving: boolean }[] = [];
-  constructor(private base = './town/') { this.load(); for (const [k, c] of [['warm', '255,176,96'], ['fire', '255,128,52'], ['cool', '120,150,160'], ['puff', '190,194,192'], ...STATIONS.map(st => [st.key, st.rgb] as const)] as const) { const cv = mk(128, 128), x = cv.getContext('2d')!; const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, `rgba(${c},1)`); g.addColorStop(.35, `rgba(${c},.38)`); g.addColorStop(1, `rgba(${c},0)`); x.fillStyle = g; x.fillRect(0, 0, 128, 128); this.glows[k] = cv; } }
+  stations: Station[]; hub: [number, number];
+  constructor(private base = './town/', public cfg: TownCfg = {}) { this.stations = cfg.stations || RUSTLINE_STATIONS; this.hub = cfg.hub || [30.5, 22.5]; this.load(); for (const [k, c] of [['warm', '255,176,96'], ['fire', '255,128,52'], ['cool', '120,150,160'], ['puff', '190,194,192'], ...this.stations.map(st => [st.key, st.rgb] as const)] as const) { const cv = mk(128, 128), x = cv.getContext('2d')!; const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, `rgba(${c},1)`); g.addColorStop(.35, `rgba(${c},.38)`); g.addColorStop(1, `rgba(${c},0)`); x.fillStyle = g; x.fillRect(0, 0, 128, 128); this.glows[k] = cv; } }
   loaded = 0; total = 1;
-  async load() { this.total = TOWN_PROPS.length + GROUND.length; const tick = () => { this.loaded++; (window as any).__loadPct = this.loaded / this.total; };
-    await Promise.all([...TOWN_PROPS.map(async n => { const i = await loadImg(`${this.base}props/${n}.png`); if (i) this.img[n] = i; tick(); }), ...GROUND.map(async n => { const i = await loadImg(`${this.base}ground/${n}.jpg`); if (i) this.gimg[n] = i; tick(); })]);
-    for (const st of STATIONS) this.img['sign_' + st.key] = makeSign(st) as any;
+  async load() { const PL = this.cfg.props || TOWN_PROPS, GL = this.cfg.ground || GROUND; this.total = PL.length + GL.length; const tick = () => { this.loaded++; (window as any).__loadPct = this.loaded / this.total; };
+    await Promise.all([...PL.map(async n => { let i = await loadImg(`${this.base}props/${n}.png`); if (!i && this.cfg.fallbackBase) i = await loadImg(`${this.cfg.fallbackBase}props/${n}.png`); if (i) this.img[n] = i; tick(); }), ...GL.map(async n => { const i = await loadImg(`${this.base}ground/${n}.jpg`); if (i) this.gimg[n] = i; tick(); })]);
+    for (const st of this.stations) this.img['sign_' + st.key] = makeSign(st) as any;
     this.img['bank_vault'] = makeVault() as any;
-    this.ready = !!this.gimg.cobble && Object.keys(this.img).length > 8;
+    this.ready = !!this.gimg[this.cfg.g?.base || 'cobble'] && Object.keys(this.img).length > 8;
   }
   /** pre-scaled sprite (one cached canvas per sprite per zoom) so per-frame drawing is a 1:1 blit */
   scaled(name: string, wpx: number, dpr: number): { cv: HTMLCanvasElement; w: number; h: number } | null {
@@ -56,7 +59,7 @@ export class TownArt {
   }
   // ---------------- ground ----------------
   buildGround(L: Level) {
-    const W = L.w * GP, H = L.h * GP; const cv = mk(W, H), x = cv.getContext('2d')!; const R = rng(11); const gi = this.gimg;
+    const W = L.w * GP, H = L.h * GP; const cv = mk(W, H), x = cv.getContext('2d')!; const R = rng(11); const gi = this.gimg; const G = { base: 'cobble', debris: 'debris', planks: 'planks', plaza: 'plaza', ...this.cfg.g }; const [HX, HY] = this.hub;
     const pat = (n: string, sc: number, rot = 0) => { const p = x.createPattern(gi[n], 'repeat')!; (p as any).setTransform?.(new DOMMatrix().rotate(rot).scale(sc)); return p; };
     x.fillStyle = '#1a1816'; x.fillRect(0, 0, W, H);
     // value noise mask helper: blobs of soft alpha, thresholded for organic edges
@@ -65,20 +68,21 @@ export class TownArt {
       mx.putImageData(id, 0, 0); return m; };
     const layer = (fill: (c: CanvasRenderingContext2D) => void, mask: HTMLCanvasElement | ((c: CanvasRenderingContext2D) => void), alpha = 1) => { const t = mk(W, H), tx = t.getContext('2d')!; fill(tx); tx.globalCompositeOperation = 'destination-in'; if (typeof mask === 'function') mask(tx); else { tx.imageSmoothingEnabled = true; tx.drawImage(mask, 0, 0, W, H); } x.globalAlpha = alpha; x.drawImage(t, 0, 0); x.globalAlpha = 1; };
     // 1. wet cobble everywhere (two rotated passes break up tiling)
-    x.fillStyle = pat('cobble', .95); x.fillRect(0, 0, W, H);
-    layer(c => { c.fillStyle = pat('cobble', 1.15, 90); c.fillRect(0, 0, W, H); }, noiseMask(3, 14, .42, .25), .85);
+    x.fillStyle = pat(G.base, .95); x.fillRect(0, 0, W, H);
+    layer(c => { c.fillStyle = pat(G.base, 1.15, 90); c.fillRect(0, 0, W, H); }, noiseMask(3, 14, .42, .25), .85);
     // 2. debris / dirt patches
-    if (gi.debris) layer(c => { c.fillStyle = pat('debris', .9, 17); c.fillRect(0, 0, W, H); }, noiseMask(5, 10, .52, .18), .95);
+    if (gi[G.debris]) layer(c => { c.fillStyle = pat(G.debris, .9, 17); c.fillRect(0, 0, W, H); }, noiseMask(5, 10, .52, .18), .95);
     // 3. plank + plate walkways: lanes from plaza to each district
-    const lanes: [number, number][][] = STATIONS.map(st => [[30.5, 22.5], [(30.5 + st.x) / 2 + Math.sin(st.x) * 1.2, (22.5 + st.y) / 2 + Math.cos(st.y) * 1.2], [st.x, st.y]]);
-    if (gi.planks) { const lm = mk(W, H), lx = lm.getContext('2d')!; lx.lineCap = 'round'; lx.lineJoin = 'round'; for (let pass = 0; pass < 5; pass++) { lx.strokeStyle = `rgba(255,255,255,${pass === 4 ? .9 : .22})`; lx.lineWidth = (2.3 - pass * .28) * GP; for (const ln of lanes) { lx.beginPath(); ln.forEach(([px, py], i) => { const jx = Math.sin(px * 3.1 + py) * .35, jy = Math.cos(px + py * 2.7) * .35; i ? lx.lineTo((px + jx) * GP, (py + jy) * GP) : lx.moveTo((px + jx) * GP, (py + jy) * GP); }); lx.stroke(); } }
-      const edge = noiseMask(8, 5, .3, .35); lx.globalCompositeOperation = 'destination-in'; lx.drawImage(edge, 0, 0, W, H); layer(c => { c.fillStyle = pat('planks', .8, 27); c.fillRect(0, 0, W, H); }, c => c.drawImage(lm, 0, 0), .9); }
+    const lanes: [number, number][][] = this.stations.map(st => [[HX, HY], [(HX + st.x) / 2 + Math.sin(st.x) * 1.2, (HY + st.y) / 2 + Math.cos(st.y) * 1.2], [st.x, st.y]]);
+    if (gi[G.planks]) { const lm = mk(W, H), lx = lm.getContext('2d')!; lx.lineCap = 'round'; lx.lineJoin = 'round'; for (let pass = 0; pass < 5; pass++) { lx.strokeStyle = `rgba(255,255,255,${pass === 4 ? .9 : .22})`; lx.lineWidth = (2.3 - pass * .28) * GP; for (const ln of lanes) { lx.beginPath(); ln.forEach(([px, py], i) => { const jx = Math.sin(px * 3.1 + py) * .35, jy = Math.cos(px + py * 2.7) * .35; i ? lx.lineTo((px + jx) * GP, (py + jy) * GP) : lx.moveTo((px + jx) * GP, (py + jy) * GP); }); lx.stroke(); } }
+      const edge = noiseMask(8, 5, .3, .35); lx.globalCompositeOperation = 'destination-in'; lx.drawImage(edge, 0, 0, W, H); layer(c => { c.fillStyle = pat(G.planks, .8, 27); c.fillRect(0, 0, W, H); }, c => c.drawImage(lm, 0, 0), .9); }
     // 4. central plaza with drain grate (non-tiling image, feathered into the surroundings)
-    if (gi.plaza) { const pw = 20 * GP, ph = 20 * GP, cx = 30 * GP, cy = 22 * GP; const t = mk(pw, ph), tx = t.getContext('2d')!; tx.drawImage(gi.plaza, 0, 0, pw, ph); tx.globalCompositeOperation = 'destination-in'; const g = tx.createRadialGradient(pw / 2, ph / 2, pw * .22, pw / 2, ph / 2, pw * .5); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.7, 'rgba(0,0,0,.85)'); g.addColorStop(1, 'rgba(0,0,0,0)'); tx.fillStyle = g; tx.fillRect(0, 0, pw, ph); x.drawImage(t, cx - pw / 2, cy - ph / 2); }
+    if (gi[G.plaza]) { const ps = this.cfg.plazaSize || 20; const pw = ps * GP, ph = ps * GP, cx = Math.floor(HX) * GP, cy = Math.floor(HY) * GP; const t = mk(pw, ph), tx = t.getContext('2d')!; tx.drawImage(gi[G.plaza], 0, 0, pw, ph); tx.globalCompositeOperation = 'destination-in'; const g = tx.createRadialGradient(pw / 2, ph / 2, pw * .22, pw / 2, ph / 2, pw * .5); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.7, 'rgba(0,0,0,.85)'); g.addColorStop(1, 'rgba(0,0,0,0)'); tx.fillStyle = g; tx.fillRect(0, 0, pw, ph); x.drawImage(t, cx - pw / 2, cy - ph / 2); }
+    this.cfg.extra?.(x, W, H, this);
     // 5. painted markings and wear
     this.paintStationDecals(x);
     // 6. puddles with cool sheen
-    for (let i = 0; i < 14; i++) { const px = (10 + R() * 40) * GP, py = (8 + R() * 28) * GP, rx = (.5 + R() * 1.4) * GP, ry = rx * (.45 + R() * .3); const g = x.createRadialGradient(px, py, 0, px, py, rx); g.addColorStop(0, 'rgba(40,52,60,.55)'); g.addColorStop(.7, 'rgba(30,38,44,.35)'); g.addColorStop(1, 'rgba(30,38,44,0)'); x.save(); x.translate(px, py); x.rotate(R() * 3); x.scale(1, ry / rx); x.translate(-px, -py); x.fillStyle = g; x.beginPath(); x.arc(px, py, rx, 0, 7); x.fill(); x.fillStyle = 'rgba(170,185,195,.1)'; x.beginPath(); x.arc(px - rx * .2, py - rx * .15, rx * .45, 0, 7); x.fill(); x.restore(); }
+    for (let i = 0; this.cfg.puddles !== false && i < 14; i++) { const px = (10 + R() * 40) * GP, py = (8 + R() * 28) * GP, rx = (.5 + R() * 1.4) * GP, ry = rx * (.45 + R() * .3); const g = x.createRadialGradient(px, py, 0, px, py, rx); g.addColorStop(0, 'rgba(40,52,60,.55)'); g.addColorStop(.7, 'rgba(30,38,44,.35)'); g.addColorStop(1, 'rgba(30,38,44,0)'); x.save(); x.translate(px, py); x.rotate(R() * 3); x.scale(1, ry / rx); x.translate(-px, -py); x.fillStyle = g; x.beginPath(); x.arc(px, py, rx, 0, 7); x.fill(); x.fillStyle = 'rgba(170,185,195,.1)'; x.beginPath(); x.arc(px - rx * .2, py - rx * .15, rx * .45, 0, 7); x.fill(); x.restore(); }
     // 7. soft contact shadows under every decor footprint, and rim darkening toward solid tiles
     for (const d of L.decor || []) { const cx = (d.x + d.fw / 2) * GP, cy = (d.y + d.fd / 2) * GP, rx = (d.fw + .6) * GP * .65, ry = (d.fd + .6) * GP * .65; const g = x.createRadialGradient(cx, cy, 0, cx, cy, Math.max(rx, ry)); g.addColorStop(0, 'rgba(4,4,5,.55)'); g.addColorStop(1, 'rgba(4,4,5,0)'); x.fillStyle = g; x.save(); x.translate(cx + GP * .25, cy + GP * .3); x.scale(rx / Math.max(rx, ry), ry / Math.max(rx, ry)); x.translate(-cx, -cy); x.beginPath(); x.arc(cx, cy, Math.max(rx, ry), 0, 7); x.fill(); x.restore(); }
     for (let ty = 0; ty < L.h; ty++) for (let tx = 0; tx < L.w; tx++) { if (!L.solid[ty * L.w + tx]) continue; const px = (tx + .5) * GP, py = (ty + .5) * GP; const g = x.createRadialGradient(px, py, GP * .3, px, py, GP * 1.9); g.addColorStop(0, 'rgba(6,6,8,.8)'); g.addColorStop(1, 'rgba(6,6,8,0)'); x.fillStyle = g; x.fillRect(px - GP * 2, py - GP * 2, GP * 4, GP * 4); }
@@ -90,14 +94,14 @@ export class TownArt {
   /** ground decals: coloured pad ring + flat icon + name at each station, dashed colour-coded lane from the plaza hub, hazard stripes at the gate */
   paintStationDecals(x: CanvasRenderingContext2D) {
     x.save(); x.lineCap = 'round';
-    for (const st of STATIONS) { const px = st.x * GP, py = st.y * GP;
-      x.strokeStyle = `rgba(${st.rgb},.30)`; x.lineWidth = GP * .22; x.setLineDash([GP * .55, GP * .5]); x.beginPath(); x.moveTo(30.5 * GP, 22.5 * GP); x.quadraticCurveTo((30.5 + st.x) / 2 * GP + Math.sin(st.x) * 1.2 * GP, (22.5 + st.y) / 2 * GP + Math.cos(st.y) * 1.2 * GP, px, py); x.stroke(); x.setLineDash([]);
+    for (const st of this.stations) { const px = st.x * GP, py = st.y * GP; const [HX, HY] = this.hub;
+      x.strokeStyle = `rgba(${st.rgb},.30)`; x.lineWidth = GP * .22; x.setLineDash([GP * .55, GP * .5]); x.beginPath(); x.moveTo(HX * GP, HY * GP); x.quadraticCurveTo((HX + st.x) / 2 * GP + Math.sin(st.x) * 1.2 * GP, (HY + st.y) / 2 * GP + Math.cos(st.y) * 1.2 * GP, px, py); x.stroke(); x.setLineDash([]);
       const g = x.createRadialGradient(px, py, 0, px, py, GP * 2.4); g.addColorStop(0, `rgba(${st.rgb},.30)`); g.addColorStop(.7, `rgba(${st.rgb},.12)`); g.addColorStop(1, `rgba(${st.rgb},0)`); x.fillStyle = g; x.beginPath(); x.arc(px, py, GP * 2.4, 0, 7); x.fill();
       x.strokeStyle = `rgba(${st.rgb},.75)`; x.lineWidth = GP * .12; x.beginPath(); x.arc(px, py, GP * 1.5, 0, 7); x.stroke(); x.strokeStyle = `rgba(${st.rgb},.4)`; x.beginPath(); x.arc(px, py, GP * 1.9, 0, 7); x.stroke();
       drawIcon(x, st.icon, px, py, GP * .85, `rgba(${st.rgb},.85)`, GP * .1);
       x.save(); x.font = `bold ${GP * .62}px "Arial Narrow",Impact,sans-serif`; x.textAlign = 'center'; x.fillStyle = `rgba(${st.rgb},.55)`; x.fillText(st.name.toUpperCase(), px, py + GP * 2.9); x.restore(); }
     // hazard stripes across the gate approach
-    const gs = STATIONS.find(s => s.key === 'gate')!; x.save(); x.beginPath(); x.rect((gs.x - 3.6) * GP, (gs.y + 2) * GP, 7.2 * GP, GP * .7); x.clip(); x.fillStyle = 'rgba(255,68,85,.45)'; for (let i = -10; i < 24; i++) { x.beginPath(); x.moveTo((gs.x - 3.6 + i * .7) * GP, (gs.y + 2.7) * GP); x.lineTo((gs.x - 3.6 + i * .7 + .35) * GP, (gs.y + 2.7) * GP); x.lineTo((gs.x - 3.6 + i * .7 + 1.05) * GP, (gs.y + 2) * GP); x.lineTo((gs.x - 3.6 + i * .7 + .7) * GP, (gs.y + 2) * GP); x.fill(); } x.restore();
+    const gs = this.stations.find(s => s.icon === 'gate')!; x.save(); x.beginPath(); x.rect((gs.x - 3.6) * GP, (gs.y + 2) * GP, 7.2 * GP, GP * .7); x.clip(); x.fillStyle = 'rgba(255,68,85,.45)'; for (let i = -10; i < 24; i++) { x.beginPath(); x.moveTo((gs.x - 3.6 + i * .7) * GP, (gs.y + 2.7) * GP); x.lineTo((gs.x - 3.6 + i * .7 + .35) * GP, (gs.y + 2.7) * GP); x.lineTo((gs.x - 3.6 + i * .7 + 1.05) * GP, (gs.y + 2) * GP); x.lineTo((gs.x - 3.6 + i * .7 + .7) * GP, (gs.y + 2) * GP); x.fill(); } x.restore();
     x.restore();
   }
   // ---------------- ambient ----------------
@@ -105,7 +109,7 @@ export class TownArt {
     const R = this.R; this.em -= dt;
     if (this.em <= 0) { this.em = .12; for (const d of L.decor || []) { if (d.steam && R() < .8) this.parts.push({ x: d.x + d.fw * .4 + R() * .3, y: d.y + d.fd * .4 + R() * .3, z: 1.4, vx: (R() - .3) * .1, vy: (R() - .3) * .1, vz: .5 + R() * .3, t: 0, life: 2.6 + R(), k: 'steam', s: .25 + R() * .2 }); if (d.glow === 'fire' && R() < .5) this.parts.push({ x: d.x + .5 + (R() - .5) * .3, y: d.y + .5 + (R() - .5) * .3, z: .9, vx: (R() - .5) * .3, vy: (R() - .5) * .3, vz: .8 + R(), t: 0, life: 1.2 + R(), k: 'ember', s: .05 }); }
       if (this.parts.length < 90 && R() < .6) this.parts.push({ x: px + (R() - .5) * 18, y: py + (R() - .5) * 18, z: .3 + R() * 1.6, vx: (R() - .5) * .25, vy: (R() - .5) * .25, vz: (R() - .5) * .05, t: 0, life: 5 + R() * 3, k: 'dust', s: .03 }); }
-    if (this.em > .08 && this.em <= .12) for (const st of STATIONS) { if (Math.hypot(px - st.x, py - st.y) > 20 || this.parts.length > 160) continue; const a = st.ambient;
+    if (this.em > .08 && this.em <= .12) for (const st of this.stations) { if (Math.hypot(px - st.x, py - st.y) > 20 || this.parts.length > 160) continue; const a = st.ambient;
       if (a === 'sparks' && R() < .5) this.parts.push({ x: st.lx + 1 + R() * 2, y: st.ly + 1 + R() * 2, z: 1 + R(), vx: (R() - .5) * .8, vy: (R() - .5) * .8, vz: .4 + R() * .6, t: 0, life: .7 + R() * .6, k: 'ember', s: .03, col: st.rgb });
       else if (a === 'weld' && R() < .4) this.parts.push({ x: st.lx + .8 + R() * .6, y: st.ly + .8 + R() * .6, z: .9, vx: (R() - .5) * 1.6, vy: (R() - .5) * 1.6, vz: .5 + R() * .9, t: 0, life: .5 + R() * .4, k: 'ember', s: .03, col: '210,190,255' });
       else if (a === 'beacon' && R() < .35) this.parts.push({ x: st.lx + 1.5, y: st.ly - .5, z: 2.4, vx: (R() - .5) * .3, vy: (R() - .5) * .3, vz: .5, t: 0, life: 1.2, k: 'ember', s: .03, col: st.rgb });

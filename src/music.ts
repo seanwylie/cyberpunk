@@ -2,7 +2,7 @@
 // Falls back to the procedural scheduler in audio.ts when files are missing (isReady() === false).
 export type MState='town'|'traversal'|'combat'|'elite'|'bossreveal'|'bosscombat'|'resolution';
 interface TrackDef { file:string; loop:boolean; keepPos:boolean }
-const LOOPS=['town','traversal_a','traversal_b','combat_a','combat_b','boss_fight','calm_drift','calm_rust','calm_neon','calm_vents','calm_static','elite_siege','elite_hunt','boss_overclock','boss_meltdown','boss_hydraulic','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall'];
+const LOOPS=['harrow_forge','harrow_ember','harrow_steam','town','traversal_a','traversal_b','combat_a','combat_b','boss_fight','calm_drift','calm_rust','calm_neon','calm_vents','calm_static','elite_siege','elite_hunt','boss_overclock','boss_meltdown','boss_hydraulic','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall'];
 const T:Record<string,TrackDef>={ boss_reveal:{file:'boss_reveal',loop:false,keepPos:false}, clear:{file:'clear',loop:false,keepPos:false} };
 for(const n of LOOPS) T[n]={file:n,loop:true,keepPos:true};
 /** Tracks that must load for file music to activate; the rest load best-effort and are dropped from pools when missing. */
@@ -16,6 +16,7 @@ export const POOLS:Record<MState,string[]>={
   bossreveal:['boss_reveal'],
   bosscombat:['boss_fight','boss_overclock','boss_meltdown','boss_hydraulic','elite_siege','elite_hunt','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall'],
   resolution:['clear'] };
+export const TOWN_POOLS:Record<string,string[]>={ rustline:['town','calm_drift','calm_rust','calm_vents'], harrow:['harrow_forge','harrow_ember','harrow_steam'] };
 /** Boss id -> fixed fight track, so each boss has its own identity (unmapped bosses draw from the pool). */
 import { BOSSES } from './content/batch1_bosses';
 import { Q } from './quality';
@@ -65,6 +66,10 @@ export class MusicManager {
     if(s==='bosscombat'){ const pl=this.playlist(); const sig=this.key&&BOSS_MAP[this.key]; if(sig){ this.fightBag=new ShuffleBag(pl); this.fightBag.last=sig; return sig; } }
     const pool=POOLS[s]; if(pool.length===1) return pool[0]; const bag=(this.bags[s]??=new ShuffleBag(pool)); return bag.next(have); }
   fightBag:ShuffleBag|null=null;
+  townId='rustline';
+  /** Switch the calm town pool (Rustline vs Harrow Reach). Crossfades immediately when currently in town. */
+  setTownTheme(id:string){ if(id===this.townId) return; this.townId=id; const pool=TOWN_POOLS[id]||TOWN_POOLS.rustline; POOLS.town.splice(0,POOLS.town.length,...pool); delete this.bags.town; if(!this.ready) return; for(const f of pool) this.ensure(f);
+    if(this.state==='town'||this.want==='town'){ const t=this.now(); const nx=this.pick('town'); this.lastSwitchAt=t; this.enteredAt=t; if(this.buffers[nx]) this.crossfade(nx,3,'town'); else if(this.state==='town') this.pend={name:nx,dur:3,s:'town',at:t}; } }
   /** Boss phase change / enrage: switch to a more intense track from the boss playlist (after PHASE_MIN s on the current one). */
   onPhase(n:number){ if(n<=this.phase){ this.phase=n; return; } this.phase=n; if(this.state!=='bosscombat'||!this.ready) return; const t=this.now(); if(t-this.lastSwitchAt<this.PHASE_MIN) return;
     const have=(x:string)=>!!this.buffers[x]&&x!==this.cur; const ci=INTENSITY[this.cur||'']||2; const pl=this.playlist().filter(have);
@@ -93,6 +98,7 @@ export class MusicManager {
     if(s==='elite'||s==='bosscombat') this.counts.entries++; this.crossfade(name,dur,s); }
   crossfade(name:string|null,dur:number,s:MState){ const t=this.now(); const out=this.live.filter(l=>!l.ending);
     for(const l of out){ l.ending=true; this.savePos(l,t); const g=l.gain.gain; g.cancelScheduledValues(t); g.setValueAtTime(g.value,t); this.curve(g,g.value,0,t,dur); l.src.stop(t+dur+.05); setTimeout(()=>{ this.live=this.live.filter(x=>x!==l); },(dur+.2)*1000); }
+    if(name&&!this.buffers[name]){ this.pend={name,dur,s,at:t}; return; } // track not decoded yet: start it the moment it is
     this.log.push({t,from:this.cur,to:name,dur,state:s}); this.cur=name; if(!name) return;
     const d=T[name], buf=this.buffers[name]; const src=this.ctx.createBufferSource(); src.buffer=buf; src.loop=d.loop; const gain=this.ctx.createGain(); gain.gain.value=0; src.connect(gain); gain.connect(this.out);
     let off=d.keepPos?(this.pos[name]||0):0; if(off>=buf.duration-1) off=0; src.start(t,off); this.curve(gain.gain,0,1,t,dur);

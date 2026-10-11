@@ -1,5 +1,5 @@
 // Handcrafted-room assembly for the Reclamation Annex. Every layout keeps a combat route to objective and boss.
-import { STATIONS, type StationId, stationPrompt, TOWN_W, TOWN_H, TOWN_CX, TOWN_CY, SPAWN, RETURN_SPAWN } from './stations';
+import { RUSTLINE_STATIONS as STATIONS, type StationId, stationPrompt, TOWN_W, TOWN_H, TOWN_CX, TOWN_CY, SPAWN, RETURN_SPAWN } from './stations';
 export type Zone = 'yard'|'proc'|'junction'|'boss'|'salvage'|'corridor'|'passage'|'town';
 export interface DoorDef { id:string; tiles:[number,number][]; label:string; }
 export interface Prop { x:number; y:number; kind:'crate'|'conveyor'|'machine'|'pillar'|'rack'; h:number; }
@@ -106,6 +106,8 @@ export function buildTown():Level {
   { const s=S('store'); D('stall_clothes',s.lx,s.ly,3,3,3.5,{station:s.key,glow:'warm'}); D('stall_goods',s.lx+4,s.ly+2,3,3,4.1,{station:s.key,glow:'warm'}); D('stall_noodle',s.lx-4,s.ly-3,3,3,4.2,{glow:'warm'}); D('stall_junk',s.lx+5,s.ly-3,3,3,4.1,{glow:'warm'}); D('lamp',s.lx+3,s.ly-1,1,1,1.0,{glow:'warm'}); }
   // ---- DISTRICT: BANK (N, brass): riveted vault house, two guards' crates, lamps; interact pad on the plaza side ----
   { const s=S('bank'); D('bank_vault',s.lx,s.ly,4,3,5.4,{station:s.key,glow:'warm'}); D('crates',s.lx-3,s.ly+1,2,2,2.4); D('barrier',s.lx+5,s.ly+1,3,1,3.0); D('lamp',s.lx-1,s.ly+4,1,1,1.0,{glow:'warm'}); D('lamp',s.lx+4,s.ly+4,1,1,1.0,{glow:'warm'}); }
+  // ---- TRANSIT (plaza centre, orange): Reach Line tram stop to the other towns ----
+  { const s=S('transit'); D('tram_platform',s.lx,s.ly,4,2,5.6,{station:s.key,glow:'warm'}); D('lamp',s.lx-1,s.ly+3,1,1,1.0,{glow:'warm'}); D('lamp',s.lx+4,s.ly+3,1,1,1.0,{glow:'warm'}); }
   // big readable world-space signs (pole + neon panel with icon and label), one per station
   for(const s of STATIONS) D('sign_'+s.key,s.sx,s.sy,1,1,3.9,{station:s.key,ay:.93,glow:undefined});
   // ---- plaza hub furniture (kept low so spawn reads from afar): directory kiosk, benches, fire barrel ring ----

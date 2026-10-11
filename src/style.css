@@ -463,3 +463,12 @@ body.touch .abtn .aname,body.touch #dodge .aname{ overflow-wrap:normal; max-widt
 .cdx>div{ display:flex; flex-direction:column; min-width:0; } .cdx b,.cdx .mut{ overflow:hidden; text-overflow:ellipsis; font-size:var(--fmin); }
 .cdxi{ width:40px; height:40px; flex:none; border-radius:50%; } .cdxi.q{ display:inline-flex; align-items:center; justify-content:center; border:1px dashed rgba(207,198,176,.3); font-size:1.4em; color:rgba(207,198,176,.5); }
 .cdx.lost{ opacity:.7; }
+
+/* ---- travel / guild (src/townui.ts) ---- */
+.travelwrap{ display:flex; flex-direction:column; gap:10px; } .tvlist{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); gap:10px; }
+.tvcard{ border:1px solid #4a4d50; border-top:4px solid var(--tc,#888); background:#2a2c2e; border-radius:4px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+.tvcard.here{ background:#2f2c27; } .tvcard.locked{ opacity:.82; } .tvcard p{ margin:0; font-size:max(var(--fmin),calc(13px*var(--fs))); line-height:1.35; }
+.tvhead{ display:flex; justify-content:space-between; align-items:center; gap:8px; } .tvhead b{ color:var(--tc,#ddd); font-size:max(var(--fmin),calc(16px*var(--fs))); letter-spacing:.04em; }
+.tvprog{ border-left:3px solid #666; padding-left:8px; font-size:max(var(--fmin),calc(12px*var(--fs))); } .tvprog b{ display:block; color:#cfc8b4; margin-bottom:2px; }
+.tag.ok{ border-color:#6d8f5c; color:#a9c98f; } .tag.lock{ border-color:#8f5a4c; color:#d79a86; }
+.slot.tile.gd.off{ opacity:.55; }

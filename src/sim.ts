@@ -5,6 +5,9 @@ import { computeBuild, installedLayout, BuildResult, abPickRef, repRank } from '
 import { abxCast, abxTick, abxReset, abxIncoming, abxOutgoing, abxSpeedMul, abxPlayerSpeed, newAbx, Abx } from './abilities/engine';
 import { ABILITY_BY_ID } from './abilities/registry';
 import { ABILITY_ACQ, ABILITY_ITEMS, pickAbilityItem, pickCommonAbilityItem } from './abilities/hw';
+import { buildHarrow } from './town2';
+import { currentTown, refreshUnlocks, travelCheck, TOWN_INFO, townsOf, type TownId } from './towns';
+import { setTownStations, TOWN_STATIONS } from './stations';
 import { buildTown, Level, Interact } from './level';
 import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
 import { MOVES, MOVE_ATK } from './content/boss_moves';
@@ -63,9 +66,14 @@ export class Game {
   enterTown(first=false){
     this.settleCompleted();
     if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this);
-    this.mode='town'; this.level=buildTown(); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
-    this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.');
+    const tid=currentTown(this.save); this.townId=tid; setTownStations(TOWN_STATIONS[tid]); this.mode='town'; this.level=tid==='harrow'?buildHarrow():buildTown(); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
+    this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); this.emit('towntheme',tid); this.checkTownUnlocks(); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.');
   }
+  townId:TownId='rustline';
+  /** Unlock towns whose condition is newly met (clears, level ups, load). Returns the ids unlocked now. */
+  checkTownUnlocks():TownId[]{ const n=refreshUnlocks(this.save); for(const id of n){ this.toast(`New destination: ${TOWN_INFO[id].name}. Take the Reach Line at the plaza tram stop.`); persist(this.save); } return n; }
+  /** Ride the Reach Line to another town (free, instant; town only). */
+  travel(id:TownId):boolean{ if(this.mode!=='town') return false; const c=travelCheck(this.save,id); if(!c.ok){ this.toast(c.why); return false; } this.save.town=id; persist(this.save); this.enterTown(true); this.toast(`Arrived at ${TOWN_INFO[id].name}.`); return true; }
   hasLiveInstance(){ return !!this.inst && this.inst.expiresAt>this.now(); }
   dailyLocked(id='annex'){ return lockDay(this.save,id)===todayStr(); }
   get dd():DungeonDef{ return dungeonOf(this.inst?.dungeon); }
@@ -594,7 +602,7 @@ export class Game {
     if(e.type===this.dd.lockElite&&!inst.flags.lock2){ inst.flags.lock2=true; this.openDoor('lock2'); this.toast(def.name+' down: lock released'); }
     if(def.boss) this.onBossDead(e);
   }
-  addXp(n:number){ const s=this.save; s.xp+=n; while(s.level<PROGRESSION.maxLevel&&s.xp>=PROGRESSION.xpForLevel(s.level)){ s.xp-=PROGRESSION.xpForLevel(s.level); s.level++; this.toast('Level up! Level '+s.level); this.recompute(); } }
+  addXp(n:number){ const s=this.save; s.xp+=n; while(s.level<PROGRESSION.maxLevel&&s.xp>=PROGRESSION.xpForLevel(s.level)){  s.xp-=PROGRESSION.xpForLevel(s.level); s.level++; this.toast('Level up! Level '+s.level); this.recompute(); } this.checkTownUnlocks(); }
   pickEntry(pool:LootEntry[]):LootEntry{ const tot=pool.reduce((a,b)=>a+b.w,0); let last=pool[0];
     for(let tries=0;tries<10;tries++){ let r=Math.random()*tot, pick=pool[0]; for(const e of pool){ r-=e.w; if(r<=0){ pick=e; break; } } last=pick;
       const rar:Rarity=pick.item?ITEM_BY_ID[pick.item].rarity:pick.chip?CHIPS[pick.chip].rarity:'green'; if(Math.random()<(HARD.rarityKeep[rar]??1)) return pick; } /* slower power curve: rarer rarities are re-rolled away; orange is signature-only */
