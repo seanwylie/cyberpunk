@@ -48,7 +48,7 @@ export function sanitizeSummary(b) {
 const standing = (r) => r >= 40 ? 'trusted' : r >= 10 ? 'friendly' : r <= -10 ? 'distrusted' : 'neutral';
 /** Resolve ids to the facts the model sees (full manufacturer names, catalog names). */
 export function promptFacts(s, recent = []) {
-  const C = CATALOG; const hardware = s.installed.map(id => { const i = C.items[id]; return { slot: i.slot, name: i.name, maker: C.mfr[i.mfr], rarity: i.rarity }; });
+  const C = CATALOG; const hardware = s.installed.map(id => { const i = C.items[id]; return { slot: i.slot, name: i.name.replace(/\s*\((?:L|R)\)$/, ''), maker: C.mfr[i.mfr], rarity: i.rarity }; });
   const tally = {}; for (const id of s.installed) { const m = C.mfr[C.items[id].mfr]; tally[m] = (tally[m] || 0) + 1; }
   const main = Object.entries(tally).sort((a, b) => b[1] - a[1])[0]?.[0];
   const speakerId = 'odalys_vane';
