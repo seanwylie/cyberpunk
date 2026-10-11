@@ -26,7 +26,7 @@ export function guildHtml(ui: UIx): string {
 }
 export function townClick(ui: UIx, el: HTMLElement, a: string): boolean {
   const g = ui.g, s = g.save; const done = (m: string) => { TV.msg = m; persist(s); ui.render(); return true; };
-  if (a === 'tv-go') { const id = el.dataset.id as TownId; const c = travelCheck(s, id); if (!c.ok) return done(c.why); TV.msg = ''; ui.close(); g.travel(id); return true; }
+  if (a === 'tv-go') { const id = el.dataset.id as TownId; const c = travelCheck(s, id); if (!c.ok) return done(c.why); TV.msg = ''; rideTram(ui, id); return true; }
   if (a === 'gd-buy') { const c = el.dataset.chip as ChipId, d = CHIPS[c], p = GUILD_PRICE[d.rarity];
     if (d.rarity === 'purple' && s.level < GUILD_PURPLE_LEVEL) return done(`${d.name} needs level ${GUILD_PURPLE_LEVEL}.`); if (s.credits < p) return done(`Needs ${p}c.`);
     if ((s.lockerChips[c] || 0) > 0 || lockerFree(s) > 0) { s.lockerChips[c] = (s.lockerChips[c] || 0) + 1; } else if (!bankOverflowChip(s, c, 1)) return done('Locker and bank are full.');
@@ -34,3 +34,15 @@ export function townClick(ui: UIx, el: HTMLElement, a: string): boolean {
   return false;
 }
 void STARTING;
+
+/** Tram interlude: a short Reach Line screen that preloads the destination's art, then travels. Re-entrancy safe. */
+let riding = false;
+export async function rideTram(ui: UIx, id: TownId) {
+  if (riding) return; riding = true; const g = ui.g;
+  const ov = document.createElement('div'); ov.id = 'tramload'; ov.setAttribute('role', 'status'); ov.setAttribute('aria-live', 'polite');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#07090c;color:#e8d9c0;font:600 18px "Roboto Condensed",sans-serif;letter-spacing:.12em;text-transform:uppercase;opacity:0;transition:opacity .18s';
+  ov.innerHTML = `<div style="color:${TOWN_INFO[id].color}">Reach Line</div><div style="font-size:13px;opacity:.75">Riding to ${esc(TOWN_INFO[id].name)}…</div><div style="width:240px;height:4px;background:#222;border-radius:2px;overflow:hidden"><i id="tramfill" style="display:block;height:100%;width:0;background:${TOWN_INFO[id].color};transition:width 1s linear"></i></div>`;
+  document.body.appendChild(ov); requestAnimationFrame(() => { ov.style.opacity = '1'; const f = document.getElementById('tramfill'); if (f) f.style.width = '92%'; });
+  try { await Promise.all([Promise.resolve(g.townPreload?.(id)).catch(() => {}), new Promise(r => setTimeout(r, 900))]); ui.close(); g.travel(id); }
+  finally { ov.style.opacity = '0'; setTimeout(() => ov.remove(), 220); riding = false; }
+}

@@ -16,7 +16,10 @@ ok(r.un && r.n.length === 1, 'reaching level 20 also unlocks it (and old saves b
 // ---- Travel UI at the Rustline transit station ----
 r = await ev(async () => { const g = window.__game; g.enterTown(); const it = g.level.interacts.find(i => i.id === 'transit'); g.px = it.x; g.py = it.y; g.update(.05); const p = g.prompt?.label; g.interact(); const modal = window.__ui.modal; const txt = document.getElementById('modal').innerText; const btn = document.querySelector('#modal [data-act="tv-go"][data-id="harrow"]'); return { p, modal, hasBtn: !!btn && !btn.disabled, txt: /Harrow Reach/.test(txt) }; });
 ok(/^Reach Line:/.test(r.p) && r.modal === 'travel' && r.hasBtn && r.txt, 'transit station prompt opens the travel screen with an enabled Harrow button: ' + r.p);
-await page.click('#modal [data-act="tv-go"][data-id="harrow"]'); await sleep(300);
+await page.click('#modal [data-act="tv-go"][data-id="harrow"]'); await sleep(150);
+ok(await ev(() => !!document.getElementById('tramload') && window.__game.townId !== 'harrow'), 'travel shows the Reach Line screen first (art preloads while it is up)');
+await page.waitForFunction(() => window.__game.townId === 'harrow' && !document.getElementById('tramload') || false, null, { timeout: 15000 }).catch(() => {}); await sleep(100);
+ok(await ev(() => { const t = window.__rend.town2; return !!(t && t.ready && t.ground); }), 'Harrow art and baked ground are ready on arrival (no pop-in)');
 r = await ev(() => { const g = window.__game, SM = window.__SM; return { id: g.townId, theme: g.level.theme, w: g.level.w, st: g.level.interacts.map(i => i.station), saved: g.save.town, modal: window.__ui.modal }; });
 console.log(JSON.stringify(r));
 ok(r.id === 'harrow' && r.theme === 'harrow' && r.saved === 'harrow' && r.st.includes('h_gate') && !r.st.includes('transit') && r.modal === null, 'travel loads Harrow Reach: ' + r.w + ' wide, ' + r.st.length + ' stations, registry switched');

@@ -73,6 +73,8 @@ export class Game {
   /** Unlock towns whose condition is newly met (clears, level ups, load). Returns the ids unlocked now. */
   checkTownUnlocks():TownId[]{ const n=refreshUnlocks(this.save); for(const id of n){ this.toast(`New destination: ${TOWN_INFO[id].name}. Take the Reach Line at the plaza tram stop.`); persist(this.save); } return n; }
   /** Ride the Reach Line to another town (free, instant; town only). */
+  /** set by main.ts: warms the destination town's art (used by the travel screen) */
+  townPreload?:(id:TownId)=>Promise<void>;
   travel(id:TownId):boolean{ if(this.mode!=='town') return false; const c=travelCheck(this.save,id); if(!c.ok){ this.toast(c.why); return false; } this.save.town=id; persist(this.save); this.enterTown(true); this.toast(`Arrived at ${TOWN_INFO[id].name}.`); return true; }
   hasLiveInstance(){ return !!this.inst && this.inst.expiresAt>this.now(); }
   dailyLocked(id='annex'){ return lockDay(this.save,id)===todayStr(); }

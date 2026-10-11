@@ -378,6 +378,10 @@ export class Renderer {
   // ---------- illustrated town ----------
   private groundBuilt:HTMLCanvasElement|null=null;
   /** use the art set that belongs to the current town (Rustline vs Harrow Reach); Harrow art loads lazily on first visit */
+  /** Warm Harrow Reach (props, baked ground, pre-scaled sprites) while the tram travel screen is up, so arrival has no pop-in. */
+  async preloadTown(id:string,L:Level):Promise<void>{ if(!this.env||id!=='harrow') return; const t=(this.town2??=new TownArt('./town2/',harrowCfg())); const t0=performance.now(); while(!t.ready&&performance.now()-t0<8000) await new Promise(r=>setTimeout(r,50)); if(!t.ready) return; await new Promise(r=>setTimeout(r,0)); if(!t.ground) t.buildGround(L);
+    const seen=new Set<string>(); let n=0; const warm=async(spr:string,w:number)=>{ const k=spr+'|'+w; if(seen.has(k)) return; seen.add(k); t.scaled(spr,w,this.dpr); if(++n%6===0) await new Promise(r=>setTimeout(r,0)); };
+    for(const d of L.decor||[]) await warm(d.spr,d.sw*this.TW); for(const o of L.overhead||[]) await warm(o.spr,o.sw*this.TW); }
   private syncTown(L:Level){ if(!this.env) return; const want=L.theme==='harrow'?(this.town2??=new TownArt('./town2/',harrowCfg())):this.town1; if(want&&this.town!==want) this.town=want; }
   private drawTownGround(){ const t=this.town!, L=this.g.level; if(!t.ground) t.buildGround(L); const gr=t.ground!; const CH=5, kk=this.TW/GP; const R=Math.ceil(Math.max(this.w,this.h)/this.TW*1.1)+4; const g=this.g;
     const cx0=Math.max(0,Math.floor((g.px-R)/CH)), cx1=Math.min(Math.ceil(L.w/CH)-1,Math.floor((g.px+R)/CH)), cy0=Math.max(0,Math.floor((g.py-R)/CH)), cy1=Math.min(Math.ceil(L.h/CH)-1,Math.floor((g.py+R)/CH));

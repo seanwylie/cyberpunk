@@ -12,6 +12,7 @@ import { initMobile, registerSW } from './mobile';
 import { Tutorial } from './tutorial';
 
 try{ (document as any).fonts?.load('600 14px "Roboto Condensed"'); }catch{}
+import { buildHarrow } from './town2';
 const save=load(); if(!save.story) save.story=newStory();
 applyUiScale(save.settings.uiSize||'M'); const audio=new AudioSys(); audio.vol=save.settings.volume; audio.musicOn=save.settings.music; audio.musicVol=save.settings.musicVol??1; audio.sfxVol=save.settings.sfxVol??1;
 if((save as any)._chipMigrated){ persist(save); }
@@ -21,6 +22,7 @@ const game=new Game(save,(t,p)=>{ tut?.event(t,p); if(t==='sfx') audio.sfx(p); e
 ui=new UI(game,audio);
 const canvas=document.getElementById('game') as HTMLCanvasElement; const rend=new Renderer(canvas,game);
 tut=new Tutorial(game,ui,rend); ui.tut=tut;
+game.townPreload=async id=>{ if(id==='harrow') await rend.preloadTown(id,buildHarrow()); };
 const input=new Input(game,rend,audio,{ modalOpen:()=>ui.modalOpen(), onToggleInv:()=>ui.toggleLive(), onEsc:()=>ui.esc() },canvas);
 const resize=()=>{ applyUiScale(); rend.resize(); }; window.addEventListener('resize',resize); Q.onChange=()=>{ rend.resize(); }; resize();
 registerSW(); initMobile(game,audio,()=>{ applyUiScale(); rend.resize(); });
