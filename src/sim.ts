@@ -6,6 +6,8 @@ import { buildTown, Level, Interact } from './level';
 import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
 import { MOVES, MOVE_ATK } from './content/boss_moves';
 import { BOSS_BY_ID } from './content/batch1_bosses';
+import { HARD, applyHard } from './content/hardmode';
+import { DUNGEONS } from './content/dungeons';
 import { movePattern, resolveMove, bossTick, filterDamage, clearBossAdds } from './content/mechanics';
 import { mobTick, mobDeath, mobAfterHit, resolveMobAttack, mobPattern, MOB_COND } from './content/mobs';
 import { MOB_ATK } from './content/batch2_mobs';
@@ -21,7 +23,7 @@ export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:
 export interface Zone { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }
 export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'|'ability'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; }
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
-export interface Rt { // enemy transient runtime fields
+export interface Rt { hardDmg?:number; // enemy transient runtime fields
   /** content batch 1 boss mechanics (src/content/mechanics.ts) */ spdMul?:number; cdMul?:number; shield?:any; gim?:any; gimT?:number; q?:any[]; pylPrev?:number; tl?:number;
   st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; hack:number; abHitAt:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; wpT?:number; wp?:{x:number;y:number}|null; sx?:number; sy?:number; sT?:number; unstick?:number; side?:number; dashed:boolean; strafe:number; chained?:boolean;
 }
@@ -33,6 +35,7 @@ const angDiff=(a:number,b:number)=>{ let d=a-b; while(d>Math.PI)d-=Math.PI*2; wh
 export const ISO = { toWorld(sx:number,sy:number,tw:number){ const a=sx/(tw/2), b=sy/(tw/4); return { x:(a+b)/2, y:(b-a)/2 }; }, vec(dx:number,dy:number){ const a=dx, b=dy*2; const x=(a+b)/2, y=(b-a)/2; const l=Math.hypot(x,y)||1; return { x:x/l, y:y/l }; } };
 
 const LOOT_CLEAR=.42;
+applyHard(ENEMIES,DUNGEONS);
 export class Game {
   save:Save; level:Level; mode:'town'|'run'='town'; inst:InstanceState|null=null; emit:Emit;
   enemies:En[]=[]; projs:Proj[]=[]; zones:Zone[]=[]; fx:Fx[]=[]; time=0; pickFx:{id:number;x:number;y:number;kind:Drop['kind'];inst?:Drop['inst'];chip?:Drop['chip'];amount:number;t0:number}[]=[];
@@ -187,7 +190,8 @@ export class Game {
     if(this.inst){ this.inst.broken=[]; this.inst.carried.stims=Math.max(this.inst.carried.stims,10); }
     s.cheated=true; (s.cheatLog=s.cheatLog||[]).push('idkfa@'+new Date().toISOString());
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.downed=false; this.emit('inv'); this.toast('IDKFA: best gear equipped'); this.saveNow(); return true; }
-  useStim(){ const c=this.inst?.carried; if(!c||this.downed){ if(this.mode==='town'&&this.save.stims>0){ this.save.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); } return; } if(c.stims>0&&this.hp<this.maxHp){ c.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); this.emit('sfx','heal'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.8,text:'+'+COMBAT.stimHeal,c:'#9fb98a'}); } else if(c.stims<=0 && this.save.stims>0 && false){} }
+  stimCd=0;
+  useStim(){ if(this.stimCd>0) return; const c=this.inst?.carried; if(!c||this.downed){ if(this.mode==='town'&&this.save.stims>0){ this.save.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); } return; } if(c.stims>0&&this.hp<this.maxHp){ c.stims--; this.stimCd=HARD.stimCd; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); this.emit('sfx','heal'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.8,text:'+'+COMBAT.stimHeal,c:'#9fb98a'}); } else if(c.stims<=0 && this.save.stims>0 && false){} }
   musicSet(s:string){ if(this.musicState!==s){ this.musicState=s; this.emit('music',s); } }
 
   // ---------- main update ----------
@@ -202,7 +206,7 @@ export class Game {
   updateFx(dt:number){ for(const f of this.fx){ f.t+=dt; if(f.vx){ f.x+=f.vx*dt; f.y+=(f.vy||0)*dt; } } this.fx=this.fx.filter(f=>f.t<f.life); if(this.fx.length>260) this.fx.splice(0,this.fx.length-260); }
   updatePlayer(dt:number){
     const st=this.stat(); const revealLock=this.revealing;
-    if(this.dodgeCd>0) this.dodgeCd-=dt; if(this.iframes>0) this.iframes-=dt; if(this.atkCd>0) this.atkCd-=dt; if(this.weaponOff>0) this.weaponOff-=dt; if(this.defibCd>0) this.defibCd-=dt;
+    if(this.stimCd>0) this.stimCd-=dt; if(this.dodgeCd>0) this.dodgeCd-=dt; if(this.iframes>0) this.iframes-=dt; if(this.atkCd>0) this.atkCd-=dt; if(this.weaponOff>0) this.weaponOff-=dt; if(this.defibCd>0) this.defibCd-=dt;
     for(let i=0;i<3;i++) if(this.abCd[i]>0){ this.abCd[i]-=dt; if(this.abCd[i]<=0&&this.mode==='run'&&this.combatHold>0&&this.build.abilities[i]) this.emit('sfx','ab_ready'); }
     if(this.comboT>0){ this.comboT-=dt; if(this.comboT<=0) this.comboN=0; } if(this.ovT>0) this.ovT-=dt;
     if(this.cloakT>0){ this.cloakT-=dt; } if(this.braceT>0) this.braceT-=dt; if(this.slowT>0) this.slowT-=dt;
@@ -210,7 +214,7 @@ export class Game {
     const cool=(COMBAT.heat.passiveCool)*st.cooling*(this.overheated?1.3:1); this.heat=Math.max(0,this.heat-cool*dt);
     if(this.overheated&&this.heat<=COMBAT.heat.overheatRecover){ this.overheated=false; this.emit('sfx','cooled'); }
     if(this.heat>=COMBAT.heat.max&&!this.overheated){ this.heat=COMBAT.heat.max; this.overheated=true; this.cast=null; this.aim=null; this.emit('sfx','overheat'); this.toast('OVERHEATED: abilities offline until cooled'); }
-    if(this.hp<this.maxHp&&!this.downed&&st.regen>0) this.hp=Math.min(this.maxHp,this.hp+st.regen*dt*(this.mode==='town'?4:1));
+    if(this.hp<this.maxHp&&!this.downed&&st.regen>0) this.hp=Math.min(this.maxHp,this.hp+st.regen*dt*(this.mode==='town'?4:HARD.runRegen));
     if(this.downed){ this.downT+=dt; this.cast=null; this.aim=null; return; }
     // movement
     let mx=0,my=0; const mag=Math.min(1,Math.hypot(this.inputMove.x,this.inputMove.y)); if(mag>.12){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); mx=v.x*mag; my=v.y*mag; }
@@ -337,7 +341,7 @@ export class Game {
     if(e.hp<=0){ this.killEnemy(e); if(tag!=='auto'){ for(let k=0;k<3;k++) this.abCd[k]=Math.max(0,this.abCd[k]-AB.killCdRefund); this.kick=Math.max(this.kick,.35); if(!this.save.settings.reducedFx&&!this.dbg.noHitStop&&this.time-this.lastStop>.4){ this.hitStop=.05; this.lastStop=this.time; } } }
     else { this.alertGroup(e); if(broke&&!this.save.settings.reducedFx&&!this.dbg.noHitStop&&this.time-this.lastStop>.4){ this.hitStop=.06; this.lastStop=this.time; } }
   }
-  alertGroup(e:En){ for(const o of this.enemies){ if(!o.dead&&o.faction==='enemy'&&!o.alert&&(o.group===e.group||dist(o.x,o.y,e.x,e.y)<6)&&this.los(o.x,o.y,e.x,e.y)) o.alert=true; } }
+  alertGroup(e:En){ for(const o of this.enemies){ if(!o.dead&&o.faction==='enemy'&&!o.alert&&((o.group!=null&&o.group===e.group&&dist(o.x,o.y,e.x,e.y)<16)||(dist(o.x,o.y,e.x,e.y)<HARD.packAggroR&&this.los(o.x,o.y,e.x,e.y)))) o.alert=true; } }
   hurtPlayer(dmg:number,sx:number,sy:number){
     if(this.downed||this.iframes>0||this.revealing||this.mode!=='run'||this.dbg.god) return;
     const st=this.stat(); dmg=Math.max(1,dmg-st.armor); let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
@@ -532,7 +536,7 @@ export class Game {
     }
     return out; }
   resolveAttack(e:En,a:string,tx:number,ty:number){
-    const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1); this.dmgSrc=e.type+':'+a;
+    const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1)*(rt.hardDmg||1); this.dmgSrc=e.type+':'+a;
     const cone=(r:number,arc:number)=>{ this.fx.push({kind:'slash',x:e.x,y:e.y,a:ang,r,t:0,life:.25,w:arc,c:'#b8b09a'}); for(const o of this.opponents(fac)){ if(dist(e.x,e.y,o.x,o.y)-o.r<=r&&Math.abs(angDiff(Math.atan2(o.y-e.y,o.x-e.x),ang))<=arc/2) o.hurt(dmg,e.x,e.y); } this.emit('sfx','enemy_swing'); };
     const proj=(aa:number,speed:number)=>{ this.projs.push({x:e.x+Math.cos(aa)*.6,y:e.y+Math.sin(aa)*.6,vx:Math.cos(aa)*speed,vy:Math.sin(aa)*speed,dmg,r:.22,life:1.6,faction:fac==='ally'?'ally':'enemy',kind:'bolt'}); this.emit('sfx','enemy_shot'); };
     if(MOB_ATK[a]){ resolveMobAttack(this,e,a,tx,ty,dmg); return; }

@@ -180,7 +180,7 @@ export const COMBAT = {
   downReturnDelay: 1.5,
   bossRevealSeconds: 9,
   autoTargetRange: 9, // closest eligible enemy auto attack acquisition
-  stimHeal: 45,
+  stimHeal: 32,
 };
 
 export interface EnemyDef { id:string; name:string; hp:number; speed:number; radius:number; mfr:Mfr; elite?:boolean; boss?:boolean; ranged?:boolean; static?:boolean; aggro:number; xp:number; rep:number; attacks:string[]; dmgMul?:number; summon?:string; /** batch-2 mob metadata (tier, role, shield, keep-away distance...) */ mob?:MobMeta; keep?:number; }

@@ -57,12 +57,14 @@ export async function runJob(job) {
 
     // ---- run setup ----
     const dt = 1 / 30; let result = { id: job.id, kit: job.kit, level: job.level, seed: job.seed, kitInfo: null };
-    const maxT = job.maxT || 1100, maxDeaths = job.maxDeaths ?? 4;
+    const maxT = job.maxT || (job.bossOnly ? 420 : 1100), maxDeaths = job.maxDeaths ?? 4;
     const stepSim = () => { g.update(dt); simT += dt; };
     const trackAlert = () => { for (const e of g.enemies) if (!e.dead && e.faction === 'enemy' && e.alert && !firstAlert.has(e.id) && e._rt.reveal <= 0) firstAlert.set(e.id, simT); };
+    const TANK = job.profile === 'tank'; // tank-and-spank: stands next to its target, auto-attacks only: never dodges, never uses abilities, never repositions (stims only)
     const heroLogic = (threatsOnly) => {
       // stims
-      if (g.hp < g.maxHp * 0.4 && g.inst.carried.stims > 0 && !g.downed) { g.useStim(); R.stims++; }
+      if (g.hp < g.maxHp * 0.4 && g.inst.carried.stims > 0 && !g.downed && !(g.stimCd > 0)) { const s0 = g.inst.carried.stims; g.useStim(); if (g.inst.carried.stims < s0) R.stims++; }
+      if (TANK) return null;
       // dodge telegraphs by simple rule: leave telegraphed/active zones, dodge when a melee windup is close
       let fx = 0, fy = 0, flee = false;
       for (const z of g.zones) { if (z.env || z.dps <= 0) continue; const d = dist(g.px, g.py, z.x, z.y); if (d < z.r + 1.0 && (z.t < z.windup + .6 || true)) { const w = 1 / Math.max(.5, d); fx += (g.px - z.x) * w; fy += (g.py - z.y) * w; flee = true; } }
@@ -73,6 +75,7 @@ export async function runJob(job) {
       return null;
     };
     const useAbilities = (near, alive) => {
+      if (TANK) return;
       if (g.aim || g.cast || g.overheated || g.downed) return;
       const AB = g.build.abilities; const has = id => AB.indexOf(id); const rdy = id => { const i = has(id); return i >= 0 && g.abCd[i] <= 0 && g.heat + Cfg.ABILITIES[id].heat <= 96 ? i : -1; };
       const fire = (i, tx, ty) => { try { g.beginAim(i); if (g.aim) { g.updateAim(tx, ty, true); g.releaseAim(); return true; } } catch (e) {} return false; };
@@ -101,9 +104,10 @@ export async function runJob(job) {
       // priority targets: pylons / boss adds that gate the boss, then support roles, then nearest
       const pri = e => (e.pylon ? 0 : /healer|mender|warder|summoner|matron/.test(e.type) ? 1 : e.bossAdd ? 2 : 3);
       alive.sort((a, b) => pri(a) - pri(b) || dist(a.x, a.y, g.px, g.py) - dist(b.x, b.y, g.px, g.py));
+      if (TANK) { const b = alive.find(e => ENEMIES[e.type].boss); if (b) alive.unshift(b); }
       const t = alive[0]; g.target = t.id;
-      const d = dist(t.x, t.y, g.px, g.py), rr = ENEMIES[t.type].radius || .5, w = g.build.weapon; const abR = g.build.abilities.includes('sweep') ? 2.8 : g.build.abilities.includes('bladeburst') ? 4.2 : 99; const want = Math.min(Math.max(.8, Math.min(w.range * .8, 5)), abR) + rr; /* ability-centric play: close to ability range */
-      if (d > want) { (d < 3 ? mv(t.x - g.px, t.y - g.py) : nav(t.x, t.y)); } else if (d < 1.0 && w.range > 2.5) mv(g.px - t.x, g.py - t.y); else g.setMove(0, 0);
+      const d = dist(t.x, t.y, g.px, g.py), rr = ENEMIES[t.type].radius || .5, w = g.build.weapon; const abR = g.build.abilities.includes('sweep') ? 2.8 : g.build.abilities.includes('bladeburst') ? 4.2 : 99; const want = TANK ? .9 + rr : Math.min(Math.max(.8, Math.min(w.range * .8, 5)), abR) + rr; /* ability-centric play: close to ability range */
+      if (d > want) { (d < 3 ? mv(t.x - g.px, t.y - g.py) : nav(t.x, t.y)); } else if (!TANK && d < 1.0 && w.range > 2.5) mv(g.px - t.x, g.py - t.y); else g.setMove(0, 0);
       useAbilities(t, alive);
       return true;
     };
@@ -121,10 +125,11 @@ export async function runJob(job) {
 
     // ---- full level run ----
     if (!g.startRun(job.id)) return { error: 'startRun failed: ' + job.id };
-    g.recompute(); g.hp = g.maxHp; L = g.level; result.kitInfo = kitInfo(); const nEnemies = g.enemies.length; let bossSeen = 0, stuckT = 0, lastPos = [g.px, g.py], lastCheck = 0, deathsHere = 0;
+    g.recompute(); g.hp = g.maxHp; L = g.level; result.kitInfo = kitInfo();
+    if (job.bossOnly) { /* skip the dungeon: stand at the boss door with the gates open and a few stims, fight starts at the reveal */ for (let i = 0; i < 20; i++) stepSim(); const f0 = g.inst.flags; f0.gate1 = f0.lock2 = f0.controller = true; g.inst.carried.stims = job.stims ?? 3; g.px = L.revealX + 1.5; g.py = L.bossSpawn.y; g.hp = g.maxHp; } const nEnemies = g.enemies.length; let bossSeen = 0, stuckT = 0, lastPos = [g.px, g.py], lastCheck = 0, deathsHere = 0;
     const dd = g.dd; let phaseLog = {}; let reachCache = { key: '', t: -9, ok: true };
     while (simT < maxT && !g.inst.flags.bossDead) {
-      if (g.downed) { R.deaths++; deathsHere++; if (R.deaths >= maxDeaths) break; g.returnToCheckpoint(); flowKey = ''; stuckT = 0; continue; }
+      if (g.downed) { R.deaths++; deathsHere++; if (R.deaths >= maxDeaths) break; g.returnToCheckpoint(); if (job.bossOnly) { g.inst.carried.stims = Math.max(g.inst.carried.stims, job.stims ?? 3); g.px = L.revealX + 1.5; g.py = L.bossSpawn.y; } flowKey = ''; stuckT = 0; continue; }
       if (g.channel) g.channel = null;
       trackAlert();
       const f = g.inst.flags; const boss = g.enemies.find(e => !e.dead && ENEMIES[e.type].boss && e._rt.reveal <= 0);
@@ -147,7 +152,7 @@ export async function runJob(job) {
         }
       }
       // stuck detection
-      if (simT - lastCheck > 6) { lastCheck = simT; if (dist(g.px, g.py, lastPos[0], lastPos[1]) < 1.0 && !g.revealing) { stuckT++; flowKey = ''; if (stuckT > 4) { /* teleport nudge */ const o = g.objective(); if (o && stuckT > 8) { R.stuck = (R.stuck || 0) + 1; R.stuckAt = { pos: [+g.px.toFixed(1), +g.py.toFixed(1)], obj: o, flags: { ...f }, near: g.enemies.filter(e => !e.dead && dist(e.x, e.y, g.px, g.py) < 14).map(e => [e.type, e.alert, +dist(e.x, e.y, g.px, g.py).toFixed(1), +e.x.toFixed(1), +e.y.toFixed(1), g.los(g.px, g.py, e.x, e.y)]).slice(0, 8), guards: g.enemies.filter(e => e.type === dd.gateGuard).map(e => [e.dead, +e.x.toFixed(1), +e.y.toFixed(1)]), doors: L.doors.map(d => d.id) }; break; } } } else stuckT = 0; lastPos = [g.px, g.py]; }
+      if (simT - lastCheck > 6) { lastCheck = simT; if (dist(g.px, g.py, lastPos[0], lastPos[1]) < 1.0 && !g.revealing && !g.enemies.some(e => !e.dead && e.faction === 'enemy' && e.alert && e._rt.reveal <= 0 && dist(e.x, e.y, g.px, g.py) < 9)) { stuckT++; flowKey = ''; if (stuckT > 4) { /* teleport nudge */ const o = g.objective(); if (o && stuckT > 8) { R.stuck = (R.stuck || 0) + 1; R.stuckAt = { pos: [+g.px.toFixed(1), +g.py.toFixed(1)], obj: o, flags: { ...f }, near: g.enemies.filter(e => !e.dead && dist(e.x, e.y, g.px, g.py) < 14).map(e => [e.type, e.alert, +dist(e.x, e.y, g.px, g.py).toFixed(1), +e.x.toFixed(1), +e.y.toFixed(1), g.los(g.px, g.py, e.x, e.y)]).slice(0, 8), guards: g.enemies.filter(e => e.type === dd.gateGuard).map(e => [e.dead, +e.x.toFixed(1), +e.y.toFixed(1)]), doors: L.doors.map(d => d.id) }; break; } } } else stuckT = 0; lastPos = [g.px, g.py]; }
       stepSim();
     }
     const cleared = !!g.inst.flags.bossDead; const bossDef = ENEMIES[dd.defaultBoss];

@@ -8,7 +8,8 @@ const probe = await launch(); const meta = await probe.page.evaluate(async () =>
 export const PARKIT = d => ({ annex: 'mid', warehouse: 'mid', foundry: 'blue', clinic: 'purple' }[d.id] || { 1: 'mid', 2: 'blue', 3: 'purple', 4: 'purple' }[d.tier]);
 const PAR_ONLY = process.argv.includes('--par'); const lvlFor = d => Math.round((d.min + d.max) / 2);
 const jobs = [];
-if (LEVELS) for (const d of meta.dd) { if (ONLY && !ONLY.includes(d.id)) continue; for (const kit of (PAR_ONLY ? [PARKIT(d)] : KITS)) for (let s = 0; s < SEEDS; s++) jobs.push({ mode: 'level', id: d.id, kit, level: lvlFor(d), seed: 1000 + s * 77 + d.id.length, maxT: 1100, maxDeaths: 4 }); }
+const PROFILE = arg('profile', 'skilled'), BOSSONLY = process.argv.includes('--boss'), MAXD = +arg('maxdeaths', PROFILE === 'tank' ? 1 : 4);
+if (LEVELS) for (const d of meta.dd) { if (ONLY && !ONLY.includes(d.id)) continue; for (const kit of (PAR_ONLY ? [PARKIT(d)] : KITS)) for (let s = 0; s < SEEDS; s++) jobs.push({ mode: 'level', id: d.id, kit, level: lvlFor(d), seed: 1000 + s * 77 + d.id.length, maxT: BOSSONLY ? 420 : 1100, maxDeaths: MAXD, profile: PROFILE, bossOnly: BOSSONLY }); }
 // mob duels: 3 of one mob vs the par kit for the mob's tier (and the next kit down for reference)
 const PAR = { 1: ['mid', 18], 2: ['blue', 26], 3: ['purple', 35], 4: ['purple', 44] }, DOWN = { mid: 'starter', blue: 'mid', purple: 'blue' };
 if (MOBS) for (const m of meta.mobs) { if (ONLY && !ONLY.includes(m.id)) continue; const [kit, level] = PAR[m.tier]; for (const [k, lv] of [[kit, level], [DOWN[kit], level]]) if (KITS.includes(k)) for (let s = 0; s < 3; s++) jobs.push({ mode: 'mob', id: m.id, kit: k, level: lv, seed: 500 + s * 31, n: 3, tier: m.tier, par: k === kit }); }
