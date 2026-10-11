@@ -228,7 +228,7 @@ Sean: "Heat is not an issue ever, cooldowns make it so heat isn't an issue ... i
 | Effective COOL | uncapped (x5+) | diminishing, hard cap x1.4 (dissipation never above 8.4/s) |
 | Ability heat cost | authored | x1.8 (heat scales with power; fewer, heavier casts) |
 | Ability cooldown | authored | x0.6 (cooldown is now the burst/ultimate limiter) |
-| Ability power per cast | x1 | x1.7 (`HEAT.powerMul`: `AB` damages, `ABILITY_BAL.dmg`) |
+| Ability power per cast | x1 | x1.4 (`HEAT.powerMul`: `AB` damages, `ABILITY_BAL.dmg`) |
 | Chip heat-cost reduction | uncapped, raw sum | diminishing, hard cap 30% (`reduceCap`, `reduceK`) |
 | Cooldown reduction | cap 50% | hard cap 30% |
 | Auto-attack heat | x2.4 weapon heat | x1.2 (autos are sustainable alone, abilities are what overheats you) |
@@ -257,17 +257,23 @@ Sean: "Heat is not an issue ever, cooldowns make it so heat isn't an issue ... i
 
 The max heat-reduction spec used to cast 35/min with heat never above 2; it is now capped near 20 casts/min with average heat 87 (the bot sits at the heat ceiling the whole fight). The cooldown ceiling for three abilities is about 60 casts/min, so heat, not cooldown, is what stops it. Fully unspecced and fully specced builds end up within about 1.2-1.5x of each other in sustained casts because the caps flatten the curve on purpose; the rest of a heat spec's value is burst headroom and recovery speed.
 
-**Level results (par kits, 2 seeds, `tools/balance/out/heat_par_*.json`)**
-| | Before | After first pass (x2.0, no bot vent) | After (shipped) |
-|---|---|---|---|
-| Clear rate | 75% | 35% | **89%** (target 70-90%) |
-| Ability damage share | 64.8% | 74.4% | **76.3%** (target >60%) |
-| Deaths per run | 1.67 | 3.06 | 1.00 |
-| Overheats per minute | 0.01 | 2.6 | **1.2** |
-| Time locked out | 0% | 39% | **10%** |
-| Casts per run | 149 | 102 | 98 |
-| Mean time to clear | 384 s | 436 s | 287 s |
+**Level results (par kits, 3 seeds, final `powerMul` 1.4, same harness for both columns)**
 
-The first pass showed the cost of getting heat wrong: 2.6 overheats/min and 39% lockout turned par clears from 75% to 35%. The shipped numbers keep overheat a recurring, survivable event (about once a minute for the greedy bot that pushes into overheat on elites and bosses, with vent as the answer). Tank-and-spank bot (boss fights, par kits): loses 100% (target >80%). See the boss table below for the skilled bot.
+Note: after the layout-variety commit the bot gets stuck on 30-40% of the batch-level layouts (it was written for the old east-boss layouts; boss reveal now uses `revealPoint()`). Both columns exclude those runs (`heatsum.mjs`; `--all` includes them), so absolute rates are for the levels the bot can finish, and "before" is the current main, which is harder than the older table above.
+| | Before (main, no heat pass) | After |
+|---|---|---|
+| Par clear rate | 52% (44 runs) | **71%** (42 runs; target 70-90%) |
+| Par clear with <=1 death | 48% | 62% |
+| Ability damage share | 66% | **74%** (target >60%) |
+| Overheats per minute | 0.00 | 1.4 |
+| Time locked out | 0% | 11% |
+| Average heat | 5 | 57 |
+| Casts per minute | 19.9 | 20.7 |
+| Boss fights, skilled bot, clear with <=1 death | 74% | 85% (target 50-70%: **not met**; it was already above target on current main, and heat barely touches a bot that vents and dodges) |
+| Boss fights, tank-and-spank bot clears | 0% | 0% (loses 100%, target >80%) |
+
+Tuning history for `powerMul`: 1.7 gave par 89% / skilled 77%; 1.5 gave par 78% / skilled 90%; 1.3 gave par 68% / skilled 83%; 1.4 is the compromise that keeps par in band. Skilled-bot boss clears do not respond much to ability power (bosses are long fights where the bot's dodging decides the outcome), so bringing that to 50-70% is a boss-damage tuning job, not a heat job; left open.
+
+The first heat pass (x2.0 cost, no bot vent) showed the cost of getting heat wrong: 2.6 overheats/min and 39% lockout. The shipped numbers keep overheat a recurring, survivable event (about 1.4 a minute for the greedy bot that pushes into overheat on elites and bosses, with vent as the answer).
 
 **Re-run:** `node tools/balance/heat.mjs --secs 120`, `node tools/balance/run.mjs --par --seeds 2`, `node tools/balance/abilshare.mjs out.json`, `node tools/balance/heatsum.mjs out.json`; `npm run test:heat` for the assertions (caps, consequences, vent, HUD bands, bench cast-rate limits).
