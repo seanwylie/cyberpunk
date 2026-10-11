@@ -1,6 +1,7 @@
 // Wardrobe / appearance cosmetics: data integrity, rarity policy, stat neutrality, equip + body-variant art, UI, preview, persistence.
 import { launch, sleep } from './lib.mjs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
+const clk = s => page.evaluate(q => document.querySelector(q)?.click(), s);
 const { browser, page, errors } = await launch({ query: '?splash=hold' });
 const R = await page.evaluate(async () => {
   const A = await import('/src/content/appearance.ts'), Cfg = await import('/src/config.ts'), BV = await import('/src/bodyvariants.ts'), B = await import('/src/build.ts');
@@ -55,27 +56,27 @@ await page.evaluate(() => { const g = window.__game; g.enterTown(); const A = wi
 await page.evaluate(async () => { const A = await import('/src/content/appearance.ts'), g = window.__game, s = g.save; s.cosmetics = A.newCos(); for (const id of ['hair_buzz', 'hair_mohawk', 'head_visor', 'back_cape', 'skin_veins', 'trail_sparks', 'aura_foundry', 'torso_ps']) A.grantCos(s, id); window.__ui.open('locker'); });
 await page.evaluate(() => document.getElementById('splash')?.remove()); await sleep(300);
 ok(await page.evaluate(() => !!document.querySelector('[data-act="wd-open"]')), 'locker has a Wardrobe button');
-await page.click('[data-act="wd-open"]'); await sleep(300);
+await clk('[data-act="wd-open"]'); await sleep(300);
 ok(await page.evaluate(() => !!document.querySelector('#wdprev') && document.querySelectorAll('.wdgrid .tile').length > 0), 'wardrobe modal shows preview canvas + icon grid');
 const ownedTiles = await page.evaluate(() => document.querySelectorAll('.wdgrid .tile:not(.off)').length); ok(ownedTiles >= 8, 'owned tiles shown: ' + ownedTiles);
 ok(await page.evaluate(() => [...document.querySelectorAll('.wdgrid .tile')].every(t => t.dataset.tip)), 'every tile has hover details');
 const hidden = await page.evaluate(() => document.querySelector('.wdgrid').textContent); ok(!/Heartstar|Warrantor/.test(hidden), 'undiscovered items are not spoiled');
-await page.click('[data-act="wd-show"]'); await sleep(150);
+await clk('[data-act="wd-show"]'); await sleep(150);
 const allN = await page.evaluate(() => document.querySelectorAll('.wdgrid .tile').length); ok(allN >= 100, 'Show all lists everything: ' + allN);
 const unk = await page.evaluate(() => { const t = document.querySelector('.wdgrid .tile.off .cosw.unk'); return !!t; }); ok(unk, 'undiscovered tiles are mystery icons');
-await page.click('[data-act="wd-show"]'); await sleep(100);
-await page.click('[data-act="wd-tab"][data-tab="hair"]'); await sleep(100);
-await page.click('.wdgrid .tile[data-id="hair_mohawk"]'); await sleep(250);
+await clk('[data-act="wd-show"]'); await sleep(100);
+await clk('[data-act="wd-tab"][data-tab="hair"]'); await sleep(100);
+await clk('.wdgrid .tile[data-id="hair_mohawk"]'); await sleep(250);
 const before = await page.evaluate(() => document.getElementById('wdprev').toDataURL().length);
 await page.screenshot({ path: '/tmp/wd_preview.png' });
-await page.click('[data-act="wd-equip"]'); await sleep(200);
+await clk('[data-act="wd-equip"]'); await sleep(200);
 ok(await page.evaluate(() => window.__game.save.cosmetics.equipped.hair === 'hair_mohawk'), 'Equip button equips');
-await page.click('[data-act="wd-tab"][data-tab="skin"]'); await page.click('.wdgrid .tile[data-id="skin_veins"]'); await sleep(150); await page.click('[data-act="wd-equip"]'); await sleep(100);
-await page.click('[data-act="wd-tab"][data-tab="torso"]'); await page.click('.wdgrid .tile[data-id="torso_ps"]'); await sleep(150); await page.click('[data-act="wd-equip"]'); await sleep(250);
+await clk('[data-act="wd-tab"][data-tab="skin"]'); await clk('.wdgrid .tile[data-id="skin_veins"]'); await sleep(150); await clk('[data-act="wd-equip"]'); await sleep(100);
+await clk('[data-act="wd-tab"][data-tab="torso"]'); await clk('.wdgrid .tile[data-id="torso_ps"]'); await sleep(150); await clk('[data-act="wd-equip"]'); await sleep(250);
 await page.screenshot({ path: '/tmp/wd_equipped.png' });
 const painted = await page.evaluate(() => { const c = document.getElementById('wdprev'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 120 && d[i] > d[i + 2] + 40) n++; return n; }); ok(painted > 80, 'preview draws the equipped look: ' + painted + ' warm pixels');
-await page.click('[data-act="wd-buy"]').catch(() => {}); 
-await page.click('[data-act="wd-back"]'); await sleep(200); ok(await page.evaluate(() => window.__ui.modal) === 'locker', 'back returns to the locker');
+await clk('[data-act="wd-buy"]').catch(() => {}); 
+await clk('[data-act="wd-back"]'); await sleep(200); ok(await page.evaluate(() => window.__ui.modal) === 'locker', 'back returns to the locker');
 // persistence + in-world render
 await page.evaluate(() => { window.__ui.close(); window.__game.saveNow?.(); });
 const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('arpg-proto-save-v1')).cosmetics); ok(stored && stored.equipped.hair === 'hair_mohawk' && stored.equipped.torso === 'torso_ps', 'equipped look persisted in the save');
