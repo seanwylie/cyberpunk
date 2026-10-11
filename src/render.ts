@@ -108,7 +108,9 @@ export class Renderer {
       c.strokeStyle='rgba(207,198,176,.16)'; c.lineWidth=.07; c.setLineDash([.5,.5]); c.strokeRect(9.5,7.5,10,7); c.setLineDash([]); text('SAFE ZONE',14.5,11,.5,'rgba(207,198,176,.18)'); stripes(21.4,13.4,4.6,.35,.3); stripes(21.4,17.4,4.6,.35,.3); text('ANNEX GATE',23.7,16,.4,'rgba(207,198,176,.2)'); text('REPAIR MARKET',14.5,17.6,.5,'rgba(143,59,46,.26)'); c.restore(); }
     void L; }
   isDoorTile(x:number,y:number){ return this.g.level.doors.some(d=>d.tiles.some(t=>t[0]===x&&t[1]===y)); }
-  ring(x:number,y:number,r:number,col:string,alpha=1,filled=false){ const c=this.ctx; c.save(); c.globalAlpha=alpha; c.strokeStyle=col; c.fillStyle=col; c.lineWidth=2; c.beginPath(); c.ellipse(this.sx(x,y),this.sy(x,y),r*this.TW/2*Math.SQRT2*.7,r*this.TW/4*Math.SQRT2*.7,0,0,7); if(filled){ c.globalAlpha=alpha*.25; c.fill(); c.globalAlpha=alpha; } c.stroke(); c.restore(); }
+  /** Iso-projected circle of world radius r centred on (x,y): semi-axes r*TW/2*sqrt2 by r*TW/4*sqrt2 (the exact image of the circle under sx/sy). Every ring/zone must go through this or poly(circle()). */
+  ringLog:{x:number;y:number;r:number;cx:number;cy:number;rx:number;ry:number}[]|null=null;
+  ring(x:number,y:number,r:number,col:string,alpha=1,filled=false){ const c=this.ctx; if(this.ringLog) this.ringLog.push({x,y,r,cx:this.sx(x,y),cy:this.sy(x,y),rx:r*this.TW/2*Math.SQRT2,ry:r*this.TW/4*Math.SQRT2}); c.save(); c.globalAlpha=alpha; c.strokeStyle=col; c.fillStyle=col; c.lineWidth=2; c.beginPath(); c.ellipse(this.sx(x,y),this.sy(x,y),r*this.TW/2*Math.SQRT2,r*this.TW/4*Math.SQRT2,0,0,7); if(filled){ c.globalAlpha=alpha*.25; c.fill(); c.globalAlpha=alpha; } c.stroke(); c.restore(); }
   poly(pts:[number,number][],fill?:string,stroke?:string,alpha=1,lw=2){ const c=this.ctx; c.save(); c.globalAlpha=alpha; c.beginPath(); pts.forEach(([x,y],i)=>{ const a=this.sx(x,y), b=this.sy(x,y); i?c.lineTo(a,b):c.moveTo(a,b); }); c.closePath(); if(fill){ c.fillStyle=fill; c.fill(); } if(stroke){ c.strokeStyle=stroke; c.lineWidth=lw; c.stroke(); } c.restore(); }
   sector(x:number,y:number,a:number,r:number,arc:number,n=14):[number,number][]{ const p:[number,number][]=[[x,y]]; for(let i=0;i<=n;i++){ const aa=a-arc/2+arc*i/n; p.push([x+Math.cos(aa)*r,y+Math.sin(aa)*r]); } return p; }
   circle(x:number,y:number,r:number,n=20):[number,number][]{ const p:[number,number][]=[]; for(let i=0;i<n;i++){ const a=i/n*Math.PI*2; p.push([x+Math.cos(a)*r,y+Math.sin(a)*r]); } return p; }
@@ -218,7 +220,7 @@ export class Renderer {
     this.ring(g.px,g.py,1.2,'#f3ead8',.9);
     if(g.save.settings.reducedFx) return;
     const c=this.ctx, a=this.sx(g.px,g.py), b=this.sy(g.px,g.py);
-    const rx=1.45*this.TW/2*Math.SQRT2*.7, ry=1.45*this.TW/4*Math.SQRT2*.7;
+    const rx=1.45*this.TW/2*Math.SQRT2, ry=1.45*this.TW/4*Math.SQRT2;
     c.save(); c.strokeStyle='#f3ead8'; c.globalAlpha=.75; c.lineWidth=2.5;
     for(let i=0;i<4;i++){ const ang=-Math.PI/2+i*Math.PI/2+Math.sin(g.time*2)*.08; c.beginPath(); c.arc(a+Math.cos(ang)*rx,b+Math.sin(ang)*ry,5,ang-.5,ang+.5); c.stroke(); }
     c.restore();
