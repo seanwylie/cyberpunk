@@ -61,8 +61,8 @@ const audit = (tag, m, mode, tut) => {
   ok(out.length === 0, `${tag}: nothing outside the viewport ${out.join(' ')}`);
   // 2. no overlapping boxes (children of a box and their container are exempt; hidden-under-modal bottom HUD is not rendered in dock state)
   const hits = []; const bs = m.boxes;
-  for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) { const a = bs[i], b = bs[j]; if (a.par.includes(b.name) || b.par.includes(a.name)) continue; if (a.name === 'controls' || b.name === 'controls') continue; if (m.vw < 900 && (a.name === 'dialog' || b.name === 'dialog')) continue; /* known: below 900px the transient NPC dialog may cover the objective/live panel (it is dismissible and pointer-active) */
-    const x = Math.min(a.r.r, b.r.r) - Math.max(a.r.l, b.r.l), y = Math.min(a.r.b, b.r.b) - Math.max(a.r.t, b.r.t); if (x > 1 && y > 1) hits.push(a.name + '/' + b.name); }
+  for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) { const a = bs[i], b = bs[j]; if (a.par.includes(b.name) || b.par.includes(a.name)) continue; if (m.vw < 900 && (a.name === 'dialog' || b.name === 'dialog') && ![a.name, b.name].includes('objective')) continue; /* below 900px the transient dialog may still cover the side panels but never the objective */ if (a.name === 'controls' || b.name === 'controls') continue;  /* known: below 900px the transient NPC dialog may cover the objective/live panel (it is dismissible and pointer-active) */
+    const x = Math.min(a.r.r, b.r.r) - Math.max(a.r.l, b.r.l), y = Math.min(a.r.b, b.r.b) - Math.max(a.r.t, b.r.t); if (x > 1 && y > 1) hits.push(a.name + '/' + b.name + '[' + [a, b].map(q => [q.r.l, q.r.t, q.r.r, q.r.b].map(Math.round)).join(' ~ ') + ']'); }
   ok(hits.length === 0, `${tag}: no overlapping HUD boxes ${hits.join(' ')}`);
   // 3. top-left stack: one column (same left + right edge), equal gaps, left edge on the gutter
   const stack = names.filter(n => /^(bar\d|meta|support)$/.test(n) || n === 'tut').map(n => B[n]).sort((a, b) => a.r.t - b.r.t);
