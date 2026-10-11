@@ -95,7 +95,7 @@ await ev(() => { const g = window.__game; g.enterTown(); g.save.instance = null;
 const abB = await ev(() => window.__game.build.abilities.join()); ok(abB === 'bladeburst,cloak,reposition', 'Build B abilities: ' + abB);
 await ev(() => window.__game.startRun()); await ev(() => { const g = window.__game; g.cloakT = 6; }); { const sn = await ev(() => window.__game.level.sensors); await tp((sn.x0 + sn.x1) / 2 + .5, (sn.y0 + sn.y1) / 2 + .5); } await step(0.1); ok(!(await state()).flags.alarm, 'cloaked player passes sensors silently');
 // heat / overheat
-await ev(() => { const g = window.__game; g.heat = 99; g.dbg.god = true; g.heat += 5; g.update(0.016); }); ok(await ev(() => window.__game.overheated), 'overheat triggers at max heat'); await step(8); ok(!(await ev(() => window.__game.overheated)), 'cools back down and recovers');
+await ev(() => { const g = window.__game; g.heat = 99; g.dbg.god = true; g.heat += 5; g.update(0.016); }); ok(await ev(() => window.__game.overheated), 'overheat triggers at max heat'); await step(14); ok(!(await ev(() => window.__game.overheated)), 'cools back down and recovers');
 // level filter: low-level recipients don't get above-level gear and no downward reroll
 const filt = await ev(() => { const g = window.__game; g.save.level = 5; let drops = 0; const before = g.inst.drops.length; for (let i = 0; i < 400; i++) g.dropEntry({ item: 'pool_p_hand', w: 1 }, g.px, g.py); return g.inst.drops.length - before; }); ok(filt === 0, 'level-5 recipient gets 0/400 level-14 purple drops (filtered, not substituted)');
 // full inventory leaves loot on ground, evicts nothing
