@@ -58,6 +58,8 @@ const carried = await ev(() => window.__game.carriedCount()); ok(carried > 0, 'p
 // town trip: channel is interrupted by movement
 await ev(() => { window.__game.townReturn(); }); await step(1); await ev(() => window.__game.setMove(1, 0)); await step(0.3); await ev(() => window.__game.setMove(0, 0));
 ok(await ev(() => window.__game.channel === null && window.__game.mode === 'run'), 'town channel interrupted by movement');
+// leave one uncollectable item on the ground (pack full) so the cleared instance is retained for retrieval (finished instances with nothing left are retired on return, see instance_clear.mjs)
+await ev(() => { const g = window.__game; const C = g.inst.carried; const tpl = C.items[0] || g.save.items[0]; while (g.carriedCount() < 16) C.items.push({ ...tpl, uid: 'fill' + g.carriedCount() }); g.inst.drops.push({ id: 9990, kind: 'item', inst: { ...tpl, uid: 'left1' }, x: g.level.bossSpawn.x, y: g.level.bossSpawn.y }); });
 await ev(() => { window.__game.townReturn(); }); await step(5.2); ok((await state()).mode === 'town', 'town channel completes uninterrupted');
 await ev(() => { window.__ui.open('locker'); window.__ui.unload(); window.__ui.close(); });
 ok(await ev(() => window.__game.save.items.length) > 12, 'unload moved items into locker');
