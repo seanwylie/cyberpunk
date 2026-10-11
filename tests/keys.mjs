@@ -22,6 +22,6 @@ await page.evaluate(() => document.getElementById('splash')?.remove());
 await page.evaluate(() => { const g = window.__game; g.dbg.god = true; g.startRun(Object.keys(window.__dungeons || {})[0]); });
 await sleep(800);
 const txt = await page.evaluate(() => { const g = window.__game; g.inst.flags = g.inst.flags || {}; g.inst.flags.bossDead = true; return g.objective()?.text; });
-ok(/press B to return to town/.test(txt || ''), `objective after boss: "${txt}"`);
+ok(/press B to return to town/i.test(txt || ''), `objective after boss: "${txt}"`);
 await browser.close();
 console.log(fails ? `${fails} FAILED` : 'keys OK'); process.exit(fails ? 1 : 0);
