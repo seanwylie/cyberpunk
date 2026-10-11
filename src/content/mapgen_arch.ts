@@ -187,7 +187,10 @@ function once(spec:LevelSpec,seed:number):Level{
   const S=lay.wings.find(w=>w.kind==='salvage')!; const SR=rooms[S.r.id]; g.put('cratechip',spec.objective.bonus+' (bonus chips)','crate',SR.x+SR.w-2.5,SR.y+SR.h-2,6,['salvage'],1.5);
   // enemies
   const ro=spec.roster; const eq=(tp:string)=>tp===spec.gateGuard||tp===spec.lockElite;
-  g.single(spec.gateGuard,90,yExit.x,yExit.y-g.ri(4,6)); g.single(spec.gateGuard,91,yExit.x,yExit.y+g.ri(4,6)); { const a=g.spawns.length; void a; }
+  { // both gate guards stand on the spawn side of the gate (inside the yard): a guard behind the gate made it impossible to open (guards are what open it)
+    const horiz=Math.abs(yc.x-yExit.x)>Math.abs(yc.y-yExit.y); const bx=horiz?Math.sign(yc.x-yExit.x)||1:0, by=horiz?0:(Math.sign(yc.y-yExit.y)||1), sx=horiz?0:1, sy=horiz?1:0;
+    const gp=(side:number)=>{ const back=g.ri(3,5), lat=side*g.ri(2,4); return { x:Math.max(Y.x+1.5,Math.min(X1(Y)-1.5,yExit.x+bx*back+sx*lat)), y:Math.max(Y.y+1.5,Math.min(Y1(Y)-1.5,yExit.y+by*back+sy*lat)) }; };
+    const g1=gp(-1), g2=gp(1); g.single(spec.gateGuard,90,g1.x,g1.y); g.single(spec.gateGuard,91,g2.x,g2.y); } { const a=g.spawns.length; void a; }
   const place=(zs:Zone[],list:[string,number][],minD?:number)=>{ for(const [tp,n] of list){ if(n<=0||eq(tp)) continue; g.pack(zs,n,tp,{minD}); } };
   const half=(qq:[string,number][])=>qq.map(([tp,n])=>[tp,Math.max(1,Math.ceil(n/2))] as [string,number]);
   if(spec.squads){ const zmap:[Zone,Zone[],number][]=[['yard',['yard'],7],['proc',['proc'],8],['junction',['junction'],6],['salvage',['salvage'],5]];
