@@ -10,9 +10,10 @@ const dirty = execSync('git status --porcelain public/dungeons/enemies3d').toStr
 for (const id of ids3) { const m = JSON.parse(fs.readFileSync(`public/dungeons/enemies3d/${id}.json`, 'utf8')); const files = [`${id}.json`, ...Object.values(m.anims).map(a => a.image)];
   let ign = ''; try { ign = execSync(`git check-ignore public/dungeons/enemies3d/${id}.json`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch { }
   if (!(files.every(f => tracked.has('public/dungeons/enemies3d/' + f) || dirty) && !ign)) ok(false, `${id}: atlas files tracked / not ignored`); }
-const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } }); const ev = (f, a) => page.evaluate(f, a);
-await sleep(1500); await ev(() => { const g = window.__game; g.save.level = 34; g.dbg.god = true; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.startRun('annex', 1001); }); await sleep(1000);
-await ev(() => { const g = window.__game; g.inst.flags.bossSpawned = true; g.enemies.splice(0); });
+let { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } }); const ev = (f, a) => page.evaluate(f, a);
+const boot = async () => { await sleep(1500); await ev(() => { const g = window.__game; g.save.level = 34; g.dbg.god = true; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.startRun('annex', 1001); }); await sleep(1000);
+await ev(() => { const g = window.__game; g.inst.flags.bossSpawned = true; g.enemies.splice(0); }); };
+await boot();
 const all = await ev(() => Object.keys(window.__enemies));
 const only = process.env.ONLY ? new Set(process.env.ONLY.split(',')) : null; const list = only ? all.filter(t => only.has(t)) : all; ok(only ? list.length === only.size : list.length >= 36, `${list.length} enemy types under test`);
 const noAtlas = list.filter(t => !ids3.includes(t)); ok(noAtlas.length === 0, `every enemy type has a 3D atlas (missing: ${noAtlas.join(',') || 'none'})`);
@@ -22,7 +23,7 @@ const names = ['+x', '+x+y', '+y', '-x+y', '-x', '-x-y', '-y', '+x-y'].map(n => 
 // batches of 6 can jostle each other (separation pushes change the travel vector); an id that fails inside a batch is re-run alone before it counts
 const queue = []; for (let b = 0; b < list.length; b += 6) queue.push({ ids: list.slice(b, b + 6), solo: false }); let bi = 0;
 while (queue.length) {
-  const { ids: batch, solo } = queue.shift(); const b = 6 * bi++; const failed = new Set(); const okB = ok; const ok2 = (c, m) => { if (!c && !solo && batch.length > 1) { const id = m.split(':')[0]; failed.add(id); return; } okB(c, m); };
+  const { ids: batch, solo } = queue.shift(); if (solo) { /* retries start from a pristine page: state left by earlier batches made some types flaky */ const old = browser; ({ browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } })); await old.close(); await boot(); } const b = 6 * bi++; const failed = new Set(); const okB = ok; const ok2 = (c, m) => { if (!c && !solo && batch.length > 1) { const id = m.split(':')[0]; failed.add(id); return; } okB(c, m); };
   const res = await ev(async ({ batch, D8 }) => { const g = window.__game, ea = window.__rend.eart, B = g.level.bossSpawn; const es = []; let k = 0;
     for (const id of batch) { const e = g.spawnEnemy(id, B.x - 5 + (k % 3) * 3.2, B.y - 3 + Math.floor(k / 3) * 3.4); k++; e.hp = e.maxHp = 1e8; e.alert = false; e.stunT = 1e9; if (e._rt) e._rt.reveal = 0; es.push(e); }
     g.px = B.x - 2; g.py = B.y + 3; const rec = {}; for (const id of batch) rec[id] = { rows: {}, legacy: 0, draws: 0 };
