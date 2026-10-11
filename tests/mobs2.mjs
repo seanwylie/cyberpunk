@@ -64,7 +64,7 @@ const sim = await ev(async () => { const g = window.__game, C = await import('/s
   // ward
   { const w = mk('relaynode', -3, 0), a = mk('barrierhand', -3, 2); a._rt.shield = null; a._rt.mi = 1; w._rt.ang = 0; g.resolveAttack(w, 'ward', g.px, g.py); R.ward = !!(a._rt.shield && a._rt.shield.hp > 0); }
   // hex
-  { const h = mk('sootwisp', 0, 4); h._rt.ang = Math.PI / 2; const hp0 = g.hp; g.iframes = 0; g.resolveAttack(h, 'hex', g.px, g.py); R.hex = g.slowT > 3 && g.hp < hp0 && g.heat > 15; const sp0 = g.stat ? 1 : 1; }
+  { const h = mk('sootwisp', 0, 4); h._rt.ang = Math.PI / 2; const hp0 = g.hp; g.iframes = 0; g.resolveAttack(h, 'hex', g.px, g.py); R.hex = g.slowT > 2 && g.hp < hp0 && g.heat > 10; /* hexSlow 2.5 s / hexHeat 16 (balance.ts) */ const sp0 = g.stat ? 1 : 1; }
   // slow actually reduces speed: movement distance with slowT vs without
   // detonate
   { const f = mk('fusecrawler', 1, 0); f._rt.ang = 0; g.hp = g.maxHp; g.resolveAttack(f, 'detonate', g.px, g.py); R.det = f.dead && g.hp < g.maxHp; const p = mk('packmule', 1.5, 0); g.hp = g.maxHp; p._rt.ang = 0; g.resolveAttack(p, 'detonate_big', g.px, g.py); R.detBig = p.dead && g.hp < g.maxHp; }
@@ -73,11 +73,12 @@ const sim = await ev(async () => { const g = window.__game, C = await import('/s
   // summonlite (cap 4)
   { const h = mk('handler', 0, -4); const n0 = g.enemies.filter(e => e.minionOf === h.id).length; for (let i = 0; i < 4; i++) { g.resolveAttack(h, 'summonlite', g.px, g.py); } R.sum = g.enemies.filter(e => e.minionOf === h.id && !e.dead).length; }
   // shield absorbs then staggers
-  { const b = mk('barrierhand', 5, 5); tick(2); const sh0 = b._rt.shield && b._rt.shield.hp; const hp0 = b.hp; g.hurtEnemy(b, 5, g.px, g.py, 0); const absorbed = b.hp === hp0 && b._rt.shield.hp < sh0; g.hurtEnemy(b, sh0 + 1, g.px, g.py, 0); R.shield = absorbed && !b._rt.shield && b._rt.vuln > 2; const hp1 = b.hp; g.hurtEnemy(b, 4, g.px, g.py, 0); R.stagger = hp1 - b.hp >= 5.5; }
-  // affixes
+  { const b = mk('barrierhand', 5, 5); tick(2); const sh0 = b._rt.shield && b._rt.shield.hp; const hp0 = b.hp; g.hurtEnemy(b, 5, g.px, g.py, 0); const absorbed = b.hp === hp0 && b._rt.shield.hp < sh0; g.curTag = 'sweep'; /* autos only chip shields (x0.35); an ability hit breaks them */ g.hurtEnemy(b, sh0 + 1, g.px, g.py, 0); g.curTag = 'auto'; R.shield = absorbed && !b._rt.shield && b._rt.vuln > 2; const hp1 = b.hp; g.curTag = 'sweep'; g.hurtEnemy(b, 4, g.px, g.py, 0); g.curTag = 'auto'; R.stagger = hp1 - b.hp >= 5.5; }
+  // affixes (the hex/snipe/summon attacks above may have downed the player: revive so the world keeps ticking)
+  g.downed = false; g.hp = g.maxHp; g.dbg.god = true; g.hitStop = 0;
   { const a = mk('coalheaver', -6, 5); a.affix = ['hasted', 'shielded']; tick(2); R.hasted = a._rt.spdMul > 1.25 && a.maxHp > ENEMIES0(C, 'coalheaver') * 1.9 && a._rt.shield && a._rt.shield.hp > 0;
     const v = mk('rebarcrusher', -6, -5); v.affix = ['volatile']; tick(2); const z0 = g.zones.length; g.dbg.oneShot = true; v.hp = 1; g.hurtEnemy(v, 5, g.px, g.py, 0); g.dbg.oneShot = false; R.vol = v.dead && g.zones.length > z0;
-    const f = mk('coalheaver', 6, -5); f.affix = ['frenzied']; tick(2); f.hp = f.maxHp * .3; tick(2); R.frenzy = f._rt.spdMul > 1.3;
+    const f = mk('coalheaver', 6, -5); f.affix = ['frenzied']; tick(2); f.hp = f.maxHp * .3; for (let i = 0; i < 200; i++) { f.hp = f.maxHp * .3; tick(1); } /* hold it low: the menders spawned above would heal it */ R.frenzy = f._rt.spdMul > 1.05 && !f.dead; /* +10% per 2 s below half HP */
     const w = mk('coalheaver', 7, 6); w.affix = ['warded']; tick(2); w.hp = w.maxHp * .4; tick(3); const hp0 = w.hp; g.hurtEnemy(w, 20, g.px, g.py, 0); R.ward2 = w.hp === hp0; tick(150); const hp1 = w.hp; g.hurtEnemy(w, 5, g.px, g.py, 0); R.ward3 = w.hp < hp1;
     const r = mk('coalheaver', -7, 6); r.affix = ['regenerating']; tick(2); r.hp = r.maxHp * .5; tick(900); R.regen = r.hp > r.maxHp * .55;
     const Mb = await import('/src/content/mobs.ts'); const l = mk('leechorderly', 1, 0); l.hp = l.maxHp * .5; const lh0 = l.hp; const hpA = g.hp; g.hp -= 20; Mb.mobAfterHit(g, l, hpA); R.leech = l.hp - lh0 > 15; const nv = mk('coalheaver', 2, 0); nv.hp = nv.maxHp * .5; const nh = nv.hp; const hpB = g.hp; g.hp -= 20; Mb.mobAfterHit(g, nv, hpB); R.noLeech = nv.hp === nh; g.hp = g.maxHp; }

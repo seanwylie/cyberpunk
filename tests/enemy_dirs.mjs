@@ -16,6 +16,7 @@ for (const id of ids3) { const m = JSON.parse(fs.readFileSync(`public/dungeons/e
 // cardinal notches and world-axis travel the diagonal ones (iso grid axes are the screen diagonals).
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } }); const ev = (f, a) => page.evaluate(f, a);
 await sleep(1500);
+const ONLY = process.env.ONLY ? process.env.ONLY.split(',') : null; await ev(o => { window.__only = o; }, ONLY);
 const R = await ev(async (ids3) => {
   const out = { atlasBad: [], dirBad: [], drawErr: [], types: 0, checks: 0, noArt: [] };
   const sig = (img, fr, row, f) => { const c = document.createElement('canvas'); c.width = c.height = 24; const x = c.getContext('2d', { willReadFrequently: true }); x.drawImage(img, f * fr, row * fr, fr, fr, 0, 0, 24, 24); return x.getImageData(0, 0, 24, 24).data; };
@@ -26,7 +27,7 @@ const R = await ev(async (ids3) => {
       const f = Math.min(1, A.frames - 1), S = [...Array(8).keys()].map(r => sig(img, m.frame, r, f));
       for (let i = 0; i < 8; i++) for (let j = i + 1; j < 8; j++) if (diff(S[i], S[j]) < 0.6) out.atlasBad.push(`${id}/${an}: rows ${i} and ${j} are identical`); } }
   const g = window.__game; g.dbg.god = true; g.enterTown(); g.save.instance = null; g.inst = null; g.startRun('annex', 1001); g.enemies.splice(0); g.inst.flags.bossSpawned = true;
-  const Rn = window.__rend, ea = Rn.eart, F = await import('/src/facing.ts'); const types = Object.keys(window.__enemies); out.types = types.length;
+  const Rn = window.__rend, ea = Rn.eart, F = await import('/src/facing.ts'); const types = Object.keys(window.__enemies).filter(t => !window.__only || window.__only.includes(t)); out.types = types.length;
   const D8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]; const B = g.level.bossSpawn;
   const want = (dx, dy) => F.dirIndex(dx - dy, dx + dy);
   for (const t of types) { const e = g.spawnEnemy(t, B.x, B.y); e.hp = e.maxHp = 1e9; e.alert = false; e.stunT = 1e9; if (e._rt) e._rt.reveal = 0; const def = window.__enemies[t];
@@ -36,8 +37,8 @@ const R = await ev(async (ids3) => {
     e.dead = true; }
   out.cardinal = [[1, 1, 'S'], [-1, -1, 'N'], [-1, 1, 'W'], [1, -1, 'E']].map(([dx, dy, n]) => F.DIR_NAMES[want(dx, dy)] === n);
   out.axes = [[1, 0, 'SE'], [0, 1, 'SW'], [-1, 0, 'NW'], [0, -1, 'NE']].map(([dx, dy, n]) => F.DIR_NAMES[want(dx, dy)] === n);
-  return out; }, ids3);
-ok(R.types >= 36, `${R.types} enemy types under test`);
+  return out; }, ONLY ? ids3.filter(i => ONLY.includes(i)) : ids3);
+ok(R.types >= (ONLY ? 1 : 36), `${R.types} enemy types under test`);
 ok(R.atlasBad.length === 0, 'every atlas anim has 8 distinct direction rows' + (R.atlasBad.length ? ': ' + R.atlasBad.slice(0, 6).join(' | ') : ''));
 ok(R.drawErr.length === 0, 'EnemyArt.draw runs for every type ' + R.drawErr.slice(0, 3).join('|'));
 ok(R.noArt.length === 0, 'every type has loaded art (' + R.noArt.join(',') + ')');
