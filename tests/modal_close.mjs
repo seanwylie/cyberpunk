@@ -1,19 +1,23 @@
 // Every modal window keeps its Close button fully inside the viewport and clickable on short / zoomed viewports (1366x768, 1280x720, 1280x600, 1024x600, 800x500, DPR 1.25/1.5),
 // Esc closes, and there is a floating close fallback (#modalx). NPC dialog buttons are checked too.
-import { launch, sleep } from './lib.mjs';
+import { chromium } from 'playwright-core'; import fs from 'fs'; import { URL as BASE, sleep } from './lib.mjs';
+// classic (non-overlay, ~15px) scrollbars like Windows: Playwright hides them by default
+async function launch({ viewport, dpr, query }) { const exe = process.env.CHROME || ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].find(p => fs.existsSync(p)); const browser = await chromium.launch({ executablePath: exe, headless: true, ignoreDefaultArgs: ['--hide-scrollbars'], args: ['--no-sandbox', '--use-gl=swiftshader', '--disable-features=OverlayScrollbar,OverlayScrollbars', '--autoplay-policy=no-user-gesture-required'] }); const ctx = await browser.newContext({ viewport, deviceScaleFactor: dpr }); const page = await ctx.newPage(); const errors = []; page.on('pageerror', e => errors.push(e.message)); await page.addInitScript(() => { try { localStorage.setItem('wv_notut', '1'); } catch {} }); await page.goto(BASE + (query || ''), { waitUntil: 'load' }); await page.waitForFunction(() => window.__game); return { browser, page, errors }; }
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
-const VPS = [[1366, 768, 1.25], [1366, 768, 1.5], [1280, 720, 1.25], [1280, 720, 1.5], [1280, 600, 1], [1024, 600, 1], [800, 500, 1], [1093, 614, 1]];
+const VPS = [[1536, 864, 1.25], [1536, 864, 2], [1920, 1080, 1.25], [1920, 1080, 1.5], [1920, 1080, 2], [1280, 720, 2], [1152, 648, 1.5], [1024, 576, 1.5], [960, 540, 2], [911, 512, 1.5], [1366, 768, 1.25], [1366, 768, 1.5], [1280, 720, 1.25], [1280, 720, 1.5], [1280, 600, 1], [1024, 600, 1], [800, 500, 1], [1093, 614, 1]];
 const MODALS = ['locker', 'vendor', 'bank', 'fixer', 'store', 'contacts', 'settings', 'wardrobe', 'codex', 'help', 'travel', 'guild', 'gate'];
 const only = process.env.VPI ? VPS.filter((_, i) => process.env.VPI.split(',').includes(String(i))) : VPS;
 for (const [w, h, dpr] of only) {
   const { browser, page, errors } = await launch({ viewport: { width: w, height: h }, dpr, query: '?splash=hold' }); const ev = (f, a) => page.evaluate(f, a);
-  await ev(() => { document.getElementById('splash')?.remove(); const g = window.__game; g.save.level = 30; g.save.credits = 99999; g.checkTownUnlocks?.(); g.enterTown(); }); await sleep(1500);
+  await ev(() => { document.getElementById('splash')?.remove(); const g = window.__game; g.save.level = 30; g.save.credits = 99999; g.checkTownUnlocks?.(); g.cheatIdkfa?.(); g.enterTown(); }); for (const US of [process.env.UISIZE || 'XL']) await ev(async US => { const m = await import('/src/config.ts'); m.applyUiScale(US); }, US); await sleep(1500);
   for (const m of MODALS) {
     await ev(m => { const u = window.__ui; u.open(null); u.open(m); }, m); await sleep(250);
     const r = await ev(() => { const b = document.querySelector('#modal [data-act=close]'); const x = document.getElementById('modalx'); const vv = window.visualViewport; const vw = vv ? vv.width : innerWidth, vh = vv ? vv.height : innerHeight;
       const info = e => { if (!e) return null; const r = e.getBoundingClientRect(); const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return { l: r.left, t: r.top, r: r.right, b: r.bottom, hit: !!top && (top === e || e.contains(top) || top.contains(e)) }; };
-      return { vw, vh, btn: info(b), fx: info(x && getComputedStyle(x).display !== 'none' ? x : null), open: getComputedStyle(document.getElementById('modal')).display !== 'none' }; });
-    const inside = i => i && i.l >= -.5 && i.t >= -.5 && i.r <= r.vw + .5 && i.b <= r.vh + .5;
+      const over = []; const md = document.getElementById('modal'); for (const [n, e] of [['html', document.documentElement], ['body', document.body], ['modal', md], ['win', md.querySelector('.win')], ['winbody', md.querySelector('.win>.body')], ...[...md.querySelectorAll('*')].filter(e => { const o = getComputedStyle(e).overflowX; return o === 'auto' || o === 'scroll'; }).map(e => [(e.className || e.tagName) + '', e])]) if (e && e.scrollWidth > e.clientWidth + 1) over.push(n + ' ' + e.scrollWidth + '>' + e.clientWidth); const wr = md.querySelector('.win').getBoundingClientRect(); if (wr.right > document.documentElement.clientWidth + .5 || wr.left < -.5) over.push('win outside viewport');
+      return { over, vw, vh, btn: info(b), fx: info(x && getComputedStyle(x).display !== 'none' ? x : null), open: getComputedStyle(document.getElementById('modal')).display !== 'none' }; });
+    ok(r.over.length === 0, `${w}x${h}@${dpr} ${m}: no horizontal overflow (${r.over.join('; ') || 'none'})`);
+    const inside = i => i && i.l >= -.5 && i.t >= -.5 && i.r < r.vw && i.b <= r.vh + .5;
     ok(r.open && inside(r.btn) && r.btn.hit, `${w}x${h}@${dpr} ${m}: Close button inside viewport (${r.btn ? [r.btn.l, r.btn.t, r.btn.r, r.btn.b].map(Math.round) : 'none'} in ${Math.round(r.vw)}x${Math.round(r.vh)}) and clickable`);
     ok(inside(r.btn) || (inside(r.fx) && r.fx.hit), `${w}x${h}@${dpr} ${m}: header Close on screen or floating fallback shown`);
     await page.keyboard.press('Escape'); await sleep(120); ok(await ev(() => getComputedStyle(document.getElementById('modal')).display === 'none'), `${w}x${h}@${dpr} ${m}: Esc closes`);
