@@ -10,6 +10,7 @@ import { Q } from './quality';
 import type { Level } from './level';
 import type { Zone } from './sim';
 import { LEVEL_BY_ID } from './content/batch1_levels';
+import { KITS, floorLayer, wallLayer, propLayer, decal as vDecal, particles as vParticles, applyGrade, zoneNameAt } from './variety_env';
 import type { Pal } from './content/batch1_levels';
 const S = 192;
 const rng = (seed: number) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -93,7 +94,7 @@ export class DungeonArt {
       if (zone === 'boss') { stain(x, r, S, S, 'rgba(0,0,0,.28)', 2); if (v === 5) stripes(x, 0, S - 14, S, 10, 'rgba(176,150,70,.45)', 'rgba(20,20,20,.6)', 11); if (v % 2) crackp(x, r, S, S, 'rgba(8,8,8,.6)'); for (const [px, py] of [[12, 12], [S - 12, S - 12]]) rivet(x, px, py, 3); }
       if (zone === 'passage' || zone === 'corridor') { x.fillStyle = 'rgba(107,112,53,.14)'; x.fillRect(0, 0, S, S); stain(x, r, S, S, 'rgba(10,10,10,.3)', 1); }
     }
-    wear(x, r, S, S, 140, .1); return cv;
+    { const k = KITS[theme]; if (k) floorLayer(x, v % 2 ? k.floor2 : k.floor, S, r, v, zone); } wear(x, r, S, S, 140, .1); return cv;
   }
   wall(base: HTMLCanvasElement, theme: string, style: string, v: number, zone: string): HTMLCanvasElement {
     const W = base.width, H = base.height, cv = mk(W, H), x = cv.getContext('2d')!, r = rng(v * 59 + theme.length * 31 + style.length); x.drawImage(base, 0, 0);
@@ -135,7 +136,7 @@ export class DungeonArt {
       if (v === 5) { stencil(x, 'K', W / 2, H * .45, 60, 'rgba(176,168,130,.4)'); }
       for (const [px, py] of [[10, 12], [W - 10, 12], [10, H - 12], [W - 10, H - 12]]) rivet(x, px, py, 2.4);
     }
-    const g2 = x.createLinearGradient(0, H * .75, 0, H); g2.addColorStop(0, 'rgba(8,8,8,0)'); g2.addColorStop(1, 'rgba(8,8,8,.4)'); x.fillStyle = g2; x.fillRect(0, H * .75, W, H * .25); wear(x, r, W, H, 260, .1); return cv;
+    const g2 = x.createLinearGradient(0, H * .75, 0, H); g2.addColorStop(0, 'rgba(8,8,8,0)'); g2.addColorStop(1, 'rgba(8,8,8,.4)'); x.fillStyle = g2; x.fillRect(0, H * .75, W, H * .25); { const k = KITS[theme]; if (k && style !== 'door') wallLayer(x, k.wall, W, H, r, v); } wear(x, r, W, H, 260, .1); return cv;
   }
   prop(base: HTMLCanvasElement, theme: string, kind: string, v: number, top: boolean): HTMLCanvasElement {
     const W = base.width, H = base.height, cv = mk(W, H), x = cv.getContext('2d')!, r = rng(v * 11 + kind.length + theme.length); x.drawImage(base, 0, 0);
@@ -154,7 +155,7 @@ export class DungeonArt {
       blend('color', kind === 'crate' ? 'rgba(140,114,76,.5)' : 'rgba(104,110,84,.55)'); blend('multiply', 'rgb(176,170,156)');
       if (!top) { x.fillStyle = 'rgba(107,112,53,.5)'; x.fillRect(0, H * (kind === 'crate' ? .5 : .12), W, 9); if (kind === 'crate') { x.fillStyle = 'rgba(214,206,170,.5)'; x.fillRect(W * .18, H * .15, W * .26, H * .22); x.fillStyle = 'rgba(20,20,18,.7)'; for (let i = 0; i < 9; i++) x.fillRect(W * .2 + i * 4.6, H * .18, 2 + (i % 3), H * .16); } }
     }
-    wear(x, r, W, H, 100, .1); return cv;
+    { const k = KITS[theme]; if (k && (kind === 'crate' || kind === 'machine')) propLayer(x, k.prop, W, H, r, v, top); } wear(x, r, W, H, 100, .1); return cv;
   }
 
   // ============================ hazards / zones ============================
@@ -271,7 +272,9 @@ export class DungeonArt {
     const pa = (x: number, y: number) => [r.sx(x, y), r.sy(x, y)] as const; c.save(); c.globalCompositeOperation = 'lighter';
     const draw = (l: Light) => { const [a, b] = pa(l.x, l.y); const rr = l.r * TW * .5; if (a < -rr || a > r.w + rr || b < -rr || b > r.h + rr) return; const fl = l.fl ? 1 + Math.sin(t * 13 + l.x * 3) * .05 + (Math.sin(t * 2.3 + l.y) > .96 ? -.5 : 0) : 1; c.globalAlpha = Math.max(0, l.a * fl); c.drawImage(this.glows[l.c], a - rr, b - rr * .62, rr * 2, rr * 1.24); };
     for (const l of this.zoneLights(L, th)) draw(l); for (const l of this.lights) draw(l); this.lights.length = 0; c.restore();
+    { const zn = zoneNameAt(L, g.px, g.py); applyGrade(c, r.w, r.h, th, zn, t); }
     if (red) return;
+    { const k = KITS[th]; if (k) vParticles(c, k.particle, r.w, r.h, t, Q.fx >= 1 ? 0 : 22); }
     // dust motes / ash (screen space, parallax with camera)
     c.save(); const col = palOf(th) ? palOf(th)!.dust : th === 'foundry' ? '200,150,110' : th === 'clinic' ? '215,225,230' : th === 'annex' ? '200,190,170' : '214,200,160'; const n = th === 'foundry' ? 46 : 30; for (let i = 0; i < n && i < this.dust.length; i++) { const d = this.dust[i]; const x = ((d.x * r.w * 1.3 + t * 7 * d.v * (th === 'foundry' ? 1.6 : 1) - r.camx * .12 * d.z) % (r.w * 1.3) + r.w * 1.3) % (r.w * 1.3) - r.w * .15; const y = ((d.y * r.h * 1.2 - t * (th === 'foundry' ? 14 : 3) * d.v * d.z + Math.sin(t * .6 + d.ph) * 6) % (r.h * 1.2) + r.h * 1.2) % (r.h * 1.2) - r.h * .1; c.fillStyle = `rgba(${col},${.16 + .12 * Math.sin(t + d.ph)})`; const s = 1 + d.z * 1.3; c.fillRect(x, y, s, s); } c.restore();
     // steam off slag / vents, stateless puffs
@@ -283,7 +286,7 @@ function stripeRect(c: CanvasRenderingContext2D, x: number, y: number, w: number
 
 /** per-dungeon floor litter, drawn into the baked organic overlay (24 px / tile) */
 export function themeScatter(x: CanvasRenderingContext2D, L: Level, OP: number, floors: [number, number][], R: () => number, th: string) {
-  if (!isDungeonTheme(th)) return; const n = Math.floor(floors.length / 26);
+  if (!isDungeonTheme(th)) return; { const k = KITS[th]; if (k) { const nd = Math.floor(floors.length / 34); for (let i = 0; i < nd; i++) { const [tx, ty] = floors[(R() * floors.length) | 0]; vDecal(x, k.decals[i % k.decals.length], (tx + R()) * OP, (ty + R()) * OP, OP, R); } } } const n = Math.floor(floors.length / 26);
   const blob = (px: number, py: number, rad: number, col: string, a: number, sq = 1, rot = 0) => { const g = x.createRadialGradient(0, 0, 0, 0, 0, rad); g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(.6, `rgba(${col},${a * .5})`); g.addColorStop(1, `rgba(${col},0)`); x.save(); x.translate(px, py); x.rotate(rot); x.scale(1, sq); x.fillStyle = g; x.beginPath(); x.arc(0, 0, rad, 0, 7); x.fill(); x.restore(); };
   for (let i = 0; i < n; i++) { const [tx, ty] = floors[(R() * floors.length) | 0]; const px = (tx + R()) * OP, py = (ty + R()) * OP; const k = R();
     const pal = palOf(th); if (pal) { if (k < .45) blob(px, py, OP * (.5 + R() * .9), '10,10,12', .35, .55, R() * 3); else if (k < .75) blob(px, py, OP * (.4 + R() * .5), rgbOf(pal.accent), .1, .6, R() * 3); else { for (let j = 0; j < 4; j++) { x.fillStyle = `rgba(${rgbOf(pal.fm)},.5)`; x.beginPath(); x.ellipse(px + (R() - .5) * OP * 1.2, py + (R() - .5) * OP * .8, 1 + R() * 2, .6 + R() * 1.4, R() * 3, 0, 7); x.fill(); } } continue; }

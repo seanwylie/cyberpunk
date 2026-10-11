@@ -12,13 +12,14 @@ import { dirFromWorld, type Dir8, type LoadedAtlas } from './sprites';
 export const STRIDE_TILES = 1.074;
 export const WALK_FRAMES = 16, IDLE_FRAMES = 12, IDLE_FPS = 7;
 export const CRUISE = 1.25, ACCEL = 2.4, DECEL = 3.6, TURN_MOVING = 3.2, TURN_STILL = 6, WALK_ON = .14, WALK_OFF = .06;
+import { OUTFITS, outfitPaint } from './town_variety';
 const TINTS = ['#a6adb2', '#b4a692', '#93a595', '#a995b0', '#b89a96', '#93a6b8', '#bdb48e', '#9c9c9c', '#b9a0b0', '#8fb0ab']; // muted outfit tints (multiply) so walkers sit in the town's dim lighting
 
 export interface Walker {
   x: number; y: number; vx: number; vy: number; speed: number; heading: number; aim: number;
   state: 'idle' | 'walk'; pause: number; path: [number, number][]; pi: number; goal: [number, number] | null;
   cyc: number; idleT: number; mode: 'walk' | 'idle'; dir: Dir8; dk: number; dkT: number; fade: number; prev: { mode: 'walk' | 'idle'; cyc: number; idleT: number; dir: Dir8 } | null;
-  tint: string; scale: number; cruise: number; stride: number; ph: number; blockT: number; lookT: number; lastX: number; lastY: number; stuckT: number; id: number; src: number;
+  tint: string; outfit: number; scale: number; cruise: number; stride: number; ph: number; blockT: number; lookT: number; lastX: number; lastY: number; stuckT: number; id: number; src: number;
 }
 const mulberry = (a: number) => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 const angDiff = (a: number, b: number) => { let d = (b - a) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
@@ -42,7 +43,7 @@ export class Townfolk {
   private nearestWp(x: number, y: number): [number, number] { let b = this.wp[0], bd = 1e9; for (const p of this.wp) { const d = Math.hypot(p[0] - x, p[1] - y); if (d < bd) { bd = d; b = p; } } return b; }
   private mk(i: number, s: [number, number], src: number): Walker { const R = this.R; const hd = R() * Math.PI * 2; const sc = .94 + R() * .12;
     const wk: Walker = { x: s[0], y: s[1], vx: 0, vy: 0, speed: 0, heading: hd, aim: hd, state: 'idle', pause: .3 + R() * 3, path: [], pi: 0, goal: null, cyc: R(), idleT: R() * 5, mode: 'idle', dir: dirFromWorld(Math.cos(hd), Math.sin(hd)), dk: 0, dkT: 0, fade: 1, prev: null,
-      tint: TINTS[i % TINTS.length], scale: sc, cruise: CRUISE * (.8 + R() * .35), stride: STRIDE_TILES * sc, ph: R() * 6, blockT: 0, lookT: 1 + R() * 3, lastX: s[0], lastY: s[1], stuckT: 0, id: i, src };
+      tint: TINTS[i % TINTS.length], outfit: i % 3 === 0 ? 0 : 1 + ((i * 5 + (i >> 2)) % (OUTFITS - 1)), scale: sc, cruise: CRUISE * (.8 + R() * .35), stride: STRIDE_TILES * sc, ph: R() * 6, blockT: 0, lookT: 1 + R() * 3, lastX: s[0], lastY: s[1], stuckT: 0, id: i, src };
     wk.dk = ringIndex(hd); return wk; }
 
   // ---------- geometry ----------
@@ -121,13 +122,13 @@ export function drawWalker(c: CanvasRenderingContext2D, A: LoadedAtlas, w: Walke
   const W = A.atlas.frame.w, H = A.atlas.frame.h; const s = unit * w.scale * A.atlas.scale * (48 / (H * .6));
   c.save(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(x, y, 13 * s / w.scale * .95, 6 * s / w.scale * .95, 0, 0, 7); c.fill();
   // fast path: tinted single frames are cached (bounded LRU) so a steady walker costs one scaled blit instead of ~6 canvas ops
-  if (!(w.prev && w.fade < 1)) { const mode = w.mode, n = mode === 'walk' ? WALK_FRAMES : IDLE_FRAMES, p = mode === 'walk' ? ((w.cyc % 1) + 1) % 1 * n : (w.idleT * IDLE_FPS) % n, f = Math.floor(p + .5) % n; const key = w.tint + mode + w.dir + '_' + f + '_' + W; let e = frameCache.get(key);
-    if (e) { frameCache.delete(key); frameCache.set(key, e); } else { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d')!; x.drawImage(mode === 'walk' ? walk : idle, f * W, w.dir * H, W, H, 0, 0, W, H); x.globalCompositeOperation = 'multiply'; x.fillStyle = w.tint; x.fillRect(0, 0, W, H); x.globalCompositeOperation = 'destination-in'; x.drawImage(mode === 'walk' ? walk : idle, f * W, w.dir * H, W, H, 0, 0, W, H); e = cv; frameCache.set(key, e); if (frameCache.size > 360) frameCache.delete(frameCache.keys().next().value!); }
+  if (!(w.prev && w.fade < 1)) { const mode = w.mode, n = mode === 'walk' ? WALK_FRAMES : IDLE_FRAMES, p = mode === 'walk' ? ((w.cyc % 1) + 1) % 1 * n : (w.idleT * IDLE_FPS) % n, f = Math.floor(p + .5) % n; const key = w.tint + w.outfit + '|' + (w.id % 6) + mode + w.dir + '_' + f + '_' + W; let e = frameCache.get(key);
+    if (e) { frameCache.delete(key); frameCache.set(key, e); } else { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d')!; x.drawImage(mode === 'walk' ? walk : idle, f * W, w.dir * H, W, H, 0, 0, W, H); x.globalCompositeOperation = 'multiply'; x.fillStyle = w.tint; x.fillRect(0, 0, W, H); outfitPaint(x, W, H, w.outfit, w.id); x.globalCompositeOperation = 'destination-in'; x.drawImage(mode === 'walk' ? walk : idle, f * W, w.dir * H, W, H, 0, 0, W, H); e = cv; frameCache.set(key, e); if (frameCache.size > 360) frameCache.delete(frameCache.keys().next().value!); }
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(e, 0, 0, W, H, x - A.atlas.anchor.x * s, y - A.atlas.anchor.y * s, W * s, H * s); c.restore(); return true; }
   if (!tmp) { tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H; } const t = tmp.getContext('2d')!; t.clearRect(0, 0, W, H);
   const one = (mode: 'walk' | 'idle', cyc: number, it: number, dir: Dir8, al: number) => { const im = mode === 'walk' ? walk : idle, n = mode === 'walk' ? WALK_FRAMES : IDLE_FRAMES; const p = mode === 'walk' ? ((cyc % 1) + 1) % 1 * n : (it * IDLE_FPS) % n; const f = Math.floor(p) % n, fr = p - Math.floor(p), nf = (f + 1) % n; t.globalAlpha = al; t.drawImage(im, f * W, dir * H, W, H, 0, 0, W, H); if (fr > .004) { t.globalAlpha = al * fr; t.drawImage(im, nf * W, dir * H, W, H, 0, 0, W, H); } };
   if (w.prev && w.fade < 1) { one(w.prev.mode, w.prev.cyc, w.prev.idleT, w.prev.dir, 1); const f = w.fade * w.fade * (3 - 2 * w.fade); one(w.mode, w.cyc, w.idleT, w.dir, f); } else one(w.mode, w.cyc, w.idleT, w.dir, 1);
-  { t.globalAlpha = 1; /* keep the composed sprite as the alpha mask: re-drawing frames with destination-in multiplied alpha by the cross-fade weight and made walkers pulse */ if (!tmpM) { tmpM = document.createElement('canvas'); tmpM.width = W; tmpM.height = H; } const m = tmpM.getContext('2d')!; m.globalCompositeOperation = 'copy'; m.drawImage(tmp, 0, 0); t.globalCompositeOperation = 'multiply'; t.fillStyle = w.tint; t.fillRect(0, 0, W, H); t.globalCompositeOperation = 'destination-in'; t.drawImage(tmpM, 0, 0); t.globalCompositeOperation = 'source-over'; }
+  { t.globalAlpha = 1; /* keep the composed sprite as the alpha mask: re-drawing frames with destination-in multiplied alpha by the cross-fade weight and made walkers pulse */ if (!tmpM) { tmpM = document.createElement('canvas'); tmpM.width = W; tmpM.height = H; } const m = tmpM.getContext('2d')!; m.globalCompositeOperation = 'copy'; m.drawImage(tmp, 0, 0); t.globalCompositeOperation = 'multiply'; t.fillStyle = w.tint; t.fillRect(0, 0, W, H); outfitPaint(t, W, H, w.outfit, w.id); t.globalCompositeOperation = 'destination-in'; t.drawImage(tmpM, 0, 0); t.globalCompositeOperation = 'source-over'; }
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(tmp, 0, 0, W, H, x - A.atlas.anchor.x * s, y - A.atlas.anchor.y * s, W * s, H * s);
   c.restore(); return true;
 }

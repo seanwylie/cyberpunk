@@ -9,6 +9,7 @@ import { ATK } from './sim';
 import { COMBAT } from './config';
 import type { EnemyDef } from './config';
 import type { Renderer } from './render';
+import { drawType, drawTell, affixColor } from './variety';
 import { toScreen, stepDir, variantFor, dirIndex, S, type Variant } from './facing';
 
 /** sprite file, height in tiles (x TW), optional hover height (tiles), tint multiply for variants */
@@ -124,16 +125,18 @@ export class EnemyArt {
     // --- death collapse ---
     let flashD = 0; if (e.dead) { const p = Math.min(1, age / dur); const q = ease(p); sys *= 1 - .6 * q; sxs *= 1 + (stat ? -.1 : .22) * q; lean += (s.f >= 0 ? 1 : -1) * (stat ? 0 : .42) * q; oy += H * .06 * q; alpha = 1 - Math.max(0, (p - .5) / .5); flashD = Math.max(0, 1 - age / .12); if (boss && p < .8) ox += Math.sin(now * 55) * TW * .02 * (1 - p); }
     // --- 3D atlas mode: the rendered frames carry all body motion (walk, lunge, recoil, collapse), so NO procedural squash / lean / skew is applied ---
-    const at = this.atlasFor(e.type, now); if (at) { sxs = 1; sys = 1; lean = 0; ox = 0; oy = revOy; }
+    const vt = drawType(e.type, e.id, t => this.a3.has(t)); const at = this.atlasFor(vt, now); if (at) { sxs = 1; sys = 1; lean = 0; ox = 0; oy = revOy; }
     // --- hover bob ---
     const hov = (art.hover || 0) * TW + (art.hover ? Math.sin(T * 1.5) * TW * .06 : 0); oy -= hov * (e.dead ? 1 - Math.min(1, age / dur) : 1);
+    // --- elite tell: affixed pack leaders get a coloured ground aura, gold for innate elites ---
+    if (!e.dead && !boss && (def.elite || (e as any).affix?.length)) drawTell(c, a, b, TW * (def.elite ? .95 : .8), affixColor((e as any).affix) || '224,176,70', T, 3, !!(g.save.settings.reducedFx || Q.fx >= 1));
     // --- ground shadow (shrinks and fades when hovering/dying) ---
     const sprW = H * this.img[art.spr].width / this.img[art.spr].height; const shK = 1 / (1 + hov / (TW * 2)); const sw = Math.min(sprW * .62, TW * (boss ? 2.4 : 1.5)) * shK * (e.dead ? 1 - .3 * Math.min(1, age / dur) : 1);
     c.save(); c.globalAlpha = (art.hover ? .55 : .9) * (e.dead ? alpha : 1); c.drawImage(this.shadow, a - sw, b - sw * .26, sw * 2, sw * .52); c.restore();
     // --- sprite ---
     // A type that HAS a 3D atlas never shows the legacy front/back pair: while its sheets decode (or if a fetch fails and the old art is the only option left) we draw
     // nothing but the shadow for the first moments instead of flashing a wrongly-facing flat sprite.
-    if (!at && this.a3.has(e.type) && this.atl.get(e.type)?.state !== 'fail') return { top: H + hov + 6 };
+    if (!at && this.a3.has(vt) && this.atl.get(vt)?.state !== 'fail') return { top: H + hov + 6 };
     if (at && at.meta) { const m = at.meta; const hitT = (an: string) => { const d = m.anims[an]; return d && d.hit != null ? d.hit / d.fps : 0; };
       let an = 'idle', tt = T * (m.anims.idle?.fps || 6); const A1 = ATK[rt.atk];
       if (e.dead) { an = 'death'; tt = Math.min(1, age / dur) * ((m.anims.death?.frames || 2) - 1); }

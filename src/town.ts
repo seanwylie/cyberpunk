@@ -3,6 +3,7 @@
 // Everything heavy is baked once to offscreen canvases; per-frame work is drawImage of cached, pre-scaled sprites.
 // Drop-in: replace any PNG in public/town/props with another of the same name (see public/town/manifest.json); missing files are skipped.
 import { Townfolk } from './townfolk';
+import { groundDetail } from './town_variety';
 import type { Level, Decor } from './level';
 import { makeVault } from './town_vault';
 import { RUSTLINE_STATIONS, drawIcon, type Station } from './stations';
@@ -84,6 +85,7 @@ export class TownArt {
     this.cfg.extra?.(x, W, H, this);
     // 5. painted markings and wear
     this.paintStationDecals(x);
+    groundDetail(x, (L as any).theme === 'harrow' ? 'harrow' : 'rustline', W, H, GP, this.hub, (tx, ty) => !!L.solid[ty * L.w + tx]);
     // 6. puddles with cool sheen
     for (let i = 0; this.cfg.puddles !== false && i < 14; i++) { const px = (10 + R() * 40) * GP, py = (8 + R() * 28) * GP, rx = (.5 + R() * 1.4) * GP, ry = rx * (.45 + R() * .3); const g = x.createRadialGradient(px, py, 0, px, py, rx); g.addColorStop(0, 'rgba(40,52,60,.55)'); g.addColorStop(.7, 'rgba(30,38,44,.35)'); g.addColorStop(1, 'rgba(30,38,44,0)'); x.save(); x.translate(px, py); x.rotate(R() * 3); x.scale(1, ry / rx); x.translate(-px, -py); x.fillStyle = g; x.beginPath(); x.arc(px, py, rx, 0, 7); x.fill(); x.fillStyle = 'rgba(170,185,195,.1)'; x.beginPath(); x.arc(px - rx * .2, py - rx * .15, rx * .45, 0, 7); x.fill(); x.restore(); }
     // 7. soft contact shadows under every decor footprint, and rim darkening toward solid tiles

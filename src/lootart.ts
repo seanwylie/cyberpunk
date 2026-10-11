@@ -8,8 +8,16 @@ import type { Rarity, Slot, Mfr } from './config';
  */
 export interface LootSpec { id?:string; kind:'item'|'chip'|'stim'|'credits'; slot?:Slot; mfr?:Mfr; rar:Rarity; name:string; sig:boolean; weapon?:string; amount:number; key:string; }
 export interface DropLike { id:number; kind:'item'|'chip'|'stim'|'credits'; inst?:{def:string}; chip?:string; amount:number; born?:number; }
+/** 0 = the stock model; 1..3 = livery variants (hazard stripe, serial plate, worn/grimy) so items of one slot+maker+rarity stop looking identical (docs/VARIETY.md) */
+export const lootVariant=(id:string)=>{ let h=2166136261; for(let i=0;i<id.length;i++){ h^=id.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0)%4; };
+export function variantOfKey(key:string){ const m=/\|v(\d)$/.exec(key); return m?+m[1]:0; }
+function applyVariant(src:HTMLCanvasElement,v:number,seed:number):HTMLCanvasElement{ if(!v) return src; const cv=mk(src.width,src.height); const c=cv.getContext('2d')!; c.drawImage(src,0,0); const W=src.width,H=src.height,k=W/96; c.globalCompositeOperation='source-atop'; let r=seed*9301+49297; const R=()=>{ r=(r*9301+49297)%233280; return r/233280; };
+  if(v===1){ c.save(); c.beginPath(); c.rect(0,H*.42,W,H*.1); c.clip(); c.fillStyle='rgba(18,18,18,.55)'; c.fillRect(0,H*.4,W,H*.14); c.fillStyle='rgba(214,176,60,.7)'; for(let i=-4;i<12;i++){ c.beginPath(); c.moveTo(i*9*k,H*.52); c.lineTo(i*9*k+5*k,H*.52); c.lineTo(i*9*k+11*k,H*.42); c.lineTo(i*9*k+6*k,H*.42); c.fill(); } c.restore(); }
+  else if(v===2){ c.fillStyle='rgba(255,246,220,.1)'; c.fillRect(0,0,W,H); c.fillStyle='rgba(14,16,18,.7)'; c.fillRect(W*.34,H*.46,W*.3,H*.1); c.fillStyle='rgba(222,214,180,.85)'; for(let i=0;i<4;i++) c.fillRect(W*.37+i*W*.065,H*.49,W*.04,H*.04); }
+  else { c.fillStyle='rgba(0,0,0,.2)'; c.fillRect(0,0,W,H); c.strokeStyle='rgba(8,8,8,.5)'; c.lineWidth=1.1*k; for(let i=0;i<5;i++){ const x=R()*W,y=R()*H; c.beginPath(); c.moveTo(x,y); c.lineTo(x+(R()-.5)*18*k,y+(R()-.5)*14*k); c.stroke(); } c.fillStyle='rgba(140,76,36,.35)'; for(let i=0;i<4;i++){ c.beginPath(); c.ellipse(R()*W,R()*H,3*k,2*k,R()*3,0,7); c.fill(); } }
+  c.globalCompositeOperation='source-over'; return cv; }
 export function specOf(d:DropLike):LootSpec {
-  if(d.kind==='item'){ const it=ITEM_BY_ID[d.inst!.def]; const sig=!!(it as any).authoredException; return { id:it.id, kind:'item', slot:it.slot, mfr:it.mfr, rar:it.rarity, name:it.name, sig, weapon:it.weapon, amount:1, key:`i|${it.slot}|${it.mfr}|${it.rarity}|${it.weapon||''}|${sig?1:0}${it.rarity==='orange'?'|'+it.id:''}` }; }
+  if(d.kind==='item'){ const it=ITEM_BY_ID[d.inst!.def]; const sig=!!(it as any).authoredException; return { id:it.id, kind:'item', slot:it.slot, mfr:it.mfr, rar:it.rarity, name:it.name, sig, weapon:it.weapon, amount:1, key:`i|${it.slot}|${it.mfr}|${it.rarity}|${it.weapon||''}|${sig?1:0}${it.rarity==='orange'?'|'+it.id:'|v'+lootVariant(it.id)}` }; }
   if(d.kind==='chip'){ const c=(CHIPS as any)[d.chip!]; return { kind:'chip', rar:c.rarity, name:c.name, sig:false, amount:1, key:`c|${c.rarity}` }; }
   if(d.kind==='stim') return { kind:'stim', rar:'green', name:'Stim injector', sig:false, amount:1, key:'s|green' };
   const n=d.amount>=60?3:d.amount>=15?2:1; return { kind:'credits', rar:'grey', name:d.amount+' credits', sig:false, amount:n, key:'$|'+n };
@@ -131,6 +139,7 @@ function atlasFrame(s:LootSpec,i:number):HTMLCanvasElement|null{
   const k=s.key+'#'+fi; let cv=frames.get(k); if(cv) return cv;
   const c0=f.cell; cv=mk(c0,c0); const c=cv.getContext('2d')!; const raw=mk(c0,c0); const rc=raw.getContext('2d')!;
   if(ref.mirror){ rc.translate(c0,0); rc.scale(-1,1); } rc.drawImage(img,fi*c0,sp.row*c0,c0,c0,0,0,c0,c0); rc.setTransform(1,0,0,1,0,0);
+  if(!ref.orange&&s.kind==='item'){ const vv=variantOfKey(s.key); if(vv){ const vr=applyVariant(raw,vv,hx(s.key)); rc.clearRect(0,0,c0,c0); rc.drawImage(vr,0,0); } }
   const col=RARITY_COLOR[s.rar], rk=RARITY_RANK[s.rar], u=c0/96;
   // rarity trim stays code-drawn: band across the lower third (not on orange: its 3D trim is part of the model), tinted outline
   if(!ref.orange&&(rk>=1&&s.kind!=='chip'||rk>=2)){ rc.globalCompositeOperation='source-atop'; rc.fillStyle=col;
@@ -168,7 +177,7 @@ export function iconCanvas(s:LootSpec):HTMLCanvasElement {
   // outline: 8-offset stamp tinted by rarity (grey: dark outline)
   cv=mk(CELL,CELL); const c=cv.getContext('2d')!; const t=mk(CELL,CELL); const tc=t.getContext('2d')!; const oc=rk===0?'#1d1f1e':col; const w=rk>=3?2.2:rk>=1?1.8:1.4;
   for(let i=0;i<8;i++){ const a=i/8*6.283; tc.drawImage(raw,Math.cos(a)*w,Math.sin(a)*w); } tc.globalCompositeOperation='source-in'; tc.fillStyle=oc; tc.fillRect(0,0,CELL,CELL);
-  c.drawImage(t,0,0); c.drawImage(raw,0,0); icons.set(s.key,cv); return cv;
+  c.drawImage(t,0,0); c.drawImage(applyVariant(raw,s.kind==='item'?variantOfKey(s.key):0,hx(s.key)),0,0); icons.set(s.key,cv); return cv;
 }
 /** pre-rendered light-sweep frames: the icon silhouette intersected with a moving diagonal band */
 function sheenFrames(s:LootSpec):HTMLCanvasElement[]{ let f=sheens.get(s.key); if(f) return f; const ic=iconCanvas(s); f=[];

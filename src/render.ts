@@ -12,6 +12,7 @@ import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
 import type { Level } from './level';
 import { TownArt, GP, decorDepth } from './town';
 import { harrowCfg } from './town2';
+import { gradeOf } from './town_variety';
 import { STATIONS, STATION_BY_ID, drawIcon } from './stations';
 import { Organic } from './organic';
 import { DungeonArt, themeOf } from './dungeon_env';
@@ -469,7 +470,7 @@ export class Renderer {
     if(Q.fx<2) for(const gl of this.ovGlows){ const fl=1+Math.sin(T*8+gl.ph)*.08+Math.sin(T*21+gl.ph*2)*.05; c.globalAlpha=gl.a*fl; c.drawImage(t.glows[gl.c],gl.x-gl.r,gl.y-gl.r,gl.r*2,gl.r*2); } c.restore(); }
   private ovCache:HTMLCanvasElement|null=null; private ovKey='';
   /** town tint + vignette baked once per size into one canvas (one blit per frame instead of a fullscreen fill + fullscreen gradient) */
-  private townOverlay(){ const c=this.ctx; const key=this.w+'x'+this.h+'|'+this.dpr; if(key!==this.ovKey||!this.ovCache){ this.ovKey=key; const cv=document.createElement('canvas'); cv.width=Math.ceil(this.w*this.dpr); cv.height=Math.ceil(this.h*this.dpr); const x=cv.getContext('2d')!; x.scale(this.dpr,this.dpr); x.fillStyle='rgba(10,12,20,.2)'; x.fillRect(0,0,this.w,this.h); const gr=x.createRadialGradient(this.w/2,this.h/2,Math.min(this.w,this.h)*.35,this.w/2,this.h/2,Math.max(this.w,this.h)*.75); gr.addColorStop(0,'rgba(10,10,12,0)'); gr.addColorStop(1,'rgba(6,7,10,.72)'); x.fillStyle=gr; x.fillRect(0,0,this.w,this.h); this.ovCache=cv; } c.drawImage(this.ovCache,0,0,this.w,this.h); }
+  private townOverlay(){ const c=this.ctx; const tg=gradeOf((this.g.level as any).theme||''); const key=this.w+'x'+this.h+'|'+this.dpr+'|'+tg.tint; if(key!==this.ovKey||!this.ovCache){ this.ovKey=key; const cv=document.createElement('canvas'); cv.width=Math.ceil(this.w*this.dpr); cv.height=Math.ceil(this.h*this.dpr); const x=cv.getContext('2d')!; x.scale(this.dpr,this.dpr); x.fillStyle=tg.tint; x.fillRect(0,0,this.w,this.h); const gr=x.createRadialGradient(this.w/2,this.h/2,Math.min(this.w,this.h)*.35,this.w/2,this.h/2,Math.max(this.w,this.h)*.75); gr.addColorStop(0,'rgba(10,10,12,0)'); gr.addColorStop(1,tg.vig); x.fillStyle=gr; x.fillRect(0,0,this.w,this.h); this.ovCache=cv; } c.drawImage(this.ovCache,0,0,this.w,this.h); }
   drawOverlay(){ const c=this.ctx; if(this.g.level.kind==='town'){ this.townOverlay(); this.flushLabels(); this.drawStationArrows(); return; } else if(this.env) this.org.drawFogAndVignette(this); const gr=c.createRadialGradient(this.w/2,this.h/2,Math.min(this.w,this.h)*.35,this.w/2,this.h/2,Math.max(this.w,this.h)*.75); gr.addColorStop(0,'rgba(10,10,12,0)'); gr.addColorStop(1,'rgba(10,10,12,.6)'); c.fillStyle=gr; c.fillRect(0,0,this.w,this.h); }
 }
 export const ATKD:Record<string,{shape:'cone'|'circle'|'line'|'fan'|'aim';r:number;arc:number;w:number;w_?:number}&{w:number}> = {} as any;
