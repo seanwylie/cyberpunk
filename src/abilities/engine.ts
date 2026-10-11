@@ -60,7 +60,7 @@ function runPrim(g:any,c:Ctx,p:Prim,depth:number){
     case 'cone': { const arc=(p.arc*Math.PI/180)*(1+m.arc); select(g,c,inCone(g,c,p.r,arc),p.k,p.kb||0); break; }
     case 'line': select(g,c,inLine(g,c,p.len*(1+m.len),p.w),p.k,p.kb||0); break;
     case 'circle': { const at=p.at||'self'; const x=at==='self'?c.x:at==='aim'?c.tx:(c.target?c.target.x:c.tx), y=at==='self'?c.y:at==='aim'?c.ty:(c.target?c.target.y:c.ty); select(g,c,inCircle(g,x,y,p.r*(1+m.arc*.5)),p.k,p.kb||0); (c as any).ox=x; (c as any).oy=y; break; }
-    case 'chain': { const seen=new Set<number>(); let cur:any=c.target&&!c.target.dead?c.target:nearest(g,c.tx,c.ty,6); let k=p.k; c.hit=[]; let from={x:c.x,y:c.y}; for(let i=0;i<p.n&&cur;i++){ seen.add(cur.id); g.fx.push({kind:'line',x:from.x,y:from.y,a:Math.atan2(cur.y-from.y,cur.x-from.x),len:dist(from.x,from.y,cur.x,cur.y),w:.12,t:0,life:.2,c:'#9fc4e4'}); strike(g,c,cur,k); k*=p.fall||.85; from={x:cur.x,y:cur.y}; cur=nearest(g,cur.x,cur.y,p.r,seen); } break; }
+    case 'chain': { const seen=new Set<number>(); let cur:any=c.target&&!c.target.dead?c.target:nearest(g,c.tx,c.ty,6); let k=p.k; c.hit=[]; let from={x:c.x,y:c.y}; for(let i=0;i<p.n&&cur;i++){ seen.add(cur.id); g.fx.push({kind:'line',x:from.x,y:from.y,a:Math.atan2(cur.y-from.y,cur.x-from.x),len:dist(from.x,from.y,cur.x,cur.y),w:.12,t:0,life:.2,c:'#9fc4e4'}); if(typeof g.vfx==='function') g.vfx(c.ab.id+'.arc',from.x,from.y,{x2:cur.x,y2:cur.y}); strike(g,c,cur,k); k*=p.fall||.85; from={x:cur.x,y:cur.y}; cur=nearest(g,cur.x,cur.y,p.r,seen); } break; }
     case 'projectile': a.projs.push({ x:c.x,y:c.y,vx:Math.cos(c.ang)*p.speed,vy:Math.sin(c.ang)*p.speed,r:p.r,life:p.life*(1+m.len*.8),pierce:p.pierce,then:p.then,ab,hit:new Set(),ang:c.ang }); break;
     case 'dash': { let ang=c.ang, len=p.len*(1+m.dash); if(p.toTarget&&c.target){ ang=Math.atan2(c.target.y-g.py,c.target.x-g.px); len=Math.max(0,Math.min(len,dist(g.px,g.py,c.target.x,c.target.y)-rad(c.target)-.4)); }
       const o={x:g.px,y:g.py}; const end=stepTo(g,o.x,o.y,ang,len); g.face=ang; const T=.14; g.slideFx=(end.x-o.x)/T; g.slideFy=(end.y-o.y)/T; g.slideT=T; g.iframes=Math.max(g.iframes,(p.inv||.15)); 
@@ -127,12 +127,12 @@ export function abxTick(g:any,dt:number){
   a.delayed=a.delayed.filter(d=>d.t>0);
   // projectiles
   for(const p of a.projs){ const steps=Math.ceil(Math.hypot(p.vx,p.vy)*dt/.3); for(let i=0;i<steps&&p.life>0;i++){ p.x+=p.vx*dt/steps; p.y+=p.vy*dt/steps; if(g.solidAt(p.x,p.y)){ p.life=0; break; }
-    for(const e of live(g)){ if(p.hit.has(e.id)||dist(p.x,p.y,e.x,e.y)>p.r+rad(e)) continue; p.hit.add(e.id); const c:Ctx={x:p.x,y:p.y,ang:p.ang,tx:e.x,ty:e.y,target:e,hit:[],ab:p.ab,idx:0,kills:0}; (c as any).ox=p.x; (c as any).oy=p.y; runSteps(g,c,p.then,2); if(p.pierce--<=0){ p.life=0; break; } } } p.life-=dt; }
+    for(const e of live(g)){ if(p.hit.has(e.id)||dist(p.x,p.y,e.x,e.y)>p.r+rad(e)) continue; p.hit.add(e.id); const c:Ctx={x:p.x,y:p.y,ang:p.ang,tx:e.x,ty:e.y,target:e,hit:[],ab:p.ab,idx:0,kills:0}; (c as any).ox=p.x; (c as any).oy=p.y; runSteps(g,c,p.then,2); if(p.pierce--<=0){ p.life=0; break; } } } p.life-=dt; if(!g.save?.settings?.reducedFx&&typeof g.vfx==='function'&&(((p as any).tr=((p as any).tr||0)-dt)<=0)){ (p as any).tr=.05; g.vfx(p.ab.id+'.trail',p.x,p.y,{a:p.ang}); } }
   a.projs=a.projs.filter(p=>p.life>0);
   // deployables
   for(const d of a.deps){ d.t+=dt; if(d.follow&&(d.kind==='drone'||d.kind==='aura')){ const ph=d.t*1.6+d.x; if(d.kind==='drone'){ d.x+=(g.px+Math.cos(ph)*1.3-d.x)*Math.min(1,dt*4); d.y+=(g.py+Math.sin(ph)*1.3-d.y)*Math.min(1,dt*4); } else { d.x=g.px; d.y=g.py; } }
     if(d.kind==='trap'){ const t=nearest(g,d.x,d.y,d.r); if(t){ d.t=d.life+1; const c:Ctx={x:d.x,y:d.y,ang:0,tx:d.x,ty:d.y,target:t,hit:[],ab:d.ab,idx:0,kills:0}; (c as any).ox=d.x; (c as any).oy=d.y; fxCastBase(g,d.ab,d.x,d.y); runSteps(g,c,d.then||[],2); } continue; }
-    d.acc+=dt; while(d.acc>=d.every&&d.t<d.life){ d.acc-=d.every; const c:Ctx={x:d.x,y:d.y,ang:d.ang,tx:d.x,ty:d.y,target:null,hit:[],ab:d.ab,idx:0,kills:0}; (c as any).ox=d.x; (c as any).oy=d.y; (c as any).range=d.r; runSteps(g,c,d.tick,3); }
+    d.acc+=dt; while(d.acc>=d.every&&d.t<d.life){ d.acc-=d.every; const c:Ctx={x:d.x,y:d.y,ang:d.ang,tx:d.x,ty:d.y,target:null,hit:[],ab:d.ab,idx:0,kills:0}; (c as any).ox=d.x; (c as any).oy=d.y; (c as any).range=d.r; runSteps(g,c,d.tick,3); if(!g.save?.settings?.reducedFx&&typeof g.vfx==='function'&&d.kind==='aura') g.vfx(d.ab.id+'.pulse',d.x,d.y,{r:d.r}); }
     if(d.t>=d.life&&d.end){ const c:Ctx={x:d.x,y:d.y,ang:d.ang,tx:d.x,ty:d.y,target:null,hit:[],ab:d.ab,idx:0,kills:0}; runSteps(g,c,d.end,3); d.end=undefined; } }
   a.deps=a.deps.filter(d=>d.t<d.life);
 }

@@ -42,7 +42,7 @@ export class Renderer {
     const tx=(g.px-g.py)*this.TW/2, ty=(g.px+g.py)*this.TW/4; this.camx+= (tx-this.camx)*Math.min(1,dt*8); this.camy+=(ty-this.camy)*Math.min(1,dt*8);
     if(this.shake>0) this.shake=Math.max(0,this.shake-dt*3);
     c.fillStyle=PAL.soot; c.fillRect(0,0,this.w,this.h);
-    vfxFrame(this,dt); if(g.kick>0){ if(!g.save.settings.reducedFx) this.shake=Math.max(this.shake,g.kick); g.kick=0; } this.drawFloor(); this.drawWorld(); this.flushLoot(); this.drawOverlay();
+    vfxFrame(this,dt); if(g.kick>0){ if(!g.save.settings.reducedFx) this.shake=Math.max(this.shake,g.kick); g.kick=0; } this.drawFloor(); this.drawWorld(); this.flushLoot(); vfxScreen(this); this.drawOverlay();
   }
   tile(x:number,y:number,col:string){ const c=this.ctx; const a=this.sx(x,y), b=this.sy(x,y); const hw=this.TW/2, hh=this.TW/4; c.fillStyle=col; c.beginPath(); c.moveTo(a,b); c.lineTo(a+hw,b+hh); c.lineTo(a,b+2*hh); c.lineTo(a-hw,b+hh); c.closePath(); c.fill(); }
   drawFloor(){
@@ -244,7 +244,7 @@ export class Renderer {
     c.beginPath(); c.ellipse(a,b-18*s,16*s,30*s,0,0,7); c.stroke(); c.restore();
   }
   drawEnemy(e:En){
-    const g=this.g, c=this.ctx; const def=ENEMIES[e.type]; const s=this.TW/64*(def.boss?1.8:def.elite?1.35:1); const a=this.sx(e.x,e.y), b=this.sy(e.x,e.y); const rt=e._rt; const mf=MFR[def.mfr];
+    const g=this.g, c=this.ctx; const def=ENEMIES[e.type]; const s=this.TW/64*(def.boss?1.8:def.elite?1.35:1); const rt=e._rt; let a=this.sx(e.x,e.y), b=this.sy(e.x,e.y); if(rt.rcM&&!g.save.settings.reducedFx){ const dtR=g.time-(rt.rcT||0); if(dtR>=0&&dtR<.3){ const o=rt.rcM*Math.exp(-dtR*16)*this.TW/64; a+=Math.cos(rt.rcA||0)*o*.9; b+=Math.sin(rt.rcA||0)*o*.45; } } const mf=MFR[def.mfr];
     const art=this.eart.draw(this,e,def,rt,a,b);
     if(!art&&e.dead&&this.eart.has(e.type)) return; // finished death collapse: draw NOTHING (never fall back to the pale procedural humanoid for a corpse)
     if(!art){
@@ -317,7 +317,7 @@ export class Renderer {
         case 'vent': for(let i=0;i<5;i++){ c.fillStyle=`rgba(200,205,205,${.4*(1-k)})`; c.beginPath(); c.arc(a+(i-2)*6*s,b-20*s-k*30*s-i*3,(5+8*k)*s,0,7); c.fill(); } break;
         case 'line': this.poly(this.rect(f.x,f.y,f.a!,f.len!,f.w!),f.c||'#d8d2bf',undefined,(1-k)*(f.c?.9:.4)); break;
         case 'ability': break;
-        case 'text': c.fillStyle=f.c||'#d8d2bf'; c.font=`bold ${cpx(12*s*1.2*uiFs())}px ${FONT}`; c.textAlign='center'; c.globalAlpha=1-k; c.lineJoin='round'; c.lineWidth=3; c.strokeStyle='rgba(10,10,11,.9)'; c.strokeText(f.text||'',a,b-30*s-k*20); c.fillText(f.text||'',a,b-30*s-k*20); c.globalAlpha=1; break;
+        case 'text': { const sc=(f.s||1)*(f.pop?1+.6*Math.max(0,1-k*6)**2:1); c.fillStyle=f.c||'#d8d2bf'; c.font=`bold ${cpx(12*s*1.2*uiFs()*sc)}px ${FONT}`; c.textAlign='center'; c.globalAlpha=1-k; c.lineJoin='round'; c.lineWidth=3; c.strokeStyle='rgba(10,10,11,.9)'; c.strokeText(f.text||'',a,b-30*s-k*20); c.fillText(f.text||'',a,b-30*s-k*20); c.globalAlpha=1; break; }
       } }
   }
   /** Casts paint after stalls and banners so the swing is not buried in the market. */
@@ -475,7 +475,7 @@ export class Renderer {
 export const ATKD:Record<string,{shape:'cone'|'circle'|'line'|'fan'|'aim';r:number;arc:number;w:number;w_?:number}&{w:number}> = {} as any;
 // telegraph geometry mirrors ATK/resolveAttack in sim.ts
 import { ATK } from './sim';
-import { vfxFrame, vfxGround, vfxItems, vfxStatus, vfxAuras } from './vfxdraw';
+import { vfxFrame, vfxGround, vfxItems, vfxStatus, vfxAuras, vfxScreen } from './vfxdraw';
 import { mobLabel } from './content/mobs';
 export const FONT='"Roboto Condensed","Bahnschrift","Liberation Sans Narrow","Arial Narrow",system-ui,sans-serif';
 const geo:Record<string,any>={ swing:{shape:'cone',r:1.5,arc:Math.PI*.6}, cleave:{shape:'cone',r:2.6,arc:Math.PI*.75}, rsweep:{shape:'cone',r:3.8,arc:Math.PI*.85}, slam:{shape:'circle',r:3.4,arc:0}, charge:{shape:'line',r:9,arc:0,w:1.4}, shot:{shape:'aim',r:10,arc:0}, turretshot:{shape:'aim',r:11,arc:0}, volley:{shape:'fan',r:13,arc:0}, snipe:{shape:'aim',r:18,arc:0}, hex:{shape:'aim',r:13,arc:0}, detonate:{shape:'circle',r:2.6,arc:0}, detonate_big:{shape:'circle',r:3.6,arc:0} };

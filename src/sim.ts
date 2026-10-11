@@ -1,3 +1,4 @@
+import { PROFILES } from './abilities/vfxprofile';
 import { VFX } from './vfx';
 import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, SELL_VALUE, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING, STARTER_ABILITIES} from './config';
 import { HEAT, effCooling, heatCost, cdAfter, throttle, dissipation } from './heat';
@@ -30,9 +31,9 @@ export const TOWN_KEY=key('town');
 export type Emit = (type:string, payload?:any)=>void;
 export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:number; life:number; faction:'enemy'|'ally'; kind:'bolt'|'slug'|'pop'|'pistol'|'needle'|'shard'; c?:string; }
 export interface Zone { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }
-export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'|'ability'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; }
+export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'|'ability'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; s?:number; pop?:number; }
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
-export interface Rt { hardDmg?:number; // enemy transient runtime fields
+export interface Rt { hardDmg?:number; rcA?:number; rcM?:number; rcT?:number; // enemy transient runtime fields
   /** content batch 1 boss mechanics (src/content/mechanics.ts) */ spdMul?:number; cdMul?:number; shield?:any; gim?:any; gimT?:number; q?:any[]; pylPrev?:number; tl?:number;
   st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; hack:number; abHitAt:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; fkT?:number; fkN?:number; flankSide?:number; flanker?:boolean; wpT?:number; wp?:{x:number;y:number}|null; sx?:number; sy?:number; sT?:number; unstick?:number; side?:number; dashed:boolean; strafe:number; chained?:boolean;
 }
@@ -331,7 +332,9 @@ export class Game {
   }
   /** visual-effect events consumed by the renderer's particle system (src/vfx.ts); capped so headless runs never grow it */
   vev:{k:string;x:number;y:number;a?:number;r?:number;len?:number;x2?:number;y2?:number;n?:number}[]=[];
-  vfx(k:string,x:number,y:number,o:{a?:number;r?:number;len?:number;x2?:number;y2?:number;n?:number}={}){ if(this.vev.length>160) this.vev.shift(); this.vev.push({k,x,y,...o}); }
+  vfx(k:string,x:number,y:number,o:{a?:number;r?:number;len?:number;x2?:number;y2?:number;n?:number}={}){ if(this.vev.length>160) this.vev.shift(); this.vev.push({k,x,y,...o});
+    /* synth stinger per element (audio.ts: abc_ cast, abh_ hit names), rate-limited there; big abilities add a low swell */
+    const dot=k.indexOf('.'); if(dot>0){ const ph=k.slice(dot+1); if(ph==='cast'||ph==='hit'||ph==='fire'){ const P=PROFILES[k.slice(0,dot)]; if(P){ this.emit('sfx',ph==='hit'?P.hit:P.cast); if(ph!=='hit'&&P.power>=.8) this.emit('sfx','abx_big'); } } } }
   popup(x:number,y:number,text:string,c='#e8c46a'){ this.fx.push({kind:'text',x,y,t:0,life:1.1,text,c}); }
   /** nearby telegraph the player is about to be hit by (zone windup/active, enemy wind-up, incoming enemy shot): Reposition into it is a PERFECT EVADE */
   dangerNear():boolean{ for(const z of this.zones){ if(z.env||z.dps<=0) continue; if(z.t<z.windup+.25&&Math.hypot(z.x-this.px,z.y-this.py)<z.r+1.2) return true; }
@@ -388,7 +391,9 @@ export class Game {
     { const pre=e.hp+(hadShield?rt.shield.hp:0); this.dealt[tag]=(this.dealt[tag]||0)+Math.min(dmg,pre); } dmg=filterDamage(this,e,dmg); e.hp-=dmg; e.alert=true; e._rt.hit=.12; if(!ENEMIES[e.type].boss) e._rt.lost=0;
     this.emit('sfx','hit'); this.combatHold=3; if(!ENEMIES[e.type].boss&&this.isElite(e)) this.eliteExchange();
     const broke=hadShield&&!(rt.shield&&rt.shield.hp>0);
-    if(tag!=='auto'&&dmg>0) this.fx.push({kind:'text',x:e.x,y:e.y,t:0,life:.85,text:String(Math.round(dmg))+'!',c:tag==='pulse'||tag==='control'?'#8fb8d8':tag==='brace'?'#e4dcc8':tag==='reposition'?'#a8d87a':'#e8a07a'});
+    if(tag!=='auto'&&dmg>0){ const P=PROFILES[tag]; const pw=P?P.power:.3; const frac=dmg/Math.max(1,e.maxHp); const heavy=pw>=.75||frac>=.12; const red=!!this.save.settings.reducedFx; // damage numbers scale with the hit; heavy hits pop (crit-style)
+      this.fx.push({kind:'text',x:e.x,y:e.y,t:0,life:heavy?1.05:.85,text:String(Math.round(dmg))+(heavy?'!!':'!'),c:heavy?'#ffd27a':tag==='pulse'||tag==='control'?'#8fb8d8':tag==='brace'?'#e4dcc8':tag==='reposition'?'#a8d87a':'#e8a07a',s:red?1:Math.min(2.1,1+pw*.5+Math.min(.6,frac*3)),pop:heavy&&!red?1:0});
+      if(!red){ rt.hit=.12+.12*pw; /* longer white flash on big hits */ const ra=Math.atan2(e.y-sy,e.x-sx); rt.rcA=ra; rt.rcM=(4+10*pw)*(ENEMIES[e.type].boss?.4:1); rt.rcT=this.time; /* visual-only recoil */ this.kick=Math.max(this.kick,P?P.shake*.55:.1); if(P&&pw>=.5&&!this.dbg.noHitStop&&this.time-this.lastStop>.4){ this.hitStop=Math.max(this.hitStop,P.stop); this.lastStop=this.time; } } }
     else if(this.save.settings.damageNumbers&&dmg>0) this.fx.push({kind:'text',x:e.x,y:e.y,t:0,life:.7,text:String(Math.round(dmg)),c:'#d8d2bf'});
     if(tag!=='auto'&&tag!=='brace'&&dmg>=0) this.vfx(tag+'.hit',e.x,e.y,{a:Math.atan2(e.y-sy,e.x-sx)});
     if(broke){ this.kick=Math.max(this.kick,.6); this.emit('sfx','combo'); }

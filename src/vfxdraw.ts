@@ -47,3 +47,6 @@ export function vfxAuras(r:R){ const g=r.g, c:CanvasRenderingContext2D=r.ctx, t=
   if(g.ovT>0){ r.ring(g.px,g.py,1.1+(red?0:.08*Math.sin(t*9)),'#e08a4a',.85); }
   const ch=Math.min(1,g.heat/80); if(ch>.3&&!red&&!g.overheated) r.ring(g.px,g.py,.8+ch*.35,'#e08a4a',.14+ch*.22);
   if(g.comboN>0&&g.comboT>0){ const a=r.sx(g.px,g.py), b=r.sy(g.px,g.py)-62*s; c.save(); for(let i=0;i<=g.comboN;i++){ c.fillStyle='#9fd8c8'; c.strokeStyle='#10201c'; c.lineWidth=1.5; c.beginPath(); c.arc(a+(i-g.comboN/2)*9*s,b,3.2*s,0,7); c.fill(); c.stroke(); } c.restore(); } }
+
+/** screen-space accent: a soft edge tint (centre stays clear) that eases out; alpha is capped low and never a full-screen flash */
+export function vfxScreen(r:R){ const A=VFX.accent; if(!A||VFX.reduced||Q.fx>=2) return; const c:CanvasRenderingContext2D=r.ctx, w=r.w, h=r.h; const k=A.t/A.life, a=A.a*(1-k)*(1-k); if(a<.005) return; c.save(); c.setTransform(r.dpr,0,0,r.dpr,0,0); const gr=c.createRadialGradient(w/2,h/2,Math.min(w,h)*.35,w/2,h/2,Math.max(w,h)*.7); gr.addColorStop(0,'rgba(0,0,0,0)'); gr.addColorStop(1,A.c); c.globalAlpha=Math.min(.22,a*2.2); c.fillStyle=gr; c.fillRect(0,0,w,h); c.restore(); }
