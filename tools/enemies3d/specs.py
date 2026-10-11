@@ -71,3 +71,8 @@ try:
     from specs_batch1 import BATCH1
     SPECS.update(BATCH1)
 except ImportError: pass
+
+try:
+    from specs_variety import VARIETY
+    SPECS.update(VARIETY)
+except ImportError: pass
