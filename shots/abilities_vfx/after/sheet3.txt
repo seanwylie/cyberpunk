@@ -1,0 +1,13 @@
+headshot_protocol
+static_snare
+flashbang
+root_spikes
+magnet_pull
+concussion_wave
+gravity_well
+sprint_burst
+slipstream
+blink_step
+shoulder_charge
+grapple_hook
+phase_slip

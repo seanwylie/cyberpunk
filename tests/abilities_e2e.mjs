@@ -9,7 +9,7 @@ const results = await ev(async (ids) => {
   const g = window.__game; const out = [];
   for (const id of ids) {
     const ab = reg.ABILITY_BY_ID[id]; const def = cfg.ABILITIES[id];
-    if (g.mode === 'run') g.enterTown(true); g.startRun('annex', 1001); g.revealing = false; g.dbg.god = true; g.enemies.forEach(e => { e.dead = true; }); g.projs = []; g.zones = [];
+    if (g.mode === 'run') g.enterTown(true); g.startRun('annex', 1001); g.revealing = false; g.dbg.god = true; g.dbg.noHitStop = true; g.enemies.forEach(e => { e.dead = true; }); g.projs = []; g.zones = [];
     const sp = g.level.spawn; g.px = sp.x; g.py = sp.y; g.face = 0;
     // find an open direction with room (8 tiles) around the spawn
     let ang = 0, best = -1; for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8; let n = 0; for (let d = 1; d <= 9; d += .5) { if (g.solidAt(g.px + Math.cos(a) * d, g.py + Math.sin(a) * d)) break; n = d; } if (n > best) { best = n; ang = a; } }

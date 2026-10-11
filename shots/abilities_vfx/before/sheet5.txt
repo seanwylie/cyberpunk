@@ -1,0 +1,13 @@
+mirage_step
+auto_turret
+sentry_drone
+shock_mine
+overwatch_array
+virus_upload
+emp_burst
+repulsor_drone
+neural_hijack
+heat_sink
+coolant_flush
+thermal_siphon
+overclock_core

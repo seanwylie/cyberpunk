@@ -1,0 +1,13 @@
+bulwark_plates
+ablative_shell
+reactive_armour
+phase_barrier
+stoneskin
+kinetic_dampers
+rally_beacon
+shared_aegis
+warcry_horn
+shadow_veil
+decoy_projector
+ambush_mark
+smoke_bomb

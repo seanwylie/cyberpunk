@@ -1,0 +1,13 @@
+cold_loop
+field_stitch
+triage_cycle
+leech_blades
+adrenal_surge
+siege_bot
+scrap_swarm
+orbital_strike
+blackout_protocol
+foundry_meltdown
+legion_protocol
+chain_reaction
+second_wind

@@ -14,7 +14,7 @@ export const PAL:Record<string,readonly string[]>={ sweep:C.attack, bladeburst:C
 /** Data-driven augment abilities (src/abilities) draw through the same pool with generic recipes: '<id>.cast' (shape from e.n: 0 self ring, 1 cone/line streaks, 2 ground blast) and '<id>.hit'. */
 export const GEN=new Set<string>(); export const registerGenericVfx=(id:string,type:'attack'|'defense'|'hacking'|'mobility'|'heat')=>{ PAL[id]=C[type]; GEN.add(id); };
 export const CAPS={ high:700, medium:260, low:100 } as const; export const SCALE={ high:1, medium:.5, low:.25 } as const;
-const REDUCED_CAP=36; const AMP=1.7;
+const REDUCED_CAP=36; const AMP=1.4;
 
 export class Vfx {
   pool:P[]=[]; live=0;
@@ -28,7 +28,7 @@ export class Vfx {
   /** amplitude applied to profile-driven effects: sizes and lifetimes of glow/spark/streak/arc/ring/star particles (the 'flashy' dial) */
   private amp=1;
   private add(ab:string,k:PK,x:number,y:number,o:Partial<P>){
-    if(this.amp!==1&&(k==='glow'||k==='spark'||k==='streak'||k==='arc'||k==='ring'||k==='star'||k==='hex'||k==='rune'||k==='frost'||k==='shard')){ const m=k==='ring'||k==='hex'||k==='rune'?1+(this.amp-1)*.45:this.amp; o={...o,s:(o.s??1)*m,life:(o.life??.6)*(1+(this.amp-1)*.7)}; }
+    if(this.amp!==1&&(k==='glow'||k==='spark'||k==='streak'||k==='arc'||k==='ring'||k==='star'||k==='hex'||k==='rune'||k==='frost'||k==='shard')){ const m=k==='ring'||k==='hex'||k==='rune'||k==='glow'?1+(this.amp-1)*.5:this.amp; o={...o,s:(o.s??1)*m,life:(o.life??.6)*(1+(this.amp-1)*.7)}; }
     if(this.live>=this.cap()){ this.stats.dropped++; return null; }
     let p:P|undefined; for(const q of this.pool) if(!q.on){ p=q; break; } if(!p){ this.stats.dropped++; return null; }
     Object.assign(p,{on:true,k,x,y,z:0,vx:0,vy:0,vz:0,t:0,life:.6,s:1,c:'#fff',a:0,x2:0,y2:0,g:0,d:0,add:false,rot:0,vr:0,ab},o); this.live++; this.stats.spawned[ab]=(this.stats.spawned[ab]||0)+1; if(this.live>this.stats.peak) this.stats.peak=this.live; return p; }
@@ -64,21 +64,21 @@ export class Vfx {
     if(red){ if(ph==='cast'||ph==='deploy'||ph==='buff') this.add(ab,'ring',e.x,e.y,{s:1.4+pw,life:.4,c:tc}); else if(ph==='hit') for(let i=0;i<2;i++){ const an=R()*6.283; this.add(ab,'spark',e.x,e.y,{vx:Math.cos(an)*3,vy:Math.sin(an)*3,life:.22,s:1.3,c:h,d:3}); } return; }
     switch(ph){
       case 'cast': {
-        this.add(ab,'glow',e.x,e.y,{s:1.1+pw*1.0,life:.32,c:h,add:true,z:.6}); // wind-up flare at the caster (bloom-limited: local, never full-screen)
+        this.add(ab,'glow',e.x,e.y,{s:.75+pw*.6,life:.3,c:core,add:true,z:.6}); // wind-up flare at the caster (bloom-limited: local, never full-screen)
         this.add(ab,'ring',e.x,e.y,{s:sh===0?1.8+pw:Math.max(1.2,Math.min(rr,3.5)),life:.45,c:tc,add:true});
         if(sh===1){ const cnt=N(6+v); for(let i=0;i<cnt;i++){ const an=a+(R()-.5)*(.5+v*.08); this.add(ab,'streak',e.x+Math.cos(an)*.8,e.y+Math.sin(an)*.8,{a:an,x2:Math.min(6,rr)*(.5+R()*.5),vx:Math.cos(an)*10,vy:Math.sin(an)*10,life:.3+R()*.18,s:3+pw*1.6,c:i%2?h:core,add:true,z:.5}); }
           this.motif(ab,el,e.x+Math.cos(a)*Math.min(rr,4),e.y+Math.sin(a)*Math.min(rr,4),a,1+pw*.6,pw,'cast'); }
         else if(sh===2){ this.add(ab,'ring',e.x,e.y,{s:rr*.6,life:.5,c:h,add:!red}); this.add(ab,'rune',e.x,e.y,{s:Math.min(rr,3.5)*.8,life:pw>=.4?1.3:.8,c:core}); this.motif(ab,el,e.x,e.y,a,1+pw*.8,pw,'cast'); if(pw>=.6) this.add(ab,'ring',e.x,e.y,{s:rr*1.1,life:.6,c:tc,add:true}); this.bloom(ab,e.x,e.y,1.2+pw,core); }
-        else { this.motif(ab,el,e.x,e.y,a,1+pw*.7,pw,'cast'); if(P.type==='defense'||P.type==='heat') this.add(ab,'hex',e.x,e.y,{s:1.8+pw*.6,life:.55,c:core,add:true}); if(pw>=.7) this.add(ab,'ring',e.x,e.y,{s:2.6+pw,life:.55,c:h,add:true}); }
+        else { this.motif(ab,el,e.x,e.y,a,1+pw*.7,pw,'cast'); if(P.type==='defense'||P.type==='heat') this.add(ab,'hex',e.x,e.y,{s:1.8+pw*.6,life:.55,c:core,add:false}); if(pw>=.7) this.add(ab,'ring',e.x,e.y,{s:2.6+pw,life:.55,c:h,add:true}); }
         if(P.accent) this.screen(core,.1+.09*pw); break; }
       case 'hit': {
-        this.add(ab,'ring',e.x,e.y,{s:1.0+pw*1.8,life:.45+pw*.2,c:tc,add:true}); this.add(ab,'glow',e.x,e.y,{s:.9+pw*.9,life:.28,c:h,add:true,z:.5}); // impact shockwave
+        this.add(ab,'ring',e.x,e.y,{s:1.0+pw*1.8,life:.45+pw*.2,c:tc,add:true}); this.add(ab,'glow',e.x,e.y,{s:.7+pw*.6,life:.26,c:core,add:true,z:.5}); // impact shockwave
         for(let i=0;i<N(8);i++){ const an=R()*6.283, sp=3+R()*3+pw*4; this.add(ab,'spark',e.x,e.y,{vx:Math.cos(an)*sp,vy:Math.sin(an)*sp,life:.4,s:2.2,c:i%2?h:core,add:true,z:.5,d:4}); }
-        this.motif(ab,el,e.x,e.y,a,1.1+pw*.8,pw,'hit'); if(pw>=.5) this.add(ab,'star',e.x,e.y,{life:.4,s:.2+pw*.18,c:h,z:1,rot:R()*6,vr:6}); if(pw>=.4) this.bloom(ab,e.x,e.y,.8+pw*.8,core,.16); break; }
+        this.motif(ab,el,e.x,e.y,a,1.1+pw*.8,pw,'hit'); if(pw>=.5) this.add(ab,'star',e.x,e.y,{life:.35,s:.12+pw*.1,c:h,z:1,rot:R()*6,vr:6}); if(pw>=.4) this.bloom(ab,e.x,e.y,.8+pw*.8,core,.16); break; }
       case 'trail': this.add(ab,'glow',e.x,e.y,{s:.28+pw*.2,life:.3,c:core,add:true,z:.5}); this.add(ab,'spark',e.x,e.y,{vx:(R()-.5)*1.5,vy:(R()-.5)*1.5,life:.22,s:1.2,c:h,add:true,z:.5,d:3}); if(pw>=.5||v%2===0) this.motif(ab,el,e.x,e.y,a,.5,pw,'trail'); break;
       case 'arc': { this.add(ab,'arc',e.x,e.y,{x2:e.x2!,y2:e.y2!,life:.22+pw*.12,s:.1+pw*.06,c:core,add:true,z:.7}); this.add(ab,'arc',e.x,e.y,{x2:e.x2!,y2:e.y2!,life:.16,s:.06,c:h,add:true,z:.75}); for(const [x,y] of [[e.x,e.y],[e.x2!,e.y2!]]) for(let i=0;i<N(3);i++){ const an=R()*6.283; this.add(ab,'spark',x,y,{vx:Math.cos(an)*4,vy:Math.sin(an)*4,life:.2,s:1.3,c:h,add:true,z:.6,d:3}); } break; }
       case 'deploy': this.add(ab,'ring',e.x,e.y,{s:Math.min(2.4,rr),life:.5,c:tc,add:true}); this.add(ab,'rune',e.x,e.y,{s:Math.min(2.2,rr)*.8,life:.9,c:core}); this.motif(ab,el,e.x,e.y,a,.9+pw*.5,pw,'cast'); break;
-      case 'buff': this.add(ab,'ring',e.x,e.y,{s:1.3+pw*.5,life:.6,c:tc,add:true}); this.add(ab,'glow',e.x,e.y,{s:.9+pw*.6,life:.6,c:core,add:true,z:.5}); for(let i=0;i<N(6);i++){ const an=i/6*6.283+R()*.4; this.add(ab,'glow',e.x+Math.cos(an)*.8,e.y+Math.sin(an)*.8,{vz:1.1+R()*1.2,life:.7+R()*.3,s:.1,c:i%2?h:core,add:true,z:.1}); } if(P.type==='defense') this.add(ab,'hex',e.x,e.y,{s:1.5,life:.5,c:core,add:true}); break;
+      case 'buff': this.add(ab,'ring',e.x,e.y,{s:1.3+pw*.5,life:.6,c:tc,add:true}); this.add(ab,'glow',e.x,e.y,{s:.6+pw*.4,life:.55,c:core,add:true,z:.5}); for(let i=0;i<N(6);i++){ const an=i/6*6.283+R()*.4; this.add(ab,'glow',e.x+Math.cos(an)*.8,e.y+Math.sin(an)*.8,{vz:1.1+R()*1.2,life:.7+R()*.3,s:.1,c:i%2?h:core,add:true,z:.1}); } if(P.type==='defense') this.add(ab,'hex',e.x,e.y,{s:1.5,life:.5,c:core,add:false}); break;
       case 'pulse': this.add(ab,'ring',e.x,e.y,{s:Math.min(rr,3.5)*(.5+R()*.5),life:.5,c:tc,add:true}); this.motif(ab,el,e.x,e.y,a,.6,pw,'trail'); break; } }
   /** extra grandness for the hand-authored core abilities: element motif, power-scaled shockwave and the screen accent */
   private layer(e:{k:string;x:number;y:number;a?:number;r?:number},ab:string,ph:string){ if(this.reduced) return; const P=profileOf(ab); if(!P||P.id!==ab) return; const [h,core]=ELEM_PAL[P.elem]; const pw=P.power;

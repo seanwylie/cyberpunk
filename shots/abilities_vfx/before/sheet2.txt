@@ -1,0 +1,13 @@
+scalpel_flurry
+overcharge_shot
+slag_cannon
+frag_grenade
+shock_ring
+thermite_lob
+cascade_arc
+seismic_stomp
+firestorm_pillar
+surgical_cut
+needle_pin
+coup_de_grace
+reaper_lunge
