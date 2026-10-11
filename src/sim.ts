@@ -232,7 +232,9 @@ export class Game {
   musicSet(s:string){ if(this.musicState!==s){ this.musicState=s; if(s!=='town') this.emit('musicarea',this.inst?dungeonOf(this.inst.dungeon).mfr:null); this.emit('music',s); } }
 
   // ---------- main update ----------
+  /** multiplayer hook (src/net/session.ts): when set and it returns true, the party instance owns this frame */ netHook?:(dt:number)=>boolean;
   update(dtRaw:number){
+    if(this.netHook&&this.netHook(dtRaw)) return;
     if(this.hitStop>0){ this.hitStop-=dtRaw; this.updateFx(dtRaw*.25); return; }
     const dt=Math.min(dtRaw,.05); this.time+=dt;
     if(this.mode==='run'&&this.inst){ this.inst.elapsed+=dt; const rem=this.inst.expiresAt-this.now(); if(rem<=0){ this.expireInstance(); this.enterTown(); return; } if(!this.inst.warned&&rem<INSTANCE_WARN_MINUTES*60000){ this.inst.warned=true; this.toast('Instance expires in under '+INSTANCE_WARN_MINUTES+' minutes. Retrieve loot.'); } }
