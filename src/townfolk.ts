@@ -113,6 +113,7 @@ const ringToDir = (k: number): Dir8 => ((((k - 2) % 8) + 8) % 8) as Dir8;
 
 // ---------- drawing ----------
 let tmp: HTMLCanvasElement | null = null;
+let tmpM: HTMLCanvasElement | null = null;
 /** Draw one walker with feet at (x,y) screen px. unit = TW/64 (same scale basis as the player). Returns false if the atlas has no walk/idle sheets. */
 export function drawWalker(c: CanvasRenderingContext2D, A: LoadedAtlas, w: Walker, x: number, y: number, unit: number): boolean {
   const walk = A.images.walk, idle = A.images.idle, wd = A.atlas.anims.walk, id = A.atlas.anims.idle; if (!walk || !idle || !wd || !id) return false;
@@ -121,7 +122,7 @@ export function drawWalker(c: CanvasRenderingContext2D, A: LoadedAtlas, w: Walke
   if (!tmp) { tmp = document.createElement('canvas'); tmp.width = W; tmp.height = H; } const t = tmp.getContext('2d')!; t.clearRect(0, 0, W, H);
   const one = (mode: 'walk' | 'idle', cyc: number, it: number, dir: Dir8, al: number) => { const im = mode === 'walk' ? walk : idle, n = mode === 'walk' ? WALK_FRAMES : IDLE_FRAMES; const p = mode === 'walk' ? ((cyc % 1) + 1) % 1 * n : (it * IDLE_FPS) % n; const f = Math.floor(p) % n, fr = p - Math.floor(p), nf = (f + 1) % n; t.globalAlpha = al; t.drawImage(im, f * W, dir * H, W, H, 0, 0, W, H); if (fr > .004) { t.globalAlpha = al * fr; t.drawImage(im, nf * W, dir * H, W, H, 0, 0, W, H); } };
   if (w.prev && w.fade < 1) { one(w.prev.mode, w.prev.cyc, w.prev.idleT, w.prev.dir, 1); const f = w.fade * w.fade * (3 - 2 * w.fade); one(w.mode, w.cyc, w.idleT, w.dir, f); } else one(w.mode, w.cyc, w.idleT, w.dir, 1);
-  { t.globalAlpha = 1; t.globalCompositeOperation = 'multiply'; t.fillStyle = w.tint; t.fillRect(0, 0, W, H); t.globalCompositeOperation = 'destination-in'; one(w.mode, w.cyc, w.idleT, w.dir, 1); t.globalCompositeOperation = 'source-over'; }
+  { t.globalAlpha = 1; /* keep the composed sprite as the alpha mask: re-drawing frames with destination-in multiplied alpha by the cross-fade weight and made walkers pulse */ if (!tmpM) { tmpM = document.createElement('canvas'); tmpM.width = W; tmpM.height = H; } const m = tmpM.getContext('2d')!; m.globalCompositeOperation = 'copy'; m.drawImage(tmp, 0, 0); t.globalCompositeOperation = 'multiply'; t.fillStyle = w.tint; t.fillRect(0, 0, W, H); t.globalCompositeOperation = 'destination-in'; t.drawImage(tmpM, 0, 0); t.globalCompositeOperation = 'source-over'; }
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(tmp, 0, 0, W, H, x - A.atlas.anchor.x * s, y - A.atlas.anchor.y * s, W * s, H * s);
   c.restore(); return true;
 }
