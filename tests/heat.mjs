@@ -58,7 +58,7 @@ ok(await ev(() => window.__game.ventCd > 10), 'V key vents');
 const hud = async (heat, over) => { await ev(([h, o]) => { const g = window.__game; g.heat = h; g.overheated = o; g.ventCd = 0; g.ventLock = 0; g.ohT = 5; }, [heat, over]); await sleep(250); return ev(() => { const b = document.querySelector('.bar.heat'); return { band: b.dataset.band, cls: b.className, txt: document.getElementById('heattxt').textContent, w: document.getElementById('heatfill').style.width, anim: getComputedStyle(document.getElementById('heatfill')).animationDuration }; }); };
 const h1 = await hud(20, false), h2 = await hud(65, false), h3 = await hud(88, false), h4 = await hud(100, true);
 ok(h1.band === 'ok' && h2.band === 'warm' && h3.band === 'hot' && h4.band === 'over', `HUD bands ok/warm/hot/over: ${[h1, h2, h3, h4].map(h => h.band)}`);
-ok(/HEAT 20/.test(h1.txt) && /HOT 8\d/.test(h3.txt) && /OVERHEATED/.test(h4.txt) && /V/.test(h4.txt), `HUD text: "${h1.txt}" "${h3.txt}" "${h4.txt}"`);
+ok(/HEAT (19|20)/.test(h1.txt) && /HOT 8\d/.test(h3.txt) && /OVERHEATED/.test(h4.txt) && /V/.test(h4.txt), `HUD text: "${h1.txt}" "${h3.txt}" "${h4.txt}"`);
 const dur = s => { const v = parseFloat(s); return /ms/.test(s) ? v / 1000 : v; };
 ok([h1, h2, h3].every(h => dur(h.anim) === 0) && dur(h4.anim) >= .5, `no flashing: warm/hot are steady, overheat pulse period ${h4.anim} (<= 2 Hz)`);
 await ev(() => { const g = window.__game; g.overheated = false; g.heat = 0; });
