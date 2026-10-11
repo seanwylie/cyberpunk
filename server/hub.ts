@@ -3,16 +3,17 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
-import { InstanceSim } from '../src/net/netsim';
+// the real, shared combat code (src/sim.ts Game per member) runs the instance: see src/core/party.ts
+import { PartyWorld } from '../src/core/party';
 import { PROTO, TICK_HZ, TICK_DT, TOWN_HZ, MAX_PARTY, TOWN_SHARD_CAP, cleanName, cleanChat, cleanLook, clamp, r2, Look, PartyState } from '../src/net/shared';
 import { DUNGEONS } from '../src/content/dungeons';
 import { COMBAT } from '../src/config';
 
 export interface HubOpts { /** allowed browser Origins (exact match, or '*.example.com'); empty/undefined = allow all (dev). Requests with no Origin header (bots/CLI) are allowed only when `allowNoOrigin` */ /** optional extra HTTP route handler (e.g. story proxy); return true when handled */ extra?: (req: any, res: any) => boolean; origins?: string[]; allowNoOrigin?: boolean; /** max concurrent instance rooms / parties (server refuses new ones when full) */ maxRooms?: number; maxParties?: number; port?: number; dev?: boolean; dmgMul?: number; host?: string; maxConns?: number; log?: boolean }
 class Bucket { tokens: number; last = Date.now(); constructor(public rate: number, public burst: number) { this.tokens = burst; } take() { const n = Date.now(); this.tokens = Math.min(this.burst, this.tokens + (n - this.last) / 1000 * this.rate); this.last = n; if (this.tokens < 1) return false; this.tokens--; return true; } }
-interface Guest { id: string; token: string; name: string; lvl: number; look?: Look; ws: WebSocket | null; party: Party | null; shard: Shard | null; pos: { x: number; y: number; face: number; moving: boolean; t: number; town: string }; ready: boolean; b: { all: Bucket; input: Bucket; chat: Bucket; ping: Bucket; pos: Bucket }; viol: number }
+interface Guest { id: string; token: string; name: string; lvl: number; look?: Look; build?: any; ws: WebSocket | null; party: Party | null; shard: Shard | null; pos: { x: number; y: number; face: number; moving: boolean; t: number; town: string }; ready: boolean; b: { all: Bucket; input: Bucket; chat: Bucket; ping: Bucket; pos: Bucket }; viol: number }
 interface Party { code: string; leader: string; members: Guest[]; dungeon: string | null; room: Room | null; ready: Set<string> }
-interface Room { id: string; party: Party; sim: InstanceSim; accTick: number; last: number; ended: boolean; emptyT: number }
+interface Room { id: string; party: Party; sim: PartyWorld; accTick: number; last: number; ended: boolean; emptyT: number }
 interface Shard { id: string; town: string; members: Set<Guest> }
 const CODE_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
@@ -54,7 +55,7 @@ export function startHub(o: HubOpts = {}) {
 
   // ---------- instances
   function startInstance(p: Party, dungeon: string) {
-    const seed = (Math.random() * 1e9) | 0; const sim = new InstanceSim(dungeon, seed, p.members.map(m => ({ id: m.id, name: m.name, lvl: m.lvl, look: m.look })), { dmgMul: o.dmgMul });
+    const seed = (Math.random() * 1e9) | 0; const sim = new PartyWorld(dungeon, seed, p.members.map(m => ({ id: m.id, name: m.name, lvl: m.lvl, look: m.look, profile: m.build })), { dmgMul: o.dmgMul });
     const room: Room = { id: 'r-' + p.code + '-' + seed, party: p, sim, accTick: 0, last: Date.now(), ended: false, emptyT: 0 }; p.room = room; rooms.set(room.id, room);
     for (const m of p.members) { leaveShard(m); send(m, { t: 'instance_start', dungeon, seed, you: m.id, hpMul: sim.hpMul, dmgMul: sim.dmgMul, tickHz: TICK_HZ, players: p.members.map(x => x.id) }); }
     bcastParty(p); log('instance', dungeon, p.code, p.members.length);
@@ -67,6 +68,7 @@ export function startHub(o: HubOpts = {}) {
     if (!g.b.all.take()) { stats.rateLimited++; if (++g.viol > 400) g.ws?.close(1008, 'rate limit'); return; }
     switch (m.t) {
       case 'ping': send(g, { t: 'pong', c: m.c, s: Date.now() }); break;
+      case 'build': { const j = JSON.stringify(m.profile ?? null); if (j.length > 12000) { send(g, { t: 'err', msg: 'build too large' }); return; } g.build = JSON.parse(j); break; } // validated against the catalog when the instance starts
       case 'profile': g.name = cleanName(m.name, g.name); g.lvl = clamp(Math.floor(+m.lvl) || 1, 1, 50); g.look = cleanLook(m.look) ?? g.look; if (g.party) bcastParty(g.party); break;
       case 'party_create': { if (parties.size >= (o.maxParties ?? 500) && !g.party) { stats.roomCapHits++; return err(g, 'busy', 'Server is full, try again later.'); } if (g.party) leaveParty(g); const p: Party = { code: newCode(), leader: g.id, members: [g], dungeon: null, room: null, ready: new Set() }; parties.set(p.code, p); g.party = p; bcastParty(p); break; }
       case 'party_join': { const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); const p = parties.get(code); if (!p) return err(g, 'nocode', 'No party with that code.'); if (g.party === p) return; if (p.members.length >= MAX_PARTY) return err(g, 'full', 'Party is full (4 max).'); if (p.room) return err(g, 'started', 'That party is already in a dungeon.'); if (g.party) leaveParty(g); p.members.push(g); g.party = p; bcastParty(p); for (const x of p.members) if (x !== g) send(x, { t: 'sys', msg: g.name + ' joined the party.' }); break; }
@@ -84,7 +86,8 @@ export function startHub(o: HubOpts = {}) {
       case 'town_pos': { if (!g.shard || !g.b.pos.take()) return; const x = +m.x, y = +m.y; if (!Number.isFinite(x) || !Number.isFinite(y)) return; const now = Date.now(), dt = Math.min(1, (now - g.pos.t) / 1000); const max = COMBAT.playerSpeed * 1.6 * Math.max(dt, .05) + 1.2; // speed gate: no teleporting
         if (g.pos.t && Math.hypot(x - g.pos.x, y - g.pos.y) > max) { stats.rejected++; send(g, { t: 'town_correct', x: g.pos.x, y: g.pos.y }); return; } if (x < 0 || y < 0 || x > 200 || y > 200) return; g.pos = { x, y, face: clamp(+m.face || 0, -7, 7), moving: !!m.moving, t: now, town: g.pos.town }; break; }
       case 'dev_tp': { if (!o.dev) return; const r = g.party?.room; if (r) r.sim.devTeleport(g.id, +m.x, +m.y); break; }
-      case 'dev_boss_tp': { if (!o.dev) return; const r = g.party?.room; if (r) { const b = r.sim.level.bossSpawn; r.sim.devTeleport(g.id, b.x - 2 - Math.random(), b.y + (Math.random() - .5) * 2); } break; }
+      case 'dev_cheat': { if (!o.dev) return; const r = g.party?.room; if (r) r.sim.devCheat(g.id, { god: !!m.god, oneShot: !!m.oneShot }); break; }
+      case 'dev_boss_tp': { if (!o.dev) return; const r = g.party?.room; if (r) r.sim.devBoss(g.id, Math.random() * .6); break; }
       case 'pickup': { const r = g.party?.room; if (r) { if (r.sim.tryPickup(g.id, +m.id)) flushLoot(r, g); } break; }
     }
   }
@@ -112,7 +115,7 @@ export function startHub(o: HubOpts = {}) {
     const now = Date.now();
     for (const r of rooms.values()) {
       r.accTick += (now - r.last) / 1000; r.last = now; let n = 0; while (r.accTick >= TICK_DT && n++ < 4) { r.accTick -= TICK_DT; r.sim.step(); }
-      if (n) { const ev = r.sim.drainEvents(); for (const m of r.party.members) { const s = r.sim.snapshot(m.id, ev.length ? ev : undefined); if (s) { send(m, s); stats.snaps++; } flushLoot(r, m); } }
+      if (n) { const ev = r.sim.drainEvents(); for (const m of r.party.members) { const s = r.sim.snapshot(m.id, ev.length ? ev : undefined); if (s) { send(m, s); stats.snaps++; } flushLoot(r, m); } r.sim.endTick(); }
       if (r.sim.players.size === 0) endInstance(r.party, 'empty');
     }
   }, 1000 / TICK_HZ / 2);

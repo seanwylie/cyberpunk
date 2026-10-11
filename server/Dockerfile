@@ -7,7 +7,7 @@ COPY src ./src
 COPY server ./server
 COPY tsconfig.json ./
 # single-file bundle (ws included); optional native accelerators are not needed
-RUN npx esbuild server/main.ts --bundle --platform=node --format=esm --target=node20 --external:bufferutil --external:utf-8-validate --outfile=/out/server.mjs --log-level=warning
+RUN npx esbuild server/main.ts --bundle --platform=node --format=esm --target=node20 --banner:js="import {createRequire as __cr} from 'module'; const require=__cr(import.meta.url);" --external:bufferutil --external:utf-8-validate --outfile=/out/server.mjs --log-level=warning
 
 FROM node:20-slim
 ENV NODE_ENV=production PORT=8787

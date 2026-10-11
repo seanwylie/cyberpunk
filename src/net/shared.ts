@@ -16,14 +16,16 @@ export interface Look { body?: Record<string, string>; cos?: string[]; tint?: st
 export type Dungeon = string;
 
 /** client -> server, once per client tick (20 Hz) while in an instance */
-export interface InputMsg { t: 'input'; seq: number; mx: number; my: number; atk: boolean; face: number; revive?: boolean }
+export interface InputMsg { t: 'input'; seq: number; mx: number; my: number; atk: boolean; face: number; revive?: boolean; /** discrete actions (cast/dodge/vent/stim/use/dlg) validated + rate limited by the server */ acts?: any[] }
 
 export interface PlayerView { id: string; name: string; x: number; y: number; face: number; hp: number; maxHp: number; down: boolean; moving: boolean; atk: boolean; look?: Look; lvl: number }
-export interface EnemyView { id: number; type: string; x: number; y: number; hp: number; maxHp: number; face: number; boss?: boolean; atk?: boolean }
+export interface EnemyView { id: number; type: string; x: number; y: number; hp: number; maxHp: number; face: number; boss?: boolean; atk?: boolean; ally?: boolean; sh?: number; rv?: boolean; aff?: string[] }
+/** the receiving player's own combat state (real Game values from the server) */
+export interface YouView extends PlayerView { heat: number; oh: boolean; cd: number[]; dcd: number; vcd: number; stims: number; spd: number; ab: (string | null)[]; cast: { i: number; t: number; w: number } | null; rv: number; prompt: string | null; ch: number | null; bro: number }
 export interface DropView { id: number; x: number; y: number; kind: 'item' | 'chip' | 'stim' | 'credits'; item?: string; chip?: string; amount: number }
 export interface SnapMsg {
-  t: 'snap'; tick: number; ack: number; you: PlayerView; players: PlayerView[]; enemies: EnemyView[]; drops: DropView[];
-  flags: { bossSpawned: boolean; bossDead: boolean; completed: boolean; kills: number; total: number; wipeT: number };
+  t: 'snap'; tick: number; ack: number; you: YouView; players: PlayerView[]; enemies: EnemyView[]; drops: DropView[];
+  flags: { bossSpawned: boolean; bossDead: boolean; completed: boolean; kills: number; total: number; wipeT: number; gate1?: boolean; lock2?: boolean; controller?: boolean; bossKey?: string | null; cond?: string | null };
   ev?: any[];
 }
 export interface PartyMember { id: string; name: string; ready: boolean; leader: boolean; lvl: number; look?: Look }
@@ -43,7 +45,7 @@ export function openAllDoors(lv: Level) { for (const d of lv.doors) for (const [
 const solidAt = (lv: Level, ix: number, iy: number) => ix < 0 || iy < 0 || ix >= lv.w || iy >= lv.h || lv.solid[iy * lv.w + ix] === 1;
 export function circleHits(lv: Level, x: number, y: number, r: number): boolean {
   const x0 = Math.floor(x - r), x1 = Math.floor(x + r), y0 = Math.floor(y - r), y1 = Math.floor(y + r);
-  for (let iy = y0; iy <= y1; iy++) for (let ix = x0; ix <= x1; ix++) { if (!solidAt(lv, ix, iy)) continue; const cx = Math.max(ix, Math.min(x, ix + 1)), cy = Math.max(iy, Math.min(y, iy + 1)); if ((x - cx) ** 2 + (y - cy) ** 2 < r * r) return true; }
+  for (let iy = y0; iy <= y1; iy++) for (let ix = x0; ix <= x1; ix++) { if (!solidAt(lv, ix, iy)) continue; const cx = Math.max(ix, Math.min(x, ix + 1)), cy = Math.max(iy, Math.min(y, iy + 1)); if ((x - cx) ** 2 + (y - cy) ** 2 < r * r - 1e-6) return true; }
   return false;
 }
 /** axis-separated circle move with sub-stepping; identical on client (prediction) and server (authority) */
@@ -53,10 +55,10 @@ export function moveCircle(lv: Level, x: number, y: number, dx: number, dy: numb
   return { x: cx, y: cy };
 }
 /** One fixed-step player move. Input direction is clamped to unit length; speed is the fixed base speed (never client supplied). */
-export function stepPlayer(lv: Level, p: { x: number; y: number }, mx: number, my: number, dt = TICK_DT) {
+export function stepPlayer(lv: Level, p: { x: number; y: number }, mx: number, my: number, dt = TICK_DT, spd = COMBAT.playerSpeed) {
   if (!Number.isFinite(mx) || !Number.isFinite(my)) { mx = 0; my = 0; }
   const m = Math.hypot(mx, my); if (m > 1) { mx /= m; my /= m; }
-  const q = moveCircle(lv, p.x, p.y, mx * COMBAT.playerSpeed * dt, my * COMBAT.playerSpeed * dt, COMBAT.playerRadius); p.x = q.x; p.y = q.y;
+  const q = moveCircle(lv, p.x, p.y, mx * spd * dt, my * spd * dt, COMBAT.playerRadius); p.x = q.x; p.y = q.y;
 }
 export const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 export const r2 = (v: number) => Math.round(v * 100) / 100;

@@ -2,7 +2,7 @@
 // Offline by default: nothing here runs unless a server URL is configured and the player opens the Party panel.
 import { dungeonOf } from '../content/dungeons';
 import type { Level } from '../level';
-import { PROTO, TICK_HZ, TICK_DT, InputMsg, SnapMsg, PartyState, PlayerView, EnemyView, DropView, Look, openAllDoors, stepPlayer, rng32 } from './shared';
+import { PROTO, TICK_HZ, TICK_DT, InputMsg, SnapMsg, PartyState, PlayerView, YouView, EnemyView, DropView, Look, stepPlayer, rng32 } from './shared';
 import { Interp } from './interp';
 
 export interface LinkSim { delayMs: number; jitterMs?: number; loss: number; lossTypes?: string[]; seed?: number } // test-only latency / packet-loss shim
@@ -18,21 +18,23 @@ export function configuredServer(): string {
 
 export class InstanceClient {
   level: Level; seq = 0; px: number; py: number; pending: InputMsg[] = []; players = new Interp<PlayerView & { id: string }>(); enemies = new Interp<EnemyView & { id: number }>();
-  last: SnapMsg | null = null; you: PlayerView | null = null; drops: DropView[] = []; flags = { bossSpawned: false, bossDead: false, completed: false, kills: 0, total: 0, wipeT: 0 }; corrections = 0; maxErr = 0; snaps = 0; lastTick = 0;
+  last: SnapMsg | null = null; you: YouView | null = null; spd = 5.6; private outActs: any[] = []; drops: DropView[] = []; flags = { bossSpawned: false, bossDead: false, completed: false, kills: 0, total: 0, wipeT: 0 }; corrections = 0; maxErr = 0; snaps = 0; lastTick = 0;
   constructor(public net: NetClient, public dungeon: string, public seed: number, public myId: string, public hpMul: number, public dmgMul: number) {
-    this.level = dungeonOf(dungeon).build(seed); openAllDoors(this.level); this.px = this.level.spawn.x; this.py = this.level.spawn.y;
+    this.level = dungeonOf(dungeon).build(seed); this.px = this.level.spawn.x; this.py = this.level.spawn.y;
   }
   /** call at TICK_HZ: predict locally with the exact server step, then send. mx,my are WORLD-space direction. */
+  /** queue a discrete action (cast/dodge/vent/stim/use/dlg); it rides on the next input message */
+  act(a: any) { if (this.outActs.length < 6) this.outActs.push(a); return true; }
   tickInput(mx: number, my: number, atk: boolean, face: number, revive = false) {
     if (this.you?.down) { mx = 0; my = 0; }
-    const m: InputMsg = { t: 'input', seq: ++this.seq, mx, my, atk, face, revive }; const p = { x: this.px, y: this.py }; stepPlayer(this.level, p, mx, my, TICK_DT); this.px = p.x; this.py = p.y; this.pending.push(m); if (this.pending.length > 120) this.pending.shift(); this.net.send(m); return m;
+    const m: InputMsg = { t: 'input', seq: ++this.seq, mx, my, atk, face, revive }; if (this.outActs.length) { m.acts = this.outActs.splice(0, 4); } const p = { x: this.px, y: this.py }; stepPlayer(this.level, p, mx, my, TICK_DT, this.spd); this.px = p.x; this.py = p.y; this.pending.push(m); if (this.pending.length > 120) this.pending.shift(); this.net.send(m); return m;
   }
   onSnap(s: SnapMsg, nowMs: number) {
-    this.snaps++; this.last = s; this.you = s.you; this.drops = s.drops; this.flags = s.flags; this.lastTick = s.tick; const st = s.tick * TICK_DT;
+    this.snaps++; this.last = s; this.you = s.you; if (s.you.spd > 0) this.spd = s.you.spd; this.drops = s.drops; this.flags = s.flags; this.lastTick = s.tick; const st = s.tick * TICK_DT;
     this.players.push(st, nowMs, s.players as any); this.enemies.push(st, nowMs, s.enemies as any);
     // reconcile: start from the authoritative state, replay inputs the server has not processed yet
     while (this.pending.length && this.pending[0].seq <= s.ack) this.pending.shift();
-    const p = { x: s.you.x, y: s.you.y }; for (const m of this.pending) stepPlayer(this.level, p, m.mx, m.my, TICK_DT);
+    const p = { x: s.you.x, y: s.you.y }; for (const m of this.pending) stepPlayer(this.level, p, m.mx, m.my, TICK_DT, this.spd);
     const err = Math.hypot(p.x - this.px, p.y - this.py); this.maxErr = Math.max(this.maxErr, err);
     if (err > 0.02) { this.corrections++; if (err > 1.5) { this.px = p.x; this.py = p.y; } else { this.px += (p.x - this.px) * .5; this.py += (p.y - this.py) * .5; } }
   }
@@ -78,8 +80,10 @@ export class NetClient {
   }
   // ---- party API
   createParty() { this.send({ t: 'party_create' }); } joinParty(code: string) { this.send({ t: 'party_join', code }); } leaveParty() { this.send({ t: 'party_leave' }); this.party = null; }
-  setReady(r: boolean) { this.send({ t: 'party_ready', ready: r }); } setDungeon(d: string) { this.send({ t: 'party_dungeon', dungeon: d }); } start() { this.send({ t: 'party_start' }); }
+  setReady(r: boolean) { this.onBuild?.(); this.send({ t: 'party_ready', ready: r }); } onBuild?: () => void; setDungeon(d: string) { this.send({ t: 'party_dungeon', dungeon: d }); } start() { this.send({ t: 'party_start' }); }
   kick(id: string) { this.send({ t: 'party_kick', id }); } chat(text: string, scope: 'party' | 'town' = 'party') { this.send({ t: 'chat', text, scope }); } mark(x: number, y: number) { this.send({ t: 'mark', x, y }); }
   profile(name: string, lvl: number, look?: Look) { this.o.name = name; this.o.lvl = lvl; this.o.look = look; this.send({ t: 'profile', name, lvl, look }); }
+  /** the validated-on-server combat build (installed hardware, chips, rep, pity) */
+  build(profile: any) { this.send({ t: 'build', profile }); }
   get isLeader() { return !!this.party && this.party.members.some(m => m.id === this.id && m.leader); }
 }
