@@ -71,7 +71,7 @@ const C = await ev(async () => { const mm = window.__audio.music, mod = await im
   const settle = () => { mm.setState('traversal', null); off(60); mm.state = 'traversal'; mm.want = 'traversal'; };
   const loopEnd = () => { const l = mm.live.find(x => !x.ending); off(Math.max(0, mm.buffers[l.name].duration - ((l.offset + (mm.now() - l.startedAt)) % mm.buffers[l.name].duration) - 1)); off(2); };
   // calm: scripted 10 minutes of exploring (zone-change requests every 5 s)
-  settle(); mm.resetCounts(); const n0 = mm.log.length; for (let t = 0; t < 600; t += 5) { mm.setState('traversal'); off(5); } o.calm = { ...mm.counts }; o.calmLog = mm.log.length - n0;
+  settle(); mm.resetCounts(); const n0 = mm.log.length; for (let t = 0; t < 600; t += 5) { mm.setState('traversal'); off(5); const k = mm.bagKey('traversal'); if (mm.nextUp[k] && !mm.buffers[mm.nextUp[k]]) { const t0 = performance.now(); while (!mm.buffers[mm.nextUp[k]] && performance.now() - t0 < 15000) { await new Promise(r => setTimeout(r, 100)); mm.tick(); } } } o.calm = { ...mm.counts }; o.calmLog = mm.log.length - n0;
   // boss fight: 5 minutes, one phase change at 2:00
   settle(); mm.setState('bossreveal', 'warden'); off(3); mm.setState('bosscombat', 'warden'); mm.resetCounts(); const b0 = mm.log.length; for (let t = 0; t < 300; t += 1) { if (t === 120) mm.onPhase(1); off(1); } o.boss = { ...mm.counts }; o.bossLog = mm.log.length - b0;
   // elite fight: 3 minutes of continuous engagement
@@ -86,7 +86,7 @@ const C = await ev(async () => { const mm = window.__audio.music, mod = await im
   // not decoded yet: engagement starts the moment the track loads
   mm.setState('bossreveal', 'warden'); const sig = mm.fightNext, keep = mm.buffers[sig]; delete mm.buffers[sig]; off(3); const n1 = mm.log.length; mm.setState('bosscombat', 'warden'); off(1); o.pendWait = mm.log.length === n1 && mm.state === 'bosscombat'; mm.buffers[sig] = keep; off(0.3); const e = mm.log[mm.log.length - 1]; o.pendStart = e.to === sig && e.state === 'bosscombat';
   o.fades = fades; return o; });
-ok(C.calm.total <= 5 && C.calm.hard === 0 && C.calmLog <= 5, 'calm: <= 5 track switches (~2.5 min tracks) in a scripted 10-minute run: ' + JSON.stringify(C.calm));
+ok(C.calm.total >= 3 && C.calm.total <= 9 && C.calm.hard === 0 && C.calmLog <= 9, 'calm: 3-9 track switches (90-150 s dwell) in a scripted 10-minute run: ' + JSON.stringify(C.calm));
 ok(C.boss.hard <= 4 && C.boss.phase <= 1 && C.bossLog <= 4, 'boss fight (5 min, 1 phase): <= 4 switches: ' + JSON.stringify(C.boss));
 ok(C.elite.total <= 2 && C.eliteLog <= 2, 'elite fight (3 min): <= 2 switches: ' + JSON.stringify(C.elite));
 ok(C.calmRot && C.fades.every(f => f.ok), 'every elite/boss engagement fades in 1.5-2 s immediately, incl. right after a calm switch and on repeats: ' + JSON.stringify(C.fades.filter(f => !f.ok)));
@@ -115,7 +115,7 @@ ok(C.pendWait && C.pendStart, 'boss track not yet decoded: waits, then fades in 
   ok(Sx.retry >= 1 && Sx.flags, 'sim: boss reset after death emits musicretry (' + JSON.stringify(Sx) + ')'); }
 // --- rotation logic + asset existence (variety pack) ---
 import fs from 'fs';
-const M = await ev(async () => { const m = await import('/src/music.ts'); return { pools: { ...m.POOLS, harrow: m.TOWN_POOLS.harrow, areas: Object.values(m.AREA_TRACKS).flat() }, boss: m.BOSS_MAP, sig: m.SIG_TRACKS, core: m.CORE_TRACKS }; });
+const M = await ev(async () => { const m = await import('/src/music.ts'); return { pools: { ...m.POOLS, harrow: m.TOWN_POOLS.harrow, areas: Object.values(m.AREA_TRACKS).flat() }, boss: m.BOSS_MAP, sig: [...m.SIG_TRACKS, ...m.STINGERS], core: m.CORE_TRACKS }; });
 const files = new Set(fs.readdirSync('public/audio/music').map(f => f.replace(/\.mp3$/, '')));
 const used = [...new Set([...Object.values(M.pools).flat(), ...Object.values(M.boss), ...M.core, ...M.sig])];
 ok(used.every(n => files.has(n)), 'every pooled track has an mp3: missing ' + used.filter(n => !files.has(n)).join());
@@ -232,6 +232,38 @@ ok(mgr.rot && mgr.rot !== mgr.town0 && mgr.rotLog.state === 'town' && mgr.rotLog
   ok(F.a.live.length === 1, 'exactly one active track after the fight');
   ok(bc(F.b).length === 1, '290 s fight without phases: the fight track never changes (' + fightTracks(F.b).join('>') + ')');
   ok(bc(F.c).length === 2 && F.c.log.filter(x => x.s === 'bosscombat')[1].t - F.c.log.filter(x => x.s === 'bosscombat')[0].t >= 295, '330 s fight without phases: exactly one smooth rotation, not before 5 minutes (' + fightTracks(F.c).join('>') + ')'); }
+// --- calm cadence: jittered 90-150 s dwell, 7 s crossfades, mood-family contrast, history, natural-trigger nudges, 40+ calm tracks ---
+{ const K = await ev(async () => { const m = await import('/src/music.ts'), mm = window.__audio.music; clearInterval(mm.timer); { const base = mm.ctx.currentTime + (mm.__off || 0); mm.__off = 0; mm.now = () => base + mm.__off; }
+    const off = s => { mm.__off += s; mm.tick(); }; const wait = async (c, ms = 15000) => { const t0 = performance.now(); while (!c() && performance.now() - t0 < ms) { await new Promise(r => setTimeout(r, 100)); mm.tick(); } return c(); };
+    const o = {}; const calm = new Set([...m.POOLS.town, ...m.POOLS.traversal, ...m.TOWN_POOLS.harrow, ...Object.values(m.AREA_TRACKS).flat()]); o.calm = calm.size; o.rust = m.TOWN_POOLS.rustline.length; o.harrowN = m.TOWN_POOLS.harrow.length; o.noFamily = [...calm].filter(n => !m.FAMILY[n]); o.families = [...new Set([...calm].map(n => m.FAMILY[n]))].length;
+    const run = async (state, area, theme, mins) => { localStorage.clear(); mm.bags = {}; mm.nextUp = {}; mm.hist = null; mm.setTownTheme(theme); mm.setArea(area); mm.state = null; mm.want = state; mm.setState(state); mm.pend = null; mm.setState(state); await wait(() => !mm.pend && mm.cur && mm.live.some(l => !l.ending)); const n0 = mm.log.length; const seq = [{ to: mm.cur, t: mm.now() }];
+      for (let t = 0; t < mins * 60; t += 2) { off(2); const k = mm.bagKey(mm.state); if (mm.nextUp[k] && !mm.buffers[mm.nextUp[k]]) await wait(() => mm.buffers[mm.nextUp[k]], 20000); }
+      const L = mm.log.slice(n0).filter(x => x.state === state); return { seq: [seq[0].to, ...L.map(x => x.to)], gaps: L.map((x, i) => x.t - (i ? L[i - 1].t : seq[0].t)), durs: L.map(x => x.dur) }; };
+    for (const [name, st, area, th] of [['town', 'town', null, 'rustline'], ['harrow', 'town', null, 'harrow'], ['trav', 'traversal', 'HI', 'rustline']]) { const r = await run(st, area, th, 40); const q = r.seq, fam = q.map(x => m.FAMILY[x]); let rep = 0, famSame = 0, win = 0; for (let i = 1; i < q.length; i++) { if (q[i] === q[i - 1]) rep++; if (fam[i] === fam[i - 1]) famSame++; }
+      for (let i = 0; i < q.length; i++) for (let j = Math.max(0, i - 5); j < i; j++) if (q[i] === q[j]) win++; o[name] = { n: q.length, rep, famSame, win, min: Math.min(...r.gaps), max: Math.max(...r.gaps), avg: r.gaps.reduce((a, b) => a + b, 0) / r.gaps.length, fade: Math.min(...r.durs), distinct: new Set(q).size, seq: q.join('>') }; }
+    // natural triggers: nudge before 45 s does nothing, after 45 s switches soon
+    localStorage.clear(); mm.bags = {}; mm.nextUp = {}; mm.hist = null; mm.setArea(null); mm.state = null; mm.want = 'traversal'; mm.setState('traversal'); await wait(() => mm.cur); mm.calmDwell = 150; await wait(() => mm.buffers[mm.nextUp[mm.bagKey('traversal')]]); off(20); mm.nudge(); const a0 = mm.log.length; off(10); o.earlyNudge = mm.log.length === a0; off(30); o.lateNudge = mm.log.length === a0 + 1; o.lateTime = mm.now() - mm.lastSwitchAt;
+    // memory: only a few lazy tracks decoded at once
+    await new Promise(r => setTimeout(r, 9000)); o.lazyDecoded = [...m.CALM2, ...m.CALM3].filter(n => mm.buffers[n]).length; return o; });
+  ok(K.calm >= 60, 'calm/ambient pool has >= 60 distinct tracks: ' + K.calm);
+  ok(K.rust >= 13 && K.harrowN >= 12, 'town sets: Rustline ' + K.rust + ', Harrow Reach ' + K.harrowN);
+  ok(K.noFamily.length === 0 && K.families === 4, 'every calm track has a mood family (4 families): ' + K.noFamily.join());
+  for (const n of ['town', 'harrow', 'trav']) { const r = K[n]; ok(r.n >= 14 && r.min >= 88 && r.max <= 160 && r.avg >= 100 && r.avg <= 140, n + ' cadence over 40 min: ' + (r.n - 1) + ' switches, dwell ' + r.min.toFixed(0) + '-' + r.max.toFixed(0) + ' s (avg ' + r.avg.toFixed(0) + ')'); ok(r.rep === 0 && r.win === 0, n + ': no track repeats within the previous 5 (incl. immediate repeats)'); ok(r.famSame <= (r.n - 1) * 0.2, n + ': adjacent tracks contrast in mood family (' + r.famSame + ' same of ' + (r.n - 1) + ')'); ok(r.fade >= 6 && r.fade <= 8, n + ': calm crossfades 6-8 s'); ok(r.distinct >= 9, n + ': ' + r.distinct + ' distinct tracks in 40 min'); }
+  ok(K.earlyNudge && K.lateNudge && K.lateTime < 120, 'natural trigger (zone change / level-up) nudges a track that has played >= 45 s, but not earlier');
+  ok(K.lazyDecoded <= 6, 'memory: lazy calm tracks decoded at once <= 6 (' + K.lazyDecoded + ')'); }
+// --- boss/elite variety: pool sizes, 50 simulated fights + retries, history window, phase contrast ---
+{ const V = await ev(async () => { const m = await import('/src/music.ts'), b = await import('/src/content/batch1_bosses.ts'), mm = window.__audio.music; localStorage.clear(); mm.bossBags = {}; mm.bags = {}; mm.hh = null; mm._lh = null; const o = {};
+    o.boss = m.POOLS.bosscombat.length; o.elite = m.POOLS.elite.length; o.sigN = m.SIG_TRACKS.length; o.sting = m.STINGERS.length;
+    const ids = [...new Set([...b.BOSSES.map(x => x.id), ...Object.keys(m.BOSS_MAP)])].filter(i => !m.SIGNATURE[i]); const seq = [], tiers = [];
+    for (let i = 0; i < 50; i++) { const id = ids[Math.floor(Math.random() * ids.length)]; mm.key = id; mm.fightNext = null; mm.planFight(); const n = mm.fightNext; mm.fightNext = null; mm.setHard(n); seq.push(n); // retry after death: same boss again
+      if (i % 3 === 0) { mm.noteRetry(); mm.fightNext = null; mm.planFight(); const r = mm.fightNext; mm.fightNext = null; mm.setHard(r); seq.push(r); } }
+    o.n = seq.length; o.imm = seq.filter((x, i) => i && x === seq[i - 1]).length; let win = 0; for (let i = 0; i < seq.length; i++) for (let j = Math.max(0, i - 8); j < i; j++) if (seq[i] === seq[j]) win++; o.win8 = win; o.distinct = new Set(seq).size;
+    // elite: bag + history, 50 picks (all decoded assumed)
+    const eb = mm.bagFor('elite'); const eseq = []; for (let i = 0; i < 50; i++) { const n = eb.next(mm.fresh ? mm.fresh(eb.items, x => x !== mm.lastHard) : x => x !== mm.lastHard); mm.setHard(n); eseq.push(n); } o.eimm = eseq.filter((x, i) => i && x === eseq[i - 1]).length; o.edistinct = new Set(eseq).size;
+    return o; });
+  ok(V.boss >= 40 && V.elite >= 25, 'pools: boss ' + V.boss + ' (>= 40), elite ' + V.elite + ' (>= 25), signature ' + V.sigN + ', stingers ' + V.sting);
+  ok(V.imm === 0 && V.win8 === 0, '50 simulated boss fights + retries (' + V.n + ' picks): no immediate repeat and none within the previous 8 (persistent history): imm ' + V.imm + ', window ' + V.win8);
+  ok(V.distinct >= 25 && V.edistinct >= 18, 'variety: ' + V.distinct + ' distinct boss tracks over ' + V.n + ' picks, ' + V.edistinct + ' distinct elite tracks over 50'); }
 ok(!errors.length, 'no page errors ' + errors.join('|'));
 // fallback: block music files
 const b2 = await launch({ query: '' }); await b2.page.route('**/audio/music/*', r => r.abort());

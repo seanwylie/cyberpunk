@@ -98,6 +98,97 @@ SIG = {
  'boss_sig_liquidator': "Ruthless auction-house boss theme, 150 bpm, G# minor. Chanting low male-style choir pads counting down, hardstyle reverse bass kicks, gavel snare hits, ticking countdown, orchestral stabs, menacing main melody and a ruthless climax. " + SIGN,
 }
 for _n, _p in SIG.items(): TRACKS[_n] = (150 if not _n.endswith('_p2') else 120, True, _p)
+
+# --- ambient pack 3 (calm pool, 120 s, lazy, 80 kbps): faster calm cadence needs 40+ distinct calm tracks. Family tags drift/pulse/noir/industrial are in src/music.ts ---
+CALM3 = {
+ 'town_rooftop': "Open-air rooftop drift above a neon settlement at night, 68 bpm, B-flat major hopeful. Slow shimmering synth pad, soft glass bell notes, distant traffic hush, no drums, gentle sub. " + AMB,
+ 'town_jukebox': "Noir backroom jazz-tinged ambient, 82 bpm, C minor. Muted brushed drums, upright-bass-like warm sub, smoky electric piano chords, faint vinyl hiss, late-night bar mood. " + AMB,
+ 'town_dockside': "Dockside night groove, 104 bpm, G minor. Soft four-on-floor kick, rubbery bass, tape-delayed dub chords, metallic clinks, creaking cranes in the distance, calm forward motion. " + AMB,
+ 'harrow_smelter': "Calm industrial drone of a distant smelter, 76 bpm, D minor. Slow low machine pulse, warm furnace rumble, resonant metal tones, sparse bell, hot haze. " + AMB,
+ 'harrow_lamplight': "Noir lamplight ambient for a company town street, 72 bpm, A minor. Slow tremolo guitar-like synth, soft upright bass, brushed hats, rainy window mood. " + AMB,
+ 'harrow_ash': "Drifting ash-fall ambient, 60 bpm, E major to C# minor. Wide airy pads, slow glassy piano notes, gentle noise swells, no drums, melancholic. " + AMB,
+ 'harrow_shift': "Shift-change pulse, 98 bpm, F# minor. Gentle muted kick and shaker, warm arpeggio, whistle-like lead sparse, industrial town waking up, steady and calm. " + AMB,
+ 'calm_hollow': "Hollow abandoned-corridor drift, 62 bpm, F minor. Long reverberant drones, faint metallic knocks far away, slow sub swells, hushed breathy texture. " + AMB,
+ 'calm_relay': "Relay-station pulse, 108 bpm, E minor. Soft clicking sequence, filtered bass pulse, muted hats, glassy arpeggio that slowly evolves, cool and focused. " + AMB,
+ 'calm_alley': "Back-alley noir, 86 bpm, D minor. Dusty broken-beat drums, plucked bass, lonely muted trumpet-like synth line, steam and drip textures. " + AMB,
+ 'calm_conduit': "Industrial calm: humming conduits, 90 bpm, A minor. Slow mechanical rhythm of valves and pistons at low volume, deep warm drone, sparse glass tones. " + AMB,
+ 'calm_afterglow': "Afterglow ambient, 70 bpm, G major drifting minor. Soft detuned pads, slow harp-like pluck pattern, gentle shimmer, relief after danger. " + AMB,
+ 'calm_stasis': "Cold stasis chamber industrial ambient, 84 bpm, C# minor. Pulsing low coolant hum, ticking relays, long metallic swells, faint ice-like harmonics. " + AMB,
+ 'area_hi_ember': "Heavy-industry glow pulse, 92 bpm, G minor. Slow anvil-like soft hits, warm bass pulse, drifting furnace pads, sparse bell motif. " + AMB,
+ 'area_ps_hush': "Hush of a sealed surgical wing, 66 bpm, F# minor. Pure tones, slow sine pulses, glass harmonics, faint ventilation, sterile and uneasy. " + AMB,
+ 'area_mm_closing': "Closing-time retail noir, 80 bpm, A-flat major warped. Slow detuned lounge keys, brushed snare, tape wobble, empty-store atmosphere, lonely announcement-free. " + AMB,
+}
+for _n, _p in CALM3.items(): TRACKS[_n] = (120, True, _p)
+LOWRATE |= set(CALM3)
+
+# --- pack 4: bigger variety (target ~60 calm, ~40 boss, ~25 elite, 4 stingers). See docs/AUDIO.md ---
+CALM4 = {
+ 'town_dawnmarket': "Sleepy dawn market opening in a salvage town, 74 bpm, A major hopeful. Soft marimba-like pluck pattern, warm pad, birds replaced by distant drones, barely-there kick. " + AMB,
+ 'town_lastcall': "Last-call noir in a smoky back bar, 78 bpm, E minor. Brushed drums, warm upright-bass-like sub, slow smoky saxophone-like synth lines, vinyl crackle. " + AMB,
+ 'town_scrapyard': "Scrapyard lullaby, 88 bpm, C minor. Soft clanking metal percussion like wind chimes, deep calm drone, slow bass pulse, rusty textures. " + AMB,
+ 'harrow_whistle': "Factory whistle at shift change in a company town, 96 bpm, G major turning minor. Gentle muted beat, steam-whistle-like synth swells, warm arpeggio, steady and calm. " + AMB,
+ 'harrow_chapel': "Old industrial chapel ambient, 56 bpm, D major. Slow organ-like pads, distant bell, deep reverb, wordless soft choir texture, reverent. " + AMB,
+ 'harrow_mill': "Idle rolling mill, 82 bpm, F minor. Slow grinding rhythm at low volume, hot air drone, sparse metallic ping, hypnotic. " + AMB,
+ 'calm_coldopen': "Cold open of a dungeon run, 64 bpm, B minor. Sparse sub heartbeat, thin glassy pad, faint distant machinery, anticipation. " + AMB,
+ 'calm_midshift': "Mid-shift steady exploration, 100 bpm, A minor. Soft rolling hats, muted bass pulse, evolving pad, small repeating bell motif. " + AMB,
+ 'calm_deepcut': "Deep-cut industrial corridors, 78 bpm, C# minor. Slow piston rhythm, low metallic drone, sparse reversed tones, claustrophobic but calm. " + AMB,
+ 'calm_exitroute': "Quiet noir exit route after danger, 84 bpm, G minor. Soft brushed beat, lonely electric piano, slow walking bass, relief tinged with unease. " + AMB,
+ 'calm_breathing': "Breathing room drift, 58 bpm, E-flat major. Slow breathing pad swells, tiny bell pings, no rhythm, soft sub. " + AMB,
+ 'calm_wires': "Humming power wires pulse, 112 bpm, D minor. Electric hum bed, soft sequenced pulse, gentle filtered arpeggio, cool and steady. " + AMB,
+ 'calm_sodium': "Sodium streetlight noir, 70 bpm, F# minor. Slow tremolo electric guitar-like synth, sparse upright-bass notes, rain-on-metal texture. " + AMB,
+ 'area_hi_coke': "Coke ovens glow, 86 bpm, D minor. Slow heavy soft-hit pulse, ember crackle, warm low drone, sparse bell. " + AMB,
+ 'area_hi_bellring': "Distant bell foundry ambience, 62 bpm, A-flat major. Deep tolling bells softened with reverb, warm pad, slow shimmer, no drums. " + AMB,
+ 'area_ps_archive': "Cold archive drift, 60 bpm, B minor. Paper-and-glass textures, slow pure-tone pad, tiny clicks, frozen air. " + AMB,
+ 'area_ps_ledger': "Audit-floor noir, 92 bpm, E-flat minor. Typewriter-like soft clicks as rhythm, dry upright bass, muted keys, bureaucratic loneliness. " + AMB,
+ 'area_mm_clearance': "Clearance-sale ghost mall pulse, 102 bpm, C major warped. Gentle four-on-floor, detuned jingle-like pluck motif, tape wobble, hollow echo. " + AMB,
+ 'area_mm_freight': "Freight depot night, 96 bpm, B minor. Distant train-like soft rhythm, deep warm drone, sparse horn-like synth calls, steady. " + AMB,
+}
+_H = "instrumental, cinematic dark industrial cyberpunk, steady high intensity throughout, no breakdown, seamless loop."
+BOSS4 = {
+ 'boss_tarpit': "Tar-thick sludge metal boss battle, 118 bpm, instrumental. Heavy slow distorted riffs, thick sub, crawling drums, dread, " + _H,
+ 'boss_rivet': "Riveting-gun industrial boss battle, 132 bpm, instrumental. Rapid machine-gun rivet percussion, pounding kick, grinding bass, " + _H,
+ 'boss_ledgerman': "Orchestral-industrial boss battle, 126 bpm, instrumental. Tense low strings ostinato, heavy anvil hits, brass-like swells, ticking, " + _H,
+ 'boss_cinder': "Smouldering furnace boss battle, 136 bpm, instrumental. Roaring distorted bass, crackling embers, driving tom-heavy drums, " + _H,
+ 'boss_vigil': "Choir-and-machine boss battle, 140 bpm, instrumental. Wordless dark choir pads chanting, mechanical pulse, big kick, bell hits, " + _H,
+ 'boss_static_choir': "Glitch choir boss battle, 148 bpm, instrumental. Chopped stuttering choir fragments, bit-crushed drums, broken-radio static, wobbling bass, " + _H,
+ 'boss_gearwork': "Clockwork gear boss battle, 152 bpm, instrumental. Interlocking gear-like percussion, ticking arpeggio, deep chugging bass, " + _H,
+ 'boss_tollroad': "Highway chase boss battle, 158 bpm, instrumental. Pounding four-on-floor, siren-like leads, doppler sweeps, aggressive acid bass, " + _H,
+ 'boss_marrow': "Bone-deep sub bass boss battle, 144 bpm, instrumental. Huge sub drops, bone-crunch percussion, minimal menacing lead, " + _H,
+ 'boss_hammerfall': "Drum-heavy tribal-industrial boss battle, 150 bpm, instrumental. Massive layered taiko and tom drums, metallic hits, distorted bass, " + _H,
+ 'boss_siren': "Air-raid siren boss battle, 164 bpm, instrumental. Rising wailing sirens, blistering breakbeats, heavy reese bass, " + _H,
+ 'boss_glitchking': "Hyper-glitch boss battle, 170 bpm, instrumental. Extreme stutter edits, digital screeches, fast double-time drums, mangled bass, " + _H,
+ 'boss_dirge': "Doom-orchestral boss battle, 138 bpm, instrumental. Slow crushing brass-like dirge theme, huge impacts, tolling bells, double-kick, " + _H,
+ 'boss_overload': "Overloaded power-grid boss battle, 160 bpm, instrumental. Arcing electric zaps, distorted square-wave leads, relentless kick, transformer hum, " + _H,
+ 'boss_ironchoir': "Iron-choir boss battle, 156 bpm, instrumental. Massive wordless choir with metal percussion, heavy stabs, pounding bass, epic, " + _H,
+ 'boss_apex': "Apex predator boss battle, 172 bpm, instrumental. Aggressive neurofunk, vicious growling bass, rapid snares, tense stabs, very intense, " + _H,
+ 'boss_cataclysm': "Cataclysm boss battle, 174 bpm, instrumental. Collapsing-building impacts, distorted hardcore kicks, apocalyptic synth hits, maximum intensity, " + _H,
+ 'boss_endshift': "Final shift boss battle, 168 bpm, instrumental. Frantic breakcore drums, alarm klaxons, screaming saw lead, relentless, maximum intensity, " + _H,
+ 'boss_zero': "Zero-hour boss battle, 176 bpm, instrumental. Terrifying distorted choir over blistering drum and bass, colossal bass drops, maximum intensity, " + _H,
+}
+ELITE4 = {
+ 'elite_pistons': "Piston-driven elite fight, 134 bpm, instrumental. Hissing pistons as hats, stomping kick, gritty bass riff, ",
+ 'elite_flare': "Flare-gun elite fight, 146 bpm, instrumental. Bright searing synth stabs, heavy kick, sizzling noise, rolling bass, ",
+ 'elite_knell': "Death-knell elite fight, 122 bpm, instrumental. Tolling bells over a grinding half-time groove, dark brass-like pads, ",
+ 'elite_hexa': "Glitch-hop elite fight, 110 bpm, instrumental. Hexagonal stuttering drums, wobbling bass, broken synth hook, ",
+ 'elite_scour': "Scouring noise-techno elite fight, 152 bpm, instrumental. Harsh noisy hats, punishing kick, distorted rumble bass, ",
+ 'elite_lockdown': "Lockdown elite fight, 142 bpm, instrumental. Alarm tones, rigid sequenced bass, heavy snare, tense minor stabs, ",
+ 'elite_vandal': "Punk-industrial elite fight, 160 bpm, instrumental. Fast distorted drums, shouting-free aggressive riffs from noisy synth guitars, ",
+ 'elite_cascade': "Cascading arpeggio trance-industrial elite fight, 138 bpm, instrumental. Rapid falling arpeggios, pounding kick, dark pads, ",
+ 'elite_thorn': "Thorny acid-electro elite fight, 128 bpm, instrumental. Spiky 303-style acid line, snappy claps, heavy bass, ",
+ 'elite_ironhide': "Armoured elite fight, 118 bpm, instrumental. Heavy stomping industrial groove, clanging metal, slow menacing brass-like lead, ",
+ 'elite_surge': "Surging drum-and-bass elite fight, 172 bpm, instrumental. Rolling sub, fast breaks, rising synth swells, ",
+}
+STING = {
+ 'stinger_levelup': (10, 4.0, "Short uplifting synth level-up sting, instrumental. Bright rising arpeggio and a warm shimmering chord, industrial cyberpunk flavour, ends cleanly."),
+ 'stinger_rare': (10, 4.0, "Short rare-loot discovery sting, instrumental. Glittering metallic chime cascade and a deep shimmering pad swell, mysterious and rewarding, ends cleanly."),
+ 'stinger_complete': (10, 8.0, "Run-complete victory sting, instrumental. Triumphant but weary industrial brass-like synth chord progression resolving to a warm final chord with a deep sub boom, ends cleanly."),
+ 'stinger_death': (10, 5.0, "Short defeat sting, instrumental. Descending detuned tones, power-down sweep and a low sub thud, bleak industrial, ends cleanly."),
+}
+for _n, _p in CALM4.items(): TRACKS[_n] = (120, True, _p)
+for _n, _p in BOSS4.items(): TRACKS[_n] = (75, True, _p)
+for _n, _p in ELITE4.items(): TRACKS[_n] = (75, True, _p + "dark industrial cyberpunk, steady high intensity throughout, no breakdown, seamless loop.")
+for _n, (_g, _k, _p) in STING.items(): TRACKS[_n] = (_g, False, _p)
+LOWRATE |= set(CALM4)
 XF = 2.0
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'
@@ -121,6 +212,9 @@ def process(name, loop):
               f"[b]atrim={L-XF}:{L},asetpts=PTS-STARTPTS[tail];[c]atrim=0:{XF},asetpts=PTS-STARTPTS[head];"
               f"[tail][head]acrossfade=d={XF-0.01}:c1=qsin:c2=qsin[x];[mid][x]concat=n=2:v=0:a=1,loudnorm=I=-16:TP=-1.5[o]")
         subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(raw),'-filter_complex',fc,'-map','[o]','-ac','2','-ar','44100','-b:a',BR,str(out)])
+    elif name in STING:
+        k = STING[name][1]
+        subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(raw),'-af',f'atrim=0:{k},afade=t=out:st={k-1.2}:d=1.2,loudnorm=I=-16:TP=-1.5','-ac','2','-ar','44100','-b:a','112k',str(out)])
     else:
         subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(raw),'-af',f'loudnorm=I=-16:TP=-1.5,afade=t=out:st={L-1.5}:d=1.5' if name=='clear' else 'loudnorm=I=-16:TP=-1.5','-ac','2','-ar','44100','-b:a','112k',str(out)])
     print(name, f'{dur(out):.1f}s', out.stat().st_size//1024, 'KB')

@@ -430,7 +430,7 @@ export class Game {
     if(this.combatHold>0){ this.sinceAb+=dt; if(this.sinceAb>16&&this.nudgeCd<=0&&!this.overheated){ const i=this.build.abilities.findIndex((a,k)=>a&&this.abCd[k]<=0&&ABILITIES[a].heat+this.heat<=COMBAT.heat.max); if(i>=0){ this.nudgeCd=40; this.sinceAb=0; this.emit('nudge',i); this.toast(`Abilities are ready: ${ABILITIES[this.build.abilities[i]!].name} [${['Q','E','R'][i]}] hits far harder than auto-attacks.`); } } } else this.sinceAb=0;
   }
   playerDown(){
-    this.hp=0; this.downed=true; this.downT=0; this.cast=null; this.aim=null; this.channel=null; this.clearTransients(); this.emit('sfx','down');
+    this.hp=0; this.downed=true; this.emit('stinger','death'); this.downT=0; this.cast=null; this.aim=null; this.channel=null; this.clearTransients(); this.emit('sfx','down');
     const inst=this.inst!; const cand=SLOTS.filter(s=>!inst.broken.includes(s)&&!inst.protectedSlots.includes(s)&&this.save.installed[s]&&!ITEM_BY_ID[this.save.items.find(i=>i.uid===this.save.installed[s])!.def].id.startsWith('stock_'));
     let broke:Slot|null=null; if(cand.length){ broke=cand[Math.floor(Math.random()*cand.length)]; inst.broken.push(broke); const it=this.save.items.find(i=>i.uid===this.save.installed[broke!])!; const cost=Math.round(REPAIR_COST[ITEM_BY_ID[it.def].rarity]*HARD.death.repairMul); this.save.repairBill+=cost; inst.repairAdded+=cost; }
     { const lost=Math.floor(inst.carried.credits*HARD.death.creditLoss); if(lost>0){ inst.carried.credits-=lost; this.toast('Downed: lost '+lost+' carried credits.'); } }
@@ -447,7 +447,7 @@ export class Game {
     for(const cp of L.checkpoints){ if(dist(this.px,this.py,cp.x,cp.y)<1.8){ inst.reached=inst.reached||[]; const first=!inst.reached.includes(cp.id); if(first&&!this.downed){ inst.reached.push(cp.id); this.hp=Math.min(this.maxHp,this.hp+this.maxHp*.4); this.heat=0; this.overheated=false; this.emit('checkpoint',cp.label); this.fx.push({kind:'ring',x:cp.x,y:cp.y,r:1.1,t:0,life:.8}); }
       if(inst.checkpoint.id!==cp.id){ inst.checkpoint={id:cp.id,x:cp.x,y:cp.y}; this.toast('CHECKPOINT: '+cp.label+(first?' · +40% HP, heat vented. Downed? you return here. Menu: Restart from checkpoint.':' · respawn point set.')); this.saveNow(); }
       if(inst.broken.length&&!this.downed){ for(const s of inst.broken) inst.protectedSlots.push(s); inst.broken=[]; this.recompute(); this.toast('Checkpoint restored your hardware (repair bill kept).'); } } }
-    { const zn=this.zoneAt(this.px,this.py); if(zn!==this.lastZone){ const lab=(this.dd.zoneLabels as any)[zn]; if(lab&&this.lastZone!==''&&zn!=='none'){ const nowT=performance.now(); const last=this.zoneShown[zn]||-1e9; if(nowT-last>20000&&nowT-this.zoneAnyAt>3000){ this.zoneShown[zn]=nowT; this.zoneAnyAt=nowT; this.emit('zone',{label:lab,zone:zn,hint:this.objective()?.text||''}); } } this.lastZone=zn; } this.seenT-=dt; if(this.seenT<=0){ this.seenT=.25; this.markSeen(); } }
+    { const zn=this.zoneAt(this.px,this.py); if(zn!==this.lastZone){ if(this.lastZone!==''&&zn!=='none') this.emit('musicnudge',null); const lab=(this.dd.zoneLabels as any)[zn]; if(lab&&this.lastZone!==''&&zn!=='none'){ const nowT=performance.now(); const last=this.zoneShown[zn]||-1e9; if(nowT-last>20000&&nowT-this.zoneAnyAt>3000){ this.zoneShown[zn]=nowT; this.zoneAnyAt=nowT; this.emit('zone',{label:lab,zone:zn,hint:this.objective()?.text||''}); } } this.lastZone=zn; } this.seenT-=dt; if(this.seenT<=0){ this.seenT=.25; this.markSeen(); } }
     // sensors (cloak route)
     const sn=L.sensors; if(this.px>=sn.x0&&this.px<=sn.x1+1&&this.py>=sn.y0&&this.py<=sn.y1+1){ if(this.cloakT<=0&&!f.alarm){ f.alarm=true; this.toast('SENSOR ALARM: security responding'); this.emit('sfx','alarm'); for(let i=0;i<4;i++){ const e=this.spawnEnemy(this.dd.alarmType,this.px+(i<2?-3:3)+(i%2)*.6,this.py+.5+(i%2)*.7); e.alert=true; } } else if(this.cloakT>0&&!this.sensorFlag){ this.sensorFlag=true; this.note('route_used','cloak'); } }
     // boss reveal trigger
@@ -672,7 +672,7 @@ export class Game {
   grantKill(e:En){ const def=ENEMIES[e.type]; const inst=this.inst!; this.kills++; this.save.stats.kills++; inst.kills[e.type]=(inst.kills[e.type]||0)+1;
     { const xpv=def.xp*((e as any).affix?.length?2.5:1); this.addXp(xpv); inst.xpEarned+=xpv; } this.save.rep[def.mfr]+=def.rep; record(this.story(),'kill_mfr',def.mfr); this.contractEvent('kill_mfr',def.mfr); this.contractEvent('kill_type',e.type);
     this.rollLoot(e); }
-  addXp(n:number){ const s=this.save; s.xp+=n; while(s.level<PROGRESSION.maxLevel&&s.xp>=PROGRESSION.xpForLevel(s.level)){  s.xp-=PROGRESSION.xpForLevel(s.level); s.level++; this.toast('Level up! Level '+s.level); this.recompute(); } this.checkTownUnlocks(); }
+  addXp(n:number){ const s=this.save; s.xp+=n; while(s.level<PROGRESSION.maxLevel&&s.xp>=PROGRESSION.xpForLevel(s.level)){  s.xp-=PROGRESSION.xpForLevel(s.level); s.level++; this.emit('musicnudge',null); this.emit('stinger','levelup'); this.toast('Level up! Level '+s.level); this.recompute(); } this.checkTownUnlocks(); }
   pickEntry(pool:LootEntry[]):LootEntry{ const tot=pool.reduce((a,b)=>a+b.w,0); let last=pool[0];
     for(let tries=0;tries<10;tries++){ let r=Math.random()*tot, pick=pool[0]; for(const e of pool){ r-=e.w; if(r<=0){ pick=e; break; } } last=pick;
       const rar:Rarity=pick.item?ITEM_BY_ID[pick.item].rarity:pick.chip?CHIPS[pick.chip].rarity:'green'; if(Math.random()<(HARD.rarityKeep[rar]??1)) return pick; } /* slower power curve: rarer rarities are re-rolled away; orange is signature-only */
@@ -728,7 +728,7 @@ export class Game {
   autoPickup(){
     const inst=this.inst!; if(this.downed) return; const rad=COMBAT.pickupRadius+this.stat().pickup; const near=inst.drops.filter(d=>dist(d.x,d.y,this.px,this.py)<rad);
     near.sort((a,b)=>RARITY_RANK[this.dropRarity(b)]-RARITY_RANK[this.dropRarity(a)]); const c=inst.carried;
-    for(const d of near){ this.pickFx.push({id:d.id,x:d.x,y:d.y,kind:d.kind,inst:d.inst,chip:d.chip,amount:d.amount,t0:this.time}); if(this.pickFx.length>24) this.pickFx.shift(); if(d.kind==='credits'){ c.credits+=d.amount; this.rm(d); this.emit('sfx','coin'); continue; }
+    for(const d of near){ if(d.kind!=='credits'&&d.inst){ const rr=this.dropRarity(d); if(rr==='purple'||rr==='orange') this.emit('stinger','rare'); } this.pickFx.push({id:d.id,x:d.x,y:d.y,kind:d.kind,inst:d.inst,chip:d.chip,amount:d.amount,t0:this.time}); if(this.pickFx.length>24) this.pickFx.shift(); if(d.kind==='credits'){ c.credits+=d.amount; this.rm(d); this.emit('sfx','coin'); continue; }
       if(d.kind==='item'&&HARD.autoSellGrey&&this.save.settings.autoSellGrey!==false&&ITEM_BY_ID[d.inst!.def].rarity==='grey'){ const v=SELL_VALUE.grey; c.credits+=v; this.rm(d); this.emit('sfx','coin'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.9,text:'sold junk +'+v+'c',c:'#c9b87a'}); continue; }
       const stacksOk=(d.kind==='chip'&&(c.chips[d.chip!]||0)>0)||(d.kind==='stim'&&c.stims>0); const fits=stacksOk||this.carriedCount()<COMBAT.missionSlots;
       if(!fits){ if(!d.marker){ d.marker=true; this.toast('Inventory full: item left on the ground (marked).'); } continue; }
@@ -741,7 +741,7 @@ export class Game {
   /** Per-player clear rewards (clear XP, lockout, contracts, achievements). */
   grantClear(e:En){ const inst=this.inst!; const f=inst.flags; if((inst as any)._cg) return; (inst as any)._cg=true; f.completed=true; this.save.cleared={...(this.save.cleared||{}),[this.dd.id]:Date.now()};
     if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Return to town any time: your pack is banked and you can start another dungeon.'); }
-    for(const d of checkAchievements(this.save)) this.toast('Wardrobe unlocked: '+d.name+' ('+d.rarity+')'); this.emit('boss-dead'); this.resPending=5; this.saveNow();
+    for(const d of checkAchievements(this.save)) this.toast('Wardrobe unlocked: '+d.name+' ('+d.rarity+')'); this.emit('boss-dead'); this.emit('stinger','complete'); this.resPending=5; this.saveNow();
   }
   resPending=0; zoneShown:Record<string,number>={}; zoneAnyAt=-1e9; lastZone=''; seenT=0; seen:Uint8Array|null=null; seenFor:Level|null=null; pathT=0; pathWp:{x:number;y:number}|null=null; pathLen=0;
   markSeen(){ const L=this.level; if(this.seenFor!==L||!this.seen){ this.seen=new Uint8Array(L.w*L.h); this.seenFor=L; } const R=9; const px=Math.floor(this.px), py=Math.floor(this.py); for(let y=Math.max(0,py-R);y<=Math.min(L.h-1,py+R);y++) for(let x=Math.max(0,px-R);x<=Math.min(L.w-1,px+R);x++) if((x-px)**2+(y-py)**2<=R*R) this.seen[y*L.w+x]=1; }
