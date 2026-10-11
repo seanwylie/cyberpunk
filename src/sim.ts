@@ -468,7 +468,7 @@ export class Game {
   }
   updatePrompt(){ const L=this.level; const inst=this.inst; const f=inst?.flags; let best:Interact|null=null,bd=1e9;
     for(const it of L.interacts){ if(this.mode==='run'&&f){ if(it.id==='hackproc'&&f.lock2) continue; if(it.id==='armorydoor'&&f.armory) continue; if(it.id==='controller'&&f.controller) continue; if(it.id==='cratechip'&&inst!.claimed.includes('cratechip')) continue; }
-      const d=dist(this.px,this.py,it.x,it.y); if(d<it.r&&d<bd){ bd=d; best=it; } }
+      const d=dist(this.px,this.py,it.x,it.y); const rr=it.r+(this.prompt?.id===it.id?.35:0) /* small hysteresis: no flicker at the edge */; if(d<rr&&d<bd){ bd=d; best=it; } }
     if(this.prompt?.id!==best?.id) this.prompt=best; }
 
   // ---------- enemies ----------

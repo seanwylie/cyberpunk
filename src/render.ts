@@ -403,13 +403,21 @@ export class Renderer {
     const a=this.sx(s.x,s.y), b=this.sy(s.x,s.y); const T=g.time+n.ph*3; const breathe=Math.sin(T*1.7)*.012, sway=Math.sin(T*.7)*.015, step=s.moving?Math.abs(Math.sin(T*5))*this.TW*.035:0;
     c.save(); c.fillStyle='rgba(0,0,0,.4)'; c.beginPath(); c.ellipse(a,b,sp.w*.32,sp.w*.11,0,0,7); c.fill();
     c.translate(a,b-step); if(s.flip) c.scale(-1,1); c.transform(1,0,sway+(s.moving?Math.sin(T*5)*.03:0),1+breathe,0,0); c.drawImage(sp.cv,-sp.w/2,-sp.h*.97,sp.w,sp.h); c.restore(); }
-  /** station wayfinding in the world: bobbing coloured chevron + a name pill (icon + name) that fades in with proximity */
-  private townMarker(it:{id:string;x:number;y:number;label:string},a:number,b:number,s:number){ const st=STATION_BY_ID[it.id]; const c=this.ctx, g=this.g; if(!st) return; const d=Math.hypot(g.px-it.x,g.py-it.y);
-    const fade=Math.max(0,Math.min(1,(17-d)/7)); const near=d<(it as any).r; const bob=Math.sin(g.time*2.2+it.x)*2*s; const lift=(st.key==='gate'?72:58)*s*(this.TW/64>1.2?1:1);
-    c.save(); c.globalAlpha=Math.max(.5,fade)*(near?1:.9); c.fillStyle=st.color; c.strokeStyle='rgba(10,10,12,.8)'; c.lineWidth=1.5; c.beginPath(); c.moveTo(a,b-lift+10*s+bob); c.lineTo(a-7*s,b-lift+bob); c.lineTo(a+7*s,b-lift+bob); c.closePath(); c.fill(); c.stroke(); c.restore();
-    if(fade>.02){ c.save(); c.globalAlpha=fade; const FS=uiFs(); const fs=cpx(12*s*1.3*FS); c.font=`700 ${fs}px ${FONT}`; c.textAlign='left'; c.textBaseline='middle'; const txt=st.name.toUpperCase(); const tw=c.measureText(txt).width; const ph=fs*1.7, pw=tw+ph+fs*.8; const x0=a-pw/2, y0=b-lift-ph-10*s;
-      c.fillStyle='rgba(10,11,14,.82)'; c.beginPath(); (c as any).roundRect?.(x0,y0,pw,ph,ph/2); if(!(c as any).roundRect) c.rect(x0,y0,pw,ph); c.fill(); c.strokeStyle=st.color; c.lineWidth=1.5; c.stroke();
-      drawIcon(c,st.icon,x0+ph*.55,y0+ph/2,ph*.3,st.color); c.fillStyle='#f4f1e6'; c.fillText(txt,x0+ph*1.05,y0+ph/2+1); c.restore(); } }
+  /** Station wayfinding in the world. ONE trigger for title + prompt: the name pill and the F prompt both show exactly when g.prompt is this station (same distance check, with hysteresis, in sim.updatePrompt).
+   *  Farther away there is only secondary wayfinding: a light pillar (visible from afar), an icon-only chip, a bouncing arrow within 12 tiles, and a ground ring that brightens/fills as you step in. */
+  private townMarker(it:{id:string;x:number;y:number;label:string},a:number,b:number,s:number){ const st=STATION_BY_ID[it.id]; const c=this.ctx, g=this.g; if(!st) return; const d=Math.hypot(g.px-it.x,g.py-it.y); const R=(it as any).r||2.4;
+    const ready=g.prompt?.id===it.id; const lowfx=Q.fx>=2||!!g.save.settings.reducedFx; const T=lowfx?0:g.time; const pulse=lowfx?.6:.5+.5*Math.sin(g.time*3+it.x); const k=this.TW/64;
+    // ground: interact-radius ring + pad glow (fills/brightens when ready)
+    { const base=ready?.34:d<14?.14:.08; this.poly(this.circle(it.x,it.y,R),st.color,undefined,base+(ready?.18*pulse:.05*pulse),2); this.poly(this.circle(it.x,it.y,R*(ready?1:.98)),undefined,ready?'#ffffff':st.color,ready?.95:(.5+.25*pulse),ready?4:2.5); if(ready) this.poly(this.circle(it.x,it.y,R*.55),st.color,undefined,.3+.25*pulse,2); }
+    // light pillar (cheap vertical gradient), visible from afar; taller and brighter when ready
+    { const H=(ready?210:170)*k, W=(ready?30:22)*k; const gr=c.createLinearGradient(0,b,0,b-H); gr.addColorStop(0,st.color); gr.addColorStop(1,'rgba(0,0,0,0)'); c.save(); c.globalAlpha=(ready?.5:.26+.1*pulse)*(d>40?.7:1); c.fillStyle=gr; c.beginPath(); c.moveTo(a-W/2,b); c.lineTo(a-W*.18,b-H); c.lineTo(a+W*.18,b-H); c.lineTo(a+W/2,b); c.closePath(); c.fill(); c.restore(); }
+    // bouncing arrow when within 12 tiles
+    const near12=d<12; const lift=(st.key==='gate'?72:58)*k+ (near12?14*k:0); const bob=near12&&!lowfx?Math.abs(Math.sin(T*4+it.x))*10*k:Math.sin(T*2.2+it.x)*2*k; const sz=near12?1.5:1;
+    c.save(); c.globalAlpha=near12||ready?1:.8; c.fillStyle=st.color; c.strokeStyle='rgba(10,10,12,.85)'; c.lineWidth=1.5; c.beginPath(); c.moveTo(a,b-lift+14*s*sz+bob); c.lineTo(a-9*s*sz,b-lift+bob); c.lineTo(a+9*s*sz,b-lift+bob); c.closePath(); c.fill(); c.stroke(); c.restore();
+    if(ready){ c.save(); const FS=uiFs(); const fs=cpx(12*s*1.3*FS); c.font=`700 ${fs}px ${FONT}`; c.textAlign='left'; c.textBaseline='middle'; const txt=st.name.toUpperCase(); const tw=c.measureText(txt).width; const ph=fs*1.7, pw=tw+ph+fs*.8; const x0=a-pw/2, y0=b-lift-ph-14*s;
+      c.fillStyle='rgba(10,11,14,.88)'; c.beginPath(); (c as any).roundRect?.(x0,y0,pw,ph,ph/2); if(!(c as any).roundRect) c.rect(x0,y0,pw,ph); c.fill(); c.strokeStyle=st.color; c.lineWidth=2.5; c.stroke();
+      drawIcon(c,st.icon,x0+ph*.55,y0+ph/2,ph*.3,st.color); c.fillStyle='#f4f1e6'; c.fillText(txt,x0+ph*1.05,y0+ph/2+1); c.restore(); }
+    else if(d<22){ c.save(); const ch=cpx(22*uiFs()); c.globalAlpha=Math.max(.45,Math.min(.95,(22-d)/8)); c.fillStyle='rgba(10,11,14,.85)'; c.strokeStyle=st.color; c.lineWidth=2; c.beginPath(); c.arc(a,b-lift-ch*.75-10*s,ch/2,0,7); c.fill(); c.stroke(); drawIcon(c,st.icon,a,b-lift-ch*.75-10*s,ch*.28,st.color); c.restore(); } }
   /** edge-of-screen arrows toward stations that are off screen (Settings: Show station markers) */
   private drawStationArrows(){ const c=this.ctx, g=this.g; if(g.save.settings.stationMarkers===false||g.mode!=='town') return; const mT=64,mB=112,mL=26,mR=26; const cx=this.w/2, cy=this.h/2; const FS=uiFs(); (window as any).__arrows=[];
     for(const st of STATIONS){ const d=Math.hypot(g.px-st.x,g.py-st.y); if(d<9) continue; const px=this.sx(st.x,st.y), py=this.sy(st.x,st.y)-this.TW*.6; if(px>mL&&px<this.w-mR&&py>mT&&py<this.h-mB) continue;
