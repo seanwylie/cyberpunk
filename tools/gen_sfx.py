@@ -33,12 +33,17 @@ for f, l, p, d in jobs:
     name = f'{f}_{l}'; raw = RAW / (name + '.mp3'); out = OUT / (name + '.mp3')
     if out.exists() and not force: print('skip', name); continue
     if not raw.exists() or force:
-        body = json.dumps({'text': S + p, 'duration_seconds': d, 'prompt_influence': .55}).encode()
+        body = json.dumps({'text': S + p, 'duration_seconds': max(.5, d), 'prompt_influence': .55}).encode()
         req = urllib.request.Request('https://api.elevenlabs.io/v1/sound-generation?output_format=mp3_44100_128', body, {'xi-api-key': KEY, 'Content-Type': 'application/json'})
         try:
             with urllib.request.urlopen(req, timeout=120) as r: raw.write_bytes(r.read())
         except urllib.error.HTTPError as e: print('FAIL', name, e.code, e.read()[:200]); continue
     # trim silence both ends, compress, peak-normalise to -3 dB, short fade-out; mono 32 kHz 56 kbps
     flt = 'silenceremove=start_periods=1:start_threshold=-45dB,areverse,silenceremove=start_periods=1:start_threshold=-45dB,areverse,acompressor=threshold=-18dB:ratio=3:attack=3:release=60,alimiter=limit=0.7,afade=t=out:st=%.2f:d=0.12' % max(0.1, d - .2)
-    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(raw), '-af', flt, '-ac', '1', '-ar', '32000', '-b:a', '56k', str(out)], check=True)
+    tmp = OUT / ('_tmp_' + name + '.wav')
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(raw), '-af', flt, '-ac', '1', '-ar', '32000', str(tmp)], check=True)
+    # two-pass peak normalisation to -3 dB so every layer sits at the same level (the game scales per ability afterwards)
+    vd = subprocess.run(['ffmpeg', '-hide_banner', '-i', str(tmp), '-af', 'volumedetect', '-f', 'null', '-'], capture_output=True, text=True).stderr
+    peak = float([l for l in vd.splitlines() if 'max_volume' in l][0].split()[-2]); gain = -3.0 - peak
+    subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', str(tmp), '-af', 'volume=%.2fdB,alimiter=limit=0.7' % gain, '-b:a', '56k', str(out)], check=True); tmp.unlink()
     print('ok', name, out.stat().st_size)

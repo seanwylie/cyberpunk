@@ -23,6 +23,10 @@ const more = await ev(async () => { const au = window.__audio, g = window.__game
   g.vfx('overcharge_shot.trail', g.px, g.py, { a: 0 }); return { red, muted, rate, town, run: run.length, runNames: run.join(',') }; });
 if (!more.skip) { ok(more.red === 1, `Reduced FX plays cast only, no windup/travel (${more.red} of 3)`); ok(more.muted === 0, 'volume 0 plays nothing'); ok(more.rate <= 2, `same layer rate-limited (${more.rate} of 30 rapid impacts played)`); }
 ok(more.town === 0, 'town: no ability sfx emitted'); ok(more.run >= 2, `run: cast + impact layers emitted (${more.runNames})`);
+// lazy load: the first plays kicked off loads (synth meanwhile); once decoded the same layers play from samples; a missing sample falls back to synth
+const lz = await ev(async () => { const au = window.__audio; if (!au.ctx || au.ctx.state !== 'running') return { skip: true }; const S = au.abSfx; await new Promise(r => setTimeout(r, 2500)); const loaded = S.stats.loaded; const s0 = S.stats.sample; await new Promise(r => setTimeout(r, 400)); S.voices = []; S.last.clear(); S.play('piston_jab', 'cast'); S.play('overcharge_shot', 'impact'); const fromSample = S.stats.sample - s0;
+  S.buf.set('servo_impact', null); S.voices = []; S.last.clear(); const y0 = S.stats.synth; S.play('piston_jab', 'impact'); return { loaded, fromSample, fallback: S.stats.synth - y0, missing: S.stats.missing }; });
+if (!lz.skip) { ok(lz.loaded > 0, `${lz.loaded} sample buffers lazy-loaded on demand`); ok(lz.fromSample >= 1, 'decoded samples are used once loaded'); ok(lz.fallback === 1, 'a missing/failed sample falls back to the synth'); }
 // ambient cues + generator + docs
 const au = fs.readFileSync(new URL('../src/audio.ts', import.meta.url), 'utf8'), sim = fs.readFileSync(new URL('../src/sim.ts', import.meta.url), 'utf8');
 ok(['attack', 'defense', 'hacking', 'mobility'].every(t => au.includes(`'ab_ready_${t}'`)), 'per-type cooldown-ready pings'); ok(au.includes("'amb_hot'") && sim.includes("'amb_hot'"), 'overheat warning cue'); ok(fs.existsSync(new URL('../tools/gen_sfx.py', import.meta.url)), 'sfx generator script present');
