@@ -13,6 +13,7 @@ import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
 import { MOVES, MOVE_ATK } from './content/boss_moves';
 import { BOSS_BY_ID } from './content/batch1_bosses';
 import { HARD, applyHard } from './content/hardmode';
+import { rollCosmetic, checkAchievements, COS_SLOT_LABEL } from './content/appearance';
 import { DUNGEONS } from './content/dungeons';
 import { movePattern, resolveMove, bossTick, filterDamage, clearBossAdds } from './content/mechanics';
 import { mobTick, mobDeath, mobAfterHit, resolveMobAttack, mobPattern, MOB_COND } from './content/mobs';
@@ -627,7 +628,12 @@ export class Game {
     const affixOnly=tier==='elite'&&!def.elite, guar=def.boss?DROP.bossGuaranteed:def.elite?DROP.eliteGuaranteed:0, extra=def.boss?DROP.bossExtra:tier==='elite'?DROP.eliteExtra:0;
     for(let i=0;i<rolls;i++){ const ch=ord?T.chance*Math.min(1,sc):i<guar?1:affixOnly&&i===0?HARD.affixChance:Math.min(1,extra*(sc/DROP_RATE_SCALE)); if(Math.random()>ch) continue; let pl=pool; if(def.boss&&i===1&&Math.random()<HARD.bossSecondNonItem){ const alt=pool.filter(x=>!x.item); if(alt.length) pl=alt; } this.dropEntry(this.abConvert(this.pickEntry(pl),tier),e.x,e.y); }
     const sig=def.boss?(this.dd.id==='annex'?LOOT.signature[e.type]:this.dd.signature?.[e.type]):null; if(sig&&Math.random()<sig.chance) this.dropEntry({item:sig.item,w:1},e.x,e.y);
+    this.rollCosmeticDrop(tier,def.boss?e.type:null);
   }
+  /** Cosmetic (appearance-only) drop: goes straight to the wardrobe, never a ground pile, so DROP_RATE_SCALE volume is untouched. */
+  rollCosmeticDrop(tier:'ordinary'|'elite'|'boss',bossId:string|null){ const r=rollCosmetic(this.save,tier,bossId,this.dd.tier||0); if(!r) return;
+    if(r.def){ this.toast('Wardrobe: new '+r.def.rarity+' '+COS_SLOT_LABEL[r.def.slot].toLowerCase()+' found: '+r.def.name+'. Equip it in the locker Wardrobe.'); this.emit('cosmeticFound',r.def.id); }
+    else if(r.dupeCredits){ this.save.credits+=r.dupeCredits; this.toast('Duplicate cosmetic salvaged for '+r.dupeCredits+'c'); } }
   /** Acquisition curve: a rolled item/chip is swapped for an ability-bearing augment (never an extra drop, so DROP_RATE_SCALE still bounds volume). Pity: the first run and any run after a dry one force one common ability augment. */
   abConvert(en:LootEntry,tier:'ordinary'|'elite'|'boss'):LootEntry{
     const s=this.save, inst=this.inst as any, A=ABILITY_ACQ; if(en.stim&&tier==='ordinary') { /* stims convert too, they are the most common roll */ }
@@ -677,7 +683,7 @@ export class Game {
   onBossDead(e:En){
     const inst=this.inst!; const f=inst.flags; if(f.bossDead) return; f.bossDead=true; f.completed=true; this.projs=[]; this.zones=[]; clearBossAdds(this); this.save.cleared={...(this.save.cleared||{}),[this.dd.id]:Date.now()};
     if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Return to town any time: your pack is banked and you can start another dungeon.'); }
-    this.emit('boss-dead'); this.resPending=5; this.saveNow();
+    for(const d of checkAchievements(this.save)) this.toast('Wardrobe unlocked: '+d.name+' ('+d.rarity+')'); this.emit('boss-dead'); this.resPending=5; this.saveNow();
   }
   resPending=0; zoneShown:Record<string,number>={}; zoneAnyAt=-1e9; lastZone=''; seenT=0; seen:Uint8Array|null=null; seenFor:Level|null=null; pathT=0; pathWp:{x:number;y:number}|null=null; pathLen=0;
   markSeen(){ const L=this.level; if(this.seenFor!==L||!this.seen){ this.seen=new Uint8Array(L.w*L.h); this.seenFor=L; } const R=9; const px=Math.floor(this.px), py=Math.floor(this.py); for(let y=Math.max(0,py-R);y<=Math.min(L.h-1,py+R);y++) for(let x=Math.max(0,px-R);x<=Math.min(L.w-1,px+R);x++) if((x-px)**2+(y-py)**2<=R*R) this.seen[y*L.w+x]=1; }

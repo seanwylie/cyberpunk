@@ -5,6 +5,8 @@ import { installedLayout } from './build';
 import { Q } from './quality';
 import { PlayerAnimator, loadAtlas } from './sprites';
 import { bodyOf } from './bodyvariants';
+import { equippedCos, CosDef } from './content/appearance';
+import { drawCosmetics, drawTrail, CosCtx, TrailPt } from './cosmetics';
 import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
 import type { Level } from './level';
 import { TownArt, GP, decorDepth } from './town';
@@ -186,10 +188,13 @@ export class Renderer {
       const m=drawLabel(c,l.x,y,s,l.spec,l.strong); placed.push({x0:l.x-m.w/2,x1:l.x+m.w/2,y0:y-m.h,y1:y}); n++; } }
   // ----- actors -----
   limb(x1:number,y1:number,x2:number,y2:number,w:number,col:string){ const c=this.ctx; c.strokeStyle=col; c.lineWidth=w; c.lineCap='round'; c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke(); }
+  private cosTrail:TrailPt[]=[]; private cosTrailAt=0;
+  /** Wardrobe: trail particles + aura + back gear (behind the body). Trail points are stored in screen space relative to the world so they stay put while the camera follows. */
+  private cosBack(cos:CosDef[],k:CosCtx){ const g=this.g; const tr=cos.find(x=>x.slot==='trail'); if(tr){ if(g.moving&&g.time-this.cosTrailAt>.045){ this.cosTrailAt=g.time; this.cosTrail.push({x:g.px,y:g.py,t:g.time}); } this.cosTrail=this.cosTrail.filter(p=>g.time-p.t<.9).slice(-40); drawTrail(k.c,this.cosTrail.map(p=>({x:this.sx(p.x,p.y),y:this.sy(p.x,p.y),t:p.t})),g.time,k.u,tr); } else this.cosTrail.length=0; drawCosmetics(k,cos,'back'); }
   drawPlayer(){
     const g=this.g, c=this.ctx; const s=this.TW/64; const a=this.sx(g.px,g.py), b=this.sy(g.px,g.py); const L=installedLayout(g.save); const broken=g.inst?.broken||[];
     c.save(); c.fillStyle='rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(a,b,13*s,6*s,0,0,7); c.fill();
-    if(this.anim){ const now=g.time, dtp=Math.min(.1,Math.max(0,now-this.lastT)); this.lastT=now; this.anim.setBody(bodyOf(g.save)); this.anim.update(g as any,dtp); if(g.cloakT>0) c.globalAlpha=.32; else if(g.iframes>0&&g.dodgeT>0) c.globalAlpha=.55; if(this.anim.draw(c,a,b,s)){ c.restore(); this.playerStatus(); return; } }
+    if(this.anim){ const now=g.time, dtp=Math.min(.1,Math.max(0,now-this.lastT)); this.lastT=now; this.anim.setBody(bodyOf(g.save)); this.anim.update(g as any,dtp); if(g.cloakT>0) c.globalAlpha=.32; else if(g.iframes>0&&g.dodgeT>0) c.globalAlpha=.55; const cos=equippedCos(g.save); const ck:CosCtx={c,x:a,y:b,u:s,t:g.time,moving:!!g.moving,face:g.face}; if(cos.length) this.cosBack(cos,ck); const drew=this.anim.draw(c,a,b,s); if(drew&&cos.length) drawCosmetics(ck,cos,'front'); if(drew){ c.restore(); this.playerStatus(); return; } }
     if(g.downed){ c.translate(a,b-6*s); c.rotate(-1.4); }
     else { c.translate(a,b); }
     if(g.cloakT>0) c.globalAlpha=.32; if(g.iframes>0&&g.dodgeT>0) c.globalAlpha=.55;

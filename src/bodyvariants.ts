@@ -1,5 +1,6 @@
 import { ITEM_BY_ID, Mfr, Slot } from './config';
 import type { Save } from './state';
+import { equippedCos, COS_BODY_LAYERS, COS_BY_ID } from './content/appearance';
 /**
  * Body variants: which prebaked layer set each visible body slot uses, derived from the installed hardware.
  *  - stock (Standard Issue) hardware keeps the base scavenger-mechanic look
@@ -27,5 +28,13 @@ export function forcedBody(search:string=typeof location!=='undefined'?location.
 export function bodyOf(save:Save, forced:Body|null=forcedBody()):Body{
   if(forced) return forced; const b=baseBody();
   for(const s of BODY_SLOTS){ const u=save.installed[s as Slot]; const inst=u?save.items.find(i=>i.uid===u):undefined; b[s]=variantOfDef(inst?.def); }
-  return b;
+  return applyCosmeticVariants(b,save);
+}
+
+/** Appearance-only body parts: an equipped cosmetic with a `variant` swaps that slot's prebaked layers (real art) without changing hardware or stats.
+ *  `extra` previews an unequipped cosmetic def id in the wardrobe. */
+export function applyCosmeticVariants(b:Body,save:Pick<Save,'cosmetics'>,extra?:string[]):Body{
+  const out={...b}; for(const d of equippedCos(save)){ const L=COS_BODY_LAYERS[d.slot]; if(d.variant&&L) for(const l of L) (out as any)[l]=d.variant; }
+  if(extra) for(const id of extra){ const d=COS_BY_ID[id] as any; const L=d&&COS_BODY_LAYERS[d.slot as keyof typeof COS_BODY_LAYERS]; if(d?.variant&&L) for(const l of L) (out as any)[l]=d.variant; }
+  return out;
 }

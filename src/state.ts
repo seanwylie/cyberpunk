@@ -27,6 +27,7 @@ export interface Save {
   /** Player's chosen Q/E/R ability ids from the granted set (null = auto). */ abPick?:(string|null)[];
   /** Abilities codex: ability id -> discovery time (0 = known from the start). */ codex?:Record<string,number>;
   /** Ability acquisition counters: pickups of ability-bearing augments and consecutive finished runs without one (pity timer). */ abAcq?:{ total:number; dry:number };
+  /** Wardrobe: owned and equipped cosmetics (src/content/appearance.ts). Cosmetic only, never affects stats. */ cosmetics?:import('./content/appearance').CosState;
   /** Contracts: active progress by id, once-only completions, daily completion day by id. */ contracts?:{ active:Record<string,number>; done:string[]; doneDay:Record<string,string> };
 }
 const KEY = 'arpg-proto-save-v1';
