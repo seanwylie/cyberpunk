@@ -11,7 +11,7 @@ for (const id of ids3) { const m = JSON.parse(fs.readFileSync(`public/dungeons/e
   let ign = ''; try { ign = execSync(`git check-ignore public/dungeons/enemies3d/${id}.json`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch { }
   if (!(files.every(f => tracked.has('public/dungeons/enemies3d/' + f) || dirty) && !ign)) ok(false, `${id}: atlas files tracked / not ignored`); }
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } }); const ev = (f, a) => page.evaluate(f, a);
-await sleep(1500); await ev(() => { const g = window.__game; g.save.level = 34; g.dbg.god = true; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.startRun('annex'); }); await sleep(1000);
+await sleep(1500); await ev(() => { const g = window.__game; g.save.level = 34; g.dbg.god = true; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.startRun('annex', 1001); }); await sleep(1000);
 await ev(() => { const g = window.__game; g.inst.flags.bossSpawned = true; g.enemies.splice(0); });
 const all = await ev(() => Object.keys(window.__enemies));
 const only = process.env.ONLY ? new Set(process.env.ONLY.split(',')) : null; const list = only ? all.filter(t => only.has(t)) : all; ok(only ? list.length === only.size : list.length >= 36, `${list.length} enemy types under test`);

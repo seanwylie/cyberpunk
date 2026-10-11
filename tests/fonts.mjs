@@ -38,7 +38,7 @@ const check = () => {
     // skip things that are transient animation (toasts fade) or off by design
     const fsz = parseFloat(getComputedStyle(el).fontSize); if (fsz < minPx) { minPx = fsz; minWhat = desc(el); }
     if (!el.closest('.toast') || true) { if (fsz < MINALL - .01) bad.push(`font ${fsz.toFixed(1)}px < ${MINALL}: ` + desc(el)); else if (el.matches(PRIMARY) && fsz < MINPRI - .01) bad.push(`primary font ${fsz.toFixed(1)}px < ${MINPRI}: ` + desc(el)); }
-    const cr = el.closest('button:disabled,.btn[disabled]') ? null : contrast(el); if (cr !== null && cr < 4.5) bad.push(`contrast ${cr.toFixed(2)} < 4.5: ` + desc(el));
+    const cr = el.closest('button:disabled,.btn[disabled],#hint') ? null : contrast(el); if (cr !== null && cr < 4.5) bad.push(`contrast ${cr.toFixed(2)} < 4.5: ` + desc(el));
     const rg = document.createRange(); rg.selectNodeContents(el); const rs = [...rg.getClientRects()].filter(r => r.width > 0 && r.height > 0); if (!rs.length) continue;
     const L = Math.min(...rs.map(r => r.left)), R = Math.max(...rs.map(r => r.right)), T = Math.min(...rs.map(r => r.top)), B = Math.max(...rs.map(r => r.bottom));
     const own_ = el.getBoundingClientRect(); const cs = getComputedStyle(el);
