@@ -4,6 +4,7 @@
 import { ABILITIES, ABILITY_TYPE, AbilityId, CHIPS, ChipId, INSTALL_COST, ITEM_BY_ID, ItemDef, Mfr, REP_DISCOUNT_PER_RANK, SELL_VALUE, SLOTS, SLOT_LABEL, SLOT_SOCKETS, Slot, chipFits } from './config';
 import { BuildResult, Layout, cloneLayout, computeBuild, repRank, wouldConflict } from './build';
 import type { Inst } from './state';
+import { ABILITY_BY_ID } from './abilities/registry';
 
 export interface RecInput {
   items:Inst[]; installed:Partial<Record<Slot,string>>; lockerChips:Partial<Record<ChipId,number>>;
@@ -38,11 +39,18 @@ export const effHp=(b:BuildResult)=>(b.stats.maxHp+b.stats.regen*25)*(1+b.stats.
 /** Weapon term is damped (^.6): swapping weapon KIND is a playstyle change (range, heat), not a pure multiplier. Melee needs to close distance (x.65); stationary weapons lose uptime (x.85). */
 export const dpsOf=(b:BuildResult)=>b.stats.dmg*b.stats.atkSpeed*Math.pow(b.weapon.dmg*b.weaponMul*b.weapon.rate*(b.weapon.proj?1:.65)*(b.weapon.stationary?.85:1),.6);
 function modValue(b:BuildResult):number{ const m=b.mods; let v=0; if(b.abilities.includes('control')) v+=.004*m.ctrlDur; if(b.abilities.includes('cloak')) v+=.004*m.cloakDur; if(b.abilities.includes('sweep')||(!b.weapon.proj&&b.weapon.kind!=='fist')) v+=.05*m.arc; if(b.abilities.includes('bladeburst')) v+=.01*m.burstLen; return v; }
-const abVal=(a:AbilityId)=>a==='defib'?.03:.04;
+const RAR_AB:Record<string,number>={ grey:0, green:.004, blue:.014, purple:.03, orange:.05 };
+/** Value of having ability a bound: base + rarity premium (rarer abilities are stronger by design, docs/ABILITIES.md). */
+const abVal=(a:AbilityId)=>a==='defib'?.03:.04+(ABILITIES[a]?.ext?(RAR_AB[ABILITIES[a].rarity||'grey']||0):0);
+/** Ability-aware terms: variety (more granted options), tag synergies between bound abilities (gives -> uses) and chip modifiers that act on bound augment abilities. */
+function abilityExtras(b:BuildResult):number{ let v=0; const ext=b.abilities.filter(a=>ABILITY_BY_ID[a]); if(!ext.length) return 0;
+  v+=.004*Math.min(8,b.granted.length); const gives=new Set<string>(); for(const a of ext) for(const t of ABILITY_BY_ID[a].gives) gives.add(t);
+  for(const a of ext) for(const t of ABILITY_BY_ID[a].uses) if(gives.has(t)||(t==='Overheated'&&false)) v+=.012;
+  const m=b.abMods; v+=.15*m.dmg+.25*m.cdr+.1*m.heat+.02*m.cc+.05*m.heal+.04*m.shield; return v; }
 /** Single build-score used for every comparison. weights come from the CURRENT build's playstyle so a swap is judged by what the player does. */
 export function buildScore(b:BuildResult, w:typeof W0):number{
   return w.dps*Math.log(Math.max(1e-6,dpsOf(b)))+w.surv*Math.log(effHp(b))+w.mob*Math.log(b.stats.move)+w.cool*Math.log(b.stats.cooling)+.01*b.stats.pickup+modValue(b)
-    +b.abilities.reduce((s,a)=>s+abVal(a),0)+b.passives.reduce((s,a)=>s+abVal(a),0)-.06*b.conflicts.length; }
+    +abilityExtras(b)+b.abilities.reduce((s,a)=>s+abVal(a),0)+b.passives.reduce((s,a)=>s+abVal(a),0)-.06*b.conflicts.length; }
 function deltas(a:BuildResult,b:BuildResult):Delta[]{ const p=(x:number,y:number)=>Math.round((y/x-1)*100); const out:Delta[]=[{k:'DMG',pct:p(dpsOf(a),dpsOf(b))},{k:'HP',pct:p(effHp(a),effHp(b))},{k:'MOVE',pct:p(a.stats.move,b.stats.move)},{k:'COOL',pct:p(a.stats.cooling,b.stats.cooling)}];
   return out.filter(d=>d.pct!==0).sort((x,y)=>Math.abs(y.pct)-Math.abs(x.pct)); }
 const abDiff=(a:BuildResult,b:BuildResult)=>({ gained:b.abilities.filter(x=>!a.abilities.includes(x)), lost:a.abilities.filter(x=>!b.abilities.includes(x)) });

@@ -16,12 +16,13 @@ import { CONTACTS, CONTACT_BY_ID, CONTRACT_BY_ID, MAX_ACTIVE_CONTRACTS, Contract
 import { EXTRA_ITEMS } from './content/items';
 import { WEAPON_ITEMS } from './content/weapons';
 import { lockDay, contractState } from './state';
+import { abTip, abFallbackIcon, abSlotsHtml, abChipX, codexHtml, cyclePicks } from './abilities/ui_ext';
 import { bankItemsOf } from './bank';
 import { bankHtml, bankClick, bankInput, BK } from './bankui';
 import { settingsHtml, settingsAfterRender, settingsReset, settingsEsc, settingsInput, settingsClick, settingsKey, settingsTab } from './settingsui';
 
 export const abIconUrl=(id:string)=>'abilities/'+id+'.webp';
-const abChip=(id:keyof typeof ABILITIES)=>{ const d=ABILITIES[id]; return `<span class="abchip" style="--tc:${ABILITY_TYPE_COLOR[d.type]}" title="${esc(ABILITY_TYPE_LABEL[d.type])}: ${esc(d.desc)}"><img src="${abIconUrl(id)}" alt="">${esc(d.name)}</span>`; };
+const abChip=(id:keyof typeof ABILITIES)=>abChipX(id);
 const abChips=(ids:(keyof typeof ABILITIES)[],sep=' ')=>ids.map(abChip).join(sep);
 
 
@@ -139,7 +140,7 @@ export class UI {
     document.querySelectorAll<HTMLElement>('.abtn').forEach(btn=>{
       const i=+btn.dataset.idx!; const id=g.build.abilities[i]; const def=id?ABILITIES[id]:null; btn.classList.toggle('empty',!def);
       const img=btn.querySelector('.aicon') as HTMLImageElement, nm=btn.querySelector('.aname') as HTMLElement;
-      if(this.abKey[i]!==(id||'')){ this.abKey[i]=id||''; if(def){ img.src=abIconUrl(def.id); btn.style.setProperty('--tc',ABILITY_TYPE_COLOR[def.type]); btn.dataset.type=def.type; btn.querySelector('.heatpips')!.innerHTML='<b></b>'.repeat(Math.min(6,Math.max(0,Math.ceil(def.heat/10)))); } else { img.removeAttribute('src'); delete btn.dataset.type; } nm.textContent=def?def.name:''; }
+      if(this.abKey[i]!==(id||'')){ this.abKey[i]=id||''; if(def){ img.onerror=()=>{ img.onerror=null; img.src=abFallbackIcon(def.id); }; img.src=abIconUrl(def.id); btn.style.setProperty('--tc',ABILITY_TYPE_COLOR[def.type]); btn.dataset.type=def.type; btn.querySelector('.heatpips')!.innerHTML='<b></b>'.repeat(Math.min(6,Math.max(0,Math.ceil(def.heat/10)))); } else { img.removeAttribute('src'); delete btn.dataset.type; } nm.textContent=def?def.name:''; }
       if(!def){ return; }
       const cdn=Math.max(0,g.abCd[i]/def.cd); (btn.querySelector('.cdsweep') as HTMLElement).style.setProperty('--cd',(cdn*360).toFixed(1)+'deg');
       if(this.abPrev[i]>0&&g.abCd[i]<=0){ btn.classList.remove('ready'); void btn.offsetWidth; btn.classList.add('ready'); setTimeout(()=>btn.classList.remove('ready'),700); }
@@ -157,6 +158,7 @@ export class UI {
   bindAbilityTips(){
     const tip=$('abtip'); const show=(btn:HTMLElement)=>{ const i=+(btn.dataset.idx??-1); const id=btn.id==='dodge'?null:this.g.build.abilities[i]; const d=id?ABILITIES[id]:null;
       if(btn.id==='dodge') tip.innerHTML=`<b>Dodge</b> <i style="color:${ABILITY_TYPE_COLOR.mobility}">Mobility</i><br>Quick roll with brief invulnerability. Cooldown ${COMBAT.dodge.cd}s.`;
+      else if(d&&d.ext) tip.innerHTML=abTip(id!)+'<br><span class="mut">Shift+'+['Q','E','R'][i]+' swaps</span>';
       else if(d) tip.innerHTML=`<b>${esc(d.name)}</b> <i style="color:${ABILITY_TYPE_COLOR[d.type]}">${ABILITY_TYPE_LABEL[d.type]}</i><br>${esc(d.desc)}<br><span class="mut">Heat ${d.heat} · Cooldown ${d.cd}s${d.range?' · Range '+d.range:''}</span>`; else tip.innerHTML=`<b>Empty ability slot</b><br>Abilities come from installed hardware. Equip arms, torso, legs or brain with abilities in the Body workspace.`;
       const r=btn.getBoundingClientRect(); tip.style.display='block'; tip.style.setProperty('--tc',d?ABILITY_TYPE_COLOR[d.type]:ABILITY_TYPE_COLOR.mobility); const w=tip.offsetWidth; tip.style.left=Math.max(6,Math.min(innerWidth-w-6,r.left+r.width/2-w/2))+'px'; tip.style.bottom=(innerHeight-r.top+8)+'px'; };
     const hide=()=>{ tip.style.display='none'; };
@@ -194,8 +196,8 @@ export class UI {
 
   // ================= modals =================
   render(){ const m=$('modal'); if(!this.modal){ m.style.display='none'; m.innerHTML=''; return; } m.style.display='flex'; m.classList.toggle('helpmodal',this.modal==='help'); const g=this.g; this.recompute();
-    const body=this.modal==='bank'?bankHtml(this):this.modal==='locker'?this.locker():this.modal==='vendor'?this.vendor():this.modal==='gate'?this.gate():this.modal==='fixer'?this.fixer():this.modal==='contacts'?this.contacts():this.modal==='store'?this.store():this.modal==='settings'?this.settings():this.modal==='dev'?this.dev():this.modal==='help'?helpHtml():this.modal==='summary'?this.summary():'';
-    const titles:Record<string,string>={bank:'Bank: storage & credits vault',locker:'Body workspace & locker',vendor:'Vendor & repair',gate:'Dungeon select',contacts:'Contacts & contracts',fixer:'Fixer: Odalys Vane',store:'Outfitter (simulated purchases)',settings:'Settings',help:'Controls',dev:'DEV tools (prototype only)',summary:'Run summary'};
+    const body=this.modal==='codex'?codexHtml(g.save):this.modal==='bank'?bankHtml(this):this.modal==='locker'?this.locker():this.modal==='vendor'?this.vendor():this.modal==='gate'?this.gate():this.modal==='fixer'?this.fixer():this.modal==='contacts'?this.contacts():this.modal==='store'?this.store():this.modal==='settings'?this.settings():this.modal==='dev'?this.dev():this.modal==='help'?helpHtml():this.modal==='summary'?this.summary():'';
+    const titles:Record<string,string>={codex:'Abilities codex',bank:'Bank: storage & credits vault',locker:'Body workspace & locker',vendor:'Vendor & repair',gate:'Dungeon select',contacts:'Contacts & contracts',fixer:'Fixer: Odalys Vane',store:'Outfitter (simulated purchases)',settings:'Settings',help:'Controls',dev:'DEV tools (prototype only)',summary:'Run summary'};
     m.innerHTML=`<div class="win${this.modal==='settings'||this.modal==='help'?' settingswin helpwin':''}${this.modal==='locker'?' lockerwin':''}" role="dialog" aria-modal="true" aria-label="${titles[this.modal]||''}"><header><span>${titles[this.modal]||''}</span><span><button data-act="close">Close</button></span></header><div class="body">${body}</div><footer class="bvgf">${BVG}</footer></div>`; void g; if(this.modal==='settings') settingsAfterRender(this); this.decorateTiles(); this.decorateChips(); this.bindTips(); this.bindChipDnD(); this.fitText(); }
   decorateTiles(){ document.querySelectorAll<HTMLElement>('#modal [data-def]').forEach(b=>{ const ic=b.querySelector('.ticon'); if(!ic||!b.dataset.def) return; try{ const sp=specOf({id:0,kind:'item',inst:{def:b.dataset.def},amount:1}); const src=iconCanvas(sp); const cv=document.createElement('canvas'); cv.width=src.width; cv.height=src.height; cv.getContext('2d')!.drawImage(src,0,0); ic.appendChild(cv); }catch{} }); }
   decorateChips(){ document.querySelectorAll<HTMLElement>('#modal [data-chip]').forEach(b=>{ const ic=b.querySelector('.ticon'); const id=b.dataset.chip; if(!ic||!id||!(CHIPS as any)[id]) return; try{ const src=iconCanvas(specOf({id:0,kind:'chip',chip:id,amount:1})); const cv=document.createElement('canvas'); cv.width=src.width; cv.height=src.height; cv.getContext('2d')!.drawImage(src,0,0); ic.appendChild(cv); }catch{} }); }
@@ -263,7 +265,7 @@ export class UI {
     const help=esc('<b>How this works</b><br>Chip swapping is free. Hardware replacement is a separate, explicit, paid action. No presets, no readiness checks: you can enter the Annex with whatever is installed.');
     const stripRight=`<div class="strip" data-tip="${fullTip}" tabindex="0">${changed.length?changed.map(pchip).join(''):'<span class="mut">No stat changes</span>'}</div>
       <div class="strip2">${abPrevIds.map(a=>abChip(a)).join('')||'<span class="mut">No abilities</span>'}<span class="pchip" data-tip="${fullTip}">⚔ ${esc(prev.weapon.kind)}${prev.weapon.stationary?' (stationary)':''}</span>${prev.mix.coolingPenalty>0?`<span class="pchip warnb" data-tip="${mixTip}" tabindex="0">⚠ Mix −${(prev.mix.coolingPenalty*100).toFixed(0)}% cool</span>`:`<span class="pchip mut" data-tip="${mixTip}" tabindex="0">${prev.mix.mfrs.map(m=>MFR[m].short.split(' ')[0]).join('+')||'Base'}</span>`}${abPrevIds.join()!==abNowIds.join()?`<span class="pchip" data-tip="${esc('Installed abilities: '+(abNowIds.map(a=>ABILITIES[a].name).join(', ')||'none'))}">changed</span>`:''}</div>
-      ${prev.extraAbilities.length?`<div class="warn">Only 3 abilities are bound (by slot priority). Unbound: ${abChips(prev.extraAbilities)}</div>`:''}
+      ${abSlotsHtml(prev)}
       ${prev.conflicts.map(c=>`<div class="bad">Hard conflict: ${esc(c)}</div>`).join('')}`;
     return `<div class="col narrow"><h3>Body (11 slots)</h3>${grid}${this.recPanel()}<div class="repbar">${(['HI','PS','MM'] as const).map(m=>`<span class="repb" data-tip="${esc('<b>'+MFR[m].short+'</b><br>Reputation rank '+repRank(s.rep[m])+' (rep '+Math.round(s.rep[m])+')')}" style="--ac:${MFR[m].accent}">${MFR[m].short.split(' ')[0]} <b>${repRank(s.rep[m])}</b></span>`).join('')}</div></div>
     <div class="col">
@@ -490,6 +492,8 @@ export class UI {
       case 'replaytut': this.tut?.replay(); this.close(); return;
       case 'resethints': try{ localStorage.removeItem('wv_hints'); }catch{} this.hintCtx=''; this.toast('Tutorial hints will show again.'); return;
       case 'wipe': wipe(); location.reload(); return; case 'dev': this.open('dev'); return;
+      case 'abcycle': { const b=this.modal==='locker'&&this.draft?computeBuild(this.draft,s.level,s.rep):g.build; const np=cyclePicks(b,+el.dataset.i!,+el.dataset.d!); if(np){ s.abPick=np; g.recompute(); persist(s); } this.render(); return; }
+      case 'codex': this.open('codex'); return; case 'codexclose': this.open('locker'); return;
       case 'kit': case 'equipkit': this.kit(el.dataset.k!,a==='equipkit'); this.render(); return;
       case 'lvl': s.level=Math.max(1,Math.min(PROGRESSION.maxLevel,s.level+ +el.dataset.d!)); g.recompute(); persist(s); this.render(); return;
       case 'credits': s.credits+=1000; persist(s); this.render(); return; case 'resetlock': s.lastClearDay=null; s.lockouts={}; persist(s); this.render(); return;

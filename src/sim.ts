@@ -1,7 +1,10 @@
-import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, SELL_VALUE, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING} from './config';
+import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, SELL_VALUE, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING, STARTER_ABILITIES} from './config';
 import { counterFor, hintText } from './content/abilfx';
 import { bankOverflowItem, bankOverflowChip } from './bank';
-import { computeBuild, installedLayout, BuildResult } from './build';
+import { computeBuild, installedLayout, BuildResult, abPickRef, repRank } from './build';
+import { abxCast, abxTick, abxReset, abxIncoming, abxOutgoing, abxSpeedMul, abxPlayerSpeed, newAbx, Abx } from './abilities/engine';
+import { ABILITY_BY_ID } from './abilities/registry';
+import { ABILITY_ACQ, ABILITY_ITEMS, pickAbilityItem, pickCommonAbilityItem } from './abilities/hw';
 import { buildTown, Level, Interact } from './level';
 import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
 import { MOVES, MOVE_ATK } from './content/boss_moves';
@@ -13,7 +16,7 @@ import { mobTick, mobDeath, mobAfterHit, resolveMobAttack, mobPattern, MOB_COND 
 import { MOB_ATK } from './content/batch2_mobs';
 import { CONTRACT_BY_ID, Goal } from './content/npcs';
 import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState, capacityUsed } from './state';
-import { IDKFA_SET, IDKFA_CHIPS } from './content/idkfa';
+import { IDKFA_SET, IDKFA_CHIPS, IDKFA_PICK } from './content/idkfa';
 import { BAL } from './content/balance';
 import { record, newStory, EventKind } from './story';
 
@@ -42,6 +45,7 @@ export class Game {
   // player
   bankedOverflow=0; px=0; py=0; face=0; hp=100; heat=0; overheated=false; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; slowT=0; downed=false; downT=0; defibCd=0; revealing=false;
   /** ability power pass: damage dealt per source tag ('auto' or ability id), cast counts, synergy state */ kick=0; lastStop=-9; curTag='auto'; dealt:Record<string,number>={}; casts:Record<string,number>={}; comboN=0; comboT=0; lastAb=''; ovT=0; hitStop=0; sinceAb=0; nudgeCd=0;
+  abx:Abx=newAbx(); codexT=0;
   abCd:number[]=[0,0,0]; cast:{ idx:number; t:number; aim:AimState; ab:AbilityDef }|null=null; aim:AimState|null=null; target:number|null=null; lungeT=0; lungeDx=0; lungeDy=0; lungeHit:Set<number>=new Set();
   slideT=0; slideFx=0; slideFy=0; channel:{ kind:'town'|'hack'; t:number; dur:number; cb:()=>void }|null=null;
   inputMove={x:0,y:0}; build!:BuildResult; moving=false; prompt:Interact|null=null; musicState='traversal'; combatHold=0; eliteEng=0; toastQ:string[]=[];
@@ -50,7 +54,7 @@ export class Game {
   constructor(save:Save, emit:Emit){ this.save=save; this.emit=emit; this.level=buildTown(); this.migrateInstance(); this.recompute(); this.enterTown(true); }
 
   // ---------- build / stats ----------
-  recompute(){ const L=installedLayout(this.save); this.build=computeBuild(L,this.save.level,this.save.rep,this.inst?this.inst.broken:[]); const mx=this.build.stats.maxHp; if(this.hp>mx||this.hp<=0&&!this.downed) this.hp=mx; }
+  recompute(){ const L=installedLayout(this.save); abPickRef.v=this.save.abPick||null; this.build=computeBuild(L,this.save.level,this.save.rep,this.inst?this.inst.broken:[]); const mx=this.build.stats.maxHp; if(this.hp>mx||this.hp<=0&&!this.downed) this.hp=mx; }
   get maxHp(){ return this.build.stats.maxHp; }
   toast(s:string){ this.emit('toast',s); }
   now(){ return Date.now(); }
@@ -58,6 +62,7 @@ export class Game {
   // ---------- mode transitions ----------
   enterTown(first=false){
     this.settleCompleted();
+    if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this);
     this.mode='town'; this.level=buildTown(); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.');
   }
@@ -82,7 +87,7 @@ export class Game {
     s.instance=inst; this.inst=inst; s.stats.runs++; this.resumeInstance(true); return true;
   }
   resumeInstance(fresh=false){
-    const inst=this.inst!; this.mode='run'; this.level=dungeonOf(inst.dungeon).build(inst.seed); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.downed=false; this.revealing=false;
+    const inst=this.inst!; abxReset(this); this.mode='run'; this.level=dungeonOf(inst.dungeon).build(inst.seed); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.downed=false; this.revealing=false;
     this.lastZone=''; this.zoneShown={}; this.zoneAnyAt=-1e9; this.pathWp=null; this.applyDoors(); this.enemies=inst.enemies.map(e=>this.wrap(e));
     // Boss attempts always replay the full reveal: reset a living boss on (re)entry.
     this.resetBossIfAlive(); this.fixStuckDrops();
@@ -186,6 +191,7 @@ export class Game {
   /** Dev cheat (typed "idkfa"): orange hardware + best chips in every slot, stims/credits top-up, full heal. Old gear goes to storage. Marks the save cheated. */
   cheatIdkfa(){ const s=this.save; const keep=new Set<string>();
     for(const sl of SLOTS){ const def=IDKFA_SET[sl]; let it=s.items.find(i=>i.def===def&&s.installed[sl]===i.uid); if(!it) it=mkInst(s,def); if(!s.items.includes(it)) s.items.push(it); it.chips=[...IDKFA_CHIPS[sl]]; s.installed[sl]=it.uid; keep.add(it.uid); }
+    for(const d of ABILITY_ITEMS){ if((d.rarity==='purple'||d.rarity==='orange')&&!s.items.some(i=>i.def===d.id)) s.items.push(mkInst(s,d.id)); } s.lockerCap=Math.max(s.lockerCap,s.items.length+20); s.abPick=[...IDKFA_PICK];
     s.level=Math.max(s.level,30); s.credits=Math.max(s.credits,99999); s.stims=Math.max(s.stims,20); s.repairBill=0;
     if(this.inst){ this.inst.broken=[]; this.inst.carried.stims=Math.max(this.inst.carried.stims,10); }
     s.cheated=true; (s.cheatLog=s.cheatLog||[]).push('idkfa@'+new Date().toISOString());
@@ -199,7 +205,7 @@ export class Game {
     if(this.hitStop>0){ this.hitStop-=dtRaw; this.updateFx(dtRaw*.25); return; }
     const dt=Math.min(dtRaw,.05); this.time+=dt;
     if(this.mode==='run'&&this.inst){ this.inst.elapsed+=dt; const rem=this.inst.expiresAt-this.now(); if(rem<=0){ this.expireInstance(); this.enterTown(); return; } if(!this.inst.warned&&rem<INSTANCE_WARN_MINUTES*60000){ this.inst.warned=true; this.toast('Instance expires in under '+INSTANCE_WARN_MINUTES+' minutes. Retrieve loot.'); } }
-    this.updatePlayer(dt);
+    this.updatePlayer(dt); abxTick(this,dt); this.codexT-=dt; if(this.codexT<=0){ this.codexT=1; this.codexScan(); }
     if(this.mode==='run'){ this.updateEnemies(dt); this.updateProjs(dt); this.updateZones(dt); this.autoPickup(); this.updateRun(dt); this.updateMusic(dt); this.abilityHints(dt); this.saveT+=dt; if(this.saveT>4){ this.saveT=0; this.saveNow(); } }
     this.updatePrompt(); this.updateFx(dt);
   }
@@ -218,7 +224,7 @@ export class Game {
     if(this.downed){ this.downT+=dt; this.cast=null; this.aim=null; return; }
     // movement
     let mx=0,my=0; const mag=Math.min(1,Math.hypot(this.inputMove.x,this.inputMove.y)); if(mag>.12){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); mx=v.x*mag; my=v.y*mag; }
-    let speed=COMBAT.playerSpeed*st.move*(this.overheated?COMBAT.heat.overheatSpeedMult:1)*(this.cast?.6:1)*(this.slowT>0?BAL.p.hexSlowMul:1);
+    let speed=COMBAT.playerSpeed*st.move*(this.overheated?COMBAT.heat.overheatSpeedMult:1)*(this.cast?.6:1)*(this.slowT>0?BAL.p.hexSlowMul:1)*abxPlayerSpeed(this);
     if(this.dodgeT>0){ this.dodgeT-=dt; const sp=COMBAT.dodge.dist/COMBAT.dodge.time; const p=this.moveCircle(this.px,this.py,this.dodgeDx*sp*dt,this.dodgeDy*sp*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; this.moving=true; }
     else if(this.lungeT>0){ this.lungeT-=dt; const sp=this.lungeDx; const p=this.moveCircle(this.px,this.py,this.lungeDx*dt,this.lungeDy*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; this.lungeBladeHit(); }
     else if(this.slideT>0){ this.slideT-=dt; const p=this.moveCircle(this.px,this.py,this.slideFx*dt,this.slideFy*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; }
@@ -297,6 +303,7 @@ export class Game {
     const ovB=this.ovT>0?AB.ovMul-1:0; const dmgingId=def.id==='sweep'||def.id==='bladeburst'||def.id==='pulse'||def.id==='reposition';
     let ambushB=0; if(this.cloakT>0&&dmgingId){ ambushB=AB.cloakMul-1; this.cloakT=0; this.popup(this.px,this.py-1.6,'AMBUSH x'+AB.cloakMul,'#e8c46a'); }
     const dmgM=st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1)*(1+chargedB+comboB+ovB+ambushB);
+    if(ABILITY_BY_ID[def.id]){ abxCast(this,def,c.idx,c.aim,v); return; } // data-driven augment abilities (src/abilities)
     this.curTag=def.id;
     try{ switch(def.id){
       case 'sweep': { const arc=Math.PI*.75*(1+m.arc); this.face=ang; this.castLook('sweep',this.px,this.py,{a:ang,r:def.range,w:arc,c:'#c4543c'}); this.vfx('sweep.cast',this.px,this.py,{a:ang,r:def.range,len:arc}); let n=0; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const d=dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius; if(d<=def.range&&Math.abs(angDiff(Math.atan2(e.y-this.py,e.x-this.px),ang))<=arc/2){ n++; this.hurtEnemy(e,AB.sweepDmg*dmgM,this.px,this.py,2.2); if(!e.dead&&!ENEMIES[e.type].boss) e.stunT=Math.max(e.stunT,AB.sweepStun); } } if(n>=3) this.popup(this.px+Math.cos(ang)*2,this.py+Math.sin(ang)*2,'CLEAR x'+n,'#e8a07a'); break; }
@@ -325,7 +332,7 @@ export class Game {
 
   // ---------- damage ----------
   hurtEnemy(e:En,dmg:number,sx:number,sy:number,knock=0){
-    if(e.dead||e._rt.reveal>0) return; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; const rt=e._rt, tag=this.curTag;
+    if(e.dead||e._rt.reveal>0) return; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; dmg=abxOutgoing(this,e,dmg); const rt=e._rt, tag=this.curTag;
     if(rt.hack>0) dmg*=AB.hackMul;
     const hadShield=!!(rt.shield&&rt.shield.hp>0);
     if(hadShield&&dmg>0){ if(tag==='pulse') dmg=Math.max(dmg*AB.pulseShield,(rt.shield.max||rt.shield.hp)*AB.pulseShieldFrac); else if(tag==='auto') dmg*=AB.shieldAuto; else dmg*=AB.shieldAbility; }
@@ -344,7 +351,7 @@ export class Game {
   alertGroup(e:En){ for(const o of this.enemies){ if(!o.dead&&o.faction==='enemy'&&!o.alert&&((o.group!=null&&o.group===e.group&&dist(o.x,o.y,e.x,e.y)<16)||(dist(o.x,o.y,e.x,e.y)<HARD.packAggroR&&this.los(o.x,o.y,e.x,e.y)))) o.alert=true; } }
   hurtPlayer(dmg:number,sx:number,sy:number){
     if(this.downed||this.iframes>0||this.revealing||this.mode!=='run'||this.dbg.god) return;
-    const st=this.stat(); dmg=Math.max(1,dmg-st.armor); let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
+    const st=this.stat(); dmg=abxIncoming(this,dmg,sx,sy); if(dmg<=.01) return; dmg=Math.max(1,dmg-st.armor); let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
     if(this.channel){ if(this.channel.kind==='town') this.toast('Town return interrupted by damage'); this.channel=null; }
     this.fx.push({kind:'blood',x:this.px,y:this.py,t:0,life:.6,c:'#7a2f26'});
     if(this.hp<=0) this.playerDown();
@@ -490,7 +497,7 @@ export class Game {
     const d=dist(e.x,e.y,tx,ty); const cloaked=tgtIsPlayer&&this.cloakT>0;
     if(!e.alert){ const rad=def.aggro*(cloaked?.18:1); if(e.faction==='enemy'&&tgtIsPlayer&&d<rad&&this.los(e.x,e.y,tx,ty)){ e.alert=true; this.alertGroup(e); this.emit('sfx','alert'); } else return; }
     if(cloaked&&d>1.7&&rt.st!=='tele'&&rt.st!=='dash'){ rt.lost+=dt; if(rt.lost>1.5){ e.alert=false; rt.lost=0; rt.st='idle'; } return; }
-    const speed=def.speed*(this.zoneSlow(e)?.7:1)*(rt.spdMul||1);
+    const speed=def.speed*(this.zoneSlow(e)?.7:1)*(rt.spdMul||1)*abxSpeedMul(this,e);
     const ang=Math.atan2(ty-e.y,tx-e.x);
     // state machine
     if(rt.st==='tele'){ rt.t+=dt; const A=ATK[rt.atk]; if(rt.t<A.w*.6||!A.lock) rt.ang=ang; if(rt.t>=A.w){ const hp0=this.hp; this.resolveAttack(e,rt.atk,tx,ty); mobAfterHit(this,e,hp0); if(rt.st==='tele'&&!rt.chained){ rt.st='rec'; rt.t=0; } rt.chained=false; } return; }
@@ -597,9 +604,29 @@ export class Game {
     const sc=DROP.scale*(HARD.dropTier[this.dd.tier||0]||1), ord=tier==='ordinary', pile=ord?Math.min(1,DROP.creditPile*sc):1, cm=ord?(sc>=1?1:Math.min(8,DROP.creditKeep/sc)):1;
     const cr=T.credits.map(c=>c*this.dd.creditMul*cm) as [number,number]; if(Math.random()<pile) this.addDrop(e.x,e.y,{kind:'credits',amount:Math.round(cr[0]+Math.random()*(cr[1]-cr[0]))});
     const affixOnly=tier==='elite'&&!def.elite, guar=def.boss?DROP.bossGuaranteed:def.elite?DROP.eliteGuaranteed:0, extra=def.boss?DROP.bossExtra:tier==='elite'?DROP.eliteExtra:0;
-    for(let i=0;i<rolls;i++){ const ch=ord?T.chance*Math.min(1,sc):i<guar?1:affixOnly&&i===0?HARD.affixChance:Math.min(1,extra*(sc/DROP_RATE_SCALE)); if(Math.random()>ch) continue; let pl=pool; if(def.boss&&i===1&&Math.random()<HARD.bossSecondNonItem){ const alt=pool.filter(x=>!x.item); if(alt.length) pl=alt; } this.dropEntry(this.pickEntry(pl),e.x,e.y); }
+    for(let i=0;i<rolls;i++){ const ch=ord?T.chance*Math.min(1,sc):i<guar?1:affixOnly&&i===0?HARD.affixChance:Math.min(1,extra*(sc/DROP_RATE_SCALE)); if(Math.random()>ch) continue; let pl=pool; if(def.boss&&i===1&&Math.random()<HARD.bossSecondNonItem){ const alt=pool.filter(x=>!x.item); if(alt.length) pl=alt; } this.dropEntry(this.abConvert(this.pickEntry(pl),tier),e.x,e.y); }
     const sig=def.boss?(this.dd.id==='annex'?LOOT.signature[e.type]:this.dd.signature?.[e.type]):null; if(sig&&Math.random()<sig.chance) this.dropEntry({item:sig.item,w:1},e.x,e.y);
   }
+  /** Acquisition curve: a rolled item/chip is swapped for an ability-bearing augment (never an extra drop, so DROP_RATE_SCALE still bounds volume). Pity: the first run and any run after a dry one force one common ability augment. */
+  abConvert(en:LootEntry,tier:'ordinary'|'elite'|'boss'):LootEntry{
+    const s=this.save, inst=this.inst as any, A=ABILITY_ACQ; if(en.stim&&tier==='ordinary') { /* stims convert too, they are the most common roll */ }
+    if(en.item&&ITEM_BY_ID[en.item]?.abilities?.length){ inst.abForced=true; return en; }
+    const aq=s.abAcq=s.abAcq||{total:0,dry:0}; const rank:any={}; for(const m of ['HI','PS','MM'] as const) rank[m]=repRank(s.rep[m]);
+    const env={ level:s.level, tierCap:this.dd.tierCap, rank, discovered:s.codex, rnd:Math.random };
+    const forced=!inst.abForced&&((A.firstRunGuarantee&&aq.total===0)||aq.dry>=A.pityRuns);
+    if(forced){ const it=pickCommonAbilityItem(env); if(it){ inst.abForced=true; return { item:it.id, w:1 }; } }
+    if(Math.random()<A.convert[tier]*A.scale){ const it=pickAbilityItem({ ...env, tier }); if(it){ inst.abForced=true; return { item:it.id, w:1 }; } }
+    return en; }
+  /** Abilities codex: first time hardware granting an ability shows up in storage / the run bag, toast it and record it. The first scan of a save only seeds (no toast spam). */
+  codexScan(){ const s=this.save; const seen:Record<string,string>={}; const add=(defId:string)=>{ const d=ITEM_BY_ID[defId]; if(d) for(const a of d.abilities||[]) seen[a]=seen[a]||d.rarity; };
+    for(const it of s.items) add(it.def); if(this.inst) for(const it of this.inst.carried.items) add(it.def);
+    if(!s.codex){ s.codex={}; for(const a of [...Object.keys(seen),...STARTER_ABILITIES]) s.codex[a]=0; return; }
+    for(const a of Object.keys(seen)){ if(s.codex[a]!==undefined) continue; s.codex[a]=Date.now(); const def=ABILITIES[a]; if(!def) continue; this.toast('New ability discovered: '+def.name+' ('+(def.rarity||seen[a])+'). See Abilities codex.'); this.emit('abilityDiscovered',a); } }
+  /** Quick-swap: cycle which granted ability sits on button i (skips ones already bound elsewhere). */
+  cycleAbility(i:number,dir=1):boolean{ const gr=this.build.granted; const cur=[...this.build.abilities]; if(gr.length<=cur.length&&gr.length<=1||i>=Math.max(cur.length,1)) return false; const free=gr.filter(a=>!cur.includes(a)||a===cur[i]); if(free.length<2) return false;
+    const nx=free[(free.indexOf(cur[i])+dir+free.length)%free.length]; return this.setAbilityPick(i,nx); }
+  setAbilityPick(i:number,id:string|null):boolean{ if(i<0||i>2) return false; const gr=this.build.granted; if(id&&!gr.includes(id)) return false; const cur=[...this.build.abilities]; while(cur.length<3) cur.push(null as any);
+    const j=id?cur.indexOf(id):-1; if(j>=0&&j!==i){ cur[j]=cur[i]; } cur[i]=id as any; this.save.abPick=cur.slice(0,3) as (string|null)[]; this.abCd[i]=Math.max(this.abCd[i],.6); if(j>=0&&j!==i) this.abCd[j]=Math.max(this.abCd[j],.6); this.recompute(); this.emit('abilityPick',i); return true; }
   /** Personal loot, filtered against the recipient level. Ineligible items are NOT rerolled downward (spec). */
   dropEntry(en:LootEntry,x:number,y:number){
     if(en.item){ const d=ITEM_BY_ID[en.item]; if(d.lvl>this.save.level||d.lvl>this.dd.tierCap){ this.emit('filtered',d.name); return; } this.addDrop(x,y,{kind:'item',inst:mkInst(this.save,en.item),amount:1}); }
@@ -623,7 +650,7 @@ export class Game {
       const stacksOk=(d.kind==='chip'&&(c.chips[d.chip!]||0)>0)||(d.kind==='stim'&&c.stims>0); const fits=stacksOk||this.carriedCount()<COMBAT.missionSlots;
       if(!fits){ if(!d.marker){ d.marker=true; this.toast('Inventory full: item left on the ground (marked).'); } continue; }
       if(d.kind==='item') c.items.push(d.inst!); else if(d.kind==='chip') c.chips[d.chip!]=(c.chips[d.chip!]||0)+1; else if(d.kind==='stim') c.stims++;
-      this.rm(d); this.contractEvent('pickup',''); this.emit('pickup',d); this.emit('sfx','pickup'); { const pr=this.dropRarity(d); if(RARITY_RANK[pr]>=2) this.emit('sfx','pickup_'+pr); } }
+      if(d.kind==='item'&&ITEM_BY_ID[d.inst!.def]?.abilities?.length){ (inst as any).abGot=true; const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); aq.total++; } this.rm(d); this.contractEvent('pickup',''); this.emit('pickup',d); this.emit('sfx','pickup'); { const pr=this.dropRarity(d); if(RARITY_RANK[pr]>=2) this.emit('sfx','pickup_'+pr); } }
   }
   rm(d:Drop){ const inst=this.inst!; inst.drops=inst.drops.filter(x=>x.id!==d.id); }
   onBossDead(e:En){

@@ -1,3 +1,4 @@
+import { pickCommonAbilityItem } from './abilities/hw';
 // First-run tutorial: a step-based state machine that OBSERVES game state (it never drives the game), so players can skip ahead,
 // do things out of order, die, open other panels or resize without breaking it. See docs/TUTORIAL.md.
 //  - Progress is a set of latched facts (state.done). A step is complete once its fact is latched. The current step is the first
@@ -55,6 +56,8 @@ export class Tutorial {
     else { st.item=''; }
     const slot=st.slot; const have=(Object.keys(CHIPS) as ChipId[]).filter(c=>chipFits(c,slot)&&(s.lockerChips[c]||0)>0);
     if(have.length) st.chip=have.includes('power' as ChipId)?'power' as ChipId:have[0]; else { const c=(Object.keys(CHIPS) as ChipId[]).find(c=>chipFits(c,slot)&&CHIPS[c].rarity==='green')||(Object.keys(CHIPS) as ChipId[]).find(c=>chipFits(c,slot))!; s.lockerChips[c]=(s.lockerChips[c]||0)+1; st.chip=c; }
+    // acquisition curve: the tutorial also hands over one common ability-bearing augment (storage), so the first new ability is guaranteed
+    if(!s.items.some(i=>!i.def.startsWith('stock_')&&ITEM_BY_ID[i.def]?.abilities?.length&&RARITY_RANK[ITEM_BY_ID[i.def].rarity]<=1)){ const ab=pickCommonAbilityItem({ level:s.level, tierCap:99, rank:{HI:0,PS:0,MM:0}, discovered:s.codex, rnd:Math.random }); if(ab) s.items.push({uid:'u'+(s.uidN++),def:ab.id,chips:[]}); }
     persist(s); }
   // ---------- DOM ----------
   private build(){

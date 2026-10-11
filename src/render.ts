@@ -1,3 +1,4 @@
+import { drawAbx } from './abx_render';
 import { Game, En, type Fx } from './sim';
 import { AB, ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, ABILITY_TYPE_COLOR, RARITY_RANK, uiFs, cpx } from './config';
 import { installedLayout } from './build';
@@ -142,7 +143,7 @@ export class Renderer {
     // ground-level telegraphs/zones go under actors
     this.drawGroundFx();
     for(const it of items) it.f();
-    this.dart.ambient(this); this.drawProjAndFx(); this.drawGuidance(); if(L.kind==='town'&&this.town?.ready) this.drawTownOverhead(); if(L.kind==='town'&&this.town?.ready) this.drawTownAmbient(); this.drawAbilityLayer();
+    this.dart.ambient(this); this.drawProjAndFx(); drawAbx(this); this.drawGuidance(); if(L.kind==='town'&&this.town?.ready) this.drawTownOverhead(); if(L.kind==='town'&&this.town?.ready) this.drawTownAmbient(); this.drawAbilityLayer();
   }
   interactVisible(id:string){ const g=this.g; if(g.mode!=='run'||!g.inst) return true; const f=g.inst.flags; if(id==='controller') return false; if(id==='hackproc') return !f.lock2; if(id==='armorydoor') return !f.armory; if(id==='cratechip') return !g.inst.claimed.includes('cratechip'); return true; }
   /** world labels queued by drawInteract this frame; drawn on top (after the player) by flushLoot. alpha fades with distance. Exposed for tests. */

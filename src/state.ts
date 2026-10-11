@@ -1,4 +1,4 @@
-import { chipFits, Slot, ChipId, SLOTS, STARTING, PROGRESSION, ITEM_BY_ID, Mfr, INSTANCE_RETENTION_HOURS } from './config';
+import { ABILITIES, chipFits, Slot, ChipId, SLOTS, STARTING, PROGRESSION, ITEM_BY_ID, Mfr, INSTANCE_RETENTION_HOURS } from './config';
 import type { StoryState } from './story';
 import { migrateBank } from './bank';
 
@@ -23,6 +23,9 @@ export interface Save {
   /** First-run tutorial progress (src/tutorial.ts). */ tutorial?:import('./tutorial').TutState;
   /** Dungeons cleared at least once (content batch 1 unlock path). */ cleared?:Record<string,number>;
   /** Per-dungeon daily lockout days (annex keeps using lastClearDay for backward compatibility). */ lockouts?:Record<string,string>;
+  /** Player's chosen Q/E/R ability ids from the granted set (null = auto). */ abPick?:(string|null)[];
+  /** Abilities codex: ability id -> discovery time (0 = known from the start). */ codex?:Record<string,number>;
+  /** Ability acquisition counters: pickups of ability-bearing augments and consecutive finished runs without one (pity timer). */ abAcq?:{ total:number; dry:number };
   /** Contracts: active progress by id, once-only completions, daily completion day by id. */ contracts?:{ active:Record<string,number>; done:string[]; doneDay:Record<string,string> };
 }
 const KEY = 'arpg-proto-save-v1';
@@ -38,7 +41,7 @@ export function newSave():Save {
 }
 export function mkInst(s:{uidN:number}, def:string):Inst { if(!ITEM_BY_ID[def]) throw new Error('unknown item '+def); return { uid:'u'+(s.uidN++), def, chips:[] }; }
 export function load():Save {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw) as Save; if (s.version===1) { s.settings = { ...newSave().settings, ...s.settings }; s.lockouts=s.lockouts||{}; s.contracts=s.contracts||{active:{},done:[],doneDay:{}}; const moved=sanitizeChips(s); migrateBank(s); (s as any)._chipMigrated=moved; return s; } } } catch (e) { console.warn('load failed', e); }
+  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw) as Save; if (s.version===1) { s.settings = { ...newSave().settings, ...s.settings }; s.lockouts=s.lockouts||{}; s.contracts=s.contracts||{active:{},done:[],doneDay:{}}; s.abAcq=s.abAcq||{total:0,dry:0}; if(s.abPick&&!Array.isArray(s.abPick)) s.abPick=undefined; if(s.abPick) s.abPick=s.abPick.slice(0,3).map(x=>typeof x==='string'&&ABILITIES[x]?x:null); const moved=sanitizeChips(s); migrateBank(s); (s as any)._chipMigrated=moved; return s; } } } catch (e) { console.warn('load failed', e); }
   return newSave();
 }
 /** Migration/enforcement: unsocket chips that do not fit their body part and return them to the locker stock. Returns number moved. */

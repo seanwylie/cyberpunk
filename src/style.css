@@ -447,3 +447,19 @@ body.touch .abtn .aname,body.touch #dodge .aname{ overflow-wrap:normal; max-widt
 .recbank{ margin-top:4px; padding:3px 6px; border-left:3px solid #e8c45a; background:#2d2a20; font-size:max(var(--fmin),calc(12px*var(--fs))); }
 .bkfilters select,.bkfilters .bksearch{ width:auto; } .bkfilters select{ flex:0 1 130px; min-width:0; }
 #modal .bkfilters select,#modal .bkfilters .bksearch{ width:auto; } #modal .bkfilters select{ flex:0 1 130px; } #modal .bkfilters .bksearch{ flex:1 1 150px; }
+/* ---- augment ability slots + codex (src/abilities/ui_ext.ts) ---- */
+.abslots{ margin:6px 0; padding:6px 8px; border:1px solid rgba(207,198,176,.25); border-radius:6px; background:rgba(20,18,16,.5); }
+.abslots .abhead{ margin-bottom:4px; font-size:var(--fmin); display:flex; flex-wrap:wrap; gap:2px 10px; align-items:center; }
+.abslots .abhead>.mut{ flex:1 1 220px; min-width:0; }
+.abslotrow{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:6px; }
+.abslot{ display:flex; align-items:center; gap:6px; min-width:0; padding:3px 5px; border:1px solid rgba(207,198,176,.2); border-radius:5px; }
+.abkey{ font-weight:700; color:#d8d2bf; min-width:1.2em; text-align:center; }
+.abslotimg{ width:30px; height:30px; flex:none; border-radius:50%; } .abslotimg.empty{ border:1px dashed rgba(207,198,176,.3); display:inline-block; }
+.abslotname{ flex:1; min-width:0; white-space:normal; overflow-wrap:anywhere; line-height:1.15; font-size:var(--fmin); }
+.abrest{ margin-top:5px; display:flex; flex-wrap:wrap; gap:4px; align-items:center; font-size:var(--fmin); }
+.btn.mini{ padding:1px 6px; min-width:28px; min-height:28px; }
+.cdxgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:6px; margin:8px 0; }
+.cdx{ display:flex; gap:8px; align-items:center; border:1px solid; border-radius:6px; padding:5px 7px; background:rgba(20,18,16,.55); min-width:0; }
+.cdx>div{ display:flex; flex-direction:column; min-width:0; } .cdx b,.cdx .mut{ overflow:hidden; text-overflow:ellipsis; font-size:var(--fmin); }
+.cdxi{ width:40px; height:40px; flex:none; border-radius:50%; } .cdxi.q{ display:inline-flex; align-items:center; justify-content:center; border:1px dashed rgba(207,198,176,.3); font-size:1.4em; color:rgba(207,198,176,.5); }
+.cdx.lost{ opacity:.7; }

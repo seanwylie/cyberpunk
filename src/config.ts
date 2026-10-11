@@ -8,6 +8,8 @@ import { MOB_DMG } from './content/batch2_mobs';
 import type { MobMeta } from './content/batch2_mobs';
 import { MOVE_DMG } from './content/boss_moves';
 import { BAL } from './content/balance';
+import { ABILITY_DATA, describe as describeAbility } from './abilities/registry';
+import { ABILITY_ITEMS } from './abilities/hw';
 // Editable gameplay configuration. SEPARATE from save data (see save.ts). All numbers are PLACEHOLDER
 // prototype values, not approved balance (spec: "Numerical examples are not approved balance").
 export const CONFIG_VERSION = '0.1.0-proto';
@@ -34,14 +36,16 @@ export const RARITY_RANK: Record<Rarity,number> = { grey:0, green:1, blue:2, pur
 export interface Stats { maxHp:number; dmg:number; atkSpeed:number; cooling:number; move:number; pickup:number; regen:number; armor:number; }
 export const BASE_STATS: Stats = { maxHp:100, dmg:1, atkSpeed:1, cooling:1, move:1, pickup:0, regen:0, armor:0 };
 
-export type AbilityId = 'sweep'|'brace'|'forcedcool'|'cloak'|'bladeburst'|'reposition'|'control'|'pulse'|'revive'|'defib';
+/** Legacy ids plus the 60+ data-driven augment abilities (src/abilities/data.ts), so this is an open string. */
+export type LegacyAbilityId = 'sweep'|'brace'|'forcedcool'|'cloak'|'bladeburst'|'reposition'|'control'|'pulse'|'revive'|'defib';
+export type AbilityId = string;
 export type AimType = 'self'|'direction'|'ground'|'target'|'ally';
 export type AbilityType='attack'|'defense'|'hacking'|'mobility';
 /** Muted per-type UI colours (oxide red / dirty bone-steel / slate blue / olive; no neon). */
 export const ABILITY_TYPE_COLOR: Record<AbilityType,string> = { attack:'#a8483a', defense:'#a39e8a', hacking:'#5f7f9e', mobility:'#7d8a52' };
 export const ABILITY_TYPE_LABEL: Record<AbilityType,string> = { attack:'Attack', defense:'Defense', hacking:'Hacking', mobility:'Mobility' };
 export const ABILITY_TYPE: Record<AbilityId,AbilityType> = { sweep:'attack', bladeburst:'attack', brace:'defense', forcedcool:'defense', defib:'defense', revive:'defense', control:'hacking', pulse:'hacking', cloak:'mobility', reposition:'mobility' };
-export interface AbilityDef { id:AbilityId; type:AbilityType; name:string; aim:AimType; heat:number; cd:number; windup:number; range:number; desc:string; }
+export interface AbilityDef { id:AbilityId; type:AbilityType; name:string; aim:AimType; heat:number; cd:number; windup:number; range:number; desc:string; /** data-driven augment ability (src/abilities) */ ext?:boolean; rarity?:Rarity; }
 /** Ability power pass (docs/ABILITIES.md): every number the abilities and their synergies use. Abilities are the main damage/utility tool; autos are the filler that builds heat. */
 export const AB = {
   autoDmgMul:.45, autoHeatMul:2.4,            // basic attacks: weaker, and they build heat you then dump through abilities
@@ -152,7 +156,10 @@ export const ITEMS: ItemDef[] = [
   H('pool_p_torso','AS Lattice Torso','torso','PS','purple',15,{maxHp:30,cooling:.2,dmg:.05}),
   H('pool_o_legs','HB Bastion Legs','legR','HI','orange',20,{maxHp:40,armor:5}),
 ];
-ITEMS.push(...EXTRA_ITEMS, ...WEAPON_ITEMS, ...IDKFA_ITEMS);
+ITEMS.push(...EXTRA_ITEMS, ...WEAPON_ITEMS, ...IDKFA_ITEMS, ...ABILITY_ITEMS);
+// register the data-driven abilities next to the legacy ones (aim shapes map onto the existing aim types so aiming/validation code is shared)
+const AIM_OF:Record<string,AimType>={ self:'self', toggle:'self', cone:'direction', line:'direction', ground:'ground', lockon:'target' };
+for(const a of ABILITY_DATA){ (ABILITIES as any)[a.id]={ id:a.id, type:a.type, name:a.name, aim:AIM_OF[a.shape], heat:a.heat, cd:a.cd, windup:a.windup, range:a.range, desc:describeAbility(a), ext:true, rarity:a.rarity }; (ABILITY_TYPE as any)[a.id]=a.type; }
 export const ITEM_BY_ID: Record<string,ItemDef> = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 
 // Install cost depends on the hardware being REMOVED (spec). PLACEHOLDER curve.

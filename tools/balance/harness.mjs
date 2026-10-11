@@ -16,19 +16,20 @@ export async function runJob(job) {
     g.save.level = job.level; g.save.xp = 0; g.dbg.god = false; g.dbg.oneShot = false;
     for (const sl of SLOTS) { const st = g.save.items.find(i => i.def === 'stock_' + sl); if (st) g.save.installed[sl] = st.uid; else { const it = St.mkInst(g.save, 'stock_' + sl); g.save.items.push(it); g.save.installed[sl] = it.uid; } }
     for (const it of g.save.items) if (!it.def.startsWith('stock_')) it.chips = [];
-    const kitMax = { starter: -1, mid: 2, blue: 2, purple: 3, orange: 4 }[job.kit];
+    // abmid/abpurple: same rarity ceiling as mid/purple, but hardware is the augment-ability set (src/abilities/hw.ts) so abilities are exercised
+    const AB = job.kit === 'abmid' || job.kit === 'abpurple'; const kitMax = { starter: -1, mid: 2, blue: 2, purple: 3, orange: 4, abmid: 2, abpurple: 3 }[job.kit];
     if (job.kit === 'orange') { g.recompute(); g.cheatIdkfa(); g.save.level = job.level; }
     else if (kitMax >= 0) {
-      const chipMax = (job.kit === 'mid' || job.kit === 'blue') ? 2 : 3;
+      const chipMax = (job.kit === 'mid' || job.kit === 'blue' || job.kit === 'abmid') ? 2 : 3;
       for (const sl of SLOTS) {
-        const cands = ITEMS.filter(i => i.slot === sl && !i.id.startsWith('stock_') && RAR.indexOf(i.rarity) <= kitMax && RAR.indexOf(i.rarity) >= 1 && i.lvl <= job.level && !/cheat|sig_/.test(i.id));
-        cands.sort((a, b) => RAR.indexOf(b.rarity) - RAR.indexOf(a.rarity) || b.lvl - a.lvl || (a.id < b.id ? -1 : 1));
+        const cands = ITEMS.filter(i => i.slot === sl && !i.id.startsWith('stock_') && RAR.indexOf(i.rarity) <= kitMax && RAR.indexOf(i.rarity) >= 1 && i.lvl <= job.level && !/cheat|sig_/.test(i.id) && (AB ? true : !i.id.startsWith('ab_')));
+        if (AB) cands.sort((a, b) => (+b.id.startsWith('ab_') - +a.id.startsWith('ab_')) || RAR.indexOf(b.rarity) - RAR.indexOf(a.rarity) || (b.abilities?.length || 0) - (a.abilities?.length || 0) || b.lvl - a.lvl || (a.id < b.id ? -1 : 1)); else cands.sort((a, b) => RAR.indexOf(b.rarity) - RAR.indexOf(a.rarity) || b.lvl - a.lvl || (a.id < b.id ? -1 : 1));
         for (const c of cands) { const inst = St.mkInst(g.save, c.id); const keep = g.save.installed[sl]; g.save.installed[sl] = inst.uid; g.save.items.push(inst); const L = {}; for (const s2 of SLOTS) { const u = g.save.installed[s2]; L[s2] = g.save.items.find(i => i.uid === u); }
           const bad = (() => { try { const { hardConflicts } = window.__buildmod || {}; return false; } catch { return false; } })();
           break; }
       }
       // chips: top-rarity fitting chips, sockets filled (mid: half)
-      for (const sl of SLOTS) { const it = g.save.items.find(i => i.uid === g.save.installed[sl]); if (!it || it.def.startsWith('stock_')) continue; const cap = SLOT_SOCKETS[sl]; const n = job.kit === 'mid' ? Math.ceil(cap / 2) : cap;
+      for (const sl of SLOTS) { const it = g.save.items.find(i => i.uid === g.save.installed[sl]); if (!it || it.def.startsWith('stock_')) continue; const cap = SLOT_SOCKETS[sl]; const n = (job.kit === 'mid' || job.kit === 'abmid') ? Math.ceil(cap / 2) : cap;
         const list = Object.keys(CHIPS).filter(c => chipFits(c, sl) && RAR.indexOf(CHIPS[c].rarity) <= chipMax).sort((a, b) => RAR.indexOf(CHIPS[b].rarity) - RAR.indexOf(CHIPS[a].rarity) || (a < b ? -1 : 1)); it.chips = []; for (let i = 0; i < n && list.length; i++) it.chips.push(list[i % Math.min(list.length, 4)]); }
     }
     g.recompute();
@@ -95,6 +96,8 @@ export async function runJob(job) {
         if ((i = rdy('sweep')) >= 0 && d < 3.4) { if (fire(i, near.x, near.y)) return; }
         if ((i = rdy('bladeburst')) >= 0 && d < 5.5) { if (fire(i, near.x, near.y)) return; }
         if ((i = rdy('forcedcool')) >= 0 && g.heat > 55) { if (fire(i, g.px, g.py)) return; }
+        // data-driven augment abilities (src/abilities): defence/self when hurt or crowded, everything else at the target when in range
+        for (let k = 0; k < AB.length; k++) { const def = Cfg.ABILITIES[AB[k]]; if (!def || !def.ext || g.abCd[k] > 0 || g.heat + def.heat > 96) continue; const self = def.aim === 'self' || def.aim === 'toggle'; if (def.type === 'defense' && !(g.hp < g.maxHp * .7 || near8.length >= 2)) continue; if (self ? d > 6 : d > Math.min(def.range + 1, 9)) continue; if (fire(k, near.x, near.y)) return; }
       }
     };
     const ranged = () => g.build.weapon.range;

@@ -9,6 +9,8 @@ export type PK='spark'|'streak'|'shard'|'debris'|'glow'|'ring'|'hex'|'ghost'|'st
 export interface P { on:boolean; k:PK; x:number; y:number; z:number; vx:number; vy:number; vz:number; t:number; life:number; s:number; c:string; a:number; x2:number; y2:number; g:number; d:number; add:boolean; rot:number; vr:number; ab:string }
 const C={ attack:['#a8483a','#e8845a','#fff0d8'], defense:['#a39e8a','#e4dcc8','#fffaf0'], hacking:['#5f7f9e','#8fc4ea','#e8f6ff'], mobility:['#7d8a52','#b5d07a','#f4ffe0'], heat:['#b8c8cc','#e7f2f2','#ffffff'] } as const;
 export const PAL:Record<string,readonly string[]>={ sweep:C.attack, bladeburst:C.attack, control:C.hacking, pulse:C.hacking, brace:C.defense, forcedcool:C.heat, defib:C.defense, revive:C.defense, reposition:C.mobility, cloak:C.mobility };
+/** Data-driven augment abilities (src/abilities) draw through the same pool with generic recipes: '<id>.cast' (shape from e.n: 0 self ring, 1 cone/line streaks, 2 ground blast) and '<id>.hit'. */
+export const GEN=new Set<string>(); export const registerGenericVfx=(id:string,type:'attack'|'defense'|'hacking'|'mobility'|'heat')=>{ PAL[id]=C[type]; GEN.add(id); };
 export const CAPS={ high:700, medium:260, low:100 } as const; export const SCALE={ high:1, medium:.5, low:.25 } as const;
 const REDUCED_CAP=36;
 
@@ -33,6 +35,11 @@ export class Vfx {
     const ab=e.k.split('.')[0], ph=e.k.split('.')[1]||''; this.stats.events[e.k]=(this.stats.events[e.k]||0)+1;
     const pal=PAL[ab]||C.attack, [c0,c1,c2]=pal; const R=Math.random, a=e.a||0; const red=this.reduced;
     const rad=(n:number,speed:number,k:PK,o:(i:number,ang:number)=>Partial<P>)=>{ for(let i=0;i<this.N(n);i++){ const ang=R()*6.283, sp=speed*(.5+R()); this.add(ab,k,e.x,e.y,{vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,...o(i,ang)}); } };
+    if(GEN.has(ab)){ const rr=e.r||2; if(ph==='cast'){ const sh=e.n||0; this.add(ab,'ring',e.x,e.y,{s:sh===0?1.8:Math.max(1.2,Math.min(rr,3.5)),life:.45,c:c1,add:!red});
+        if(sh===1){ for(let i=0;i<this.N(7);i++){ const an=a+(R()-.5)*.9; this.add(ab,'streak',e.x+Math.cos(an)*.8,e.y+Math.sin(an)*.8,{a:an,x2:Math.min(5,rr)*(.5+R()*.5),vx:Math.cos(an)*10,vy:Math.sin(an)*10,life:.25+R()*.15,s:2,c:i%2?c2:c1,add:true,z:.5}); } }
+        else if(sh===2){ this.add(ab,'ring',e.x,e.y,{s:rr*.6,life:.5,c:c2,add:!red}); rad(10,5,'spark',()=>({life:.35,s:1.5,c:c2,add:true,z:.4})); this.bloom(ab,e.x,e.y,1.5,c1); }
+        else rad(8,3.5,'spark',()=>({life:.35,s:1.4,c:c2,add:true,z:.6})); }
+      else rad(5,4,'spark',()=>({life:.28,s:1.4,c:c2,add:true,z:.5,d:3})); return; }
     switch(e.k){
       case 'sweep.cast': { const w=e.r!, arc=e.len||2.3; // slash trail: streaks fanning along the arc + shockwave + debris
         for(let i=0;i<this.N(10);i++){ const t=i/Math.max(1,this.N(10)-1), an=a-arc/2+arc*t; this.add(ab,'streak',e.x+Math.cos(an)*.8,e.y+Math.sin(an)*.8,{a:an+1.57,x2:w*(.7+R()*.4),vx:Math.cos(an)*9,vy:Math.sin(an)*9,life:.28+R()*.1,s:2.2,c:i%2?c2:c1,add:true,z:.5,d:3}); }

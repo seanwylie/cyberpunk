@@ -1,3 +1,4 @@
+import { ABILITIES } from './config';
 import { Game } from './sim';
 import { Renderer } from './render';
 import { AudioSys } from './audio';
@@ -27,7 +28,8 @@ export class Input {
     if(k==='h'||k==='f1'||k==='?'){ e.preventDefault(); (window as any).__ui?.toggleHelp(); return; }
     if(this.opts.modalOpen()&&k!==' ') return;
     this.keys.add(k);
-    const ai=this.abilityKey(k); if(ai>=0&&this.heldAbility===null){ this.heldAbility=ai; this.g.beginAim(ai); this.updateAimFromMouse(); e.preventDefault(); }
+    const ai=this.abilityKey(k); if(ai>=0&&e.shiftKey&&this.heldAbility===null){ if(this.g.cycleAbility(ai)){ const id=this.g.build.abilities[ai]; this.g.toast(['Q','E','R'][ai]+': '+(ABILITIES[id]?.name||'')); } e.preventDefault(); this.updateMove(); return; }
+    if(ai>=0&&this.heldAbility===null){ this.heldAbility=ai; this.g.beginAim(ai); this.updateAimFromMouse(); e.preventDefault(); }
     else if(k===' '){ this.g.dodge(); this.heldAbility=null; e.preventDefault(); }
     else if(k==='f'||k==='enter'&&false) this.g.interact();
     else if(k==='b') this.g.townReturn();
