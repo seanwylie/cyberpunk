@@ -41,3 +41,15 @@ test('story lambda: Function URL with CORS to the client, reserved concurrency, 
 });
 test('billing: budget with email notifications', () => { const { app, cfg } = base(domain); Template.fromStack(buildApp(app, cfg).billing).hasResourceProperties('AWS::Budgets::Budget', { Budget: Match.objectLike({ BudgetLimit: { Amount: 30, Unit: 'USD' } }) }); });
 test('ci: optional OIDC role is locked to the repo main branch', () => { const { app, cfg } = base({ ...domain, createOidcRole: true }); const s = buildApp(app, cfg); assert.ok(s.ci); const j = JSON.stringify(Template.fromStack(s.ci!).toJSON()); assert.ok(j.includes('repo:seanwylie/cyberpunk:ref:refs/heads/main')); });
+test('server: existingRepo imports wv-hub (no AWS::ECR::Repository) and still grants pull + outputs the URI', () => {
+  const { app, cfg } = base({ ...domain, existingRepo: true }); const t = Template.fromStack(buildApp(app, cfg).server);
+  t.resourceCountIs('AWS::ECR::Repository', 0);
+  t.hasResourceProperties('AWS::IAM::Policy', { PolicyDocument: { Statement: Match.arrayWith([Match.objectLike({ Action: Match.arrayWith(['ecr:BatchGetImage']) })]) } });
+  assert.ok(JSON.stringify(t.findOutputs('EcrRepoUri')).includes('wv-hub')); assert.ok(JSON.stringify(t.toJSON()).includes('wv-hub:latest') || JSON.stringify(t.toJSON()).includes('/wv-hub'));
+  const d = base(domain); Template.fromStack(buildApp(d.app, d.cfg).server).resourceCountIs('AWS::ECR::Repository', 1); // default unchanged
+});
+test('server: first deploy with zero tasks (minTasks=0 maxTasks=0) and desiredCount override', () => {
+  const { app, cfg } = base({ ...domain, minTasks: 0, maxTasks: 0, desiredCount: 0 }); const t = Template.fromStack(buildApp(app, cfg).server);
+  t.hasResourceProperties('AWS::ECS::Service', { DesiredCount: 0 }); t.hasResourceProperties('AWS::ApplicationAutoScaling::ScalableTarget', { MinCapacity: 0, MaxCapacity: 0 });
+  const o = base({ ...domain, desiredCount: 1, minTasks: 0, maxTasks: 2 }); Template.fromStack(buildApp(o.app, o.cfg).server).hasResourceProperties('AWS::ECS::Service', { DesiredCount: 1 });
+});

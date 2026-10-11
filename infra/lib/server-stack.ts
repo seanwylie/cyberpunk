@@ -18,16 +18,19 @@ import { WvConfig, clientHost, serverHost } from './config';
 
 /** Game WebSocket server: ECS Fargate behind an ALB (WebSocket upgrade works natively, idle timeout 3600 s). One task per region to start. */
 export class ServerStack extends Stack {
-  readonly repo: ecr.Repository; readonly service: ecs.FargateService; readonly cluster: ecs.Cluster; readonly alb: elbv2.ApplicationLoadBalancer; readonly wsUrl: string;
+  readonly repo: ecr.IRepository; readonly service: ecs.FargateService; readonly cluster: ecs.Cluster; readonly alb: elbv2.ApplicationLoadBalancer; readonly wsUrl: string;
   constructor(scope: Construct, id: string, cfg: WvConfig, clientUrl: string, props?: StackProps) {
     super(scope, id, props);
     // Public subnets only (no NAT gateway = ~US$32/mo saved). Tasks get public IPs but the security group only admits the ALB.
     const vpc = new ec2.Vpc(this, 'Vpc', { availabilityZones: cfg.azs ?? [`${this.region}a`, `${this.region}b`], // explicit: no AWS lookup, so synth needs no credentials
        natGateways: 0, subnetConfiguration: [{ name: 'public', subnetType: ec2.SubnetType.PUBLIC, cidrMask: 24 }] });
-    this.repo = new ecr.Repository(this, 'Repo', { repositoryName: 'wv-hub', imageScanOnPush: true, removalPolicy: RemovalPolicy.RETAIN, lifecycleRules: [{ maxImageCount: 15 }] });
+    // existingRepo=true: 'wv-hub' already exists in the account (e.g. RETAINed after a failed first create), so import it instead of creating it.
+    this.repo = cfg.existingRepo ? ecr.Repository.fromRepositoryName(this, 'Repo', 'wv-hub')
+      : new ecr.Repository(this, 'Repo', { repositoryName: 'wv-hub', imageScanOnPush: true, removalPolicy: RemovalPolicy.RETAIN, lifecycleRules: [{ maxImageCount: 15 }] });
     this.cluster = new ecs.Cluster(this, 'Cluster', { vpc, containerInsightsV2: ecs.ContainerInsights.DISABLED });
     const logGroup = new logs.LogGroup(this, 'Logs', { retention: logs.RetentionDays.ONE_MONTH, removalPolicy: RemovalPolicy.DESTROY });
     const task = new ecs.FargateTaskDefinition(this, 'Task', { cpu: cfg.taskCpu, memoryLimitMiB: cfg.taskMemMiB, runtimePlatform: { cpuArchitecture: ecs.CpuArchitecture.ARM64, operatingSystemFamily: ecs.OperatingSystemFamily.LINUX } });
+    this.repo.grantPull(task.obtainExecutionRole()); // explicit pull permission (also needed for an imported repo)
     const origins = [clientUrl].filter(Boolean).join(',');
     const env: Record<string, string> = { PORT: '8787', WV_ORIGINS: origins, WV_ALLOW_NO_ORIGIN: '0', WV_MAX_CONNS: String(cfg.maxConns), WV_MAX_ROOMS: String(cfg.maxRooms), WV_MAX_PARTIES: String(cfg.maxParties), WV_GRACE_MS: '20000' };
     const secretMap: Record<string, ecs.Secret> = {};
@@ -38,7 +41,7 @@ export class ServerStack extends Stack {
     task.addContainer('hub', { image: ecs.ContainerImage.fromEcrRepository(this.repo, cfg.imageTag), portMappings: [{ containerPort: 8787 }], environment: env, secrets: secretMap, stopTimeout: Duration.seconds(30), readonlyRootFilesystem: true,
       logging: ecs.LogDrivers.awsLogs({ logGroup, streamPrefix: 'hub' }), healthCheck: { command: ['CMD-SHELL', "node -e \"fetch('http://127.0.0.1:8787/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""], interval: Duration.seconds(15), timeout: Duration.seconds(3), retries: 3, startPeriod: Duration.seconds(10) } });
     const svcSg = new ec2.SecurityGroup(this, 'ServiceSg', { vpc, description: 'hub tasks: only the ALB', allowAllOutbound: true });
-    this.service = new ecs.FargateService(this, 'Service', { cluster: this.cluster, taskDefinition: task, desiredCount: cfg.minTasks, assignPublicIp: true, vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC }, securityGroups: [svcSg], minHealthyPercent: 100, maxHealthyPercent: 200, circuitBreaker: { rollback: true }, healthCheckGracePeriod: Duration.seconds(30), enableExecuteCommand: false });
+    this.service = new ecs.FargateService(this, 'Service', { cluster: this.cluster, taskDefinition: task, desiredCount: cfg.desiredCount, assignPublicIp: true, vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC }, securityGroups: [svcSg], minHealthyPercent: 100, maxHealthyPercent: 200, circuitBreaker: { rollback: true }, healthCheckGracePeriod: Duration.seconds(30), enableExecuteCommand: false });
 
     const host = serverHost(cfg); const albSg = new ec2.SecurityGroup(this, 'AlbSg', { vpc, description: 'public ALB', allowAllOutbound: true });
     this.alb = new elbv2.ApplicationLoadBalancer(this, 'Alb', { vpc, internetFacing: true, securityGroup: albSg, idleTimeout: Duration.seconds(3600), http2Enabled: true, dropInvalidHeaderFields: true });
@@ -59,7 +62,8 @@ export class ServerStack extends Stack {
       albSg.addIngressRule(ec2.Peer.anyIpv4(), ec2.Port.tcp(80), 'ws (no domain configured)'); this.alb.addListener('Http', { port: 80, defaultTargetGroups: [tg] }); this.wsUrl = `ws://${this.alb.loadBalancerDnsName}`;
     }
     // Scaling: CPU target + ALB connection count. Capped by cfg.maxTasks (default 1: in-memory rooms, see docs).
-    const scaling = this.service.autoScaleTaskCount({ minCapacity: cfg.minTasks, maxCapacity: cfg.maxTasks });
+    const scaling = this.service.autoScaleTaskCount({ minCapacity: cfg.minTasks, // 0 is allowed (first deploy before an image exists)
+       maxCapacity: cfg.maxTasks });
     scaling.scaleOnCpuUtilization('Cpu', { targetUtilizationPercent: 60, scaleInCooldown: Duration.minutes(10), scaleOutCooldown: Duration.minutes(2) });
     scaling.scaleOnMetric('Conns', { metric: this.alb.metrics.activeConnectionCount({ period: Duration.minutes(1), statistic: 'Maximum' }), adjustmentType: appscaling.AdjustmentType.CHANGE_IN_CAPACITY, cooldown: Duration.minutes(5),
       scalingSteps: [{ upper: 150, change: -1 }, { lower: 300, change: +1 }, { lower: 450, change: +2 }] });
