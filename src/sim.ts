@@ -1,5 +1,6 @@
 import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING} from './config';
 import { counterFor, hintText } from './content/abilfx';
+import { bankOverflowItem, bankOverflowChip } from './bank';
 import { computeBuild, installedLayout, BuildResult } from './build';
 import { buildTown, Level, Interact } from './level';
 import { dungeonOf, DungeonDef, unlockReason } from './content/dungeons';
@@ -36,7 +37,7 @@ export class Game {
   save:Save; level:Level; mode:'town'|'run'='town'; inst:InstanceState|null=null; emit:Emit;
   enemies:En[]=[]; projs:Proj[]=[]; zones:Zone[]=[]; fx:Fx[]=[]; time=0; pickFx:{id:number;x:number;y:number;kind:Drop['kind'];inst?:Drop['inst'];chip?:Drop['chip'];amount:number;t0:number}[]=[];
   // player
-  px=0; py=0; face=0; hp=100; heat=0; overheated=false; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; slowT=0; downed=false; downT=0; defibCd=0; revealing=false;
+  bankedOverflow=0; px=0; py=0; face=0; hp=100; heat=0; overheated=false; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; slowT=0; downed=false; downT=0; defibCd=0; revealing=false;
   /** ability power pass: damage dealt per source tag ('auto' or ability id), cast counts, synergy state */ kick=0; lastStop=-9; curTag='auto'; dealt:Record<string,number>={}; casts:Record<string,number>={}; comboN=0; comboT=0; lastAb=''; ovT=0; hitStop=0; sinceAb=0; nudgeCd=0;
   abCd:number[]=[0,0,0]; cast:{ idx:number; t:number; aim:AimState; ab:AbilityDef }|null=null; aim:AimState|null=null; target:number|null=null; lungeT=0; lungeDx=0; lungeDy=0; lungeHit:Set<number>=new Set();
   slideT=0; slideFx=0; slideFy=0; channel:{ kind:'town'|'hack'; t:number; dur:number; cb:()=>void }|null=null;
@@ -97,8 +98,8 @@ export class Game {
   migrateInstance(){ const i=this.save.instance; if(!i) return; const id=i.dungeon||'annex'; const bossDead=i.flags.bossDead||i.enemies.some(e=>e.dead&&ENEMIES[e.type]?.boss&&e.faction!=='ally');
     if(!bossDead) return; i.flags.bossDead=true; i.flags.completed=true; if(!i.flags.rewardsGranted){ i.flags.rewardsGranted=true; } if(lockDay(this.save,id)!==todayStr()) setLockDay(this.save,id,todayStr()); persist(this.save); }
   /** Move carried credits/stims/items/chips into the locker as capacity allows. Returns how many carried entries did not fit. */
-  bankCarried():number{ const s=this.save, c=s.instance?.carried; if(!c) return 0; const cap=s.lockerCap+s.purchases.lockerBlocks*STARTING.lockerPerPurchase; s.credits+=c.credits; c.credits=0; const rest:Inst[]=[]; for(const it of c.items){ if(capacityUsed(s)<cap) s.items.push(it); else rest.push(it); } c.items=rest;
-    for(const [k,v] of Object.entries(c.chips)){ const kk=k as ChipId; if((s.lockerChips[kk]||0)>0||capacityUsed(s)<cap){ s.lockerChips[kk]=(s.lockerChips[kk]||0)+(v||0); delete c.chips[kk]; } } s.stims+=c.stims; c.stims=0; persist(s); return c.items.length+Object.keys(c.chips).length; }
+  bankCarried():number{ const s=this.save, c=s.instance?.carried; if(!c) return 0; const cap=s.lockerCap+s.purchases.lockerBlocks*STARTING.lockerPerPurchase; s.credits+=c.credits; c.credits=0; const rest:Inst[]=[]; for(const it of c.items){ if(capacityUsed(s)<cap) s.items.push(it); else if(bankOverflowItem(s,it)) this.bankedOverflow++; else rest.push(it); } c.items=rest;
+    for(const [k,v] of Object.entries(c.chips)){ const kk=k as ChipId; if((s.lockerChips[kk]||0)>0||capacityUsed(s)<cap){ s.lockerChips[kk]=(s.lockerChips[kk]||0)+(v||0); delete c.chips[kk]; } else if(bankOverflowChip(s,kk,v||0)){ this.bankedOverflow+=v||0; delete c.chips[kk]; } } s.stims+=c.stims; c.stims=0; persist(s); return c.items.length+Object.keys(c.chips).length; }
   /** Finished instance on arrival in town: bank the pack; retire the instance when nothing is left in it (otherwise it stays for loot retrieval but never blocks other dungeons). */
   settleCompleted(){ const s=this.save; const i=s.instance; if(!i||!this.instDone(i)) return; const left=this.bankCarried(); if(!left&&!i.drops.length){ s.instance=null; this.inst=null; persist(s); } }
   /** Leaving a finished instance for another dungeon: bank what fits; leftover pack items or ground loot need one confirming repeat (within 30 s). */

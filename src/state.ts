@@ -1,5 +1,6 @@
 import { chipFits, Slot, ChipId, SLOTS, STARTING, PROGRESSION, ITEM_BY_ID, Mfr, INSTANCE_RETENTION_HOURS } from './config';
 import type { StoryState } from './story';
+import { migrateBank } from './bank';
 
 export interface Inst { uid:string; def:string; chips:ChipId[]; }
 export interface Settings { gore:'off'|'standard'|'bloody'; joystickFixed:boolean; damageNumbers:boolean; reducedFx:boolean; uiSize:'S'|'M'|'L'|'XL'; minimap?:boolean; stationMarkers?:boolean; quality?:'auto'|'high'|'medium'|'low'; showFps?:boolean; autoFullscreen?:boolean; recHidden?:boolean; recNudge?:boolean; hintsSeen?:Record<string,number>; lootLabels:'off'|'near'|'all'; lootMin:import('./config').Rarity; devFreeReset?:boolean; volume:number; musicVol?:number; sfxVol?:number; music:boolean; llm:{ enabled:boolean; url:string; key:string; model:string } }
@@ -18,6 +19,7 @@ export interface Save {
   settings:Settings; purchases:{ lockerBlocks:number; skins:string[]; equippedSkin:string|null }; lastClearDay:string|null;
   instance:InstanceState|null; story:StoryState|null; uidN:number; stats:{ runs:number; clears:number; kills:number };
   /** Set by the idkfa dev cheat; leaderboards/MMO must ignore flagged saves. */ cheated?:boolean; cheatLog?:string[];
+  /** Town bank (src/bank.ts): long-term storage + credits vault. */ bank?:import('./bank').Bank;
   /** First-run tutorial progress (src/tutorial.ts). */ tutorial?:import('./tutorial').TutState;
   /** Dungeons cleared at least once (content batch 1 unlock path). */ cleared?:Record<string,number>;
   /** Per-dungeon daily lockout days (annex keeps using lastClearDay for backward compatibility). */ lockouts?:Record<string,string>;
@@ -36,7 +38,7 @@ export function newSave():Save {
 }
 export function mkInst(s:{uidN:number}, def:string):Inst { if(!ITEM_BY_ID[def]) throw new Error('unknown item '+def); return { uid:'u'+(s.uidN++), def, chips:[] }; }
 export function load():Save {
-  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw) as Save; if (s.version===1) { s.settings = { ...newSave().settings, ...s.settings }; s.lockouts=s.lockouts||{}; s.contracts=s.contracts||{active:{},done:[],doneDay:{}}; const moved=sanitizeChips(s); (s as any)._chipMigrated=moved; return s; } } } catch (e) { console.warn('load failed', e); }
+  try { const raw = localStorage.getItem(KEY); if (raw) { const s = JSON.parse(raw) as Save; if (s.version===1) { s.settings = { ...newSave().settings, ...s.settings }; s.lockouts=s.lockouts||{}; s.contracts=s.contracts||{active:{},done:[],doneDay:{}}; const moved=sanitizeChips(s); migrateBank(s); (s as any)._chipMigrated=moved; return s; } } } catch (e) { console.warn('load failed', e); }
   return newSave();
 }
 /** Migration/enforcement: unsocket chips that do not fit their body part and return them to the locker stock. Returns number moved. */

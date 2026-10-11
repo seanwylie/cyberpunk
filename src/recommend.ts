@@ -9,7 +9,7 @@ export interface RecInput {
   items:Inst[]; installed:Partial<Record<Slot,string>>; lockerChips:Partial<Record<ChipId,number>>;
   credits:number; level:number; rep:Record<Mfr,number>; repairBill:number;
   /** Hardware the vendor sells right now (empty when no vendor is reachable, e.g. mid-run) and its base price per item. */
-  vendorStock?:ItemDef[]; vendorPrice?:(d:ItemDef)=>number;
+  /** hardware stored in the town bank: reported as hints only (needs a withdraw first) */ bankItems?:Inst[]; vendorStock?:ItemDef[]; vendorPrice?:(d:ItemDef)=>number;
   /** free locker slots (a vendor purchase needs one) */ lockerFree?:number; greyCount?:number; broken?:Slot[];
 }
 export type RecKind='swap'|'buy'|'chip'|'repair'|'tidy';
@@ -18,7 +18,7 @@ export interface Rec {
   id:string; kind:RecKind; action:'install'|'buy'|'socket'|'repair'|'dispose'; slot?:Slot; uid?:string; defId?:string; chip?:ChipId; replaces?:ChipId; socket?:number;
   /** build-score gain (log units, ~fractional improvement) */ gain:number; rank:number; cost:number; needed:number; deltas:Delta[]; gained:AbilityId[]; lost:AbilityId[]; why:string[]; title:string;
 }
-export interface RecResult { recs:Rec[]; chipMoves:Rec[]; saveUp:Rec[]; maintenance:Rec[]; style:Playstyle; significant:Rec|null; }
+export interface RecResult { /** upgrades that exist only in the bank */ bankHints:Rec[]; recs:Rec[]; chipMoves:Rec[]; saveUp:Rec[]; maintenance:Rec[]; style:Playstyle; significant:Rec|null; }
 export type Playstyle='melee'|'ranged'|'hacker'|'tank'|'balanced';
 
 export const REC_MIN_GAIN=.02;       // below this a change is noise
@@ -78,6 +78,12 @@ export function recommend(inp:RecInput):RecResult {
     if(!prev||(pass&&!prev.pass)||(pass===prev.pass&&r.rank>prev.r.rank)) bestPer.set(sl,{r,pass}); }
   for(const {r,pass} of bestPer.values()){ if(pass) recs.push(r); else if(inp.credits>=r.cost*SAVE_UP_FRACTION){ r.why.push(`Save up: ${r.needed}c more`); saveUp.push(r); } }
 
+  // (a2) bank hints: best affordable-in-principle swap per slot from banked hardware
+  const bankHints:Rec[]=[]; { const bestB=new Map<string,Rec>(); for(const it of inp.bankItems||[]){ const d=ITEM_BY_ID[it.def]; if(!d||d.lvl>inp.level||d.id.startsWith('stock_')) continue; const sl=d.slot; const old=L[sl]; const od=old?ITEM_BY_ID[old.def]:null; if(od&&od.id===d.id) continue; if(wouldConflict(L,sl,d.id)) continue;
+      const L2=cloneLayout(L); L2[sl]={uid:'rec',def:d.id,chips:[]}; const b2=computeBuild(L2,inp.level,inp.rep,broken); const gain=buildScore(b2,w)-base; if(gain<REC_MIN_GAIN) continue; const dl=deltas(cur,b2); const ab=abDiff(cur,b2); const prev=bestB.get(sl);
+      if(!prev||gain>prev.gain) bestB.set(sl,{ id:'bank:'+d.id+':'+it.uid, kind:'swap', action:'install', slot:sl, uid:it.uid, defId:d.id, gain, rank:gain, cost:0, needed:0, deltas:dl, gained:ab.gained, lost:ab.lost, title:d.name, why:[`In your bank: ${d.name} vs ${od?od.name:'empty slot'}: ${fmtD(dl)||'similar stats'}`,'Withdraw it at the bank, then install it in the locker'] }); }
+    bankHints.push(...[...bestB.values()].sort((x,y)=>y.gain-x.gain)); }
+
   // (b) chip moves (greedy, uses remaining stock; every move is slot-legal via chipFits)
   const stock:Record<string,number>={ ...inp.lockerChips as Record<string,number> }; const chipMoves:Rec[]=[]; const work=cloneLayout(L); let wb=cur, ws=base;
   for(let guard=0;guard<40;guard++){ let best:{ sl:Slot; i:number; c:ChipId; rep?:ChipId; gain:number; nb:BuildResult }|null=null;
@@ -99,5 +105,5 @@ export function recommend(inp:RecInput):RecResult {
 
   recs.sort((a,b)=>b.rank-a.rank); saveUp.sort((a,b)=>b.rank-a.rank);
   const significant=recs.filter(r=>r.kind!=='chip'||r.gain>=REC_SIGNIFICANT).find(r=>r.gain>=REC_SIGNIFICANT)||null;
-  return { recs, chipMoves, saveUp, maintenance, style, significant };
+  return { bankHints, recs, chipMoves, saveUp, maintenance, style, significant };
 }

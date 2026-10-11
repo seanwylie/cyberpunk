@@ -430,3 +430,20 @@ body.touch .abtn .aname,body.touch #dodge .aname{ overflow-wrap:normal; max-widt
 #interact .sico{ width:22px; height:22px; flex:none; }
 .helpbody{ padding:4px 6px 10px; } .helpcols{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,22em),1fr)); gap:6px 24px; } .helpact{ display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; } .helpact .btn{ min-height:44px; }
 #modal.helpmodal{ z-index:40; }
+
+/* ---- bank (src/bankui.ts) ---- */
+.bankwrap{ display:flex; flex-direction:column; gap:8px; min-height:0; }
+.bkhead{ display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; border:1px solid #4a4d50; background:#2a2c2e; border-radius:4px; padding:6px 10px; }
+.bkcred b{ color:#e8c45a; margin-right:4px; } .bkcred.vault{ color:#e8c45a; }
+.bkmsg{ border-left:3px solid #e8c45a; background:#2d2a20; padding:4px 8px; font-size:max(var(--fmin),calc(12px*var(--fs))); }
+.bkcols{ display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:10px; min-height:0; }
+@media (max-width:820px){ .bkcols{ grid-template-columns:minmax(0,1fr); } }
+.bkgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(max(56px,calc(48px*var(--fs))),1fr)); gap:5px; max-height:min(46vh,420px); overflow:auto; padding:4px; border:1px solid #3a3d40; background:#1c1e20; border-radius:3px; align-content:start; }
+.bkgrid.small{ max-height:min(30vh,260px); } .bkempty{ grid-column:1/-1; padding:10px; }
+.slot.tile.bk{ position:relative; min-height:44px; } .slot.tile.bk .cnt{ position:absolute; right:3px; bottom:2px; font-size:max(var(--fmin),calc(11px*var(--fs))); background:#000a; border-radius:3px; padding:0 3px; }
+.bkfilters{ display:flex; flex-wrap:wrap; gap:6px; margin:6px 0; } .bkfilters .bksearch{ flex:1 1 160px; min-width:0; min-height:36px; }
+.bkfilters select{ min-height:36px; } .bktabs{ display:flex; flex-wrap:wrap; gap:4px; } .bktabs .tabb{ min-height:40px; } .bktabs .tabb small{ opacity:.7; }
+.bktabs .tabb.locked{ opacity:.65; }
+.recbank{ margin-top:4px; padding:3px 6px; border-left:3px solid #e8c45a; background:#2d2a20; font-size:max(var(--fmin),calc(12px*var(--fs))); }
+.bkfilters select,.bkfilters .bksearch{ width:auto; } .bkfilters select{ flex:0 1 130px; min-width:0; }
+#modal .bkfilters select,#modal .bkfilters .bksearch{ width:auto; } #modal .bkfilters select{ flex:0 1 130px; } #modal .bkfilters .bksearch{ flex:1 1 150px; }
