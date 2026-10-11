@@ -32,7 +32,7 @@ const isVis=(e:Element|null):e is HTMLElement=>{ if(!e) return false; const r=(e
 
 export class Tutorial {
   st:TutState; view:View|null=null; idx=0; shown=false; private dist=0; private lx=0; private ly=0; private lk=0; private lastMode=''; private lastDodge=0; private flags:Record<string,boolean>={};
-  private el!:HTMLElement; private spot!:HTMLElement; private world!:HTMLElement; private edge!:HTMLElement; private lastSel=''; private lastSelModal:string|null=null; private scrollT=0; private skipArm=0; private key=''; private placeKey=''; private openedAt=0; private lastModal:string|null=null; private lastStims=-1;
+  private el!:HTMLElement; private spot!:HTMLElement; private world!:HTMLElement; private edge!:HTMLElement; private stepSince=performance.now(); private lastTMode=''; private lastSel=''; private lastSelModal:string|null=null; private scrollT=0; private skipArm=0; private key=''; private placeKey=''; private openedAt=0; private lastModal:string|null=null; private lastStims=-1;
   disabled=false;
   constructor(private g:Game, private ui:UI, private rend:Renderer){
     const q=new URLSearchParams(location.search); let off=false; try{ off=localStorage.getItem('wv_notut')==='1'; }catch{} if(q.get('tutorial')==='off') off=true; if(q.get('tutorial')==='on') off=false; this.disabled=off;
@@ -161,7 +161,9 @@ export class Tutorial {
       case 'recs': { const rp=document.querySelector('#modal .recpanel, #modal .recshow'); return { title:c.title, body:modal==='locker'||modal==='vendor'?(rp?'Recommended shows the best swaps, what changes and what it costs. Check it after every run.':'Recommendations show up here when you have something worth upgrading.'):'Open the locker or vendor to see Recommended: the best upgrades for your credits. Run, loot, upgrade, repeat.', target:rp?T('#modal .recpanel, #modal .recshow'):(modal?undefined:{world:this.W('locker')}), ack:'Finish and claim reward' }; }
     } return { title:c.title, body:'' }; }
   // ---------- per-frame ----------
-  tick(){ if(this.disabled||this.st.status!=='active'){ if(this.shown) this.hideAll(); return; }
+  tick(){ const md=this.g.mode+'|'+(this.ui as any).modal; if(md!==this.lastTMode){ this.lastTMode=md; this.spot.style.display=this.world.style.display=this.edge.style.display='none'; this.stepSince=performance.now(); }
+    { const sv=this.g.save, ss=sv.stats; /* a player who has clearly moved past the intro (3+ runs or any clear) never gets a lingering ring: retire the tutorial quietly */ if(this.st.status==='active'&&ss&&(ss.runs>=3||ss.clears>=1)){ this.st.status='skipped'; persist(sv); } }
+    if(this.disabled||this.st.status!=='active'){ this.spot.style.display=this.world.style.display=this.edge.style.display='none'; if(this.shown) this.hideAll(); return; }
     const g=this.g, ui=this.ui as any; if(document.getElementById('splash')){ return; }
     this.observe();
     const c=this.cur(); if(!c){ this.finish('done'); return; }
@@ -173,7 +175,7 @@ export class Tutorial {
   private hideAll(){ this.shown=false; this.el.style.display=this.spot.style.display=this.world.style.display=this.edge.style.display='none'; document.body.classList.remove('tutdock'); document.body.style.removeProperty('--tutdock'); }
   private render(c:StepDef&{n:number},v:View){ const el=this.el, ui=this.ui as any; const dock=!!ui.modal||!!this.g.downed;
     const key=[c.id,c.n,v.title,v.body,v.ack||'',JSON.stringify(v.list||[]),this.touch()].join('|');
-    if(key!==this.key){ this.key=key; el.querySelector('.tt-step')!.textContent=(c.optional?`Optional · after step ${c.n}`:`Step ${c.n} of ${NUMBERED.length}`); el.querySelector('.tt-title')!.textContent=v.title; el.querySelector('.tt-body')!.textContent=v.body;
+    if(key!==this.key){ this.key=key; this.stepSince=performance.now(); el.querySelector('.tt-step')!.textContent=(c.optional?`Optional · after step ${c.n}`:`Step ${c.n} of ${NUMBERED.length}`); el.querySelector('.tt-title')!.textContent=v.title; el.querySelector('.tt-body')!.textContent=v.body;
       const ul=el.querySelector('.tt-list') as HTMLElement; ul.innerHTML=(v.list||[]).map(x=>`<li class="${x.ok?'ok':''}"><span class="tt-box">${x.ok?'✓':''}</span>${x.t}</li>`).join(''); ul.style.display=v.list?.length?'':'none';
       const a=el.querySelector('.tt-ack') as HTMLElement; a.style.display=v.ack?'':'none'; a.textContent=v.ack||''; this.placeKey=''; }
     el.style.display=dock?'grid':'block'; el.classList.toggle('dock',dock); document.body.classList.toggle('tutdock',dock);
@@ -188,7 +190,7 @@ export class Tutorial {
     document.body.style.removeProperty('--tutdock'); }
   private target(t?:Target){ const sp=this.spot, wd=this.world, ed=this.edge; let spOn=false, wOn=false, edOn=false; const ui=this.ui as any;
     if(t?.sel){ if(t.sel!==this.lastSel||ui.modal!==this.lastSelModal){ this.lastSel=t.sel; this.lastSelModal=ui.modal; this.scrollT=0; } if(performance.now()>this.scrollT&&ui.modal){ const te=Array.from(document.querySelectorAll(t.sel)).find(isVis); if(te){ const q=te.getBoundingClientRect(), win=document.querySelector('#modal .win')?.getBoundingClientRect(); if(win&&(q.top<win.top+40||q.bottom>win.bottom-4)) { te.scrollIntoView({block:'center',inline:'nearest'}); this.scrollT=performance.now()+1500; } } }
-      const r=this.rect(t.sel); if(r){ spOn=true; const pad=6; Object.assign(sp.style,{left:r.left-pad+'px',top:r.top-pad+'px',width:r.width+pad*2+'px',height:r.height+pad*2+'px'}); sp.classList.toggle('dim',!!t.dim&&!ui.modal&&!isVis(document.getElementById('interact'))&&!this.g.downed); sp.classList.toggle('below',r.top<90); } }
+      const hud=!ui.modal&&!/^#modal/.test(t.sel); const stale=hud&&performance.now()-this.stepSince>30000&&!this.g.downed; /* a HUD spotlight fades after 30 s: the card stays, the ring never lingers */ const r=stale||this.el.style.display==='none'?null:this.rect(t.sel); if(r&&r.right>0&&r.bottom>0&&r.left<innerWidth&&r.top<innerHeight){ spOn=true; const pad=6; Object.assign(sp.style,{left:r.left-pad+'px',top:r.top-pad+'px',width:r.width+pad*2+'px',height:r.height+pad*2+'px'}); sp.classList.toggle('dim',!!t.dim&&!ui.modal&&!isVis(document.getElementById('interact'))&&!this.g.downed); sp.classList.toggle('below',r.top<90); } }
     if(t?.world&&!ui.modal){ const w=t.world, rd=this.rend; if(rd){ const sx=rd.sx(w.x,w.y), sy=rd.sy(w.x,w.y); const rx=(w.r||1)*rd.TW/2*1.0, ry=rx/2; const on=sx>0&&sx<innerWidth&&sy>0&&sy<innerHeight; wd.style.setProperty('--c',w.col||'#e0c070');
         if(on){ wOn=true; Object.assign(wd.style,{left:sx-rx+'px',top:sy-ry+'px',width:rx*2+'px',height:ry*2+'px'}); } else { edOn=true; const cx=innerWidth/2, cy=innerHeight/2, a=Math.atan2(sy-cy,sx-cx); const k=Math.min((innerWidth/2-46)/Math.abs(Math.cos(a)||1e-6),(innerHeight/2-46)/Math.abs(Math.sin(a)||1e-6)); ed.style.left=cx+Math.cos(a)*k-14+'px'; ed.style.top=cy+Math.sin(a)*k-14+'px'; ed.style.setProperty('--a',a+'rad'); ed.style.setProperty('--c',w.col||'#e0c070'); } } }
     sp.style.display=spOn?'block':'none'; wd.style.display=wOn?'block':'none'; ed.style.display=edOn?'block':'none'; }
