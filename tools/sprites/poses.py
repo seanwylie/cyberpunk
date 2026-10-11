@@ -130,6 +130,34 @@ def loop_run(p):
         c[k + 'ab'] = 0.14 + 0.05 * math.cos(2 * PI * (p + ph))
     return c
 
+WALK_D, WALK_A = 0.60, 0.20     # stance duty / half stride (model units). Body travel per cycle = 2*A/D = 0.667 model units (run: 1.636) -> game derives foot-matched speed
+def walk_leg(p):
+    p %= 1.0; d, A = WALK_D, WALK_A
+    if p < d:
+        s = p / d; fy = A * (1 - 2 * s); fz = 0.0
+        pt = 0.55 * sstep((s - 0.8) / 0.2) - 0.18 * (1 - sstep(s / 0.2))
+    else:
+        q = (p - d) / (1 - d); fy = -A + 2 * A * (q * q * (3 - 2 * q) * 0.8 + q * 0.2)
+        fz = 0.13 * math.sin(PI * q) ** 1.2
+        pt = 0.6 * (1 - sstep(q / 0.4)) - 0.3 * sstep((q - 0.4) / 0.5) * (1 - sstep((q - 0.9) / 0.1))
+    return fy, fz, pt
+
+def loop_walk(p):
+    c = dict(DEF); d = WALK_D
+    cs = lambda ph, f=1: math.cos(2 * PI * (f * p - ph))
+    c['bz'] = 0.822 + 0.013 * math.cos(4 * PI * (p - d / 2))     # highest at mid-stance, lowest at double support
+    c['bx'] = 0.012 * cs(d / 2); c['by'] = 0.0
+    c['hry'] = -0.03 * cs(d / 2); c['hrz'] = -0.07 * cs(0.0)       # pelvis roll / yaw
+    c['trx'] = 0.11 + 0.01 * math.cos(4 * PI * (p - 0.1)); c['trz'] = 0.11 * cs(0.02); c['try'] = 0.03 * cs(d / 2 + 0.03)
+    c['hdx'] = -0.1 + 0.015 * math.cos(4 * PI * (p - 0.2)); c['hdz'] = -0.05 * cs(-0.05); c['hdy'] = -0.015 * cs(d / 2 + 0.05)
+    for k, ph in (('L', 0.0), ('R', 0.5)):
+        fy, fz, pt = walk_leg(p + ph)
+        c[k + 'fy'] = fy; c[k + 'fz'] = fz; c[k + 'pt'] = pt
+        c[k + 'sx'] = -0.12 + 0.38 * math.cos(2 * PI * (p + ph - 0.05))
+        c[k + 'el'] = -0.75 + 0.22 * math.cos(2 * PI * (p + ph - 0.12))
+        c[k + 'ab'] = 0.12 + 0.03 * math.cos(2 * PI * (p + ph))
+    return c
+
 class Poser:
     def __init__(s, root, body, hips, torsoP, headP, J):
         s.root, s.body, s.hips, s.torsoP, s.headP, s.J = root, body, hips, torsoP, headP, J
@@ -139,8 +167,8 @@ class Poser:
         sp = SPEC[anim]; return (f / sp['n']) if sp['loop'] else (f / (sp['n'] - 1))
     def channels(s, anim, u):
         sp = SPEC[anim]; T = duration(anim)
-        if anim == 'idle' or anim == 'run':
-            fn = loop_idle if anim == 'idle' else loop_run
+        if anim in ('idle', 'run', 'walk'):
+            fn = {'idle': loop_idle, 'run': loop_run, 'walk': loop_walk}[anim]
             # procedural loops carry their overlap in-formula; extra per-joint trailing for head/forearm via phase shift
             base = fn(u % 1.0); out = {}
             for ch, v in base.items():

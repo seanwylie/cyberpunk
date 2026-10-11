@@ -84,3 +84,8 @@ Goal: much smoother character motion at the same mobile budget.
 **Size / memory**: 160 px cells, sheets packed as **lossy WebP with lossless alpha** (`FMT=png` for PNG, `WEBPQ=` quality). Decoded flat sheets ~ 640 cells x 100 KB = ~65 MB GPU/RAM on a phone (was ~36 MB); layer sheets stay opt-in via `?layers=1`.
 
 Run: `ANIMS=... SAMPLES=48 RES=320 python tools/sprites/build_char.py RAW` then `PREVIEWS=docs/art/anim SCALE=1.4 python tools/sprites/pack.py RAW public/sprites`. `PREVIEW=1` renders single composite frames (fast pose checks, no layers).
+
+## Town walkers (`walk` anim + src/townfolk.ts)
+- `anim_spec.py` / `poses.py` gained a procedural **walk** loop (16 frames, 8 dirs; stance duty 0.6 with double-support, half-stride 0.20, lower arm swing/lean/bob than run; IK feet so the stance foot moves back linearly = no skating). Render only that anim: `ANIMS=walk SAMPLES=64 python build_char.py RAW` then `python pack.py RAW OUT` (pack now works for a partial anim set) and copy `walk.webp` into `public/sprites/` + the `walk` entry in `player.json` (flat sheet only, no layers).
+- Foot-matched speed: body travel per cycle = 2*A/D = 0.667 model units = **1.074 world tiles** (`STRIDE_TILES`, from the run cycle's known 1.636 units per `playerSpeed*16/34` tiles). `src/townfolk.ts` advances the cycle phase by distance/stride, so the feet never slide at any speed.
+- Town NPC walkers reuse the player rig tinted per outfit (multiply, muted palette). A* over the solid grid with clearance + string pulling, accel/decel, bounded turn rate, arrival slowdown, pauses + idle look-arounds, separation from each other and the player. Test: `node tests/town_npc_walk.mjs`.

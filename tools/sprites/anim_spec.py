@@ -3,6 +3,7 @@
 SPEC = {
     'idle':   dict(n=12, fps=7,  loop=True,  hit=None, blend=True),
     'run':    dict(n=16, fps=34, loop=True,  hit=None, blend=True),
+    'walk':   dict(n=16, fps=18, loop=True,  hit=None, blend=True),   # town NPCs: the game drives the frame by distance travelled (src/townfolk.ts)
     'dodge':  dict(n=10, fps=45, loop=False, hit=None, blend=False),
     'attack': dict(n=12, fps=30, loop=False, hit=5,    blend=True),
     'cast':   dict(n=12, fps=20, loop=False, hit=5,    blend=True),

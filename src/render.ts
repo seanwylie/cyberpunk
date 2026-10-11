@@ -1,3 +1,4 @@
+import { drawWalker } from './townfolk';
 import { drawAbx } from './abx_render';
 import { Game, En, type Fx } from './sim';
 import { AB, ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, ABILITY_TYPE_COLOR, RARITY_RANK, uiFs, cpx } from './config';
@@ -403,7 +404,8 @@ export class Renderer {
         if(X>this.w||X+sp.w<0||Y>this.h||Y+sp.h<0) return; // viewport cull
         if(d.spr.startsWith('sign_')){ const sk=d.station?STATION_BY_ID[Object.keys(STATION_BY_ID).find(k=>STATION_BY_ID[k].key===d.station)||'']:null; const st2=sk||STATIONS.find(q=>q.key===d.station); if(st2){ const dd=Math.hypot(g.px-st2.x,g.py-st2.y); al=Math.max(0,Math.min(1,(11-dd)/3)); if(al<=.02) return; /* exactly ONE label per station: in interact range the title pill (townMarker) replaces the world sign */ if((g.prompt as any)?.station===d.station) return; } }
         if(al!==1){ c.globalAlpha=al; c.drawImage(sp.cv,Math.round(X*this.dpr)/this.dpr,Math.round(Y*this.dpr)/this.dpr,sp.w,sp.h); c.globalAlpha=1; } else c.drawImage(sp.cv,Math.round(X*this.dpr)/this.dpr,Math.round(Y*this.dpr)/this.dpr,sp.w,sp.h); }}); }
-    (L.npcs||[]).forEach((n,i)=>{ const s=t.npcPos[i]||{x:n.x,y:n.y,flip:false,moving:false}; items.push({d:s.x+s.y,f:()=>this.drawNpc(n,s)}); }); }
+    t.folkActive=!!this.anim?.loaded.images.walk; if(t.folkActive&&t.folk) for(const w of t.folk.walkers) items.push({d:w.x+w.y,f:()=>{ const a=this.sx(w.x,w.y), b=this.sy(w.x,w.y); if(a<-90||a>this.w+90||b<-40||b>this.h+160) return; drawWalker(this.ctx,this.anim!.loaded,w,a,b,this.TW/64); }});
+    (L.npcs||[]).forEach((n,i)=>{ if(t.folkActive&&n.wander) return; const s=t.npcPos[i]||{x:n.x,y:n.y,flip:false,moving:false}; items.push({d:s.x+s.y,f:()=>this.drawNpc(n,s)}); }); }
   private tLast=0;
   private drawNpc(n:{spr:string;ph:number;h?:number},s:{x:number;y:number;flip:boolean;moving:boolean}){ const t=this.town!, c=this.ctx, g=this.g; const im=t.img[n.spr]; if(!im) return; const hpx=this.TW*(n.h??1.25); const wpx=hpx*im.width/im.height; const sp=t.scaled(n.spr,wpx,this.dpr); if(!sp) return;
     const a=this.sx(s.x,s.y), b=this.sy(s.x,s.y); const T=g.time+n.ph*3; const breathe=Math.sin(T*1.7)*.012, sway=Math.sin(T*.7)*.015, step=s.moving?Math.abs(Math.sin(T*5))*this.TW*.035:0;

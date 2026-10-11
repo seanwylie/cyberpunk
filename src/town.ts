@@ -2,6 +2,7 @@
 // (public/town/ground), a prebaked world-space ground canvas, idle-animated NPC silhouettes, steam/embers/dust and additive light pools.
 // Everything heavy is baked once to offscreen canvases; per-frame work is drawImage of cached, pre-scaled sprites.
 // Drop-in: replace any PNG in public/town/props with another of the same name (see public/town/manifest.json); missing files are skipped.
+import { Townfolk } from './townfolk';
 import type { Level, Decor } from './level';
 import { makeVault } from './town_vault';
 import { RUSTLINE_STATIONS, drawIcon, type Station } from './stations';
@@ -38,6 +39,8 @@ export interface TownCfg { stations?: Station[]; hub?: [number, number]; props?:
 export class TownArt {
   img: Record<string, HTMLImageElement> = {}; gimg: Record<string, HTMLImageElement> = {}; ready = false; ground: HTMLCanvasElement | null = null;
   glows: Record<string, HTMLCanvasElement> = {}; parts: Part[] = []; private sc = new Map<string, HTMLCanvasElement>(); private scKey = ''; private em = 0; private R = rng(7);
+  /** continuous walkers (src/townfolk.ts); `folkActive` is set by the renderer when the walk atlas is loaded - then wandering NPC silhouettes are replaced by walkers */
+  folk: Townfolk | null = null; folkLevel: Level | null = null; folkActive = false;
   npcPos: { x: number; y: number; flip: boolean; moving: boolean }[] = [];
   stations: Station[]; hub: [number, number];
   constructor(private base = './town/', public cfg: TownCfg = {}) { this.stations = cfg.stations || RUSTLINE_STATIONS; this.hub = cfg.hub || [30.5, 22.5]; this.load(); for (const [k, c] of [['warm', '255,176,96'], ['fire', '255,128,52'], ['cool', '120,150,160'], ['puff', '190,194,192'], ...this.stations.map(st => [st.key, st.rgb] as const)] as const) { const cv = mk(128, 128), x = cv.getContext('2d')!; const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, `rgba(${c},1)`); g.addColorStop(.35, `rgba(${c},.38)`); g.addColorStop(1, `rgba(${c},0)`); x.fillStyle = g; x.fillRect(0, 0, 128, 128); this.glows[k] = cv; } }
@@ -116,9 +119,11 @@ export class TownArt {
       else if (a === 'screens' && R() < .15) this.parts.push({ x: st.lx + .5 + R() * 1.5, y: st.ly + 1.5, z: 1.4, vx: .1 + R() * .3, vy: .1 + R() * .3, vz: .1, t: 0, life: 2.2, k: 'ember', s: .03, col: st.rgb }); }
     for (const p of this.parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; if (p.k === 'steam') p.s += dt * .22; }
     this.parts = this.parts.filter(p => p.t < p.life);
+    // town folk (replace the wander lerp)
+    if (this.folkActive) { if (this.folkLevel !== L) { this.folkLevel = L; const wn = (L.npcs || []).filter(n => n.wander); this.folk = new Townfolk(L, this.hub, [...(L.interacts || []), ...this.stations], L.w > 70 ? 11 : 8, wn, L.w > 70 ? 22 : 17); } this.folk!.update(Math.min(dt, .1), px, py); }
     // npc wander
     for (let i = 0; i < (L.npcs || []).length; i++) { const n = L.npcs![i]; let s = this.npcPos[i]; if (!s) s = this.npcPos[i] = { x: n.x, y: n.y, flip: false, moving: false };
-      if (n.wander) { const cyc = ((t * (n.speed || .3) * .05 + n.ph) % 2); const u = cyc < 1 ? cyc : 2 - cyc; const e = u < .12 ? 0 : u > .88 ? 1 : (u - .12) / .76; const nx = n.x + (n.wander[0] - n.x) * e, ny = n.y + (n.wander[1] - n.y) * e; s.moving = Math.hypot(nx - s.x, ny - s.y) > .0004; if (s.moving) s.flip = (nx - s.x) - (ny - s.y) < 0; s.x = nx; s.y = ny; } }
+      if (n.wander && !this.folkActive) { const cyc = ((t * (n.speed || .3) * .05 + n.ph) % 2); const u = cyc < 1 ? cyc : 2 - cyc; const e = u < .12 ? 0 : u > .88 ? 1 : (u - .12) / .76; const nx = n.x + (n.wander[0] - n.x) * e, ny = n.y + (n.wander[1] - n.y) * e; s.moving = Math.hypot(nx - s.x, ny - s.y) > .0004; if (s.moving) s.flip = (nx - s.x) - (ny - s.y) < 0; s.x = nx; s.y = ny; } }
   }
 }
 export function decorDepth(d: Decor) { return d.x + d.fw / 2 + d.y + d.fd / 2 + .6; }

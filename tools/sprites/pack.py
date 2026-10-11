@@ -16,7 +16,7 @@ def save(im,path,q=None):
     else: im.save(path+'.png',optimize=True)
     return os.path.basename(path)+'.'+FMT
 os.makedirs(OUT,exist_ok=True)
-first=Image.open(f'{RAW}/idle/{LAYERS[0]}/S_0.png'); SRC=first.width; CELL=SRC//2
+_a0=next(iter(od['order'])); first=Image.open(f'{RAW}/{_a0}/{LAYERS[0]}/S_0.png'); SRC=first.width; CELL=SRC//2
 OL=(20,17,14)
 OLR=int(os.environ.get('OL_R','3')); OLA=float(os.environ.get('OL_A','0.42'))  # thin, soft edge darkening (was r=5,a=0.92 = heavy black line)
 def outline(im,r=5,a=0.92):

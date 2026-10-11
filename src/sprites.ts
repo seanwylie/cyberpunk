@@ -11,7 +11,7 @@ import type { Variant } from './bodyvariants';
  */
 export type Dir8 = 0|1|2|3|4|5|6|7; // screen-space: 0=S,1=SW,2=W,3=NW,4=N,5=NE,6=E,7=SE
 export const DIR_ORDER=['S','SW','W','NW','N','NE','E','SE'] as const;
-export type AnimName='idle'|'run'|'dodge'|'attack'|'cast'|'hit'|'down';
+export type AnimName='idle'|'run'|'walk'|'dodge'|'attack'|'cast'|'hit'|'down';
 export const REQUIRED_ANIMS:AnimName[]=['idle','run','dodge','attack','cast','hit','down'];
 
 export interface AnimDef {
@@ -40,7 +40,7 @@ export interface Atlas {
 
 export interface LoadedAtlas { base?:string; atlas:Atlas; images:Partial<Record<AnimName,HTMLImageElement>>; layerImages:Partial<Record<AnimName,HTMLImageElement[]>>; }
 /** Anims not yet authored fall back to the closest authored one. */
-const FALLBACK:Record<AnimName,AnimName[]>={idle:[],run:['idle'],dodge:['run','idle'],attack:['idle'],cast:['idle'],hit:['idle'],down:['idle']};
+const FALLBACK:Record<AnimName,AnimName[]>={idle:[],run:['idle'],walk:['run','idle'],dodge:['run','idle'],attack:['idle'],cast:['idle'],hit:['idle'],down:['idle']};
 
 /** Convert world-space facing/velocity (x,y world axes) to one of 8 screen directions. */
 export function dirFromWorld(dx:number,dy:number):Dir8{
