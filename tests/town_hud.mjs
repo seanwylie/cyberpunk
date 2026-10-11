@@ -27,7 +27,7 @@ for (const [w, h, t] of VPS) {
   await page.evaluate(() => { const g = window.__game; g.dbg.god = true; g.save.lockouts = {}; g.save.lastClearDay = null; g.startRun(Object.keys(window.__dungeons || {})[0] || undefined); });
   await sleep(1200);
   const inRun = await page.evaluate(() => window.__game.mode); ok(inRun === 'run', `${tag}: in run`);
-  const runB = await probe('#abilities, #dodge, .bar.heat'); ok(runB.includes('abilities') && runB.includes('dodge') && runB.includes('bar heat'), `${tag}: run shows combat buttons ${runB.join(',')}`);
+  const runB = await probe('#abilities, #dodge, .bar.heat'); ok(runB.includes('abilities') && runB.includes('dodge') && (runB.includes('bar heat') || runB.includes('heatbar')), `${tag}: run shows combat buttons ${runB.join(',')}`);
   await page.evaluate(() => { const g = window.__game; const L = g.level; const it = L?.interacts?.[0]; if (it) { g.px = it.x; g.py = it.y; } for (let i = 0; i < 5; i++) g.update(.016); });
   await sleep(300);
   c = await chk('run'); if (c.shown) ok(c.hit.length === 0 && c.inView, `${tag}: run prompt no overlap ${JSON.stringify(c)}`);

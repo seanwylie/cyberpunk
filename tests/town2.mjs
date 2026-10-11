@@ -63,7 +63,7 @@ await ev(() => window.__ui.close());
 r = await ev(() => { const g = window.__game; const ev = []; const o = g.emit; g.emit = (t, p) => { ev.push(t + ':' + p); return o.call(g, t, p); }; g.travel('rustline'); g.travel('harrow'); g.emit = o; return ev.filter(e => e.startsWith('towntheme')); });
 ok(r.join() === 'towntheme:rustline,towntheme:harrow', 'travel emits the town music theme: ' + r.join());
 const files = await ev(async () => { const out = {}; for (const n of ['harrow_forge', 'harrow_ember', 'harrow_steam']) { const rs = await fetch('/audio/music/' + n + '.mp3'); out[n] = rs.ok ? (await rs.arrayBuffer()).byteLength : 0; } const M = await import('/src/music.ts'); out.pool = M.TOWN_POOLS.harrow.length; return out; });
-ok(files.harrow_forge > 5e5 && files.harrow_ember > 5e5 && files.harrow_steam > 5e5 && files.pool === 3, 'three calm Harrow tracks exist and are mapped to the Harrow pool');
+ok(files.harrow_forge > 5e5 && files.harrow_ember > 5e5 && files.harrow_steam > 5e5 && files.pool === 5, 'the calm Harrow tracks exist and are mapped to the Harrow pool (5 incl. dawn, cinder)');
 await ev(() => window.__S.persist(window.__game.save)); await page.reload({ waitUntil: 'load' }); await page.waitForFunction(() => window.__game); await ev(() => document.getElementById('splash')?.remove()); await sleep(1500);
 r = await ev(() => ({ id: window.__game.townId, theme: window.__game.level.theme, ready: window.__rend.town?.ready, un: window.__game.save.towns?.harrow?.unlocked }));
 ok(r.id === 'harrow' && r.theme === 'harrow' && r.un, 'current town and unlock persist across reload (loads straight into Harrow)');
