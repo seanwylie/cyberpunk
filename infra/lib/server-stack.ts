@@ -29,7 +29,7 @@ export class ServerStack extends Stack {
       : new ecr.Repository(this, 'Repo', { repositoryName: 'wv-hub', imageScanOnPush: true, removalPolicy: RemovalPolicy.RETAIN, lifecycleRules: [{ maxImageCount: 15 }] });
     this.cluster = new ecs.Cluster(this, 'Cluster', { vpc, containerInsightsV2: ecs.ContainerInsights.DISABLED });
     const logGroup = new logs.LogGroup(this, 'Logs', { retention: logs.RetentionDays.ONE_MONTH, removalPolicy: RemovalPolicy.DESTROY });
-    const task = new ecs.FargateTaskDefinition(this, 'Task', { cpu: cfg.taskCpu, memoryLimitMiB: cfg.taskMemMiB, runtimePlatform: { cpuArchitecture: ecs.CpuArchitecture.ARM64, operatingSystemFamily: ecs.OperatingSystemFamily.LINUX } });
+    const task = new ecs.FargateTaskDefinition(this, 'Task', { cpu: cfg.taskCpu, memoryLimitMiB: cfg.taskMemMiB, runtimePlatform: { cpuArchitecture: cfg.arch === 'x86' ? ecs.CpuArchitecture.X86_64 : ecs.CpuArchitecture.ARM64, operatingSystemFamily: ecs.OperatingSystemFamily.LINUX } });
     this.repo.grantPull(task.obtainExecutionRole()); // explicit pull permission (also needed for an imported repo)
     const origins = [clientUrl].filter(Boolean).join(',');
     const env: Record<string, string> = { PORT: '8787', WV_ORIGINS: origins, WV_ALLOW_NO_ORIGIN: '0', WV_MAX_CONNS: String(cfg.maxConns), WV_MAX_ROOMS: String(cfg.maxRooms), WV_MAX_PARTIES: String(cfg.maxParties), WV_GRACE_MS: '20000' };

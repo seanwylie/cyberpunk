@@ -41,6 +41,13 @@ test('story lambda: Function URL with CORS to the client, reserved concurrency, 
 });
 test('billing: budget with email notifications', () => { const { app, cfg } = base(domain); Template.fromStack(buildApp(app, cfg).billing).hasResourceProperties('AWS::Budgets::Budget', { Budget: Match.objectLike({ BudgetLimit: { Amount: 30, Unit: 'USD' } }) }); });
 test('ci: optional OIDC role is locked to the repo main branch', () => { const { app, cfg } = base({ ...domain, createOidcRole: true }); const s = buildApp(app, cfg); assert.ok(s.ci); const j = JSON.stringify(Template.fromStack(s.ci!).toJSON()); assert.ok(j.includes('repo:seanwylie/cyberpunk:ref:refs/heads/main')); });
+test('arch=x86 switches Fargate task (and story Lambda) to X86_64; default stays ARM64', () => {
+  const { app, cfg } = base({ ...domain, arch: 'x86' }); const s = buildApp(app, cfg);
+  Template.fromStack(s.server).hasResourceProperties('AWS::ECS::TaskDefinition', { RuntimePlatform: { CpuArchitecture: 'X86_64', OperatingSystemFamily: 'LINUX' } });
+  Template.fromStack(s.story).hasResourceProperties('AWS::Lambda::Function', { Architectures: ['x86_64'] });
+  const d = base(domain); Template.fromStack(buildApp(d.app, d.cfg).server).hasResourceProperties('AWS::ECS::TaskDefinition', { RuntimePlatform: { CpuArchitecture: 'ARM64' } });
+  const a = new App({ context: { arch: 'x86' } }); assert.equal(readConfig(a).arch, 'x86');
+});
 test('server: existingRepo imports wv-hub (no AWS::ECR::Repository) and still grants pull + outputs the URI', () => {
   const { app, cfg } = base({ ...domain, existingRepo: true }); const t = Template.fromStack(buildApp(app, cfg).server);
   t.resourceCountIs('AWS::ECR::Repository', 0);

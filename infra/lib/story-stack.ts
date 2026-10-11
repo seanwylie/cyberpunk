@@ -20,7 +20,7 @@ export class StoryStack extends Stack {
   constructor(scope: Construct, id: string, cfg: WvConfig, clientUrl: string, props?: StackProps) {
     super(scope, id, props);
     const key = new secrets.Secret(this, 'OpenAiKey', { secretName: 'wv/openai-api-key', description: 'OPENAI_API_KEY for the story proxy. Set with: aws secretsmanager put-secret-value --secret-id wv/openai-api-key --secret-string sk-...' });
-    const fn = new lambda.Function(this, 'StoryFn', { runtime: lambda.Runtime.NODEJS_22_X, architecture: lambda.Architecture.ARM_64, handler: 'story-beat.handler', code: lambda.Code.fromAsset(stageStoryLambda()), memorySize: 256, timeout: Duration.seconds(20), reservedConcurrentExecutions: 5,
+    const fn = new lambda.Function(this, 'StoryFn', { runtime: lambda.Runtime.NODEJS_22_X, architecture: cfg.arch === 'x86' ? lambda.Architecture.X86_64 : lambda.Architecture.ARM_64, handler: 'story-beat.handler', code: lambda.Code.fromAsset(stageStoryLambda()), memorySize: 256, timeout: Duration.seconds(20), reservedConcurrentExecutions: 5,
       environment: { OPENAI_SECRET_ID: key.secretName, STORY_DAILY_CAP: '500', STORY_TRUST_PROXY: '0' }, logGroup: new logs.LogGroup(this, 'StoryLogs', { retention: logs.RetentionDays.ONE_MONTH }) });
     key.grantRead(fn);
     // Public URL (the game client calls it from the browser). Abuse is bounded by the service's per-IP/session/daily caps AND reserved concurrency 5.

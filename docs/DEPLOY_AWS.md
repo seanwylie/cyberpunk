@@ -33,24 +33,24 @@ npx cdk deploy WvClient WvServer WvStory WvBilling \
   -c alertEmail=you@example.com -c monthlyBudgetUsd=40 \
   -c createOidcRole=true            # optional, adds WvCi with the GitHub deploy role
 ```
-Parameters (`-c key=value`, or `infra/cdk.context.json`): `region`, `domainName`, `hostedZoneId`, `clientSubdomain` (play), `serverSubdomain` (game), `alertEmail`, `monthlyBudgetUsd`, `minTasks`/`maxTasks` (1/1, see scaling notes), `taskCpu`/`taskMemMiB` (256/512), `maxRooms` (100), `maxParties` (500), `maxConns` (500), `storyInService` (false), `githubRepo`, `createOidcRole`, `azs`, `existingRepo` (false; true imports an already-existing ECR repo `wv-hub` instead of creating it), `desiredCount` (defaults to `minTasks`; ECS service task count; `minTasks=0 maxTasks=0` is allowed for a first deploy with no image).
+Parameters (`-c key=value`, or `infra/cdk.context.json`): `region`, `domainName`, `hostedZoneId`, `clientSubdomain` (play), `serverSubdomain` (game), `alertEmail`, `monthlyBudgetUsd`, `minTasks`/`maxTasks` (1/1, see scaling notes), `taskCpu`/`taskMemMiB` (256/512), `maxRooms` (100), `maxParties` (500), `maxConns` (500), `storyInService` (false), `githubRepo`, `createOidcRole`, `azs`, `existingRepo` (false; true imports an already-existing ECR repo `wv-hub` instead of creating it), `arch` (`arm64` default; `x86` makes the Fargate task and story Lambda x86_64, and the image must then be built for `linux/amd64`; CI: set repo variable `ARCH=x86`), `desiredCount` (defaults to `minTasks`; ECS service task count; `minTasks=0 maxTasks=0` is allowed for a first deploy with no image).
 Outputs to note: `BucketName`, `DistributionId`, `ClientUrl`, `WsUrl`, `EcrRepoUri`, `ClusterName`, `ServiceName`, `StoryUrl`, `DeployRoleArn`. Confirm the SNS and Budgets subscription emails.
 The ECS service starts with no image (the `wv-hub:latest` tag does not exist yet), so its first tasks fail until step 5: that is expected.
 
 ### 3a. First deploy when `wv-hub` already exists (client already deployed)
 Situation: `WvClient` is live at `play.seanwylie.ca`, and the ECR repo `wv-hub` already exists (RETAINed from a failed earlier `WvServer` create, so CloudFormation refuses to create it again: "Resource ... 'wv-hub' already exists"). Delete any `ROLLBACK_COMPLETE` WvServer stack first, then, from WSL:
 ```
-# 1. push the image (arm64) to the existing repo
+# 1. push the image to the existing repo (x86 laptop: build linux/amd64, no QEMU needed; use linux/arm64 if you deploy with the default arch)
 cd "/mnt/c/Users/seanp/Documents/Cyberpunk ARPG/cyberpunk"
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 382598155084.dkr.ecr.us-east-1.amazonaws.com
-docker buildx build --platform linux/arm64 -f server/Dockerfile -t 382598155084.dkr.ecr.us-east-1.amazonaws.com/wv-hub:latest --push .
+docker buildx build --platform linux/amd64 -f server/Dockerfile -t 382598155084.dkr.ecr.us-east-1.amazonaws.com/wv-hub:latest --push .
 # 2. deploy the rest, importing the repo
 cd infra
-npx cdk deploy WvServer WvStory WvBilling WvCi -c existingRepo=true \
+npx cdk deploy WvServer WvStory WvBilling WvCi -c arch=x86 -c existingRepo=true \
   -c domainName=seanwylie.ca -c hostedZoneId=Z04435742M9VY95ZIB9BY -c clientSubdomain=play -c serverSubdomain=game \
   -c monthlyBudgetUsd=40 -c createOidcRole=true
 ```
-If the image is not pushed yet, add `-c minTasks=0 -c maxTasks=0` so the service deploys with zero tasks (no circuit-breaker failure); after pushing, redeploy without those flags (or run `aws ecs update-service --desired-count 1`). Use the same `-c` flags on every later deploy, especially `existingRepo=true`, or CloudFormation would try to create the repo.
+If the image is not pushed yet, add `-c minTasks=0 -c maxTasks=0` so the service deploys with zero tasks (no circuit-breaker failure); after pushing, redeploy without those flags (or run `aws ecs update-service --desired-count 1`). Use the same `-c` flags on every later deploy, especially `existingRepo=true` and `arch=x86`, or CloudFormation would try to create the repo.
 
 ## 4. Put the OpenAI key in Secrets Manager (you, from your terminal)
 ```
