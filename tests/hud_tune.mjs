@@ -23,7 +23,7 @@ for (const [w, h] of [[1280, 720], [1920, 1080]]) {
   await page.keyboard.press('n'); await sleep(200); ok(await ev(() => document.getElementById('minimap').style.display === 'none' && window.__game.save.settings.minimap === false), `${t} N hides minimap`);
   ok(await ev(() => document.getElementById('objective').style.display === 'block' && !!window.__game.guidance()), `${t} objective guidance still works with minimap off`);
   await page.click('#btn-map'); await sleep(200); ok(await ev(() => document.getElementById('minimap').style.display === 'block'), `${t} tray button toggles minimap`);
-  await ev(() => { window.__ui.modal = 'settings'; window.__ui.render(); }); ok(await ev(() => !!document.querySelector('[data-in=minimap]') && document.querySelector('[data-in=uisize]').value === 'M'), `${t} settings has minimap toggle, UI size defaults Medium`);
+  await ev(() => { window.__ui.modal = 'settings'; window.__ui.render(); }); await page.click('#stab-display'); await sleep(150); ok(await ev(() => !!document.querySelector('[data-in=minimap]') && document.querySelector('[data-in=uisize].on')?.dataset.v === 'M'), `${t} settings has minimap toggle, UI size defaults Medium`);
   ok(errors.length === 0, `${t} errors ${errors.join(';')}`); await browser.close();
 }
 if (fails) { console.log(fails + ' hud problems'); process.exit(1); } console.log('hud_tune ok');

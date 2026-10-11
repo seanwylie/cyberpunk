@@ -4,7 +4,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
 const { browser, page } = await launch({}); const ev = (f, a) => page.evaluate(f, a);
 await ev(() => { const g = window.__game; if (g.mode === 'run') g.enterTown(true); g.startRun(); g.revealing = false; g.inst.carried.stims = 2; g.hp = 1; });
 await sleep(200);
-await page.keyboard.press('h'); await sleep(100);
+await page.keyboard.press('h'); await sleep(100); await page.keyboard.press('Escape'); await sleep(100);
 ok(await ev(() => window.__game.inst.carried.stims) === 2, 'H no longer uses a stim');
 await page.keyboard.press('t'); await sleep(100);
 ok(await ev(() => window.__game.inst.carried.stims) === 1 && await ev(() => window.__game.hp) > 1, 'T uses a stim and heals');
