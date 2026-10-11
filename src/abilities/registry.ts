@@ -1,5 +1,6 @@
 import { ABILITY_DATA } from './data';
 import type { AbilityData } from './types';
+import { HEAT } from '../heat';
 export const ABILITY_BY_ID:Record<string,AbilityData>=Object.fromEntries(ABILITY_DATA.map(a=>[a.id,a]));
 export { ABILITY_DATA };
 /** Auto-generated one-line description from the primitives (used by the tooltip and the codex). */
@@ -13,10 +14,10 @@ export function describe(a:AbilityData):string{
     case 'control': out.push(`turns an enemy ${p.t}s`); break; case 'strip': out.push('strips shields'); break; case 'lose': out.push('enemies lose track of you'); break;
     case 'shield': out.push(`${Math.round(p.f*100)}% max HP shield ${p.t}s`); break; case 'mitigate': out.push(`${Math.round((1-p.m)*100)}% less damage ${p.t}s`); break; case 'reflect': out.push(`reflects ${Math.round(p.f*100)}% of damage`); break;
     case 'heal': out.push(`heals ${Math.round(p.f*100)}% HP${p.over?` over ${p.over}s`:''}`); break; case 'cloak': out.push(`cloaks you for ${p.t}s (enemies lose track)`); break; case 'cdr': out.push(p.all&&p.t>=30?'resets other cooldowns':`other cooldowns -${p.t}s`); break;
-    case 'vent': out.push(`vents ${p.n} heat`); break; case 'ventHit': out.push(`vents ${p.n} heat per enemy hit (max ${p.cap})`); break; case 'buff': out.push(p.s==='dmg'?`+${Math.round((p.m-1)*100)}% damage ${p.t}s`:p.s==='move'?`+${Math.round((p.m-1)*100)}% speed ${p.t}s`:p.s==='lifesteal'?`${Math.round(p.m*100)}% lifesteal ${p.t}s`:`next hit x${p.m} (ambush)`); break;
+    case 'vent': out.push(`vents ${Math.round(p.n*HEAT.abilityMul*.8)} heat`); break; case 'ventHit': out.push(`vents ${Math.round(p.n*HEAT.abilityMul*.8)} heat per enemy hit (max ${Math.round(p.cap*HEAT.abilityMul*.8)})`); break; case 'buff': out.push(p.s==='dmg'?`+${Math.round((p.m-1)*100)}% damage ${p.t}s`:p.s==='move'?`+${Math.round((p.m-1)*100)}% speed ${p.t}s`:p.s==='lifesteal'?`${Math.round(p.m*100)}% lifesteal ${p.t}s`:`next hit x${p.m} (ambush)`); break;
     case 'invuln': out.push(`${p.t}s invulnerable`); break; case 'shoot': out.push(`shoots for ${Math.round(p.k*30)}`); break;
     case 'summon': out.push(`deploys a ${p.kind} (${p.life}s)`); break; case 'aura': out.push(`${p.r}-tile field for ${p.life}s`); break; case 'trap': out.push('lays a trap'); break; case 'delayed': out.push(`after ${p.t}s:`); walk(p.then,''); break; } } };
-  walk(a.steps); if(a.toggle) out.push(`toggle: ${a.toggle.heat?`+${a.toggle.heat} heat/s`:''}${a.toggle.vent?` vents ${a.toggle.vent}/s`:''}${a.toggle.mitigate?`, ${Math.round((1-a.toggle.mitigate)*100)}% less damage`:''}${a.toggle.dmg?`, +${Math.round((a.toggle.dmg-1)*100)}% damage`:''}${a.toggle.move?`, ${Math.round((a.toggle.move-1)*100)}% speed`:''}`);
+  walk(a.steps); if(a.toggle) out.push(`toggle: ${a.toggle.heat?`+${Math.round(a.toggle.heat*HEAT.abilityMul*10)/10} heat/s`:''}${a.toggle.vent?` vents ${Math.round(a.toggle.vent*HEAT.abilityMul*10)/10}/s`:''}${a.toggle.mitigate?`, ${Math.round((1-a.toggle.mitigate)*100)}% less damage`:''}${a.toggle.dmg?`, +${Math.round((a.toggle.dmg-1)*100)}% damage`:''}${a.toggle.move?`, ${Math.round((a.toggle.move-1)*100)}% speed`:''}`);
   for(const b of a.bonus||[]) out.push(`x${b.m} vs ${b.w}${b.eat?' (consumes)':''}`); if(a.exec) out.push(`x${a.exec.m} below ${Math.round(a.exec.hp*100)}% HP`); if(a.refundOnKill) out.push(`kill refunds ${a.refundOnKill}s cooldown`);
   const s=out.join(', '); return s.charAt(0).toUpperCase()+s.slice(1)+'.'; }
 export const ROLE_LABEL:Record<string,string>={ burst:'Damage burst', aoe:'Area damage', execute:'Execute', cc:'Crowd control', mobility:'Mobility', defence:'Defence', support:'Support', stealth:'Stealth', tech:'Hacking / tech', heat:'Heat control', sustain:'Sustain', summon:'Summons', ultimate:'Ultimate' };

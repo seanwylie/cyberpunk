@@ -36,6 +36,7 @@ export class Input {
     else if(k==='i'||k==='tab'){ this.opts.onToggleInv(); e.preventDefault(); }
     else if(k==='x') this.g.clearTarget();
     else if(k==='t') this.g.useStim();
+    else if(k==='v') this.g.ventNow();
     else if(k==='n'){ const st=this.g.save.settings; st.minimap=st.minimap===false; persist(this.g.save); document.getElementById('btn-map')?.classList.toggle('on',st.minimap!==false); document.getElementById('btn-map')?.classList.toggle('off',st.minimap===false); }
     else if(k==='m'){ const s=this.g.save.settings; s.music=!s.music; this.audio.setMusicOn(s.music); }
     this.updateMove(); }
@@ -66,7 +67,7 @@ export class Input {
       btn.addEventListener('pointerup',e=>end(e,false)); btn.addEventListener('pointercancel',e=>end(e,true)); });
     const dodge=document.getElementById('dodge')!; dodge.addEventListener('pointerdown',e=>{ this.audio.resume(); e.preventDefault(); this.g.dodge(); dodge.classList.add('pressed'); }); const up=()=>dodge.classList.remove('pressed'); dodge.addEventListener('pointerup',up); dodge.addEventListener('pointercancel',up);
     const bind=(id:string,fn:()=>void)=>{ const el=document.getElementById(id)!; el.addEventListener('pointerdown',e=>{ e.preventDefault(); this.audio.resume(); fn(); }); };
-    bind('interact',()=>this.g.interact()); bind('btn-town',()=>this.g.townReturn()); bind('btn-stim',()=>this.g.useStim()); bind('btn-inv',()=>this.opts.onToggleInv());
+    bind('interact',()=>this.g.interact()); bind('btn-town',()=>this.g.townReturn()); bind('btn-stim',()=>this.g.useStim()); bind('heatbar',()=>this.g.ventNow()); bind('btn-inv',()=>this.opts.onToggleInv());
   }
   aimMove(px:number,py:number,cx:number,cy:number,ptype:string){ const g=this.g; const id=g.build.abilities[this.aimBtn?.idx??0]; if(ptype==='mouse'){ const w=this.r.screenToWorld(px,py); g.updateAim(w.x,w.y,Math.hypot(w.x-g.px,w.y-g.py)>.7); return; }
     const dx=px-cx, dy=py-cy, L=Math.hypot(dx,dy); const v=this.r.screenVecToWorld(dx,dy); const vl=Math.hypot(v.x,v.y)||1; const range=id?(({sweep:3.2,bladeburst:5.5,reposition:6.5,control:9,pulse:8} as any)[id]||6):6; const k=Math.min(1,L/90); g.updateAim(g.px+v.x/vl*range*k,g.py+v.y/vl*range*k,L>16); }

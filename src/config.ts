@@ -10,6 +10,7 @@ import { MOVE_DMG } from './content/boss_moves';
 import { BAL } from './content/balance';
 import { ABILITY_DATA, describe as describeAbility } from './abilities/registry';
 import { ABILITY_ITEMS } from './abilities/hw';
+import { HEAT } from './heat';
 // Editable gameplay configuration. SEPARATE from save data (see save.ts). All numbers are PLACEHOLDER
 // prototype values, not approved balance (spec: "Numerical examples are not approved balance").
 export const CONFIG_VERSION = '0.1.0-proto';
@@ -48,10 +49,10 @@ export const ABILITY_TYPE: Record<AbilityId,AbilityType> = { sweep:'attack', bla
 export interface AbilityDef { id:AbilityId; type:AbilityType; name:string; aim:AimType; heat:number; cd:number; windup:number; range:number; desc:string; /** data-driven augment ability (src/abilities) */ ext?:boolean; rarity?:Rarity; }
 /** Ability power pass (docs/ABILITIES.md): every number the abilities and their synergies use. Abilities are the main damage/utility tool; autos are the filler that builds heat. */
 export const AB = {
-  autoDmgMul:.45, autoHeatMul:2.4,            // basic attacks: weaker, and they build heat you then dump through abilities
-  sweepDmg:85, sweepStun:.7, burstDmg:90, burstStun:.5, pulseDmg:55, pulseR:3.2, pulseStun:1.8, repoDmg:50, repoStun:.5,
+  autoDmgMul:.45, autoHeatMul:1.2,            // basic attacks: weaker, and they build heat you then dump through abilities
+  sweepDmg:Math.round(85*HEAT.powerMul), sweepStun:.7, burstDmg:Math.round(90*HEAT.powerMul), burstStun:.5, pulseDmg:Math.round(55*HEAT.powerMul), pulseR:3.2, pulseStun:1.8, repoDmg:Math.round(50*HEAT.powerMul), repoStun:.5,
   shieldAuto:.35, shieldAbility:1.5, pulseShield:4, pulseShieldFrac:.45,   // shield interaction: autos bounce off, Pulse breaks
-  ctrlR:3.8, ctrlDmg:45, ctrlStun:1.6, ctrlResistStun:2, hackMul:1.4, hackT:6,        // Control: mass stun + 'Hacked' bonus damage
+  ctrlR:3.8, ctrlDmg:Math.round(45*HEAT.powerMul), ctrlStun:1.6, ctrlResistStun:2, hackMul:1.4, hackT:6,        // Control: mass stun + 'Hacked' bonus damage
   braceMul:.25, braceT:3.5, reflect:1.5, reflectCap:120, counterStun:2,    // Brace: -75% damage, reflect, counter-stun chargers
   cloakMul:2.5, cloakAuto:3, evadeCd:1.5, evadeHeat:12, evadeBonusT:3,
   comboT:3, comboStep:.15, comboMax:3, chargedPerHeat:.005, chargedMax:.4,  // synergies: combo chain, heat-spend 'Charged', Overclock
@@ -160,6 +161,8 @@ ITEMS.push(...EXTRA_ITEMS, ...WEAPON_ITEMS, ...IDKFA_ITEMS, ...ABILITY_ITEMS);
 // register the data-driven abilities next to the legacy ones (aim shapes map onto the existing aim types so aiming/validation code is shared)
 const AIM_OF:Record<string,AimType>={ self:'self', toggle:'self', cone:'direction', line:'direction', ground:'ground', lockon:'target' };
 for(const a of ABILITY_DATA){ (ABILITIES as any)[a.id]={ id:a.id, type:a.type, name:a.name, aim:AIM_OF[a.shape], heat:a.heat, cd:a.cd, windup:a.windup, range:a.range, desc:describeAbility(a), ext:true, rarity:a.rarity }; (ABILITY_TYPE as any)[a.id]=a.type; }
+// Heat/cooldown rebalance (src/heat.ts): every ability's authored heat is scaled up (heat is the primary limiter) and its cooldown down (secondary limiter).
+for(const a of Object.values(ABILITIES) as AbilityDef[]){ if(a.id==='defib') continue; a.heat=Math.round(a.heat*HEAT.abilityMul*10)/10; a.cd=Math.round(a.cd*HEAT.cdMul*10)/10; }
 export const ITEM_BY_ID: Record<string,ItemDef> = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 
 // Install cost depends on the hardware being REMOVED (spec). PLACEHOLDER curve.
@@ -180,7 +183,7 @@ export const REP_DISCOUNT_PER_RANK = .05;
 export const COMBAT = {
   playerSpeed: 5.6, playerRadius: .38, baseHp: 100,
   dodge: { cd: 1.1, dist: 3.2, time: .22, iframes: .34 },
-  heat: { max:100, passiveCool: 9, overheatRecover: 35, overheatSpeedMult: .8, overheatDmgMult: .5, attackCooldownHalf:true },
+  heat: { max:HEAT.max, passiveCool:HEAT.passiveCool, overheatRecover:HEAT.overheat.recover, overheatSpeedMult:HEAT.overheat.speedMul, overheatDmgMult:HEAT.overheat.dmgMul, attackCooldownHalf:true },
   checkpointRestoreImmunity: true,
   pickupRadius: 1.7, missionSlots: 16,
   townChannel: 5.0,
@@ -252,6 +255,6 @@ export function minPx(): number { return uiFs()===1 ? 12 : curMin; }
 export function cpx(n:number): number { return Math.round(Math.max(minPx(), n)); }
 
 /** Single source of truth for player-facing key letters. Every string that names a key must use key('action'). */
-export const KEYS = { moveUp:'W', moveLeft:'A', moveDown:'S', moveRight:'D', aim1:'Q', aim2:'E', aim3:'R', dodge:'Space', interact:'F', contacts:'C', stim:'T', town:'B', pack:'I', minimap:'N', music:'M', help:'H', menu:'Esc' } as const;
+export const KEYS = { moveUp:'W', moveLeft:'A', moveDown:'S', moveRight:'D', aim1:'Q', aim2:'E', aim3:'R', dodge:'Space', interact:'F', contacts:'C', stim:'T', vent:'V', town:'B', pack:'I', minimap:'N', music:'M', help:'H', menu:'Esc' } as const;
 export type KeyAction = keyof typeof KEYS;
 export const key = (a:KeyAction):string => KEYS[a];

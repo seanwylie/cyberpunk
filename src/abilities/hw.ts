@@ -3,10 +3,12 @@ import type { ItemDef, Slot, Stats } from '../config';
 import { ABILITY_DATA } from './registry';
 import type { AbilityData, Grp, Rar, Mf } from './types';
 import type { AbMods } from './engine';
+import { HEAT } from '../heat';
 
 /** ===== Acquisition curve knobs (docs/ABILITIES.md "Acquisition"). Respects DROP_RATE_SCALE: these REPLACE a roll, they never add rolls. ===== */
 /** Global power knob for the augment abilities (1 = authored values). Ability damage is multiplied by dmg, heat costs by heat. Balance tool: tools/balance/run.mjs --kits abmid,abpurple. */
-export const ABILITY_BAL={ dmg:2.4, heat:1 };
+/** dmg: power per cast (x HEAT.powerMul: fewer, heavier casts now that heat limits cast rate). heat: unused, see src/heat.ts. */
+export const ABILITY_BAL={ dmg:2.4*HEAT.powerMul, heat:1 };
 export const ABILITY_ACQ = {
   /** global multiplier on every conversion chance below (1 = design target) */
   scale:1,

@@ -1,5 +1,6 @@
 import { VFX } from './vfx';
 import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, SELL_VALUE, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING, STARTER_ABILITIES} from './config';
+import { HEAT, effCooling, heatCost, cdAfter, throttle, dissipation } from './heat';
 import { counterFor, hintText } from './content/abilfx';
 import { bankOverflowItem, bankOverflowChip } from './bank';
 import { computeBuild, installedLayout, BuildResult, abPickRef, repRank } from './build';
@@ -48,7 +49,7 @@ export class Game {
   save:Save; level:Level; mode:'town'|'run'='town'; inst:InstanceState|null=null; emit:Emit;
   enemies:En[]=[]; projs:Proj[]=[]; zones:Zone[]=[]; fx:Fx[]=[]; time=0; pickFx:{id:number;x:number;y:number;kind:Drop['kind'];inst?:Drop['inst'];chip?:Drop['chip'];amount:number;t0:number}[]=[];
   // player
-  bankedOverflow=0; px=0; py=0; face=0; hp=100; heat=0; overheated=false; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; slowT=0; downed=false; downT=0; defibCd=0; revealing=false;
+  bankedOverflow=0; px=0; py=0; face=0; hp=100; heat=0; overheated=false; overheats=0; vents=0; ohT=0; ventCd=0; ventLock=0; heatSoak=0; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; slowT=0; downed=false; downT=0; defibCd=0; revealing=false;
   /** ability power pass: damage dealt per source tag ('auto' or ability id), cast counts, synergy state */ kick=0; lastStop=-9; curTag='auto'; dealt:Record<string,number>={}; casts:Record<string,number>={}; comboN=0; comboT=0; lastAb=''; ovT=0; hitStop=0; sinceAb=0; nudgeCd=0;
   abx:Abx=newAbx(); codexT=0;
   abCd:number[]=[0,0,0]; cast:{ idx:number; t:number; aim:AimState; ab:AbilityDef }|null=null; aim:AimState|null=null; target:number|null=null; lungeT=0; lungeDx=0; lungeDy=0; lungeHit:Set<number>=new Set();
@@ -181,6 +182,7 @@ export class Game {
   releaseAim(){ const a=this.aim; this.aim=null; if(!a||this.downed) return; const id=this.build.abilities[a.idx]; if(!id) return; const def=ABILITIES[id]; if(def.aim!=='self') this.quickAim(a);
     const v=this.validateAim(def,a); if(!v.valid){ this.emit('sfx','cancel'); this.toast('Cancelled: '+v.why); return; }
     if(this.overheated){ this.toast('Overheated: abilities offline'); this.emit('sfx','deny'); return; }
+    if(this.ventLock>0){ this.toast('Venting...'); this.emit('sfx','deny'); return; }
     if(this.abCd[a.idx]>0){ this.toast(def.name+' is cooling down'); return; }
     if(this.cast) return; if(this.weaponOff>0&&def.id!=='forcedcool'&&false) return;
     this.cast={ idx:a.idx, t:0, aim:{...a}, ab:def }; this.emit('sfx','windup'); }
@@ -221,7 +223,12 @@ export class Game {
     s.cheated=true; (s.cheatLog=s.cheatLog||[]).push('idkfa@'+new Date().toISOString());
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.downed=false; this.emit('inv'); this.toast('IDKFA: best gear equipped'); this.saveNow(); return true; }
   stimCd=0;
-  useStim(){ if(this.stimCd>0) return; const c=this.inst?.carried; if(!c||this.downed){ if(this.mode==='town'&&this.save.stims>0){ this.save.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); } return; } if(c.stims>0&&this.hp<this.maxHp){ c.stims--; this.stimCd=HARD.stimCd; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); this.emit('sfx','heal'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.8,text:'+'+COMBAT.stimHeal,c:'#9fb98a'}); } else if(c.stims<=0 && this.save.stims>0 && false){} }
+  /** Manual vent (V / tap the heat bar). Channel: abilities and autos offline for vent.lockT, slower movement; dumps heat (more when already hot). Works while overheated: recovers faster, still needs the lockout window. */
+  ventNow(){ if(this.mode!=='run'||this.downed||this.revealing||this.ventCd>0||this.ventLock>0){ if(this.mode==='run'&&this.ventCd>0&&!this.downed) this.toast(`Vent recharging (${Math.ceil(this.ventCd)}s)`); return false; } if(this.heat<10&&!this.overheated){ this.toast('Heat is already low'); return false; }
+    const V=HEAT.vent; const hot=this.heat>=V.hotAt; const amt=V.amount+(hot?V.hotBonus:0); this.cast=null; this.aim=null; this.heat=Math.max(0,this.heat-amt); this.ventCd=V.cd; this.ventLock=V.lockT; this.weaponOff=Math.max(this.weaponOff,V.lockT); this.heatSoak=0; this.vents=(this.vents||0)+1;
+    if(this.overheated&&this.heat<=COMBAT.heat.overheatRecover&&this.ohT<=0){ this.overheated=false; this.emit('sfx','cooled'); }
+    this.popup(this.px,this.py-1,hot?'HOT VENT -'+amt:'VENT -'+amt,'#e8c46a'); this.emit('sfx','cooled'); this.fx.push({kind:'ring',x:this.px,y:this.py,r:1.8,t:0,life:.45,c:'#e8c46a'}); return true; }
+  useStim(){ if(this.stimCd>0) return; const c=this.inst?.carried; if(!c||this.downed){ if(this.mode==='town'&&this.save.stims>0){ this.save.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); } return; } if(c.stims>0&&this.hp<this.maxHp){ c.stims--; this.stimCd=HARD.stimCd; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); this.heat=Math.max(0,this.heat-HEAT.stimVent); this.emit('sfx','heal'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.8,text:'+'+COMBAT.stimHeal,c:'#9fb98a'}); } else if(c.stims<=0 && this.save.stims>0 && false){} }
   musicSet(s:string){ if(this.musicState!==s){ this.musicState=s; if(s!=='town') this.emit('musicarea',this.inst?dungeonOf(this.inst.dungeon).mfr:null); this.emit('music',s); } }
 
   // ---------- main update ----------
@@ -241,14 +248,15 @@ export class Game {
     if(this.comboT>0){ this.comboT-=dt; if(this.comboT<=0) this.comboN=0; } if(this.ovT>0) this.ovT-=dt;
     if(this.cloakT>0){ this.cloakT-=dt; } if(this.braceT>0) this.braceT-=dt; if(this.slowT>0) this.slowT-=dt;
     // heat
-    const cool=(COMBAT.heat.passiveCool)*st.cooling*(this.overheated?1.3:1); this.heat=Math.max(0,this.heat-cool*dt);
-    if(this.overheated&&this.heat<=COMBAT.heat.overheatRecover){ this.overheated=false; this.emit('sfx','cooled'); }
-    if(this.heat>=COMBAT.heat.max&&!this.overheated){ this.heat=COMBAT.heat.max; this.overheated=true; this.cast=null; this.aim=null; this.emit('sfx','overheat'); this.toast('OVERHEATED: abilities offline until cooled'); }
+    if(this.ventCd>0) this.ventCd-=dt; if(this.ventLock>0) this.ventLock-=dt; if(this.ohT>0) this.ohT-=dt; if(this.heatSoak>0) this.heatSoak-=dt;
+    this.heat=Math.max(0,this.heat-dissipation(st.cooling,this.overheated,this.heatSoak)*dt);   // slower baseline, capped by effCooling; halved-ish while overheated; paused briefly after each cast
+    if(this.overheated&&this.heat<=COMBAT.heat.overheatRecover&&this.ohT<=0){ this.overheated=false; this.emit('sfx','cooled'); this.toast('Heat nominal: abilities online'); }
+    if(this.heat>=COMBAT.heat.max&&!this.overheated){ this.heat=COMBAT.heat.max; this.overheated=true; this.ohT=HEAT.overheat.lockT; this.cast=null; this.aim=null; this.ventLock=0; this.overheats=(this.overheats||0)+1; this.emit('sfx','overheat'); this.toast(`OVERHEATED: abilities offline, +${Math.round((HEAT.overheat.takenMul-1)*100)}% damage taken. Vent (${key('vent')}) to recover faster`); }
     if(this.hp<this.maxHp&&!this.downed&&st.regen>0) this.hp=Math.min(this.maxHp,this.hp+st.regen*dt*(this.mode==='town'?4:HARD.runRegen));
     if(this.downed){ this.downT+=dt; this.cast=null; this.aim=null; if(this.channel){ this.channel.t+=dt; if(this.channel.t>=this.channel.dur){ const cb=this.channel.cb; this.channel=null; cb(); } } return; }
     // movement
     let mx=0,my=0; const mag=Math.min(1,Math.hypot(this.inputMove.x,this.inputMove.y)); if(mag>.12){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); mx=v.x*mag; my=v.y*mag; }
-    let speed=COMBAT.playerSpeed*st.move*(this.overheated?COMBAT.heat.overheatSpeedMult:1)*(this.cast?.6:1)*(this.slowT>0?BAL.p.hexSlowMul:1)*abxPlayerSpeed(this);
+    let speed=COMBAT.playerSpeed*st.move*(this.overheated?COMBAT.heat.overheatSpeedMult:1)*(this.ventLock>0?HEAT.vent.moveMul:1)*(this.cast?.6:1)*(this.slowT>0?BAL.p.hexSlowMul:1)*abxPlayerSpeed(this);
     if(this.dodgeT>0){ this.dodgeT-=dt; const sp=COMBAT.dodge.dist/COMBAT.dodge.time; const p=this.moveCircle(this.px,this.py,this.dodgeDx*sp*dt,this.dodgeDy*sp*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; this.moving=true; }
     else if(this.lungeT>0){ this.lungeT-=dt; const sp=this.lungeDx; const p=this.moveCircle(this.px,this.py,this.lungeDx*dt,this.lungeDy*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; this.lungeBladeHit(); }
     else if(this.slideT>0){ this.slideT-=dt; const p=this.moveCircle(this.px,this.py,this.slideFx*dt,this.slideFy*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; }
@@ -278,7 +286,7 @@ export class Game {
     this.face=Math.atan2(t.y-this.py,t.x-this.px);
     let dmg=w.dmg*AB.autoDmgMul*this.build.weaponMul*st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1); if(w.kind==='ripper') dmg*=1+(st.atkSpeed-1)*.6;
     let tag='auto'; if(this.cloakT>0){ dmg*=AB.cloakAuto; this.cloakT=0; tag='cloak'; this.popup(this.px,this.py,'AMBUSH x'+AB.cloakAuto,'#e8c46a'); this.vfx('cloak.ambush',this.px,this.py,{a:this.face}); }
-    this.heat+=w.heat*AB.autoHeatMul; this.curTag=tag; this.emit('sfx','atk_'+w.kind);
+    this.heat+=w.heat*AB.autoHeatMul*(this.overheated?HEAT.overheat.autoHeatMul:1); this.curTag=tag; this.emit('sfx','atk_'+w.kind);
     if(w.kind==='arc') this.fireArc(t,w,dmg);
     else if(w.proj){ this.fireProj(w,dmg,this.face); if(tag!=='auto') for(const pj of this.projs.slice(-(w.pellets||1))) (pj as any).tag=tag; if(w.burst){ this.burstLeft=w.burst-1; this.burstT=w.burstGap||.07; this.burstDmg=dmg; this.atkCd+=(w.burst-1)*(w.burstGap||.07); } }
     else { this.fx.push({kind:'slash',x:this.px,y:this.py,a:this.face,r:w.range,t:0,life:.18,w:w.arc}); for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const dd=dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius; if(dd<=w.range&&Math.abs(angDiff(Math.atan2(e.y-this.py,e.x-this.px),this.face))<=w.arc/2&&this.los(this.px,this.py,e.x,e.y)) this.hurtEnemy(e,dmg,this.px,this.py,.6); } }
@@ -297,7 +305,7 @@ export class Game {
     for(let i=0;i<(w.chain||1)&&tgt;i++){ hit.add(tgt.id); const a=Math.atan2(tgt.y-cur.y,tgt.x-cur.x), L=dist(cur.x,cur.y,tgt.x,tgt.y); this.fx.push({kind:'line',x:cur.x,y:cur.y,a,len:L,w:.12,t:0,life:.16,c}); this.fx.push({kind:'spark',x:tgt.x,y:tgt.y,t:0,life:.2,c}); this.hurtEnemy(tgt,d,cur.x,cur.y,.3); d*=.7; cur={x:tgt.x,y:tgt.y};
       let best:En|null=null,bd=w.chainR||3; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0||hit.has(e.id)) continue; const dd=dist(cur.x,cur.y,e.x,e.y); if(dd<bd&&this.los(cur.x,cur.y,e.x,e.y)){ bd=dd; best=e; } } tgt=best; }
   }
-  updateBurst(dt:number){ if(this.burstLeft<=0) return; if(this.mode!=='run'||this.cast||this.dodgeT>0||this.revealing||this.downed){ this.burstLeft=0; return; } this.burstT-=dt; if(this.burstT<=0){ const w=this.build.weapon; this.burstLeft--; this.burstT=w.burstGap||.07; const t=this.pickTarget(); if(t) this.face=Math.atan2(t.y-this.py,t.x-this.px); this.heat+=w.heat*AB.autoHeatMul; this.emit('sfx','atk_'+w.kind); this.fireProj(w,this.burstDmg,this.face); } }
+  updateBurst(dt:number){ if(this.burstLeft<=0) return; if(this.mode!=='run'||this.cast||this.dodgeT>0||this.revealing||this.downed){ this.burstLeft=0; return; } this.burstT-=dt; if(this.burstT<=0){ const w=this.build.weapon; this.burstLeft--; this.burstT=w.burstGap||.07; const t=this.pickTarget(); if(t) this.face=Math.atan2(t.y-this.py,t.x-this.px); this.heat+=w.heat*AB.autoHeatMul*(this.overheated?HEAT.overheat.autoHeatMul:1); this.emit('sfx','atk_'+w.kind); this.fireProj(w,this.burstDmg,this.face); } }
   // ---------- abilities ----------
   /** Cast graphic only. Numbers (damage, heat, cooldown) stay on the ability itself. */
   private castLook(id:string, x:number, y:number, o:Partial<Fx>={}){
@@ -319,14 +327,14 @@ export class Game {
     // synergies read state BEFORE the cast pays its heat
     const chargedB=Math.min(AB.chargedMax,this.heat*AB.chargedPerHeat); const danger=def.id==='reposition'&&this.dangerNear();
     // resource commitment point: effect start
-    this.heat+=def.heat; this.abCd[c.idx]=def.cd; this.emit('sfx','ab_'+def.id); this.casts[def.id]=(this.casts[def.id]||0)+1; this.sinceAb=0; const ang=Math.atan2(c.aim.wy-this.py,c.aim.wx-this.px);
+    this.heat+=heatCost(def.heat,this.build.abMods.heat); this.heatSoak=HEAT.soakT; this.abCd[c.idx]=cdAfter(def.cd,this.build.abMods.cdr); this.emit('sfx','ab_'+def.id); this.casts[def.id]=(this.casts[def.id]||0)+1; this.sinceAb=0; const ang=Math.atan2(c.aim.wy-this.py,c.aim.wx-this.px);
     // combo chain: a different ability within comboT of the last stacks +15% each (max 3)
     if(this.comboT>0&&this.lastAb!==def.id) this.comboN=Math.min(AB.comboMax,this.comboN+1); else if(this.comboT<=0) this.comboN=0; this.lastAb=def.id; this.comboT=AB.comboT;
     const comboB=this.comboN*AB.comboStep; if(this.comboN>=1){ this.popup(this.px,this.py-.6,'COMBO x'+(this.comboN+1)+' +'+Math.round(comboB*100)+'%','#9fd8c8'); this.emit('sfx','combo'); }
     if(chargedB>=.15) this.popup(this.px,this.py-1.1,'CHARGED +'+Math.round(chargedB*100)+'%','#e08a4a');
     const ovB=this.ovT>0?AB.ovMul-1:0; const dmgingId=def.id==='sweep'||def.id==='bladeburst'||def.id==='pulse'||def.id==='reposition';
     let ambushB=0; if(this.cloakT>0&&dmgingId){ ambushB=AB.cloakMul-1; this.cloakT=0; this.popup(this.px,this.py-1.6,'AMBUSH x'+AB.cloakMul,'#e8c46a'); }
-    const dmgM=st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1)*(1+chargedB+comboB+ovB+ambushB);
+    const dmgM=st.dmg*throttle(this.build.abMods.heat,st.cooling)*(this.overheated?COMBAT.heat.overheatDmgMult:1)*(1+chargedB+comboB+ovB+ambushB);
     if(ABILITY_BY_ID[def.id]){ abxCast(this,def,c.idx,c.aim,v); return; } // data-driven augment abilities (src/abilities)
     this.curTag=def.id;
     try{ switch(def.id){
@@ -375,7 +383,7 @@ export class Game {
   alertGroup(e:En){ for(const o of this.enemies){ if(!o.dead&&o.faction==='enemy'&&!o.alert&&((o.group!=null&&o.group===e.group&&dist(o.x,o.y,e.x,e.y)<16)||(dist(o.x,o.y,e.x,e.y)<HARD.packAggroR&&this.los(o.x,o.y,e.x,e.y)))) o.alert=true; } }
   hurtPlayer(dmg:number,sx:number,sy:number){
     if(this.downed||this.iframes>0||this.revealing||this.mode!=='run'||this.dbg.god) return;
-    const st=this.stat(); dmg=abxIncoming(this,dmg,sx,sy); if(dmg<=.01) return; dmg=Math.max(1,dmg-st.armor); let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
+    const st=this.stat(); dmg=abxIncoming(this,dmg,sx,sy); if(dmg<=.01) return; dmg=Math.max(1,dmg-st.armor); if(this.overheated) dmg*=HEAT.overheat.takenMul; let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
     if(this.channel&&!this.channel.hard){ this.townInterrupt('Town return interrupted by damage',true); this.channel=null; }
     this.fx.push({kind:'blood',x:this.px,y:this.py,t:0,life:.6,c:'#7a2f26'});
     if(this.hp<=0) this.playerDown();

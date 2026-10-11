@@ -4,6 +4,7 @@ import { ENEMIES, COMBAT } from '../config';
 import type { AbilityData, Prim, Tag } from './types';
 import { ABILITY_BY_ID } from './registry';
 import { ABILITY_BAL } from './hw';
+import { HEAT, effCooling, throttle } from '../heat';
 import { fxPrim, fxCastBase, fxDeploy } from './vfx';
 
 export interface EnSt { marked:number; exposed:number; burn:{t:number;dps:number;acc:number}|null; root:number; slow:{t:number;m:number}|null; tether:{t:number;to:number}|null; }
@@ -35,8 +36,8 @@ export function hasTag(g:any,t:Tag,e?:any):boolean{ const a=abx(g); const s=e?a.
 
 /** Damage for one coefficient k of ability ab against target e (e optional). */
 export function abDamage(g:any,ab:AbilityData,k:number,e?:any):number{
-  const st=g.stat(); const sc=ab.scale==='dmg'?st.dmg:ab.scale==='cooling'?(.7+st.cooling*.3):ab.scale==='maxHp'?st.maxHp/100:ab.scale==='armor'?1+st.armor*.04:ab.scale==='move'?(.8+st.move*.2):(1+st.regen*.1);
-  let d=BASE_DMG*k*sc*ABILITY_BAL.dmg*(1+mods(g).dmg)*(g.overheated?COMBAT.heat.overheatDmgMult:1);
+  const st=g.stat(); const sc=ab.scale==='dmg'?st.dmg:ab.scale==='cooling'?(.7+effCooling(st.cooling)*.3):ab.scale==='maxHp'?st.maxHp/100:ab.scale==='armor'?1+st.armor*.04:ab.scale==='move'?(.8+st.move*.2):(1+st.regen*.1);
+  let d=BASE_DMG*k*sc*ABILITY_BAL.dmg*(1+mods(g).dmg)*throttle(mods(g).heat,st.cooling)*(g.overheated?COMBAT.heat.overheatDmgMult:1);
   if(e){ for(const b of ab.bonus||[]){ if(hasTag(g,b.w,e)){ d*=b.m; if(b.eat) eat(g,e,b.w); } }
     if(ab.exec&&e.hp/e.maxHp<=ab.exec.hp) d*=ab.exec.m; }
   return d; }
@@ -82,8 +83,8 @@ function runPrim(g:any,c:Ctx,p:Prim,depth:number){
     case 'heal': { const tot=g.maxHp*p.f*(1+m.heal); if(p.over){ a.hot={ left:a.hot.left+tot, rate:tot/p.over }; } else g.hp=Math.min(g.maxHp,g.hp+tot); break; }
     case 'cloak': g.cloakT=Math.max(g.cloakT,p.t+m.cloak); break;
     case 'cdr': for(let i=0;i<3;i++){ if(i===c.idx) continue; g.abCd[i]=p.all&&p.t>=30?0:Math.max(0,g.abCd[i]-p.t); } break;
-    case 'vent': g.heat=Math.max(0,g.heat-p.n*(1+m.heat*3)); if(g.overheated&&g.heat<=COMBAT.heat.overheatRecover) g.overheated=false; break;
-    case 'ventHit': { const v=Math.min(p.cap-a.ventedThisCast,p.n*c.hit.length); if(v>0){ g.heat=Math.max(0,g.heat-v); a.ventedThisCast+=v; } break; }
+    case 'vent': g.heat=Math.max(0,g.heat-p.n*HEAT.abilityMul*.8); if(g.overheated&&g.heat<=COMBAT.heat.overheatRecover) g.overheated=false; break;
+    case 'ventHit': { const v=Math.min(p.cap*HEAT.abilityMul*.8-a.ventedThisCast,p.n*HEAT.abilityMul*.8*c.hit.length); if(v>0){ g.heat=Math.max(0,g.heat-v); a.ventedThisCast+=v; } break; }
     case 'buff': { const T=p.t*(1+m.dur); if(p.s==='dmg') a.dmg={ m:p.m, t:T }; else if(p.s==='move') a.move={ m:1+(p.m-1)*(1+m.dash), t:T }; else if(p.s==='lifesteal') a.steal={ f:p.m*(1+m.heal), t:T }; else a.ambush={ m:p.m, t:T }; break; }
     case 'invuln': g.iframes=Math.max(g.iframes,p.t); break;
     case 'shoot': { const t=nearest(g,c.x,c.y,(c as any).range||9); if(t){ c.hit=[]; strike(g,c,t,p.k); g.fx.push({kind:'line',x:c.x,y:c.y,a:Math.atan2(t.y-c.y,t.x-c.x),len:dist(c.x,c.y,t.x,t.y),w:.08,t:0,life:.12,c:'#d9d4a0'}); } break; }
@@ -100,7 +101,7 @@ function mkCtx(g:any,ab:AbilityData,idx:number,aim:{wx:number;wy:number},v:any):
 export function abxCast(g:any,def:{id:string},idx:number,aim:{wx:number;wy:number},v:any):boolean{
   const ab=ABILITY_BY_ID[def.id]; if(!ab) return false; const a=abx(g); const m=mods(g);
   a.casts[ab.id]=(a.casts[ab.id]||0)+1; a.log.push(ab.id); if(a.log.length>200) a.log.shift();
-  g.heat=Math.max(0,g.heat-ab.heat*m.heat); g.abCd[idx]=ab.cd*(1-Math.min(.5,m.cdr)); // chips: cheaper heat, shorter cooldown
+  // heat cost (diminishing, capped chip reduction) and cooldown (capped cdr) were committed by Game.executeAbility
   if(ab.shape==='toggle'){ if(a.toggles.has(ab.id)){ a.toggles.delete(ab.id); g.toast(ab.name+' off'); } else { a.toggles.add(ab.id); g.toast(ab.name+' on'); } fxCastBase(g,ab); return true; }
   const c=mkCtx(g,ab,idx,aim,v); a.inCast=true; a.ventedThisCast=0; fxCastBase(g,ab); g.face=c.ang;
   try{ runSteps(g,c,ab.steps); } finally { a.inCast=false; if(a.ambush.t>0&&a.ambush.m>1&&ab.steps.some(s=>['cone','line','circle','damage','chain','projectile'].includes(s.p))&&!(ab.steps.some(s=>s.p==='buff'&&(s as any).s==='ambush'))) a.ambush={m:1,t:0}; }
@@ -115,7 +116,7 @@ export function abxTick(g:any,dt:number){
   if(a.shieldT>0){ a.shieldT-=dt; if(a.shieldT<=0) a.shield=0; } if(a.invuln>0) a.invuln-=dt;
   if(a.hot.left>0){ const h=Math.min(a.hot.left,a.hot.rate*dt); a.hot.left-=h; g.hp=Math.min(g.maxHp,g.hp+h); }
   // toggles
-  for(const id of [...a.toggles]){ const ab=ABILITY_BY_ID[id]; if(!ab||!ab.toggle) { a.toggles.delete(id); continue; } if(g.overheated||g.downed){ a.toggles.delete(id); g.toast(ab.name+' off (overheat)'); continue; } g.heat=Math.max(0,g.heat+(ab.toggle.heat-(ab.toggle.vent||0))*dt); }
+  for(const id of [...a.toggles]){ const ab=ABILITY_BY_ID[id]; if(!ab||!ab.toggle) { a.toggles.delete(id); continue; } if(g.overheated||g.downed){ a.toggles.delete(id); g.toast(ab.name+' off (overheat)'); continue; } g.heat=Math.max(0,g.heat+(ab.toggle.heat-(ab.toggle.vent||0))*HEAT.abilityMul*dt); }
   // enemy statuses
   for(const e of g.enemies){ const s=a.st.get(e.id); if(!s) continue; if(e.dead){ a.st.delete(e.id); continue; }
     if(s.marked>0) s.marked-=dt; if(s.exposed>0) s.exposed-=dt; if(s.root>0) s.root-=dt; if(s.slow&&(s.slow.t-=dt)<=0) s.slow=null; if(s.tether&&(s.tether.t-=dt)<=0) s.tether=null;
