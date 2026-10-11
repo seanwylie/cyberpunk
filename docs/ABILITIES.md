@@ -251,7 +251,7 @@ Drop weight per ability rarity (relative weights within a converted roll, before
 
 Heat is the primary limiter on sustained ability use; cooldown is the secondary limiter (bursts and ultimates). Tunables and formulas: `src/heat.ts`. Full before/after numbers: `docs/BALANCE.md` "Heat pass".
 
-- **Costs:** every ability's heat in the tables above is the *authored* value. In game it is multiplied by 1.8 (`HEAT.abilityMul`) and cooldowns by 0.6 (`HEAT.cdMul`), applied once in `src/config.ts`; damage per cast is x1.4 (`HEAT.powerMul`) so fewer casts still carry the fight. In-game tooltips show the real cost after gear.
+- **Costs:** every ability's heat in the tables above is the *authored* value. In game it is multiplied by 1.8 for core abilities and 1.2 for augment abilities (`HEAT.abilityMul`, `HEAT.extMul`) and cooldowns by 0.6 (`HEAT.cdMul`), applied once in `src/config.ts`; damage per cast is x1.4 (`HEAT.powerMul`) so fewer casts still carry the fight. In-game tooltips show the real cost after gear.
 - **Heat reduction is capped:** chips (`coolant`, `quench`) and other `heat` modifiers have diminishing returns and never remove more than 30% of a cast's heat. COOL on gear saturates at x1.4 effective (dissipation max 8.4/s). Cooldown reduction caps at 30%.
 - **The trade:** every point of effective heat reduction costs ability damage (up to about 12% for the reduction cap plus 12% at the COOL cap), so a heat spec sustains rather than spams.
 - **Heat-role augments** (`vent`, `ventHit` primitives, toggles that vent) are scaled with the same factor so Thermal Siphon style abilities keep their value; a toggle's heat per second is also x1.8, so leaving one running is a real cost.

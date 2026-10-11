@@ -226,7 +226,7 @@ Sean: "Heat is not an issue ever, cooldowns make it so heat isn't an issue ... i
 |---|---|---|
 | Baseline dissipation | 9/s x COOL | 6/s x effective COOL |
 | Effective COOL | uncapped (x5+) | diminishing, hard cap x1.4 (dissipation never above 8.4/s) |
-| Ability heat cost | authored | x1.8 (heat scales with power; fewer, heavier casts) |
+| Ability heat cost | authored | x1.8 for the core abilities, x1.2 for augment abilities (`HEAT.extMul`; at x1.4 the abmid kit overheated 13 times in 200 s and lost the Annex), heat scales with power; fewer, heavier casts |
 | Ability cooldown | authored | x0.6 (cooldown is now the burst/ultimate limiter) |
 | Ability power per cast | x1 | x1.4 (`HEAT.powerMul`: `AB` damages, `ABILITY_BAL.dmg`) |
 | Chip heat-cost reduction | uncapped, raw sum | diminishing, hard cap 30% (`reduceCap`, `reduceK`) |
@@ -263,13 +263,13 @@ Note: after the layout-variety commit the bot gets stuck on 30-40% of the batch-
 | | Before (main, no heat pass) | After |
 |---|---|---|
 | Par clear rate | 52% (44 runs) | **71%** (42 runs; target 70-90%) |
-| Par clear with <=1 death | 48% | 62% |
-| Ability damage share | 66% | **74%** (target >60%) |
-| Overheats per minute | 0.00 | 1.4 |
-| Time locked out | 0% | 11% |
-| Average heat | 5 | 57 |
+| Par clear with <=1 death | 48% | 57% |
+| Ability damage share | 66% | **73%** (target >60%) |
+| Overheats per minute | 0.00 | 1.1 |
+| Time locked out | 0% | 10% |
+| Average heat | 5 | 55 |
 | Casts per minute | 19.9 | 20.7 |
-| Boss fights, skilled bot, clear with <=1 death | 74% | 85% (target 50-70%: **not met**; it was already above target on current main, and heat barely touches a bot that vents and dodges) |
+| Boss fights, skilled bot, clear with <=1 death | 74% | 88% (target 50-70%: **not met**; it was already above target on current main, and heat barely touches a bot that vents and dodges) |
 | Boss fights, tank-and-spank bot clears | 0% | 0% (loses 100%, target >80%) |
 
 Tuning history for `powerMul`: 1.7 gave par 89% / skilled 77%; 1.5 gave par 78% / skilled 90%; 1.3 gave par 68% / skilled 83%; 1.4 is the compromise that keeps par in band. Skilled-bot boss clears do not respond much to ability power (bosses are long fights where the bot's dodging decides the outcome), so bringing that to 50-70% is a boss-damage tuning job, not a heat job; left open.
