@@ -162,7 +162,7 @@ ITEMS.push(...EXTRA_ITEMS, ...WEAPON_ITEMS, ...IDKFA_ITEMS, ...ABILITY_ITEMS);
 const AIM_OF:Record<string,AimType>={ self:'self', toggle:'self', cone:'direction', line:'direction', ground:'ground', lockon:'target' };
 for(const a of ABILITY_DATA){ (ABILITIES as any)[a.id]={ id:a.id, type:a.type, name:a.name, aim:AIM_OF[a.shape], heat:a.heat, cd:a.cd, windup:a.windup, range:a.range, desc:describeAbility(a), ext:true, rarity:a.rarity }; (ABILITY_TYPE as any)[a.id]=a.type; }
 // Heat/cooldown rebalance (src/heat.ts): every ability's authored heat is scaled up (heat is the primary limiter) and its cooldown down (secondary limiter).
-for(const a of Object.values(ABILITIES) as AbilityDef[]){ if(a.id==='defib') continue; a.heat=Math.round(a.heat*HEAT.abilityMul*10)/10; a.cd=Math.round(a.cd*HEAT.cdMul*10)/10; }
+for(const a of Object.values(ABILITIES) as AbilityDef[]){ if(a.id==='defib') continue; a.heat=Math.round(a.heat*(a.ext?HEAT.extMul:HEAT.abilityMul)*10)/10; a.cd=Math.round(a.cd*HEAT.cdMul*10)/10; }
 export const ITEM_BY_ID: Record<string,ItemDef> = Object.fromEntries(ITEMS.map(i=>[i.id,i]));
 
 // Install cost depends on the hardware being REMOVED (spec). PLACEHOLDER curve.
