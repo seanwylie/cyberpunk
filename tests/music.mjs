@@ -1,7 +1,7 @@
 // Headless check: file-based music manager loads, crossfades on state change, applies hysteresis, falls back when files missing.
 import { launch, sleep } from './lib.mjs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
-const { browser, page, errors } = await launch();
+const { browser, page, errors } = await launch({ init: () => { window.__WV_MUSIC_ALL = 1; } });
 const ev = (f, a) => page.evaluate(f, a);
 await ev(() => { const a = window.__audio; a.resume(); });
 await page.waitForFunction(() => window.__audio.useFiles, null, { timeout: 20000 }).catch(() => {});

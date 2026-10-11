@@ -1,3 +1,4 @@
+import './memtrack';
 import { Game } from './sim';
 import { Renderer } from './render';
 import { Input } from './input';
