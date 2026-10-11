@@ -79,16 +79,24 @@ export class MusicManager {
   bagKey(s:MState){ return s==='town'?'town:'+this.townId:s==='traversal'?'trav:'+(this.area||'-'):s; }
   bagFor(s:MState):ShuffleBag{ const k=this.bagKey(s); let b=this.bags[k as MState]; if(!b){ const items=s==='traversal'?areaPool(this.area):POOLS[s]; b=this.bags[k as MState]=new ShuffleBag(items,Math.random,'wv_music_bag:'+k); } return b; }
   pick(s:MState):string{ const have=(n:string)=>!!this.buffers[n];
-    if(s==='bosscombat'){ const pl=this.playlist(); const sig=this.key&&BOSS_MAP[this.key]; if(sig){ this.fightBag=new ShuffleBag(pl); this.fightBag.last=sig; return sig; } }
+    if(s==='bosscombat'){ const pl=this.playlist(); const sig=this.key&&BOSS_MAP[this.key]; if(sig){ // first attempt = the boss's signature track; retries after death/reset draw from the persistent per-boss bag. Never the track that just played (also across sessions).
+        const key=this.key!, retry=this.retry; this.retry=false; const bag=this.fightBag=new ShuffleBag(pl,Math.random,'wv_music_boss:'+key);
+        let r:string; if(!retry){ r=sig; bag.last=sig; } else { r=bag.next(x=>x!==this.lastHard&&(have(x)||x===sig)); if(r===this.lastHard) r=pl.find(x=>x!==this.lastHard)||r; }
+        this.setHard(r); return r; } }
     const pool=POOLS[s]; if(pool.length===1) return pool[0];
-    if(s==='elite'){ const nu=this.nextUp.elite; if(nu&&have(nu)){ delete this.nextUp.elite; return nu; } return this.bagFor(s).next(have); } // hard entry is never gated: only decoded tracks are picked (lazy ones are prefetched in the background during runs)
+    if(s==='elite'){ const nu=this.nextUp.elite; if(nu&&have(nu)&&nu!==this.lastHard){ delete this.nextUp.elite; this.setHard(nu); return nu; } const r=this.bagFor(s).next(x=>have(x)&&x!==this.lastHard); this.setHard(r); return r; } // hard entry is never gated: only decoded tracks are picked (lazy ones are prefetched in the background during runs)
     const calm=s==='town'||s==='traversal'; if(calm){ const k=this.bagKey(s), nu=this.nextUp[k]; if(nu&&have(nu)){ delete this.nextUp[k]; return nu; } }
     return this.bagFor(s).next(have); }
   /** Pick (and start fetching) the track that follows the current calm one so a rotation never waits on the network. */
   private prefetch(s:MState){ if(s!=='town'&&s!=='traversal'&&s!=='elite') return; const k=this.bagKey(s); if(this.nextUp[k]&&this.nextUp[k]!==this.cur) { this.ensure(this.nextUp[k]); return; } const n=this.bagFor(s).next(x=>x!==this.cur); this.nextUp[k]=n; this.ensure(n); }
   /** Set the run area (dungeon manufacturer HI/PS/MM) for per-area weighting of the exploration pool; applies to the next pick. */
   setArea(a:string|null){ if(a===this.area) return; this.area=a; }
-  fightBag:ShuffleBag|null=null;
+  fightBag:ShuffleBag|null=null; retry=false;
+  /** Called when the player dies / resets a boss fight: the next boss engagement is a retry and must not restart the track that just played. */
+  noteRetry(){ this.retry=true; }
+  /** last hard (elite/boss) track played, persisted: a death/retry/new session never restarts the same one. */
+  get lastHard():string|null{ if(this._lh===undefined){ try{ this._lh=((globalThis as any).localStorage?.getItem("wv_music_lasthard")||null) as string|null; }catch{ this._lh=null; } } return this._lh as string|null; } private _lh:string|null|undefined=undefined;
+  setHard(n:string){ this._lh=n; try{ (globalThis as any).localStorage?.setItem('wv_music_lasthard',n); }catch{} }
   townId='rustline';
   /** Switch the calm town pool (Rustline vs Harrow Reach). Crossfades immediately when currently in town. */
   setTownTheme(id:string){ if(id===this.townId) return; this.townId=id; const pool=TOWN_POOLS[id]||TOWN_POOLS.rustline; POOLS.town.splice(0,POOLS.town.length,...pool); delete this.bags['town:'+id as MState]; delete this.nextUp['town:'+id]; if(!this.ready) return; for(const f of pool) if(!LAZY.has(f)) this.ensure(f);
@@ -97,7 +105,7 @@ export class MusicManager {
   onPhase(n:number){ if(n<=this.phase){ this.phase=n; return; } this.phase=n; if(this.state!=='bosscombat'||!this.ready) return; const t=this.now(); if(t-this.lastSwitchAt<this.PHASE_MIN) return;
     const have=(x:string)=>!!this.buffers[x]&&x!==this.cur; const ci=INTENSITY[this.cur||'']||2; const pl=this.playlist().filter(have);
     const higher=pl.filter(x=>(INTENSITY[x]||2)>ci), pool=higher.length?higher:pl.filter(x=>(INTENSITY[x]||2)>=ci); if(!pool.length) return;
-    const nx=pool.sort((a,b)=>(INTENSITY[a]||2)-(INTENSITY[b]||2))[0]; this.lastSwitchAt=t; this.counts.phase++; this.counts.hard++; this.counts.total++; this.crossfade(nx,1.5,'bosscombat'); if(this.fightBag) this.fightBag.last=nx; }
+    const nx=pool.sort((a,b)=>(INTENSITY[a]||2)-(INTENSITY[b]||2))[0]; this.lastSwitchAt=t; this.counts.phase++; this.counts.hard++; this.counts.total++; this.crossfade(nx,1.5,'bosscombat'); if(this.fightBag) this.fightBag.last=nx; this.setHard(nx); }
   tick(){ if(!this.ready) return; const t=this.now(); this.flushPending(t); let tgt=this.want;
     const hard=(s:MState|null)=>s==='elite'||s==='bosscombat'||s==='combat';
     if(hard(this.state)&&tgt==='traversal'){ // (town return is explicit and not held) hold hard music: min dwell + sustained calm (exit delay) before fading back to calm
@@ -116,7 +124,7 @@ export class MusicManager {
   pend:{name:string;dur:number;s:MState;at:number}|null=null;
   /** Entering hard music is never gated by dwell/cooldowns. If the wanted track isn't decoded yet it is fetched and started the moment it loads (any decoded hard track after 4 s). */
   private flushPending(t:number){ const p=this.pend; if(!p) return; if(this.state!==p.s){ this.pend=null; return; } let n=p.name; if(!this.buffers[n]){ if(t-p.at<4){ this.ensure(n); return; } const alt=POOLS[p.s].find(x=>this.buffers[x]); if(!alt) return; n=alt; } this.pend=null; this.counts.entries++; this.crossfade(n,p.dur,p.s); }
-  private enter(s:MState){ const prev=this.state; const t=this.now(); this.state=s; this.enteredAt=t; this.lastSwitchAt=t; this.leaveSince=-1; this.pend=null; const name=this.pick(s);
+  private enter(s:MState){ const prev=this.state; if(s==='resolution'||s==='town') this.retry=false; const t=this.now(); this.state=s; this.enteredAt=t; this.lastSwitchAt=t; this.leaveSince=-1; this.pend=null; const name=this.pick(s);
     let dur=2; if(s==='traversal'&&(prev===null||prev==='town')) dur=3; else if(s==='town') dur=3; else if(s==='bossreveal') dur=2.5; else if(s==='bosscombat') dur=1.5; else if(s==='resolution') dur=.5; else if(s==='combat'||s==='elite') dur=1.5; else if(prev==='resolution') dur=2.5;
     if(!this.buffers[name]&&(s==='elite'||s==='bosscombat')){ this.ensure(name); this.pend={name,dur,s,at:t}; return; }
     if(s==='elite'||s==='bosscombat') this.counts.entries++; this.crossfade(name,dur,s); }

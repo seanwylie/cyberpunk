@@ -93,6 +93,28 @@ ok(C.boss.hard <= 4 && C.boss.phase <= 1 && C.bossLog <= 4, 'boss fight (5 min, 
 ok(C.elite.total <= 2 && C.eliteLog <= 2, 'elite fight (3 min): <= 2 switches: ' + JSON.stringify(C.elite));
 ok(C.calmRot && C.fades.every(f => f.ok), 'every elite/boss engagement fades in 1.5-2 s immediately, incl. right after a calm switch and on repeats: ' + JSON.stringify(C.fades.filter(f => !f.ok)));
 ok(C.pendWait && C.pendStart, 'boss track not yet decoded: waits, then fades in as soon as it loads');
+// --- death / respawn / retry: never restart the track that just played; persistent bag; no hard reset ---
+{ const D = await ev(async () => { const mm = window.__audio.music, mod = await import('/src/music.ts'); const off = s => { mm.__off += s; mm.tick(); }; const o = {};
+    await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ...Object.values(mod.BOSS_PLAYLISTS).flat()])].filter(n => !mod.LAZY.has(n)).every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
+    const settle = () => { mm.setState('traversal', null); off(60); mm.state = 'traversal'; mm.want = 'traversal'; };
+    const n0 = mm.log.length; const hardSeq = []; const bagBefore = mm.bags; const seen = []; localStorage.removeItem('wv_music_lasthard');
+    for (const key of ['warden', 'lineman', 'overseer']) { settle(); mm.setState('bossreveal', key); off(3); mm.setState('bosscombat', key); const fights = [mm.cur];
+      for (let k = 0; k < 7; k++) { // die: boss resets (musicretry), player respawns, calm hold elapses, reveal again
+        window.__audio.noteMusicRetry(); mm.setState('traversal', key); off(2); window.__game.save.settings.musicVarietyDummy = 0; mm.state = 'traversal'; mm.want = 'traversal'; off(60); mm.setState('bossreveal', key); off(3); mm.setState('bosscombat', key); fights.push(mm.cur); }
+      hardSeq.push(fights); }
+    o.fights = hardSeq; o.fightRep = hardSeq.every(f => f.every((x, i) => i === 0 || x !== f[i - 1]));
+    o.lastHardStored = localStorage.getItem('wv_music_lasthard') === mm.cur; o.bagKept = bagBefore === mm.bags;
+    // elite right after a respawn must differ from the last hard track; calm after respawn keeps rotating from the same bag
+    settle(); const lh = mm.lastHard; mm.setState('elite'); o.eliteDiff = mm.cur !== lh; settle(); const calm = []; for (let i = 0; i < 12; i++) { mm.state = 'traversal'; mm.enteredAt = mm.now() - 400; mm.lastSwitchAt = mm.now() - 400; const l = mm.live.find(x => !x.ending); if (l) l.startedAt = mm.now() - (mm.buffers[l.name].duration * 4 - 1); mm.tick(); off(5); calm.push(mm.cur); }
+    o.calmRep = calm.filter((x, i) => i && x === calm[i - 1] && false).length; const all = mm.log.slice(n0).filter(x => x.to); o.consec = all.filter((x, i) => i && x.to === all[i - 1].to).length; o.total = all.length; return o; });
+  ok(D.fightRep, 'death->respawn->retry: boss track never repeats on consecutive attempts (' + D.fights.map(f => f.join('>')).join(' | ') + ')');
+  ok(D.consec === 0, 'death/respawn/retry sequence: no consecutive identical tracks in the whole fade log (' + D.total + ' fades)');
+  ok(D.eliteDiff && D.lastHardStored && D.bagKept, 'respawn keeps the persistent bags (no hard reset) and elite never reuses the last hard track');
+  // real sim: killing the player mid-boss-fight and returning to checkpoint emits a retry exactly once and resets the reveal
+  const Sx = await ev(async () => { const g = window.__game; g.enterTown(true); g.save.level = 40; g.save.instance = null; g.save.lockouts = {}; g.save.lastClearDay = null; g.startRun('warehouse'); g.revealing = false; const ev2 = []; const old = g.emit; g.emit = (t, p) => { ev2.push(t); return old(t, p); };
+    const f = g.inst.flags; f.gate1 = f.lock2 = f.controller = true; g.px = g.level.revealX + 1.5; g.py = g.level.bossSpawn.y; for (let i = 0; i < 400; i++) g.update(1 / 30); const spawned = g.enemies.some(e => !e.dead && window.__enemies?.[e.type]?.boss);
+    g.playerDown(); g.returnToCheckpoint(); g.emit = old; return { spawned, retry: ev2.filter(t => t === 'musicretry').length, flags: !g.inst.flags.bossSpawned }; });
+  ok(Sx.retry >= 1 && Sx.flags, 'sim: boss reset after death emits musicretry (' + JSON.stringify(Sx) + ')'); }
 // --- rotation logic + asset existence (variety pack) ---
 import fs from 'fs';
 const M = await ev(async () => { const m = await import('/src/music.ts'); return { pools: { ...m.POOLS, harrow: m.TOWN_POOLS.harrow, areas: Object.values(m.AREA_TRACKS).flat() }, boss: m.BOSS_MAP, core: m.CORE_TRACKS }; });

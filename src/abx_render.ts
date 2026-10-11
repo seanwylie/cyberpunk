@@ -11,8 +11,8 @@ export function drawAbx(r:Renderer){
     const x=r.sx(e.x,e.y), y=r.sy(e.x,e.y,1.5); let i=0; const marks:[string,string][]=[]; if(s){ if(s.marked>0) marks.push([COL.marked,'x']); if(s.exposed>0) marks.push([COL.exposed,'!']); if(s.burn) marks.push([COL.burn,'^']); if(s.root>0) marks.push([COL.root,'#']); if(s.slow) marks.push([COL.slow,'~']); if(s.tether) marks.push([COL.tether,'o']); } if(stun) marks.push(['#e8e3b0','*']);
     const w=marks.length*14; c.save(); c.font='bold 12px monospace'; c.textAlign='center'; for(const [col,ch] of marks){ const px=x-w/2+7+i*14; c.fillStyle='rgba(18,16,14,.8)'; c.beginPath(); c.arc(px,y-14,7,0,7); c.fill(); c.strokeStyle=col; c.lineWidth=1.5; c.stroke(); c.fillStyle=col; c.fillText(ch,px,y-10); i++; }
     if(s?.burn&&!red){ r.ring(e.x,e.y,.6+.1*Math.sin(t*10),COL.burn,.6); } if(s?.root>0) r.ring(e.x,e.y,.7,COL.root,.7,true); if(s?.marked>0) r.ring(e.x,e.y,.85,COL.marked,.55+.2*Math.sin(t*6)); if(s?.tether&&s.tether.to>=0){ const o=g.enemies.find((q:any)=>q.id===s.tether.to); if(o&&!o.dead){ c.strokeStyle=COL.tether; c.globalAlpha=.7; c.lineWidth=2; c.setLineDash([5,4]); c.beginPath(); c.moveTo(x,r.sy(e.x,e.y,.6)); c.lineTo(r.sx(o.x,o.y),r.sy(o.x,o.y,.6)); c.stroke(); c.setLineDash([]); c.globalAlpha=1; } } c.restore(); }
-  // player auras
-  const px=g.px, py=g.py;
+  // player auras (none while downed or outside a run)
+  const px=g.px, py=g.py; if(g.downed||g.mode!=='run') return;
   if(a.shield>0) r.ring(px,py,1.35+.05*Math.sin(t*8),COL.shield,.85,true);
   if(a.mit.t>0) r.ring(px,py,1.15,COL.mit,.75); if(a.reflect.t>0) r.ring(px,py,1.5,COL.reflect,.8);
   if(a.move.t>0&&a.move.m>1&&!red) r.ring(px,py,.9,COL.haste,.5); if(a.dmg.t>0&&a.dmg.m>1) r.ring(px,py,1.0+.08*Math.sin(t*9),COL.charged,.7);

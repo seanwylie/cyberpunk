@@ -1,3 +1,4 @@
+import { VFX } from './vfx';
 import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, SELL_VALUE, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING, STARTER_ABILITIES} from './config';
 import { counterFor, hintText } from './content/abilfx';
 import { bankOverflowItem, bankOverflowChip } from './bank';
@@ -51,7 +52,7 @@ export class Game {
   /** ability power pass: damage dealt per source tag ('auto' or ability id), cast counts, synergy state */ kick=0; lastStop=-9; curTag='auto'; dealt:Record<string,number>={}; casts:Record<string,number>={}; comboN=0; comboT=0; lastAb=''; ovT=0; hitStop=0; sinceAb=0; nudgeCd=0;
   abx:Abx=newAbx(); codexT=0;
   abCd:number[]=[0,0,0]; cast:{ idx:number; t:number; aim:AimState; ab:AbilityDef }|null=null; aim:AimState|null=null; target:number|null=null; lungeT=0; lungeDx=0; lungeDy=0; lungeHit:Set<number>=new Set();
-  slideT=0; slideFx=0; slideFy=0; channel:{ kind:'town'|'hack'; t:number; dur:number; cb:()=>void }|null=null;
+  slideT=0; slideFx=0; slideFy=0; channel:{ kind:'town'|'hack'; t:number; dur:number; cb:()=>void; hard?:boolean }|null=null; townFails=0;
   inputMove={x:0,y:0}; build!:BuildResult; moving=false; prompt:Interact|null=null; musicState='traversal'; combatHold=0; eliteEng=0; toastQ:string[]=[];
   dbg={god:false,oneShot:false,noHitStop:false};
   flow:Int16Array|null=null; flows:(Int16Array|null)[]=[null,null,null]; clr:(Uint8Array|null)[]=[null,null,null]; clrLevel:Level|null=null; q:Int32Array|null=null; frame=0; flowT=0; kills=0; saveT=0; sensorFlag=false; lastRoute='';
@@ -66,8 +67,8 @@ export class Game {
   // ---------- mode transitions ----------
   enterTown(first=false){
     this.settleCompleted();
-    if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this);
-    const tid=currentTown(this.save); this.townId=tid; setTownStations(TOWN_STATIONS[tid]); this.mode='town'; this.level=tid==='harrow'?buildHarrow():buildTown(); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
+    if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this); this.clearTransients();
+    const tid=currentTown(this.save); this.townId=tid; setTownStations(TOWN_STATIONS[tid]); this.mode='town'; this.level=tid==='harrow'?buildHarrow():buildTown(); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.townFails=0; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); this.emit('towntheme',tid); this.checkTownUnlocks(); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.');
   }
   townId:TownId='rustline';
@@ -100,10 +101,10 @@ export class Game {
       checkpoint:{id:1,x:lv.checkpoints[0].x,y:lv.checkpoints[0].y}, px:lv.spawn.x, py:lv.spawn.y, hp:0, broken:[], protectedSlots:[], repairAdded:0, nextId:1, xpEarned:0, warned:false, kills:{}, claimed:[], elapsed:0 };
     for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp*this.hpMul(), maxHp:ENEMIES[sp.type].hp*this.hpMul(), alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); }
     { const n=Math.min(2,s.stims); inst.carried.stims=n; s.stims-=n; }
-    s.instance=inst; this.inst=inst; s.stats.runs++; this.resumeInstance(true); return true;
+    s.instance=inst; this.inst=inst; s.stats.runs++; this.resumeInstance(true); if(s.level<dd.minLevel-2) this.toast('Warning: '+dd.name+' is recommended for Lv '+dd.minLevel+'+ (you are Lv '+s.level+'). Press '+key('town')+' any time to leave, or use Abandon in the menu.'); return true;
   }
   resumeInstance(fresh=false){
-    const inst=this.inst!; abxReset(this); this.mode='run'; this.level=dungeonOf(inst.dungeon).build(inst.seed); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.downed=false; this.revealing=false;
+    const inst=this.inst!; abxReset(this); this.clearTransients(); this.mode='run'; this.level=dungeonOf(inst.dungeon).build(inst.seed); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.townFails=0; this.downed=false; this.revealing=false;
     this.lastZone=''; this.zoneShown={}; this.zoneAnyAt=-1e9; this.pathWp=null; this.applyDoors(); this.enemies=inst.enemies.map(e=>this.wrap(e));
     // Boss attempts always replay the full reveal: reset a living boss on (re)entry.
     this.resetBossIfAlive(); this.fixStuckDrops();
@@ -148,11 +149,11 @@ export class Game {
   /** Dev: wipe the instance and any lockout for the dungeon and restart immediately from the entry point. */
   devRestartFromStart(){ const id=this.inst?.dungeon||this.save.instance?.dungeon||'annex'; const s=this.save; if(s.instance){ s.stims+=s.instance.carried.stims; } s.instance=null; this.inst=null; setLockDay(s,id,null); persist(s); this.toast('[dev] restart from start'); if(this.mode==='run') this.enterTown(true); return this.startRun(id); }
   /** Voluntary: go back to the last checkpoint (no hardware restore, no state wipe). */
-  restartFromCheckpoint(){ if(this.mode!=='run'||!this.inst) return false; const inst=this.inst; this.channel=null; this.cast=null; this.aim=null; this.downed=false; this.px=inst.checkpoint.x; this.py=inst.checkpoint.y; this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.iframes=1.5; this.resetBossIfAlive(); this.projs=[]; this.zones=this.envZones(); this.toast('Back at checkpoint: '+(this.level.checkpoints.find(c=>c.id===inst.checkpoint.id)?.label||'start')+'. Enemies and loot are unchanged.'); this.saveNow(); return true; }
-  abandonInstance(){ this.save.instance=null; this.inst=null; persist(this.save); this.toast('Instance abandoned.'); }
+  restartFromCheckpoint(){ if(this.mode!=='run'||!this.inst) return false; const inst=this.inst; this.channel=null; this.cast=null; this.aim=null; this.downed=false; this.px=inst.checkpoint.x; this.py=inst.checkpoint.y; this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.iframes=1.5; this.resetBossIfAlive(); this.clearTransients(); this.zones=this.envZones(); this.toast('Back at checkpoint: '+(this.level.checkpoints.find(c=>c.id===inst.checkpoint.id)?.label||'start')+'. Enemies and loot are unchanged.'); this.saveNow(); return true; }
+  abandonInstance(){ const wasRun=this.mode==='run'; this.save.instance=null; this.inst=null; persist(this.save); this.toast('Instance abandoned.'); if(wasRun){ this.channel=null; this.enterTown(); } }
   applyDoors(){ const inst=this.inst!; const f=inst.flags; const open:Record<string,boolean>={ gate1:f.gate1, lock2:f.lock2, armory:f.armory, boss:f.controller }; for(const d of this.level.doors){ if(open[d.id]) for(const [x,y] of d.tiles) this.level.solid[y*this.level.w+x]=0; } }
   openDoor(id:string){ const d=this.level.doors.find(d=>d.id===id); if(!d) return; for(const [x,y] of d.tiles) this.level.solid[y*this.level.w+x]=0; this.emit('sfx','door'); }
-  resetBossIfAlive(){ const inst=this.inst; if(!inst) return; clearBossAdds(this); const bi=inst.enemies.findIndex(e=>ENEMIES[e.type].boss&&!e.dead); if(bi>=0){ const b=inst.enemies[bi]; inst.enemies.splice(bi,1); this.enemies=this.enemies.filter(e=>e.id!==b.id); inst.flags.bossSpawned=false; inst.flags.bossRevealed=false; } this.revealing=false; }
+  resetBossIfAlive(){ const inst=this.inst; if(!inst) return; clearBossAdds(this); const bi=inst.enemies.findIndex(e=>ENEMIES[e.type].boss&&!e.dead); if(bi>=0){ const b=inst.enemies[bi]; inst.enemies.splice(bi,1); this.enemies=this.enemies.filter(e=>e.id!==b.id); inst.flags.bossSpawned=false; inst.flags.bossRevealed=false; this.emit('musicretry',null); } this.revealing=false; }
 
   saveNow(){ if(this.inst){ this.inst.px=this.px; this.inst.py=this.py; this.inst.hp=this.hp; this.inst.enemies=this.enemies as EnemyState[]; } this.save.instance=this.inst; persist(this.save); }
 
@@ -200,10 +201,16 @@ export class Game {
     if(this.dodgeCd>0){ if(hadCast) this.toast('Cast cancelled'); return; }
     let dx=this.inputMove.x, dy=this.inputMove.y; if(Math.hypot(dx,dy)<.1){ dx=Math.cos(this.face); dy=Math.sin(this.face); }
     if(Math.hypot(this.inputMove.x,this.inputMove.y)>=.1){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); dx=v.x; dy=v.y; } /* input is screen-space; convert to world */ const l=Math.hypot(dx,dy)||1; this.dodgeDx=dx/l; this.dodgeDy=dy/l; this.dodgeT=COMBAT.dodge.time; this.iframes=Math.max(this.iframes,COMBAT.dodge.iframes); this.dodgeCd=COMBAT.dodge.cd; this.emit('sfx','dodge'); this.fx.push({kind:'dust',x:this.px,y:this.py,t:0,life:.4});
-    if(this.channel&&this.channel.kind==='town'){ this.channel=null; this.toast('Town return interrupted'); }
+    this.townInterrupt('Town return interrupted');
   }
   interact(){ if(!this.prompt||this.downed) return; this.doInteract(this.prompt); }
-  townReturn(){ if(this.mode!=='run'||this.downed) return; if(this.channel&&this.channel.kind==='town'){ this.channel=null; this.toast('Town return cancelled'); return; } this.channel={kind:'town',t:0,dur:COMBAT.townChannel,cb:()=>{ const done=this.instDone(this.inst); let got=0; if(done) got=this.autoCollectAll(); const left=this.inst?this.inst.drops.length:0; this.saveNow(); this.enterTown(); if(done&&got) this.toast('Auto-collected '+got+' drop(s) on the way out.'); if(done&&left&&this.save.instance) this.toast(left+' item(s) left in the cleared instance (pack full). Re-enter to pick them up; starting another dungeon discards them.'); }}; this.toast(this.instDone(this.inst)&&this.inst!.drops.length?'Returning to town... loot on the ground is auto-collected if it fits.':'Returning to town... movement or damage interrupts. No invulnerability.'); this.emit('sfx','channel'); }
+  /** Interrupts a normal (soft) town-return channel; after the first interruption the next press starts the uninterruptible emergency exit. */
+  townInterrupt(msg:string,byDamage=false){ const c=this.channel; if(!c||c.kind!=='town'||c.hard) return; this.channel=null; if(byDamage){ this.townFails++; this.toast(msg+'. Press '+key('town')+' again for an emergency exit (8 s, cannot be interrupted) or use Abandon in the menu.'); } else this.toast(msg); }
+  /** Instant guaranteed exit: abandons the instance (loot forfeited unless the run is cleared; repair bill kept) and returns to town. Works at any time in a run, incl. downed, mid-boss, enemies near. */
+  leaveInstance(){ if(this.mode!=='run') return false; this.channel=null; this.cast=null; this.aim=null; this.downed=false; if(this.inst&&this.instDone(this.inst)){ this.saveNow(); this.enterTown(); return true; } this.abandonInstance(); return true; }
+  townReturn(){ if(this.mode!=='run') return; if(this.channel&&this.channel.kind==='town'){ if(this.channel.hard){ this.toast('Emergency exit in progress: cannot be cancelled'); return; } this.channel=null; this.toast('Town return cancelled'); return; }
+    const hard=this.townFails>0||this.downed; const done0=()=>{ this.townFails=0; const done=this.instDone(this.inst); let got=0; if(done&&!this.downed) got=this.autoCollectAll(); const left=this.inst?this.inst.drops.length:0; this.downed=false; this.saveNow(); this.enterTown(); if(done&&got) this.toast('Auto-collected '+got+' drop(s) on the way out.'); if(done&&left&&this.save.instance) this.toast(left+' item(s) left in the cleared instance (pack full). Re-enter to pick them up; starting another dungeon discards them.'); };
+    this.channel={kind:'town',t:0,dur:hard?8:COMBAT.townChannel,hard,cb:done0}; this.toast(hard?'EMERGENCY EXIT: 8 s, cannot be interrupted. You stay vulnerable.':this.instDone(this.inst)&&this.inst!.drops.length?'Returning to town... loot on the ground is auto-collected if it fits.':'Returning to town... movement or damage interrupts. No invulnerability.'); this.emit('sfx','channel'); }
   /** Dev cheat (typed "idkfa"): orange hardware + best chips in every slot, stims/credits top-up, full heal. Old gear goes to storage. Marks the save cheated. */
   cheatIdkfa(){ const s=this.save; const keep=new Set<string>();
     for(const sl of SLOTS){ const def=IDKFA_SET[sl]; let it=s.items.find(i=>i.def===def&&s.installed[sl]===i.uid); if(!it) it=mkInst(s,def); if(!s.items.includes(it)) s.items.push(it); it.chips=[...IDKFA_CHIPS[sl]]; s.installed[sl]=it.uid; keep.add(it.uid); }
@@ -222,7 +229,7 @@ export class Game {
     const dt=Math.min(dtRaw,.05); this.time+=dt;
     if(this.mode==='run'&&this.inst){ this.inst.elapsed+=dt; const rem=this.inst.expiresAt-this.now(); if(rem<=0){ this.expireInstance(); this.enterTown(); return; } if(!this.inst.warned&&rem<INSTANCE_WARN_MINUTES*60000){ this.inst.warned=true; this.toast('Instance expires in under '+INSTANCE_WARN_MINUTES+' minutes. Retrieve loot.'); } }
     this.updatePlayer(dt); abxTick(this,dt); this.codexT-=dt; if(this.codexT<=0){ this.codexT=1; this.codexScan(); }
-    if(this.mode==='run'){ this.updateEnemies(dt); this.updateProjs(dt); this.updateZones(dt); this.autoPickup(); this.updateRun(dt); this.updateMusic(dt); this.abilityHints(dt); this.saveT+=dt; if(this.saveT>4){ this.saveT=0; this.saveNow(); } }
+    if(this.mode==='run'){ if((this.sanT-=dt)<=0){ this.sanT=1; this.sanitizeGround(); } this.updateEnemies(dt); this.updateProjs(dt); this.updateZones(dt); this.autoPickup(); this.updateRun(dt); this.updateMusic(dt); this.abilityHints(dt); this.saveT+=dt; if(this.saveT>4){ this.saveT=0; this.saveNow(); } }
     this.updatePrompt(); this.updateFx(dt);
   }
   updateFx(dt:number){ for(const f of this.fx){ f.t+=dt; if(f.vx){ f.x+=f.vx*dt; f.y+=(f.vy||0)*dt; } } this.fx=this.fx.filter(f=>f.t<f.life); if(this.fx.length>260) this.fx.splice(0,this.fx.length-260); }
@@ -237,7 +244,7 @@ export class Game {
     if(this.overheated&&this.heat<=COMBAT.heat.overheatRecover){ this.overheated=false; this.emit('sfx','cooled'); }
     if(this.heat>=COMBAT.heat.max&&!this.overheated){ this.heat=COMBAT.heat.max; this.overheated=true; this.cast=null; this.aim=null; this.emit('sfx','overheat'); this.toast('OVERHEATED: abilities offline until cooled'); }
     if(this.hp<this.maxHp&&!this.downed&&st.regen>0) this.hp=Math.min(this.maxHp,this.hp+st.regen*dt*(this.mode==='town'?4:HARD.runRegen));
-    if(this.downed){ this.downT+=dt; this.cast=null; this.aim=null; return; }
+    if(this.downed){ this.downT+=dt; this.cast=null; this.aim=null; if(this.channel){ this.channel.t+=dt; if(this.channel.t>=this.channel.dur){ const cb=this.channel.cb; this.channel=null; cb(); } } return; }
     // movement
     let mx=0,my=0; const mag=Math.min(1,Math.hypot(this.inputMove.x,this.inputMove.y)); if(mag>.12){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); mx=v.x*mag; my=v.y*mag; }
     let speed=COMBAT.playerSpeed*st.move*(this.overheated?COMBAT.heat.overheatSpeedMult:1)*(this.cast?.6:1)*(this.slowT>0?BAL.p.hexSlowMul:1)*abxPlayerSpeed(this);
@@ -245,7 +252,7 @@ export class Game {
     else if(this.lungeT>0){ this.lungeT-=dt; const sp=this.lungeDx; const p=this.moveCircle(this.px,this.py,this.lungeDx*dt,this.lungeDy*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; this.lungeBladeHit(); }
     else if(this.slideT>0){ this.slideT-=dt; const p=this.moveCircle(this.px,this.py,this.slideFx*dt,this.slideFy*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; }
     else { const p=this.moveCircle(this.px,this.py,mx*speed*dt,my*speed*dt,COMBAT.playerRadius); this.px=p.x; this.py=p.y; this.moving=mag>.12; if(this.moving) this.face=Math.atan2(my,mx); }
-    if(this.moving&&mag>.3){ if(this.channel){ if(this.channel.kind==='town'){ this.toast('Town return interrupted by movement'); } this.channel=null; } }
+    if(this.moving&&mag>.3){ if(this.channel&&!this.channel.hard){ this.townInterrupt('Town return interrupted by movement'); this.channel=null; } }
     if(this.channel){ this.channel.t+=dt; if(this.channel.t>=this.channel.dur){ const cb=this.channel.cb; this.channel=null; cb(); } }
     // aim face
     if(this.aim){ this.face=Math.atan2(this.aim.wy-this.py,this.aim.wx-this.px); }
@@ -368,7 +375,7 @@ export class Game {
   hurtPlayer(dmg:number,sx:number,sy:number){
     if(this.downed||this.iframes>0||this.revealing||this.mode!=='run'||this.dbg.god) return;
     const st=this.stat(); dmg=abxIncoming(this,dmg,sx,sy); if(dmg<=.01) return; dmg=Math.max(1,dmg-st.armor); let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
-    if(this.channel){ if(this.channel.kind==='town') this.toast('Town return interrupted by damage'); this.channel=null; }
+    if(this.channel&&!this.channel.hard){ this.townInterrupt('Town return interrupted by damage',true); this.channel=null; }
     this.fx.push({kind:'blood',x:this.px,y:this.py,t:0,life:.6,c:'#7a2f26'});
     if(this.hp<=0) this.playerDown();
   }
@@ -391,15 +398,15 @@ export class Game {
     if(this.combatHold>0){ this.sinceAb+=dt; if(this.sinceAb>16&&this.nudgeCd<=0&&!this.overheated){ const i=this.build.abilities.findIndex((a,k)=>a&&this.abCd[k]<=0&&ABILITIES[a].heat+this.heat<=COMBAT.heat.max); if(i>=0){ this.nudgeCd=40; this.sinceAb=0; this.emit('nudge',i); this.toast(`Abilities are ready: ${ABILITIES[this.build.abilities[i]!].name} [${['Q','E','R'][i]}] hits far harder than auto-attacks.`); } } } else this.sinceAb=0;
   }
   playerDown(){
-    this.hp=0; this.downed=true; this.downT=0; this.cast=null; this.aim=null; this.channel=null; this.emit('sfx','down');
+    this.hp=0; this.downed=true; this.downT=0; this.cast=null; this.aim=null; this.channel=null; this.clearTransients(); this.emit('sfx','down');
     const inst=this.inst!; const cand=SLOTS.filter(s=>!inst.broken.includes(s)&&!inst.protectedSlots.includes(s)&&this.save.installed[s]&&!ITEM_BY_ID[this.save.items.find(i=>i.uid===this.save.installed[s])!.def].id.startsWith('stock_'));
     let broke:Slot|null=null; if(cand.length){ broke=cand[Math.floor(Math.random()*cand.length)]; inst.broken.push(broke); const it=this.save.items.find(i=>i.uid===this.save.installed[broke!])!; const cost=Math.round(REPAIR_COST[ITEM_BY_ID[it.def].rarity]*HARD.death.repairMul); this.save.repairBill+=cost; inst.repairAdded+=cost; }
     { const lost=Math.floor(inst.carried.credits*HARD.death.creditLoss); if(lost>0){ inst.carried.credits-=lost; this.toast('Downed: lost '+lost+' carried credits.'); } }
     const hasDefib=this.build.passives.includes('defib')&&this.defibCd<=0;
     this.recompute(); this.hp=0; this.emit('down',{ broke:broke&&ITEM_BY_ID[this.save.items.find(i=>i.uid===this.save.installed[broke!])!.def].name, defib:hasDefib });
   }
-  returnToCheckpoint(){ if(!this.downed||!this.inst) return; const inst=this.inst; for(const s of inst.broken) if(!inst.protectedSlots.includes(s)) inst.protectedSlots.push(s); inst.broken=[]; this.downed=false; this.px=inst.checkpoint.x; this.py=inst.checkpoint.y; this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.iframes=1.5; this.resetBossIfAlive(); this.enemies=this.enemies.filter(e=>true); this.projs=[]; this.emit('revived','checkpoint'); this.toast('Checkpoint recovery: hardware restored. Repair bill kept ('+this.save.repairBill+'c).'); }
-  defibInPlace(){ if(!this.downed||!this.build.passives.includes('defib')) return; this.downed=false; this.hp=this.maxHp*.5; this.iframes=1.5; this.defibCd=90; this.vfx('defib.fire',this.px,this.py); this.emit('revived','defib'); this.toast('Defib: back up. Broken hardware stays broken until a checkpoint.'); }
+  returnToCheckpoint(){ if(!this.downed||!this.inst) return; const inst=this.inst; for(const s of inst.broken) if(!inst.protectedSlots.includes(s)) inst.protectedSlots.push(s); inst.broken=[]; this.downed=false; this.px=inst.checkpoint.x; this.py=inst.checkpoint.y; this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.iframes=1.5; this.resetBossIfAlive(); this.clearTransients(); this.emit('revived','checkpoint'); this.toast('Checkpoint recovery: hardware restored. Repair bill kept ('+this.save.repairBill+'c).'); }
+  defibInPlace(){ if(!this.downed||!this.build.passives.includes('defib')) return; this.downed=false; this.hp=this.maxHp*.5; this.iframes=1.5; this.defibCd=90; this.clearTransients(); this.vfx('defib.fire',this.px,this.py); this.emit('revived','defib'); this.toast('Defib: back up. Broken hardware stays broken until a checkpoint.'); }
 
   // ---------- run logic ----------
   updateRun(dt:number){
@@ -600,6 +607,13 @@ export class Game {
       else { for(const o of this.opponents('ally')) if(dist(p.x,p.y,o.x,o.y)<o.r+p.r){ this.curTag=(p as any).tag||'auto'; o.hurt(p.dmg,p.x-p.vx,p.y-p.vy); this.curTag='auto'; this.fx.push({kind:'spark',x:p.x,y:p.y,t:0,life:.2}); p.life=0; break; } } }
     this.projs=this.projs.filter(p=>p.life>0);
   }
+  /** Drops every temporary ground/overlay thing tied to the current fight: hostile zones, projectiles, deployables, delayed casts, buff rings, particles. Env hazards (z.env) stay. */
+  clearTransients(){ this.zones=this.zones.filter(z=>z.env); this.projs=[]; this.fx=[]; this.vev=[]; try{ VFX.reset(); }catch{} const a:any=this.abx; if(a){ a.deps=[]; a.delayed=[]; a.projs=[]; a.shield=0; a.shieldT=0; a.mit={m:1,t:0}; a.reflect={f:0,t:0}; a.dmg={m:1,t:0}; a.move={m:1,t:0}; a.ambush={m:1,t:0}; a.steal={f:0,t:0}; a.toggles=new Set(); } this.cast=null; this.aim=null; this.cloakT=0; this.braceT=0; }
+  /** Generic safety net (runs ~1/s in a run): expire stale/non-finite zones, cap zones, deployables and fx so nothing can pile up or stick. */
+  sanitizeGround(){ this.zones=this.zones.filter(z=>z.env||(isFinite(z.life)&&z.t<z.life+1)); { let drop=this.zones.filter(z=>!z.env).length-40; if(drop>0) this.zones=this.zones.filter(z=>z.env||drop--<=0); }
+    const a:any=this.abx; if(a){ a.deps=a.deps.filter((d:any)=>isFinite(d.life)&&d.t<d.life+1); if(a.deps.length>24) a.deps.splice(0,a.deps.length-24); if(a.delayed.length>40) a.delayed.splice(0,a.delayed.length-40); if(a.projs.length>80) a.projs.splice(0,a.projs.length-80); }
+    this.fx=this.fx.filter(f=>isFinite(f.life)&&f.t<f.life+1); if(this.fx.length>260) this.fx.splice(0,this.fx.length-260); }
+  sanT=0;
   updateZones(dt:number){ for(const z of this.zones){ z.t+=dt; this.dmgSrc=(z as any).src||(z.env?'env':'zone'); if(z.t>=z.windup&&!this.downed&&!this.revealing&&dist(z.x,z.y,this.px,this.py)<z.r){ this.zoneTick=(this.zoneTick||0)+dt; this.heat=Math.min(COMBAT.heat.max,this.heat+z.heat*dt); if(this.zoneTick>.5){ this.zoneTick=0; this.hurtPlayer(z.dps,z.x,z.y); } } } this.zones=this.zones.filter(z=>z.t<z.life); const MAXZ=40; { let drop=this.zones.filter(z=>!z.env).length-MAXZ; if(drop>0){ this.zones=this.zones.filter(z=>z.env||drop--<=0); } } }
   zoneTick=0;
   /** balance instrumentation only: label of whatever is currently damaging the player (tools/balance) */ dmgSrc='';
