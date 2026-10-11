@@ -31,7 +31,7 @@ export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
 export interface Rt { hardDmg?:number; // enemy transient runtime fields
   /** content batch 1 boss mechanics (src/content/mechanics.ts) */ spdMul?:number; cdMul?:number; shield?:any; gim?:any; gimT?:number; q?:any[]; pylPrev?:number; tl?:number;
-  st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; hack:number; abHitAt:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; wpT?:number; wp?:{x:number;y:number}|null; sx?:number; sy?:number; sT?:number; unstick?:number; side?:number; dashed:boolean; strafe:number; chained?:boolean;
+  st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; hack:number; abHitAt:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; fkT?:number; fkN?:number; flankSide?:number; flanker?:boolean; wpT?:number; wp?:{x:number;y:number}|null; sx?:number; sy?:number; sT?:number; unstick?:number; side?:number; dashed:boolean; strafe:number; chained?:boolean;
 }
 export type En = EnemyState & { _rt:Rt };
 
@@ -73,6 +73,11 @@ export class Game {
   /** Unlock towns whose condition is newly met (clears, level ups, load). Returns the ids unlocked now. */
   checkTownUnlocks():TownId[]{ const n=refreshUnlocks(this.save); for(const id of n){ this.toast(`New destination: ${TOWN_INFO[id].name}. Take the Reach Line at the plaza tram stop.`); persist(this.save); } return n; }
   /** Ride the Reach Line to another town (free, instant; town only). */
+  /** station key of the vendor screen last opened in town (Forge Repair gives Heavy Works discounts) */
+  vendorStation=''; 
+  /** repair price multiplier: Forge Repair (Harrow) takes 20% off, plus 5% per installed Heavy Works (HI) part, capped at 50% off */
+  repairRate():number{ if(this.townId!=='harrow'||this.vendorStation!=='h_repair') return 1; let hi=0; for(const u of Object.values(this.save.installed)){ const it=this.save.items.find(i=>i.uid===u); if(it&&ITEM_BY_ID[it.def]?.mfr==='HI') hi++; } return 1-Math.min(.5,.2+.05*hi); }
+  repairCost(bill=this.save.repairBill):number{ return Math.ceil(bill*this.repairRate()); }
   /** set by main.ts: warms the destination town's art (used by the travel screen) */
   townPreload?:(id:TownId)=>Promise<void>;
   travel(id:TownId):boolean{ if(this.mode!=='town') return false; const c=travelCheck(this.save,id); if(!c.ok){ this.toast(c.why); return false; } this.save.town=id; persist(this.save); this.enterTown(true); this.toast(`Arrived at ${TOWN_INFO[id].name}.`); return true; }
@@ -439,7 +444,7 @@ export class Game {
   }
   doInteract(it:Interact){
     const inst=this.inst; const f=inst?.flags; const b=this.build;
-    if(this.mode==='town'){ this.emit('open',it.opens||it.id); return; }
+    if(this.mode==='town'){ this.vendorStation=it.station||''; this.emit('open',it.opens||it.id); return; }
     if(!inst||!f) return;
     const need=(cap:string,msg:string)=>{ if(!b.caps.has(cap)){ this.toast(msg); this.emit('sfx','deny'); return false; } return true; };
     switch(it.id){
@@ -526,12 +531,18 @@ export class Game {
     if(wantKeep&&d<wantKeep-1&&this.los(e.x,e.y,tx,ty)){ mx=-Math.cos(ang); my=-Math.sin(ang); const sd=rt.strafe; mx+= -Math.sin(ang)*sd*.5; my+= Math.cos(ang)*sd*.5; }
     else if(wantKeep&&d<wantKeep+1.5&&this.los(e.x,e.y,tx,ty)){ mx=-Math.sin(ang)*rt.strafe*.4; my=Math.cos(ang)*rt.strafe*.4; }
     else if(d>(def.ranged?wantKeep:1.0)){ const rr=def.radius*.85; if(d<2.2&&this.clearFor(e.x,e.y,tx,ty,rr)||!tgtIsPlayer&&this.clearFor(e.x,e.y,tx,ty,rr)||this.clearFor(e.x,e.y,tx,ty,rr)&&d<14){ mx=Math.cos(ang); my=Math.sin(ang); rt.wp=null; } else { rt.wpT=(rt.wpT||0)-dt; if(rt.wpT<=0||!rt.wp){ rt.wpT=.15+((e.id|0)%4)*.03; rt.wp=this.flowDir(e,this.flowCls(def.radius)); } const w=rt.wp; if(w){ const a2=Math.atan2(w.y-e.y,w.x-e.x); mx=Math.cos(a2); my=Math.sin(a2); if(dist(e.x,e.y,w.x,w.y)<.35) rt.wpT=0; } else { mx=Math.cos(ang); my=Math.sin(ang); } } }
+    // flanking: melee pack members (3+ alerted in the group) fan out and arc in from the sides instead of queueing behind each other
+    if((mx||my)&&!rt.wp&&this.flankOn(e,def,d,tgtIsPlayer,dt)){ const ph=(rt.flankSide||1)*Math.min(HARD.flank.maxAng,(d-HARD.flank.closeIn)*HARD.flank.gain); const ca=Math.cos(ph), sa=Math.sin(ph); const nx=mx*ca-my*sa, ny=mx*sa+my*ca; if(this.clearFor(e.x,e.y,e.x+nx*2.2,e.y+ny*2.2,def.radius*.85)){ mx=nx; my=ny; } }
     // stuck detection: no real progress while trying to move => sidestep + repath
     if(rt.unstick&&rt.unstick>0){ rt.unstick-=dt; const pa=Math.atan2(my,mx)+(rt.side||1)*Math.PI/2; const lm=Math.hypot(mx,my)||1; mx=mx/lm*.5+Math.cos(pa)*.8; my=my/lm*.5+Math.sin(pa)*.8; }
     const l=Math.hypot(mx,my); if(l>0){ this.unwedge(e,def.radius*.85); this.steerMove(e,mx/l,my/l,speed,dt,def.radius*.85); rt.ang=Math.atan2(my,mx);
       rt.sT=(rt.sT||0)+dt; if(rt.sx===undefined){ rt.sx=e.x; rt.sy=e.y; rt.sT=0; } else if(rt.sT>=.5){ const prog=dist(e.x,e.y,rt.sx!,rt.sy!); if(prog<speed*.5*.3&&d>1.5){ rt.unstick=.7; rt.side=-(rt.side||((e.id|0)&1?1:-1)); rt.wp=null; rt.wpT=0; } rt.sx=e.x; rt.sy=e.y; rt.sT=0; } }
     else rt.ang=ang;
   }
+  /** true when this melee enemy should arc around the player: pack of 3+ alerted group members, not a boss/ranged/static, still outside close range. Side/role is stable per enemy (about 2/3 of a pack flanks, the rest hold the front). */
+  flankOn(e:En,def:any,d:number,tgtIsPlayer:boolean,dt:number):boolean{ const rt=e._rt; if(def.boss||def.ranged||def.static||!tgtIsPlayer||e.faction!=='enemy'||d<=HARD.flank.closeIn||d>HARD.flank.maxD) return false;
+    rt.fkT=(rt.fkT||0)-dt; if(rt.fkT===undefined||rt.fkT<=0||rt.fkN===undefined){ rt.fkT=.5; let n=0; for(const o of this.enemies) if(!o.dead&&o.alert&&o.group===e.group&&o.faction==='enemy'&&dist(o.x,o.y,e.x,e.y)<14&&!ENEMIES[o.type].ranged) n++; rt.fkN=n; rt.flankSide=(e.id&1)?1:-1; rt.flanker=(e.id%3)!==0; }
+    return !!rt.flanker&&(rt.fkN||0)>=HARD.flank.minPack; }
   zoneSlow(e:En){ return false; }
   beginAttack(e:En,a:string,ang:number,tx:number,ty:number){
     const rt=e._rt; const A=ATK[a]; rt.st='tele'; rt.atk=a; rt.t=0; rt.ang=ang; rt.acd[a]=A.cd*(.85+Math.random()*.3); rt.shots=[]; this.emit('sfx','telegraph_'+(ENEMIES[e.type].elite?'elite':'basic'));
@@ -588,7 +599,7 @@ export class Game {
       else { for(const o of this.opponents('ally')) if(dist(p.x,p.y,o.x,o.y)<o.r+p.r){ this.curTag=(p as any).tag||'auto'; o.hurt(p.dmg,p.x-p.vx,p.y-p.vy); this.curTag='auto'; this.fx.push({kind:'spark',x:p.x,y:p.y,t:0,life:.2}); p.life=0; break; } } }
     this.projs=this.projs.filter(p=>p.life>0);
   }
-  updateZones(dt:number){ for(const z of this.zones){ z.t+=dt; this.dmgSrc=(z as any).src||(z.env?'env':'zone'); if(z.t>=z.windup&&!this.downed&&!this.revealing&&dist(z.x,z.y,this.px,this.py)<z.r){ this.zoneTick=(this.zoneTick||0)+dt; this.heat=Math.min(COMBAT.heat.max,this.heat+z.heat*dt); if(this.zoneTick>.5){ this.zoneTick=0; this.hurtPlayer(z.dps,z.x,z.y); } } } this.zones=this.zones.filter(z=>z.t<z.life); }
+  updateZones(dt:number){ for(const z of this.zones){ z.t+=dt; this.dmgSrc=(z as any).src||(z.env?'env':'zone'); if(z.t>=z.windup&&!this.downed&&!this.revealing&&dist(z.x,z.y,this.px,this.py)<z.r){ this.zoneTick=(this.zoneTick||0)+dt; this.heat=Math.min(COMBAT.heat.max,this.heat+z.heat*dt); if(this.zoneTick>.5){ this.zoneTick=0; this.hurtPlayer(z.dps,z.x,z.y); } } } this.zones=this.zones.filter(z=>z.t<z.life); const MAXZ=40; { let drop=this.zones.filter(z=>!z.env).length-MAXZ; if(drop>0){ this.zones=this.zones.filter(z=>z.env||drop--<=0); } } }
   zoneTick=0;
   /** balance instrumentation only: label of whatever is currently damaging the player (tools/balance) */ dmgSrc='';
 

@@ -12,12 +12,14 @@ import { key, ITEMS, ITEM_BY_ID, SLOT_LABEL, CHIPS, ChipId, chipFits, RARITY_RAN
 import { contractState } from './state';
 
 export interface TutState { status:'active'|'done'|'skipped'; done:string[]; skipped:string[]; slot:Slot; item:string; chip:ChipId; rankBase:number; chipBase:number; kills:number; rewarded:boolean; v:number; }
-export type StepId='move'|'fixer'|'equip'|'socket'|'vendor'|'gate'|'controls'|'fight'|'return'|'recs';
-interface StepDef { id:StepId; ctx:'any'|'town'|'run'; title:string; }
+export type StepId='move'|'fixer'|'equip'|'socket'|'vendor'|'bank'|'gate'|'controls'|'fight'|'return'|'recs';
+interface StepDef { id:StepId; ctx:'any'|'town'|'run'; title:string; /** optional steps are not numbered and auto-skip once the player moves on to the gate */ optional?:boolean; }
 export const STEPS:StepDef[]=[
   {id:'move',ctx:'any',title:'Walk the market'},{id:'fixer',ctx:'town',title:'Get a contract'},{id:'equip',ctx:'town',title:'Install an upgrade'},
-  {id:'socket',ctx:'town',title:'Socket a chip'},{id:'vendor',ctx:'town',title:'Vendor and repair'},{id:'gate',ctx:'town',title:'Enter the Annex'},
+  {id:'socket',ctx:'town',title:'Socket a chip'},{id:'vendor',ctx:'town',title:'Vendor and repair'},{id:'bank',ctx:'town',title:'Bank (optional)',optional:true},{id:'gate',ctx:'town',title:'Enter the Annex'},
   {id:'controls',ctx:'run',title:'Your combat kit'},{id:'fight',ctx:'run',title:'Clear the pack'},{id:'return',ctx:'run',title:'Back to town'},{id:'recs',ctx:'town',title:'Spend it'} ];
+/** steps shown as "Step N of M" (optional ones are not counted) */
+export const NUMBERED=STEPS.filter(x=>!x.optional);
 export const REWARD={ credits:150, stims:1 };
 const KILLS_NEEDED=3;
 const CANDIDATES=['hi_clamp'];
@@ -97,14 +99,17 @@ export class Tutorial {
     if(!this.isDone('socket')){ const cn=this.chipSum(); if(cn<st.chipBase) st.chipBase=cn; if(cn>st.chipBase) this.latch('socket'); }
     if(ui.modal!==this.lastModal){ this.lastModal=ui.modal; this.openedAt=performance.now(); this.key=''; }
     if(ui.modal==='vendor'&&performance.now()-this.openedAt>2500) this.latch('vendor');
+    if(ui.modal==='bank'&&performance.now()-this.openedAt>2500) this.latch('bank');
+    if(g.mode==='run'||ui.modal==='gate'||this.isDone('gate')) { if(!this.isDone('bank')){ st.skipped.push('bank'); this.latch('bank'); } }
     if(this.flags.cast&&this.flags.dodge&&this.flags.ctrlack) this.latch('controls');
     if(st.kills>=KILLS_NEEDED&&this.flags.loot) this.latch('fight');
   }
   /** first incomplete step that fits the current place, else a redirect for the first incomplete step */
   cur():(StepDef&{redirect:boolean;n:number})|null{ const mode=this.g.mode; const pend=STEPS.map((s,i)=>({s,i})).filter(x=>!this.isDone(x.s.id)); if(!pend.length) return null;
-    const fit=pend.find(x=>x.s.ctx==='any'||x.s.ctx===mode); if(fit) return {...fit.s,redirect:false,n:fit.i+1};
+    const fit=pend.find(x=>x.s.ctx==='any'||x.s.ctx===mode); if(fit) return {...fit.s,redirect:false,n:this.num(fit.s)};
     // nothing fits here: if in run, bring them home (return step is a run step so this is only when it is latched); if in town only run steps remain, send them to the gate
-    const x=pend[0]; return {...x.s,redirect:true,n:x.i+1}; }
+    const x=pend[0]; return {...x.s,redirect:true,n:this.num(x.s)}; }
+  private num(d:StepDef){ let n=0; for(const x of STEPS){ if(!x.optional) n++; if(x===d) return d.optional?Math.max(1,n):n; } return n; }
   // ---------- copy / targets ----------
   private touch(){ return document.body.classList.contains('touch'); }
   private W(id:string){ const l=this.g.level.interacts.find(i=>i.id===id); return l?{x:l.x,y:l.y,r:1.3,col:'#e0c070'}:undefined; }
@@ -139,6 +144,8 @@ export class Tutorial {
         return { title:c.title, body:`Sockets take chips. Pick the ${cn}. Click it, then a socket${t?' (or tap, tap)':', or drag it in'}.`, target:T(`#modal [data-act=pickchip][data-chip=${st.chip}]`) }; }
       case 'vendor': return modal==='vendor'?{ title:c.title, body:'Hardware by slot, with stat comparisons. Repair all fixes breakage. Look around, then close.', target:T('#modal [data-act=shopslot]') }
         :{ title:c.title, body:'Parts and repairs. Walk to the vendor stall and open it. Browsing is free.', target:{world:this.W('vendor')} };
+      case 'bank': return modal==='bank'?{ title:c.title, body:'The bank holds spare gear and chips so your locker stays clear. Use Deposit junk to clear grey items, or To bank in any vendor sell list. Credits in the vault are safe from death penalties. Look around, then close.', target:T('#modal') }
+        :{ title:c.title, body:'Optional: the bank keeps clutter out of your locker. Walk to the vault and open it, or press Skip step.', target:{world:this.W('bank')} };
       case 'gate': { if(modal==='gate') return { title:c.title, body:'Dungeons unlock in tiers. Pick the Reclamation Annex and enter.', target:T('#modal [data-act=enter][data-id=annex]') };
         return { title:c.title, body:t?'Walk to the Annex gate and tap the prompt.':'Walk to the Annex gate and press F to pick a dungeon.', target:{world:this.W('annex')} }; }
       case 'controls': { const f=this.flags, all=!!(f.cast&&f.dodge);
@@ -166,7 +173,7 @@ export class Tutorial {
   private hideAll(){ this.shown=false; this.el.style.display=this.spot.style.display=this.world.style.display=this.edge.style.display='none'; document.body.classList.remove('tutdock'); document.body.style.removeProperty('--tutdock'); }
   private render(c:StepDef&{n:number},v:View){ const el=this.el, ui=this.ui as any; const dock=!!ui.modal||!!this.g.downed;
     const key=[c.id,c.n,v.title,v.body,v.ack||'',JSON.stringify(v.list||[]),this.touch()].join('|');
-    if(key!==this.key){ this.key=key; el.querySelector('.tt-step')!.textContent=`Step ${c.n} of ${STEPS.length}`; el.querySelector('.tt-title')!.textContent=v.title; el.querySelector('.tt-body')!.textContent=v.body;
+    if(key!==this.key){ this.key=key; el.querySelector('.tt-step')!.textContent=(c.optional?`Optional · after step ${c.n}`:`Step ${c.n} of ${NUMBERED.length}`); el.querySelector('.tt-title')!.textContent=v.title; el.querySelector('.tt-body')!.textContent=v.body;
       const ul=el.querySelector('.tt-list') as HTMLElement; ul.innerHTML=(v.list||[]).map(x=>`<li class="${x.ok?'ok':''}"><span class="tt-box">${x.ok?'✓':''}</span>${x.t}</li>`).join(''); ul.style.display=v.list?.length?'':'none';
       const a=el.querySelector('.tt-ack') as HTMLElement; a.style.display=v.ack?'':'none'; a.textContent=v.ack||''; this.placeKey=''; }
     el.style.display=dock?'grid':'block'; el.classList.toggle('dock',dock); document.body.classList.toggle('tutdock',dock);

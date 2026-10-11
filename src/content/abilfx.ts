@@ -8,6 +8,11 @@ export function counterFor(e:any):Counter|null{
   if(def.boss){ return def.summon?{ id:'sweep', kind:'adds', why:'Adds: use Sweep' }:null; }
   if(role==='healer'||role==='support') return { id:'control', kind:'healer', why:'Healer: use Control' };
   if(aff.includes('vampiric')) return { id:'control', kind:'vampiric', why:'Vampiric: stun it with Control' };
+  if(aff.includes('warded')) return { id:'control', kind:'warded', why:'Warded: stun it to cancel the ward' };
+  if(aff.includes('frenzied')) return { id:'control', kind:'frenzied', why:'Frenzied: stun it to reset the rage' };
+  if(aff.includes('stormcalled')) return { id:'reposition', kind:'stormcalled', why:'Lightning: Reposition through the strike' };
+  if(aff.includes('molten')) return { id:'control', kind:'molten', why:'Molten: stun it, keep off the pools' };
+  if(aff.includes('brooding')) return { id:'sweep', kind:'brooding', why:'Brood: Sweep clears the cindermites' };
   if(aff.includes('regenerating')) return { id:'bladeburst', kind:'regen', why:'Regenerating: burst it with abilities' };
   if(aff.includes('hasted')) return { id:'control', kind:'hasted', why:'Hasted: stun it with Control' };
   if(aff.includes('volatile')) return { id:'pulse', kind:'volatile', why:'Volatile: stun it, kill it at range' };

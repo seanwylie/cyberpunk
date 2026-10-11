@@ -20,7 +20,7 @@ const check = async (page, tag, tol = 2) => {
     const win = document.querySelector('#modal .win'); let hitWin = false; if (win && V(win)) { const b = win.getBoundingClientRect(); hitWin = a.left < b.right - 2 && a.right > b.left + 2 && a.top < b.bottom - 2 && a.bottom > b.top + 2; }
     const sk = t.querySelector('.tt-skip'), st = t.querySelector('.tt-step').textContent; const inView = a.left >= -1 && a.top >= -1 && a.right <= innerWidth + 1 && a.bottom <= innerHeight + 1;
     const fs = parseFloat(getComputedStyle(t.querySelector('.tt-body')).fontSize);
-    return { shown: true, hit, hitWin, skip: V(sk), step: /^Step \d+ of 10$/.test(st), inView, fs }; }, { HUDSEL, vis: VIS });
+    return { shown: true, hit, hitWin, skip: V(sk), step: /^(Step \d+ of 10|Optional · after step \d+)$/.test(st), inView, fs }; }, { HUDSEL, vis: VIS });
   ok(r.shown && r.hit.length === 0 && !r.hitWin && r.skip && r.step && r.inView && r.fs >= 12, `${tag}: card visible, Skip + Step X of N, no overlap ${JSON.stringify(r)}`); return r; };
 const tp = (page, id) => page.evaluate(id => { const g = window.__game; const it = g.level.interacts.find(i => i.id === id); g.px = it.x + .5; g.py = it.y; for (let i = 0; i < 4; i++) g.update(.016); }, id);
 const press = async (page, k, ms = 60) => { await page.keyboard.down(k); await sleep(ms); await page.keyboard.up(k); };
@@ -69,7 +69,11 @@ async function playthrough(w, h, touch) {
   await click(page, '#modal [data-act=close]'); await sleep(200);
   // 5 vendor
   await tp(page, 'vendor'); await sleep(250); if (touch) await click(page, '#interact'); else await press(page, 'f'); await sleep(500); await check(page, `${tag} step5 vendor`); await shot('5_vendor');
-  s = await waitN(page, 6, 4500); ok(s.n === 6, `${tag}: browsing the vendor advances to step 6 (got ${s.n})`); await click(page, '#modal [data-act=close]'); await sleep(200);
+  // optional bank step comes right after the vendor (unnumbered: shows as "Optional" and the numbered count stays 10)
+  await page.waitForFunction(() => window.__tut.cur()?.id === 'bank', null, { timeout: 5000 }).catch(() => {}); await sleep(200); ok(await page.evaluate(() => window.__tut.cur()?.id === 'bank' && /^Optional/.test(document.querySelector('#tut .tt-step').textContent)), `${tag}: browsing the vendor leads to the optional bank step`);
+  await click(page, '#modal [data-act=close]'); await sleep(200);
+  await tp(page, 'bank'); await sleep(250); if (touch) await click(page, '#interact'); else await press(page, 'f'); await sleep(500); await check(page, `${tag} bank step`); await shot('5b_bank');
+  s = await waitN(page, 6, 4500); ok(s.n === 6, `${tag}: browsing the bank advances to step 6 (got ${s.n})`); await click(page, '#modal [data-act=close]'); await sleep(200);
   // 6 gate
   await tp(page, 'annex'); await sleep(250); if (touch) await click(page, '#interact'); else await press(page, 'f'); await sleep(500); await check(page, `${tag} step6 gate`); ok(await spotOn(page, '#modal [data-act=enter][data-id=annex]'), `${tag}: spotlight on Enter Annex`); await shot('6_gate');
   await click(page, '#modal [data-act=enter][data-id=annex]'); await sleep(1500); s = await waitN(page, 7); ok(s.mode === 'run' && s.n === 7, `${tag}: entering the Annex starts the run lesson (step ${s.n}, ${s.mode})`);

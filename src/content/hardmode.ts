@@ -20,6 +20,8 @@ export const HARD = {
   },
   stimHeal:32, stimCd:9, runRegen:.5,
   packAggroR:10,
+  /** pack flanking: melee pack members arc in by up to maxAng radians (gain per tile beyond closeIn), only in packs of minPack+ */
+  flank:{ minPack:3, maxAng:.95, gain:.13, closeIn:2.6, maxD:13 },
   death:{ creditLoss:.35, repairMul:1.5 },
   /** ground-drop volume (tools/balance/drops.mjs) */
   autoSellGrey:true,

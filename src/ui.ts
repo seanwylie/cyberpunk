@@ -17,8 +17,8 @@ import { EXTRA_ITEMS } from './content/items';
 import { WEAPON_ITEMS } from './content/weapons';
 import { lockDay, contractState } from './state';
 import { abTip, abFallbackIcon, abSlotsHtml, abChipX, codexHtml, cyclePicks } from './abilities/ui_ext';
-import { bankItemsOf } from './bank';
-import { currentTown, dungeonAccess, isUnlocked } from './towns';
+import { bankItemsOf, depositItem } from './bank';
+import { currentTown, dungeonAccess, isUnlocked, unlockProgress } from './towns';
 import { travelHtml, guildHtml, townClick, TV } from './townui';
 import { bankHtml, bankClick, bankInput, BK } from './bankui';
 import { settingsHtml, settingsAfterRender, settingsReset, settingsEsc, settingsInput, settingsClick, settingsKey, settingsTab } from './settingsui';
@@ -301,8 +301,8 @@ export class UI {
   greyDisposable():Inst[]{ const s=this.g.save; const keep=new Set<string>(); for(const sl of SLOTS){ const cur=s.items.find(i=>i.uid===s.installed[sl]); if(cur&&!ITEM_BY_ID[cur.def].id.startsWith('stock_')){ const st=lockerItems(s).find(i=>i.def==='stock_'+sl); if(st) keep.add(st.uid); } }
     return lockerItems(s).filter(i=>ITEM_BY_ID[i.def].rarity==='grey'&&!keep.has(i.uid)); }
   disposeGrey(){ const g=this.g,s=g.save; const list=this.greyDisposable(); if(!list.length){ g.toast('No unequipped grey items to dispose.'); return; } let v=0; const ids=new Set(list.map(i=>i.uid)); for(const i of list){ v+=SELL_VALUE.grey; for(const c of i.chips) s.lockerChips[c]=(s.lockerChips[c]||0)+1; } s.items=s.items.filter(x=>!ids.has(x.uid)); s.credits+=v; persist(s); this.resetDraft(); g.toast(`Disposed ${list.length} grey item${list.length>1?'s':''} for ${v}c`); }
-  repairAll(){ const g=this.g,s=g.save; if(s.repairBill<=0){ g.toast('Nothing needs repair.'); return; } if(s.credits<=0){ g.toast('Not enough credits to repair.'); return; } const pay=Math.min(s.credits,s.repairBill); s.credits-=pay; s.repairBill-=pay; persist(s); g.toast(s.repairBill>0?`Partial repair: paid ${pay}c, ${s.repairBill}c still owed.`:`Repaired everything for ${pay}c`); }
-  repairBtn(compact=false):string{ const s=this.g.save; const b=s.repairBill; const why=b<=0?'No repairs needed':s.credits<=0?'No credits':''; const lbl=b<=0?'Repair all':s.credits>=b?`Repair all (${b}c)`:`Repair what I can (${s.credits}c of ${b}c)`; return `<button class="btn primary" data-act="repairall" title="${why}" ${why?'disabled':''}>${lbl}</button>${why&&!compact?`<span class="mut stat">${why}</span>`:''}`; }
+  repairAll(){ const g=this.g,s=g.save; if(s.repairBill<=0){ g.toast('Nothing needs repair.'); return; } if(s.credits<=0){ g.toast('Not enough credits to repair.'); return; } const rate=g.repairRate(); const cost=g.repairCost(); const pay=Math.min(s.credits,cost); s.credits-=pay; s.repairBill=pay>=cost?0:Math.max(0,s.repairBill-Math.floor(pay/rate)); persist(s); g.toast(s.repairBill>0?`Partial repair: paid ${pay}c, ${s.repairBill}c still owed.`:`Repaired everything for ${pay}c`+(rate<1?` (Forge discount ${Math.round((1-rate)*100)}%)`:'')); }
+  repairBtn(compact=false):string{ const s=this.g.save; const b=this.g.repairCost(); const why=s.repairBill<=0?'No repairs needed':s.credits<=0?'No credits':''; const lbl=s.repairBill<=0?'Repair all':s.credits>=b?`Repair all (${b}c)`:`Repair what I can (${s.credits}c of ${b}c)`; return `<button class="btn primary" data-act="repairall" title="${why}" ${why?'disabled':''}>${lbl}</button>${why&&!compact?`<span class="mut stat">${why}</span>`:''}`; }
 
   buyHw(id:string){ const g=this.g, s=g.save; const d=ITEM_BY_ID[id]; const price=d?this.buyPrice(d):undefined; const cap=s.lockerCap+s.purchases.lockerBlocks*STARTING.lockerPerPurchase; if(d&&this.BUY()[d.rarity]!==undefined&&d.lvl<=s.level&&s.credits>=price!&&capacityUsed(s)<cap){ s.credits-=price!; s.items.push(mkInst(s,d.id)); persist(s); g.toast('Bought '+d.name+' ('+price+'c)'); } this.recCache=null; this.render(); }
   // ----- Recommendations (src/recommend.ts is the pure engine; this is glue + rendering) -----
@@ -360,9 +360,9 @@ export class UI {
       return `<div class="row shoprow" data-tip="${esc(tip)}" style="border-color:${rc(d.rarity)}"><span class="tile mini ro" data-def="${d.id}" style="border-color:${rc(d.rarity)}"><span class="ticon"></span></span><span class="si"><b class="nm2" title="${esc(d.name)}" style="color:${rc(d.rarity)}">${esc(d.name)}</b><span class="tag" style="border-color:${MFR[d.mfr].accent}">${esc(MFR[d.mfr].short)}</span><span class="tag ${lock?'bad':''}">Lv ${d.lvl}</span><span class="vs">${delta(d)}</span></span><button class="btn ${why?'':'primary'}" data-act="buyhw" data-id="${d.id}" ${why?'disabled':''}>${why?esc(why):'Buy '+price+'c'}</button></div>`; }).join('')||'<div class="row mut">No hardware for this slot</div>';
     return `<div class="col shopcol"><h3>Hardware for sale · ${esc(SLOT_LABEL[sl])}</h3><div class="shoptabs">${tabs}</div><div class="list shoplist">${rows}</div><div class="mut">Compared with ${cur?esc(cur.name):'nothing installed'}. Purple and orange hardware is loot-only. ${capacityUsed(s)}/${cap} locker.</div></div>`; }
   vendor():string{ const s=this.g.save; const items=lockerItems(s).filter(i=>!ITEM_BY_ID[i.def].id.startsWith('stock_')||true);
-    return (this.confirm?this.confirmHtml():'')+this.shop()+`<div class="col">${this.recPanel()}<h3>Repairs</h3><div>Repair bill: <b>${s.repairBill}c</b> · Credits: <b>${s.credits}c</b></div>${this.repairBtn()}
+    return (this.confirm?this.confirmHtml():'')+this.shop()+`<div class="col">${this.recPanel()}<h3>Repairs</h3><div>Repair bill: <b>${s.repairBill}c</b>${this.g.repairRate()<1?` → <b>${this.g.repairCost()}c</b> at the Forge`:''} · Credits: <b>${s.credits}c</b></div>${this.g.repairRate()<1?`<div class="mut" data-forge="1">Forge discount ${Math.round((1-this.g.repairRate())*100)}% off: 20% base plus 5% for each installed Heavy Works (HI) part.</div>`:(this.g.townId==='harrow'?'<div class="mut">Tip: the Forge Repair station discounts repairs, more with Heavy Works gear installed.</div>':'')}${this.repairBtn()}
       <div class="mut">Downs add random hardware damage and a repair bill; checkpoints restore function but the bill stays until paid here.</div><h3>Consumables</h3><button class="btn" data-act="buystim" ${s.credits>=30?'':'disabled'}>Buy stim (30c)</button> Locker stims: ${s.stims}</div>
-      <div class="col"><h3>Sell hardware from storage</h3><div class="list">${items.map(i=>{ const d=ITEM_BY_ID[i.def]; return `<div class="row" style="border-color:${rc(d.rarity)}"><span class="nm2" title="${esc(d.name)}">${esc(d.name)}</span> <span class="tag">${d.rarity}</span><button class="btn" data-act="sell" data-uid="${i.uid}">Sell ${SELL_VALUE[d.rarity]}c</button></div>`; }).join('')||'<div class="row mut">Nothing to sell</div>'}</div><div class="mut">Convenience sales are storage-only (no remote vendor mid-run).</div></div>`; }
+      <div class="col"><h3>Sell hardware from storage</h3><div class="list">${items.map(i=>{ const d=ITEM_BY_ID[i.def]; return `<div class="row" style="border-color:${rc(d.rarity)}"><span class="nm2" title="${esc(d.name)}">${esc(d.name)}</span> <span class="tag">${d.rarity}</span><button class="btn" data-act="sell" data-uid="${i.uid}">Sell ${SELL_VALUE[d.rarity]}c</button><button class="btn" data-act="sendbank" data-uid="${i.uid}" title="Move to the bank instead of selling">To bank</button></div>`; }).join('')||'<div class="row mut">Nothing to sell</div>'}</div><div class="mut">Convenience sales are storage-only (no remote vendor mid-run).</div></div>`; }
   // ----- Gate -----
   gate():string{ const g=this.g, s=g.save, inst=s.instance; const live=!!inst&&inst.expiresAt>Date.now(); const cur=live?(inst!.dungeon||'annex'):null; const doneCur=live&&g.instDone(inst);
     const town=currentTown(s); const hiddenT=DUNGEON_LIST.filter(d=>!dungeonAccess(d.id,town).ok&&cur!==d.id); const all=DUNGEON_LIST.filter(d=>dungeonAccess(d.id,town).ok||cur===d.id); const shown=all.filter(d=>this.showAll||inBand(d,s.level)||cur===d.id);
@@ -407,6 +407,9 @@ export class UI {
       ${c.id==='odalys_vane'?'<button class="btn" data-act="openstory">Talk to Odalys</button>':''}
       <h3>Contracts</h3><div class="mut">Fixed goals with set credit and reputation rewards.</div>${c.contracts.map(k=>this.contractRow(k)).join('')}</div>`; }
   // ----- Fixer / story -----
+  /** Job board hint: where Tier III-IV work is and how to unlock Harrow Reach (hidden once the player is already in Harrow) */
+  harrowHint():string{ const s=this.g.save; if(currentTown(s)==='harrow') return ''; const pr=unlockProgress(s,'harrow'); const un=isUnlocked(s,'harrow');
+    return `<div class="draftbar" data-hint="harrow" style="border-color:#ff6a3a"><b>Heavier contracts: Harrow Reach.</b> <span class="mut">${un?'It is open. Take the Reach Line from the plaza tram stop for Tier III and IV dungeons and Heavy Works hardware.':'Locked. '+pr.lines.map(l=>esc(l)).join(' ')+' The Reach Line tram stop in the plaza takes you there.'}</span></div>`; }
   fixer():string{ const g=this.g; const st=g.story(); const clue=st.clues; const t=st.town; const c=CONTACT_BY_ID['odalys_vane'];
     const quote=t?t.text:c.greeting.replace(/^"|"$/g,'');
     const found=[clue.A,clue.B,clue.general].filter(Boolean).length; const dl=Object.entries(st.dclues||{});
@@ -419,6 +422,7 @@ export class UI {
       <blockquote class="quote">“${esc(quote)}”</blockquote>
       <div class="lead"><b>Next:</b> ${esc(lead)}</div>
       ${t?`<div class="offers">${t.options.map(o=>`<button class="btn primary" data-act="townchoice" data-id="${o.id}" data-boost="${o.boosts}">${esc(o.label)}</button>`).join('')}</div>`:''}
+      ${this.harrowHint()}
       <h3>Clues (${found}/3)</h3>
       ${row('🔓','Hack clue',clue.A)}${row('💪','Force clue',clue.B)}${row('📌','General lead',clue.general)}
       ${dl.length?`<h3>Dungeon leads</h3>${dl.map(([d,v])=>row('📍',esc(DUNGEONS[d]?.short||d),[v.A,v.B,v.general].filter(Boolean).join(' / ')||null)).join('')}`:''}
@@ -470,6 +474,7 @@ export class UI {
       case 'shopslot': this.shopSlot=el.dataset.slot as Slot; this.render(); return;
       case 'buyhw': this.buyHw(el.dataset.id!); return;
       case 'buystim': if(s.credits>=30){ s.credits-=30; s.stims++; persist(s); } this.render(); return;
+      case 'sendbank': { const r=depositItem(s,el.dataset.uid!); g.toast(r.ok?'Sent to the bank.':r.why); if(r.ok) persist(s); this.render(); return; }
       case 'sell': { const i=s.items.find(x=>x.uid===el.dataset.uid); if(i&&!Object.values(s.installed).includes(i.uid)){ s.credits+=SELL_VALUE[ITEM_BY_ID[i.def].rarity]; for(const c of i.chips) s.lockerChips[c]=(s.lockerChips[c]||0)+1; s.items=s.items.filter(x=>x!==i); persist(s); } this.render(); return; }
       case 'enter': { { const ac=dungeonAccess(el.dataset.id||'annex',currentTown(s)); if(!ac.ok){ g.toast(ac.why); return; } } if(g.startRun(el.dataset.id||'annex')){ this.close(); } else this.render(); return; }
       case 'opencontacts': this.open('contacts'); return; case 'dsel': this.contactSel=el.dataset.id!; this.render(); return; case 'openstory': this.open('fixer'); return;
