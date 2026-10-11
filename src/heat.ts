@@ -10,7 +10,7 @@ export const HEAT = {
   /** hard cap on the share of an ability's heat cost that gear/chips can remove, and the rate (raw sum / reduceK) at which it is approached */
   reduceCap: .3, reduceK: .35,
   /** every authored ability heat cost is multiplied by this (heat is the main limiter); cooldowns by cdMul (more modest); cdr from chips is capped */
-  abilityMul: 1.8, powerMul: 1.5, cdMul: .6, cdrCap: .3,
+  abilityMul: 1.8, powerMul: 1.4, cdMul: .6, cdrCap: .3,
   /** heat-efficiency specs trade damage: ability damage x (1 - throttleReduce*reduction - throttleCool*coolFraction) */
   throttleReduce: .3, throttleCool: .12,
   /** casting soaks heat: dissipation pauses briefly after a cast or an auto swing burst */
