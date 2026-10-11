@@ -12,6 +12,10 @@ class WSO extends WebSocket { constructor(u) { super(u, { origin: 'https://play.
 const bot = n => new NetClient({ url, name: n, lvl: 5, WS: WSO, store: store() }); const [A, B, C] = [bot('A'), bot('B'), bot('C')]; [A, B, C].forEach(b => b.connect()); await until(() => [A, B, C].every(b => b.state === 'online'));
 let errs = []; C.on('err', e => errs.push(e.code)); A.createParty(); B.createParty(); await sleep(200); C.createParty(); ok(await until(() => errs.includes('busy')), 'party cap: third party refused with busy'); 
 A.setDungeon('annex'); A.start(); await until(() => A.inst); B.setDungeon('annex'); let e2 = []; B.on('err', e => e2.push(e.code)); B.start(); ok(await until(() => e2.includes('busy')), 'room cap: second instance refused with busy'); ok(hub.stats.roomCapHits >= 2, 'cap hits counted');
+// protocol versioning: mismatched or missing proto is refused with a clear message and never gets a session
+{ const hello = proto => new Promise(r => { const w = new WSO(url); const got = []; w.on('open', () => w.send(JSON.stringify({ t: 'hello', ...(proto === undefined ? {} : { proto }), name: 'old' }))); w.on('message', d => got.push(JSON.parse(String(d)))); w.on('close', code => r({ got, code })); setTimeout(() => { try { w.close(); } catch {} }, 1500); });
+  for (const p of [1, undefined, 99]) { const r = await hello(p); const e = r.got.find(m => m.t === 'err'); ok(e?.code === 'version' && /refresh/i.test(e.msg) && !r.got.some(m => m.t === 'welcome') && r.code === 4001, 'client proto ' + p + ' refused: "' + (e?.msg || '').slice(0, 60) + '..."'); }
+  ok(hub.stats.versionRefused >= 3, 'refusals counted in metrics'); }
 // graceful drain
 let ended = null; A.on('instance_end', r => ended = r); hub.drain(); ok((await get(port, '/healthz')).status === 503, '/healthz turns 503 while draining (ALB stops routing)'); ok(await tryWs(url, 'https://play.example.com') === 503, 'new sockets refused while draining'); await hub.shutdown(100); ok(ended === 'server restart', 'running instances are ended cleanly on shutdown');
 [A, B, C].forEach(b => b.close()); done();

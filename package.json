@@ -26,7 +26,7 @@
     "shots": "node tests/screenshots.mjs",
     "test:balance": "node tests/balance.mjs",
     "server": "esbuild server/main.ts --bundle --platform=node --format=esm --packages=external --outfile=server/dist/server.mjs --log-level=warning && node server/dist/server.mjs",
-    "test:net": "node tests/net_core.mjs && node tests/net_interp.mjs && node tests/net_hardening.mjs && node tests/net_integration.mjs && node tests/net_party_ui.mjs",
+    "test:net": "node tests/net_core.mjs && node tests/net_interp.mjs && node tests/net_hardening.mjs && node tests/net_integration.mjs && node tests/net_latency.mjs && node tests/net_party_ui.mjs",
     "test:heat": "node tests/heat.mjs"
   },
   "devDependencies": {

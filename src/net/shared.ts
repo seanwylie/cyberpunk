@@ -2,8 +2,14 @@
 import type { Level } from '../level';
 import { COMBAT } from '../config';
 
-export const PROTO = 1;
-export const TICK_HZ = 20;                // authoritative simulation + snapshot rate
+/** Wire protocol version. v2 = client-authoritative gameplay (v1 was the per-tick authoritative server sim). The server refuses any other value with err code 'version'. */
+export const PROTO = 2;
+export const STATE_HZ = 8;             // display-state relay rate (position/facing/hp/anim), client -> server -> party
+export const DMG_FLUSH_MS = 125;       // damage-dealt batches
+export const MAX_MOVE_SPEED = COMBAT.playerSpeed * 3;  // tiles/s: generous (speed buffs, lunges); anything above is a teleport
+export const MOVE_BUDGET = 16;          // tiles of burst allowance (blinks, dodges, lag catch-up)
+export const SHARED_FLAGS = ['gate1', 'lock2', 'controller', 'armory', 'passageSeen', 'cond', 'bossKey', 'bossSpawned', 'alarm', 'salvageForeman'] as const;
+export const TICK_HZ = 20;                // legacy v1 authoritative tick (only the legacy PartyWorld test core uses it)
 export const TICK_DT = 1 / TICK_HZ;
 export const MAX_PARTY = 4;
 export const TOWN_SHARD_CAP = 30;

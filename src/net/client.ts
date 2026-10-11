@@ -2,7 +2,8 @@
 // Offline by default: nothing here runs unless a server URL is configured and the player opens the Party panel.
 import { dungeonOf } from '../content/dungeons';
 import type { Level } from '../level';
-import { PROTO, TICK_HZ, TICK_DT, InputMsg, SnapMsg, PartyState, PlayerView, YouView, EnemyView, DropView, Look, stepPlayer, rng32 } from './shared';
+import { PROTO, STATE_HZ, DMG_FLUSH_MS, INTERP_DELAY, PartyState, PlayerView, Look, stepPlayer, rng32 } from './shared';
+import { COMBAT } from '../config';
 import { Interp } from './interp';
 
 export interface LinkSim { delayMs: number; jitterMs?: number; loss: number; lossTypes?: string[]; seed?: number } // test-only latency / packet-loss shim
@@ -16,41 +17,51 @@ export function configuredServer(): string {
   try { return String((import.meta as any).env?.VITE_WV_SERVER || ''); } catch { return ''; }
 }
 
+/** Client side of a party dungeon (protocol v2). Gameplay is LOCAL and never waits on the server: `move`/`setState` change position immediately;
+ *  this class only (a) reports display state at STATE_HZ, (b) batches damage dealt, (c) sends pivotal claims (kill, flag, revive) and (d) interpolates teammates. */
+export interface RosterEntry { id: string; name: string; lvl: number; look?: Look }
 export class InstanceClient {
-  level: Level; seq = 0; px: number; py: number; pending: InputMsg[] = []; players = new Interp<PlayerView & { id: string }>(); enemies = new Interp<EnemyView & { id: number }>();
-  last: SnapMsg | null = null; you: YouView | null = null; spd = 5.6; private outActs: any[] = []; drops: DropView[] = []; flags = { bossSpawned: false, bossDead: false, completed: false, kills: 0, total: 0, wipeT: 0 }; corrections = 0; maxErr = 0; snaps = 0; lastTick = 0;
-  constructor(public net: NetClient, public dungeon: string, public seed: number, public myId: string, public hpMul: number, public dmgMul: number) {
-    this.level = dungeonOf(dungeon).build(seed); this.px = this.level.spawn.x; this.py = this.level.spawn.y;
+  level: Level; px: number; py: number; face = 0; hp = 100; maxHp = 100; down = false; moving = false; atk = false;
+  players = new Interp<PlayerView & { id: string }>(INTERP_DELAY + .05); roster = new Map<string, RosterEntry>();
+  flags: Record<string, any> = {}; killed = new Set<number>(); nSpawns = 0; you: { down: boolean; hp: number; maxHp: number } | null = null; snaps = 0; lastN = 0;
+  stats = { stateSent: 0, dmgSent: 0, claims: 0, flagsSent: 0 }; private known = new Map<string, any>(); private lastX = 0; private lastY = 0; private lastSent = 0; private lastKey = ''; private dmgAcc = new Map<number, number>(); private dmgAt = 0;
+  constructor(public net: NetClient, public dungeon: string, public seed: number, public myId: string, public hpMul: number, public dmgMul: number, init?: any) {
+    this.level = dungeonOf(dungeon).build(seed); this.px = this.lastX = this.level.spawn.x; this.py = this.lastY = this.level.spawn.y;
+    if (init) { for (const r of init.roster || []) this.roster.set(r.id, r); this.flags = { ...(init.flags || {}) }; for (const k of init.killed || []) this.killed.add(k); this.nSpawns = init.nSpawns || 0; }
   }
-  /** call at TICK_HZ: predict locally with the exact server step, then send. mx,my are WORLD-space direction. */
-  /** queue a discrete action (cast/dodge/vent/stim/use/dlg); it rides on the next input message */
-  act(a: any) { if (this.outActs.length < 6) this.outActs.push(a); return true; }
-  tickInput(mx: number, my: number, atk: boolean, face: number, revive = false) {
-    if (this.you?.down) { mx = 0; my = 0; }
-    const m: InputMsg = { t: 'input', seq: ++this.seq, mx, my, atk, face, revive }; if (this.outActs.length) { m.acts = this.outActs.splice(0, 4); } const p = { x: this.px, y: this.py }; stepPlayer(this.level, p, mx, my, TICK_DT, this.spd); this.px = p.x; this.py = p.y; this.pending.push(m); if (this.pending.length > 120) this.pending.shift(); this.net.send(m); return m;
+  /** instant local movement with the shared movement function (headless bots/tests; the real game moves itself and calls setState) */
+  move(mx: number, my: number, dt: number, spd = COMBAT.playerSpeed) { if (this.down) { mx = 0; my = 0; } const p = { x: this.px, y: this.py }; stepPlayer(this.level, p, mx, my, dt, spd); this.px = p.x; this.py = p.y; this.moving = Math.hypot(mx, my) > .05; if (this.moving) this.face = Math.atan2(my, mx); this.report(); }
+  setState(x: number, y: number, face: number, hp: number, maxHp: number, down: boolean, moving: boolean, atk: boolean) { this.px = x; this.py = y; this.face = face; this.hp = hp; this.maxHp = maxHp; this.down = down; this.moving = moving; this.atk = atk; this.you = { down, hp, maxHp }; this.report(); }
+  /** throttled to STATE_HZ; sends only when something changed (plus a 1 s heartbeat). Returns true if a message was sent. */
+  report(nowMs = Date.now()): boolean {
+    this.flushDmg(nowMs); if (nowMs - this.lastSent < 1000 / STATE_HZ - 2) return false;
+    const jump = Math.hypot(this.px - this.lastX, this.py - this.lastY) > 12; this.lastX = this.px; this.lastY = this.py; const m: any = { t: 'st', ...(jump ? { tp: 1 } : {}), x: +this.px.toFixed(2), y: +this.py.toFixed(2), f: +this.face.toFixed(2), hp: Math.round(this.hp), mh: Math.round(this.maxHp), dn: this.down ? 1 : 0, mv: this.moving ? 1 : 0, at: this.atk ? 1 : 0 }; const key = m.x + ',' + m.y + ',' + m.f + ',' + m.hp + ',' + m.mh + m.dn + m.mv + m.at;
+    if (key === this.lastKey && nowMs - this.lastSent < 1000) return false; this.lastKey = key; this.lastSent = nowMs; this.stats.stateSent++; this.net.send(m); return true;
   }
-  onSnap(s: SnapMsg, nowMs: number) {
-    this.snaps++; this.last = s; this.you = s.you; if (s.you.spd > 0) this.spd = s.you.spd; this.drops = s.drops; this.flags = s.flags; this.lastTick = s.tick; const st = s.tick * TICK_DT;
-    this.players.push(st, nowMs, s.players as any); this.enemies.push(st, nowMs, s.enemies as any);
-    // reconcile: start from the authoritative state, replay inputs the server has not processed yet
-    while (this.pending.length && this.pending[0].seq <= s.ack) this.pending.shift();
-    const p = { x: s.you.x, y: s.you.y }; for (const m of this.pending) stepPlayer(this.level, p, m.mx, m.my, TICK_DT, this.spd);
-    const err = Math.hypot(p.x - this.px, p.y - this.py); this.maxErr = Math.max(this.maxErr, err);
-    if (err > 0.02) { this.corrections++; if (err > 1.5) { this.px = p.x; this.py = p.y; } else { this.px += (p.x - this.px) * .5; this.py += (p.y - this.py) * .5; } }
-  }
+  /** damage this player dealt to an enemy (id 0 = boss); batched and relayed so teammates' copies of that enemy lose the same HP */
+  addDamage(id: number, amount: number) { if (amount > 0 && Number.isFinite(amount)) this.dmgAcc.set(id, (this.dmgAcc.get(id) || 0) + amount); }
+  flushDmg(nowMs = Date.now(), force = false) { if (!this.dmgAcc.size || (!force && nowMs - this.dmgAt < DMG_FLUSH_MS)) return; this.dmgAt = nowMs; const d = [...this.dmgAcc].map(([id, a]) => [id, Math.round(a * 10) / 10]); this.dmgAcc.clear(); this.stats.dmgSent++; this.net.send({ t: 'dmg', d }); }
+  /** pivotal: claim an enemy kill (0 = boss). The server dedupes; every client then receives `ekill` and rolls its own rewards. */
+  claimKill(id: number) { this.flushDmg(Date.now(), true); this.stats.claims++; this.net.send({ t: 'kill', id }); }
+  setFlag(k: string, v: any) { if (this.flags[k] === v) return; this.flags[k] = v; this.stats.flagsSent++; this.net.send({ t: 'flag', k, v }); }
+  revive(id: string) { this.net.send({ t: 'revive', id }); }
+  onPs(m: any, nowMs: number) { this.snaps++; this.lastN = m.n; const list = (m.p as any[]).filter(p => p.id !== this.myId).map(p => { const r = this.roster.get(p.id); return { id: p.id, name: r?.name || 'Guest', lvl: r?.lvl || 1, look: r?.look, x: p.x, y: p.y, face: p.f, hp: p.hp, maxHp: p.mh, down: !!p.dn, moving: !!p.mv, atk: !!p.at } as any; });
+    // merge with the previous known set so players that did not change this tick stay visible (server sends deltas)
+    for (const l of list) this.known.set(l.id, l); this.players.push(m.n / STATE_HZ, nowMs, [...this.known.values()]); }
+  onEvent(m: any) { if (m.t === 'ekill') { if (m.id) this.killed.add(m.id); else this.flags.bossDead = true; } else if (m.t === 'flag') this.flags[m.k] = m.v; }
 }
 
 export class NetClient {
-  state: 'off' | 'connecting' | 'online' = 'off'; id = ''; token = ''; party: PartyState | null = null; inst: InstanceClient | null = null; rtt = 0; devServer = false; lastErr = ''; shard = ''; townPlayers = new Interp<any>(.2); townPop = 0; marks: { x: number; y: number; name: string; t: number }[] = [];
+  state: 'off' | 'connecting' | 'online' = 'off'; id = ''; token = ''; party: PartyState | null = null; inst: InstanceClient | null = null; rtt = 0; devServer = false; versionError = ''; lastErr = ''; shard = ''; townPlayers = new Interp<any>(.2); townPop = 0; marks: { x: number; y: number; name: string; t: number }[] = [];
   private ws: any = null; private h: Record<string, Fn[]> = {}; private pingT: any = null; private cn = 0; private rnd: () => number; private closedByUser = false; private retry = 0; private retryT: any = null; stats = { sent: 0, recv: 0, dropped: 0 };
   constructor(public o: NetOpts) { this.rnd = rng32(o.link?.seed ?? 7); }
   on(t: string, f: Fn) { (this.h[t] ||= []).push(f); return this; }
-  private emit(t: string, ...a: any[]) { for (const f of this.h[t] || []) { try { f(...a); } catch (e) { console.warn('net handler', t, e); } } }
+  emit(t: string, ...a: any[]) { for (const f of this.h[t] || []) { try { f(...a); } catch (e) { console.warn('net handler', t, e); } } }
   private store() { return this.o.store ?? { get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} } }; }
   connect() {
     if (this.state !== 'off') return; this.closedByUser = false; this.state = 'connecting'; this.emit('state', this.state); const WS = this.o.WS || (globalThis as any).WebSocket;
     let ws: any; try { ws = new WS(this.o.url); } catch (e) { this.state = 'off'; this.lastErr = 'bad server URL'; this.emit('state', this.state); return; } this.ws = ws;
-    ws.onopen = () => { this.rawSend({ t: 'hello', guest: this.store().get('wv_guest') || undefined, token: this.store().get('wv_token') || undefined, name: this.o.name, lvl: this.o.lvl, look: this.o.look }); };
+    ws.onopen = () => { this.rawSend({ t: 'hello', proto: PROTO, guest: this.store().get('wv_guest') || undefined, token: this.store().get('wv_token') || undefined, name: this.o.name, lvl: this.o.lvl, look: this.o.look }); };
     ws.onmessage = (ev: any) => { const data = typeof ev.data === 'string' ? ev.data : String(ev.data); const l = this.o.link; if (l && l.lossTypes?.some(t => data.startsWith('{"t":"' + t + '"')) && this.rnd() < l.loss) { this.stats.dropped++; return; } const d = l ? this.linkDelay('in') : 0; if (d > 0) setTimeout(() => this.onRaw(data), d); else this.onRaw(data); };
     ws.onclose = () => { const was = this.state; this.state = 'off'; this.ws = null; clearInterval(this.pingT); this.emit('state', this.state); if (was === 'online') this.emit('lost'); if (!this.closedByUser) { this.retry = Math.min(this.retry + 1, 6); this.retryT = setTimeout(() => this.connect(), 500 * 2 ** this.retry); } };
     ws.onerror = () => { this.lastErr = 'could not reach server'; };
@@ -64,13 +75,15 @@ export class NetClient {
   private onRaw(data: string) {
     let m: any; try { m = JSON.parse(data); } catch { return; } this.stats.recv++; const now = (globalThis as any).performance?.now?.() ?? Date.now();
     switch (m.t) {
-      case 'welcome': if (m.proto !== PROTO) { this.lastErr = 'server protocol mismatch'; this.close(); return; } this.id = m.id; this.token = m.token; this.devServer = !!m.dev; this.store().set('wv_guest', m.id); this.store().set('wv_token', m.token); this.state = 'online'; this.retry = 0; this.emit('state', this.state); this.emit('welcome', m);
+      case 'welcome': if (m.proto !== PROTO) { this.versionError = 'This game version and the server speak different protocols. Refresh the page (Ctrl+F5) to update.'; this.lastErr = this.versionError; this.emit('err', { code: 'version', msg: this.versionError }); this.close(); return; } this.id = m.id; this.token = m.token; this.devServer = !!m.dev; this.store().set('wv_guest', m.id); this.store().set('wv_token', m.token); this.state = 'online'; this.retry = 0; this.emit('state', this.state); this.emit('welcome', m);
         this.pingT = setInterval(() => this.send({ t: 'ping', c: (globalThis as any).performance?.now?.() ?? Date.now() }), 2000); this.send({ t: 'ping', c: (globalThis as any).performance?.now?.() ?? Date.now() }); break;
       case 'pong': { const n = (globalThis as any).performance?.now?.() ?? Date.now(); this.rtt = Math.round(this.rtt ? this.rtt * .7 + (n - m.c) * .3 : n - m.c); this.emit('rtt', this.rtt); break; }
       case 'party': this.party = m.code ? m : null; this.emit('party', this.party); break;
-      case 'instance_start': this.inst = new InstanceClient(this, m.dungeon, m.seed, m.you, m.hpMul, m.dmgMul); this.emit('instance_start', this.inst, m); break;
+      case 'instance_start': this.inst = new InstanceClient(this, m.dungeon, m.seed, m.you, m.hpMul, m.dmgMul, m); this.emit('instance_start', this.inst, m); break;
       case 'instance_end': { const i = this.inst; this.inst = null; this.emit('instance_end', m.reason, i); break; }
-      case 'snap': if (this.inst) { this.inst.onSnap(m, now); this.emit('snap', m); } break;
+      case 'ps': if (this.inst) { this.inst.onPs(m, now); this.emit('ps', m); } break;
+      case 'ekill': case 'flag': case 'edmg': case 'revived': case 'wipe': this.inst?.onEvent(m); this.emit(m.t, m); break;
+      case 'err': if (m.code === 'version') { this.versionError = m.msg; this.lastErr = m.msg; this.closedByUser = true; clearTimeout(this.retryT); } this.emit('err', m); break;
       case 'town': this.shard = m.shard; this.townPop = m.pop; this.emit('town', m); break;
       case 'town_snap': this.townPop = m.pop; this.townPlayers.push((Date.now()) / 1000, now, m.players); this.emit('town_snap', m); break;
       case 'town_leave': this.emit('town_leave', m.id); break;
