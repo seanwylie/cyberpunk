@@ -1,0 +1,1341 @@
+{
+ "mfr": {
+  "HI": "Harrow-Brandt Heavy Works",
+  "PS": "Aldane Surgical",
+  "MM": "Kestrel Value Systems"
+ },
+ "items": {
+  "stock_face": {
+   "name": "Standard Issue Face",
+   "slot": "face",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "stock_brain": {
+   "name": "Standard Issue Brain",
+   "slot": "brain",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "stock_armL": {
+   "name": "Standard Issue Left arm",
+   "slot": "armL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "stock_torso": {
+   "name": "Standard Issue Torso",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "stock_armR": {
+   "name": "Standard Issue Right arm",
+   "slot": "armR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "stock_handL": {
+   "name": "Standard Issue Left hand",
+   "slot": "handL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "stock_legL": {
+   "name": "Standard Issue Left leg",
+   "slot": "legL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "stock_handR": {
+   "name": "Standard Issue Right hand",
+   "slot": "handR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "stock_footL": {
+   "name": "Standard Issue Left foot",
+   "slot": "footL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "stock_legR": {
+   "name": "Standard Issue Right leg",
+   "slot": "legR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "stock_footR": {
+   "name": "Standard Issue Right foot",
+   "slot": "footR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "hi_ripper_arm": {
+   "name": "HB-40 Ripper Arm",
+   "slot": "armR",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "hi_cutting_head": {
+   "name": "HB-12 Cutting Head",
+   "slot": "handR",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "hi_clamp": {
+   "name": "HB-9 Bellows Clamp",
+   "slot": "handL",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "hi_legs_l": {
+   "name": "HB Loadbearer Leg (L)",
+   "slot": "legL",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "hi_legs_r": {
+   "name": "HB Loadbearer Leg (R)",
+   "slot": "legR",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "hi_torso_cool": {
+   "name": "HB Thermal Exchange Chassis",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "hi_torso_green": {
+   "name": "HB Frame Mk1",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "ps_blade_arm": {
+   "name": "AS Fan-Blade Arm",
+   "slot": "armR",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ps_blade_hand_r": {
+   "name": "AS Scalpel Hand (R)",
+   "slot": "handR",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ps_blade_hand_l": {
+   "name": "AS Scalpel Hand (L)",
+   "slot": "handL",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ps_veil_torso": {
+   "name": "AS Veil Torso",
+   "slot": "torso",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ps_legs_l": {
+   "name": "AS Strider Leg (L)",
+   "slot": "legL",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ps_legs_r": {
+   "name": "AS Strider Leg (R)",
+   "slot": "legR",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ps_brain": {
+   "name": "AS Cortex Link Mk2",
+   "slot": "brain",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ps_face": {
+   "name": "AS Seamless Faceplate",
+   "slot": "face",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "mm_slug_hand": {
+   "name": "Kestrel Slug Driver",
+   "slot": "handR",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "mm_arm_l": {
+   "name": "Kestrel Refab Emitter Arm",
+   "slot": "armL",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "mm_torso_defib": {
+   "name": "Kestrel Defib Rack",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "mm_arm_r": {
+   "name": "Kestrel Refab Arm (R)",
+   "slot": "armR",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "sig_audit_core": {
+   "name": "Audit Core",
+   "slot": "brain",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "sig_reclaimer_ripper": {
+   "name": "Reclaimer Ripper",
+   "slot": "armR",
+   "mfr": "HI",
+   "rarity": "orange"
+  },
+  "pool_g_torso": {
+   "name": "Salvaged Torso Plate",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "pool_g_legs": {
+   "name": "Scrap Gait Leg",
+   "slot": "legL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "pool_gr_face": {
+   "name": "Kestrel Optic Housing",
+   "slot": "face",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "pool_b_foot": {
+   "name": "AS Damped Foot (L)",
+   "slot": "footL",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "pool_b_arm": {
+   "name": "HB Piston Arm (L)",
+   "slot": "armL",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "pool_p_hand": {
+   "name": "HB Rotor Hand (R)",
+   "slot": "handR",
+   "mfr": "HI",
+   "rarity": "purple"
+  },
+  "pool_p_torso": {
+   "name": "AS Lattice Torso",
+   "slot": "torso",
+   "mfr": "PS",
+   "rarity": "purple"
+  },
+  "pool_o_legs": {
+   "name": "HB Bastion Legs",
+   "slot": "legR",
+   "mfr": "HI",
+   "rarity": "orange"
+  },
+  "hi_slag_apron": {
+   "name": "HB Slag Apron Frame",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "hi_crucible_torso": {
+   "name": "HB Crucible Exchange Chassis",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "hi_ladle_hand": {
+   "name": "HB Ladle-Saw Hand",
+   "slot": "handR",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "hi_press_arm": {
+   "name": "HB Press-Ram Arm (L)",
+   "slot": "armL",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "hi_gantry_leg_l": {
+   "name": "HB Gantry Leg (L)",
+   "slot": "legL",
+   "mfr": "HI",
+   "rarity": "purple"
+  },
+  "hi_gantry_leg_r": {
+   "name": "HB Gantry Leg (R)",
+   "slot": "legR",
+   "mfr": "HI",
+   "rarity": "purple"
+  },
+  "hi_slag_face": {
+   "name": "HB Slag Visor",
+   "slot": "face",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "hi_anvil_foot": {
+   "name": "HB Anvil Foot (R)",
+   "slot": "footR",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "sig_anvil_arm": {
+   "name": "Brannoch Anvil-Arm",
+   "slot": "armR",
+   "mfr": "HI",
+   "rarity": "orange"
+  },
+  "sig_governor_core": {
+   "name": "Governor Core",
+   "slot": "brain",
+   "mfr": "HI",
+   "rarity": "orange"
+  },
+  "ps_sutured_torso": {
+   "name": "AS Sutured Ceramic Torso",
+   "slot": "torso",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ps_theatre_torso": {
+   "name": "AS Theatre Veil Torso",
+   "slot": "torso",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ps_scalpel_hand_l2": {
+   "name": "AS Micro-Scalpel Hand (L)",
+   "slot": "handL",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ps_fan_arm": {
+   "name": "AS Fan-Blade Arm (L)",
+   "slot": "armL",
+   "mfr": "PS",
+   "rarity": "purple"
+  },
+  "ps_ceramic_leg_l": {
+   "name": "AS Ceramic Strider (L)",
+   "slot": "legL",
+   "mfr": "PS",
+   "rarity": "purple"
+  },
+  "ps_ceramic_leg_r": {
+   "name": "AS Ceramic Strider (R)",
+   "slot": "legR",
+   "mfr": "PS",
+   "rarity": "purple"
+  },
+  "ps_anesthesia_face": {
+   "name": "AS Anesthesia Mask",
+   "slot": "face",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ps_sensor_foot": {
+   "name": "AS Sensor Foot (L)",
+   "slot": "footL",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ps_nerve_brain": {
+   "name": "AS Nerve-Lace Cortex",
+   "slot": "brain",
+   "mfr": "PS",
+   "rarity": "purple"
+  },
+  "sig_autosurgeon_rig": {
+   "name": "GEMINI Autosurgeon Rig",
+   "slot": "armL",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "sig_recovered_veil": {
+   "name": "Recovered Veil",
+   "slot": "torso",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "mm_pallet_torso": {
+   "name": "Kestrel Pallet Frame",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "mm_stocker_arm": {
+   "name": "Kestrel Stocker Arm (R)",
+   "slot": "armR",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "mm_jack_leg_l": {
+   "name": "Kestrel Jack Leg (L)",
+   "slot": "legL",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "mm_jack_leg_r": {
+   "name": "Kestrel Jack Leg (R)",
+   "slot": "legR",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "mm_scanner_face": {
+   "name": "Kestrel Barcode Optics",
+   "slot": "face",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "mm_clamp_hand": {
+   "name": "Kestrel Clamp Hand (L)",
+   "slot": "handL",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "mm_nailgun": {
+   "name": "Kestrel Nail Driver",
+   "slot": "handR",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "mm_cutter_hand": {
+   "name": "Kestrel Box-Cutter Hand",
+   "slot": "handR",
+   "mfr": "MM",
+   "rarity": "blue"
+  },
+  "mm_barcode_brain": {
+   "name": "Kestrel Inventory Brain",
+   "slot": "brain",
+   "mfr": "MM",
+   "rarity": "blue"
+  },
+  "mm_returns_torso": {
+   "name": "Kestrel Returns Rack",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "blue"
+  },
+  "sig_lazarus_rack": {
+   "name": "Lazarus Rack",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "orange"
+  },
+  "sig_r0_lifter": {
+   "name": "R-0 Lifter Legs",
+   "slot": "legR",
+   "mfr": "MM",
+   "rarity": "orange"
+  },
+  "mm_autopistol": {
+   "name": "Kestrel Pocket Auto",
+   "slot": "handR",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "mm_autopistol_b": {
+   "name": "Kestrel Pocket Auto II",
+   "slot": "handR",
+   "mfr": "MM",
+   "rarity": "blue"
+  },
+  "mm_shocktack": {
+   "name": "Kestrel Shock-Tack Caster",
+   "slot": "handR",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ps_needle_rifle": {
+   "name": "AS Needle Burst Rifle",
+   "slot": "handR",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ps_needle_rifle_p": {
+   "name": "AS Needle Burst Rifle (Theatre)",
+   "slot": "handR",
+   "mfr": "PS",
+   "rarity": "purple"
+  },
+  "ps_arc_caster": {
+   "name": "AS Chain-Arc Caster",
+   "slot": "handR",
+   "mfr": "PS",
+   "rarity": "purple"
+  },
+  "hi_shard_arm": {
+   "name": "HB Shard Thrower Arm (R)",
+   "slot": "armR",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "hi_shard_arm_p": {
+   "name": "HB Foundry Shard Battery (R)",
+   "slot": "armR",
+   "mfr": "HI",
+   "rarity": "purple"
+  },
+  "hi_slug_cannon": {
+   "name": "HB Foundry Slug Cannon",
+   "slot": "handR",
+   "mfr": "HI",
+   "rarity": "purple"
+  },
+  "idkfa_hand_l": {
+   "name": "Apex Micro-Scalpel Hand (L)",
+   "slot": "handL",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "idkfa_hand_r": {
+   "name": "Apex Chain-Arc Caster",
+   "slot": "handR",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "idkfa_foot_l": {
+   "name": "Apex Damped Foot (L)",
+   "slot": "footL",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "idkfa_foot_r": {
+   "name": "Apex Damped Foot (R)",
+   "slot": "footR",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "idkfa_leg_l": {
+   "name": "Apex Strider Leg (L)",
+   "slot": "legL",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "idkfa_face": {
+   "name": "Apex Seamless Faceplate",
+   "slot": "face",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "ab_hi_armL_piston_jab": {
+   "name": "HB Piston Jab Arm (L)",
+   "slot": "armL",
+   "mfr": "HI",
+   "rarity": "grey"
+  },
+  "ab_hi_handL_piston_jab_v2": {
+   "name": "HB Piston Jab Hand (L)",
+   "slot": "handL",
+   "mfr": "HI",
+   "rarity": "grey"
+  },
+  "ab_mm_armR_rivet_burst": {
+   "name": "KV Rivet Burst Duo Arm (R)",
+   "slot": "armR",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_mm_handR_rivet_burst_v2": {
+   "name": "KV Rivet Burst Hand (R)",
+   "slot": "handR",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_hi_armL_hammer_slam": {
+   "name": "HB Hammer Slam Duo Arm (L)",
+   "slot": "armL",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "ab_hi_handL_hammer_slam_v2": {
+   "name": "HB Hammer Slam Hand (L)",
+   "slot": "handL",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "ab_ps_handL_scalpel_flurry": {
+   "name": "AS Scalpel Flurry Duo Hand (L)",
+   "slot": "handL",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ab_ps_handR_overcharge_shot": {
+   "name": "AS Overcharge Shot Hand (R)",
+   "slot": "handR",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ab_hi_armR_slag_cannon": {
+   "name": "HB Slag Cannon Arm (R)",
+   "slot": "armR",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "ab_mm_armL_frag_grenade": {
+   "name": "KV Frag Grenade Arm (L)",
+   "slot": "armL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_mm_handR_frag_grenade_v2": {
+   "name": "KV Frag Grenade Duo Hand (R)",
+   "slot": "handR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_mm_torso_shock_ring_v2": {
+   "name": "KV Shock Ring Duo Torso",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_hi_armL_thermite_lob": {
+   "name": "HB Thermite Lob Duo Arm (L)",
+   "slot": "armL",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "ab_hi_armL_leech_blades": {
+   "name": "HB Leech Blades Arm (L)",
+   "slot": "armL",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "ab_mm_armR_cascade_arc": {
+   "name": "KV Cascade Arc Duo Arm (R)",
+   "slot": "armR",
+   "mfr": "MM",
+   "rarity": "blue"
+  },
+  "ab_mm_armR_grapple_hook": {
+   "name": "KV Grapple Hook Arm (R)",
+   "slot": "armR",
+   "mfr": "MM",
+   "rarity": "blue"
+  },
+  "ab_hi_legR_seismic_stomp": {
+   "name": "HB Seismic Stomp Leg (R)",
+   "slot": "legR",
+   "mfr": "HI",
+   "rarity": "purple"
+  },
+  "ab_hi_armL_firestorm_pillar": {
+   "name": "HB Firestorm Pillar Arm (L)",
+   "slot": "armL",
+   "mfr": "HI",
+   "rarity": "purple"
+  },
+  "ab_ps_handL_surgical_cut": {
+   "name": "AS Surgical Cut Hand (L)",
+   "slot": "handL",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_ps_armL_surgical_cut_v2": {
+   "name": "AS Surgical Cut Arm (L)",
+   "slot": "armL",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_ps_handR_needle_pin": {
+   "name": "AS Needle Pin Hand (R)",
+   "slot": "handR",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_ps_armR_needle_pin_v2": {
+   "name": "AS Needle Pin Arm (R)",
+   "slot": "armR",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_ps_legL_reaper_lunge": {
+   "name": "AS Reaper Lunge Leg (L)",
+   "slot": "legL",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ab_ps_face_headshot_protocol": {
+   "name": "AS Headshot Protocol Duo Visor",
+   "slot": "face",
+   "mfr": "PS",
+   "rarity": "purple"
+  },
+  "ab_mm_armR_static_snare": {
+   "name": "KV Static Snare Duo Arm (R)",
+   "slot": "armR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_mm_handL_static_snare_v2": {
+   "name": "KV Static Snare Hand (L)",
+   "slot": "handL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_mm_face_flashbang": {
+   "name": "KV Flashbang Duo Visor",
+   "slot": "face",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_hi_legR_root_spikes_v2": {
+   "name": "HB Root Spikes Leg (R)",
+   "slot": "legR",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "ab_ps_brain_gravity_well": {
+   "name": "AS Gravity Well Duo Core",
+   "slot": "brain",
+   "mfr": "PS",
+   "rarity": "purple"
+  },
+  "ab_ps_brain_neural_hijack": {
+   "name": "AS Neural Hijack Core",
+   "slot": "brain",
+   "mfr": "PS",
+   "rarity": "purple"
+  },
+  "ab_mm_legR_sprint_burst": {
+   "name": "KV Sprint Burst Leg (R)",
+   "slot": "legR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_mm_footR_sprint_burst_v2": {
+   "name": "KV Sprint Burst Foot (R)",
+   "slot": "footR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_mm_footR_slipstream": {
+   "name": "KV Slipstream Foot (R)",
+   "slot": "footR",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_mm_legL_slipstream_v2": {
+   "name": "KV Slipstream Leg (L)",
+   "slot": "legL",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_ps_footL_blink_step": {
+   "name": "AS Blink Step Foot (L)",
+   "slot": "footL",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_ps_legR_blink_step_v2": {
+   "name": "AS Blink Step Leg (R)",
+   "slot": "legR",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_hi_legL_shoulder_charge": {
+   "name": "HB Shoulder Charge Leg (L)",
+   "slot": "legL",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "ab_hi_armL_shoulder_charge_v2": {
+   "name": "HB Shoulder Charge Arm (L)",
+   "slot": "armL",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "ab_ps_legR_phase_slip": {
+   "name": "AS Phase Slip Leg (R)",
+   "slot": "legR",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ab_hi_torso_bulwark_plates": {
+   "name": "HB Bulwark Plates Torso",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "grey"
+  },
+  "ab_hi_legL_bulwark_plates_v2": {
+   "name": "HB Bulwark Plates Leg (L)",
+   "slot": "legL",
+   "mfr": "HI",
+   "rarity": "grey"
+  },
+  "ab_hi_torso_ablative_shell": {
+   "name": "HB Ablative Shell Torso",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "green"
+  },
+  "ab_hi_torso_reactive_armour": {
+   "name": "HB Reactive Armour Duo Torso",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "ab_hi_torso_thermal_siphon": {
+   "name": "HB Thermal Siphon Torso",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "ab_ps_torso_phase_barrier": {
+   "name": "AS Phase Barrier Torso",
+   "slot": "torso",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ab_hi_torso_stoneskin": {
+   "name": "HB Stoneskin Torso",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "purple"
+  },
+  "ab_ps_legL_kinetic_dampers": {
+   "name": "AS Kinetic Dampers Leg (L)",
+   "slot": "legL",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_ps_torso_kinetic_dampers_v2": {
+   "name": "AS Kinetic Dampers Duo Torso",
+   "slot": "torso",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_ps_torso_coolant_flush_v2": {
+   "name": "AS Coolant Flush Torso",
+   "slot": "torso",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_mm_torso_rally_beacon": {
+   "name": "KV Rally Beacon Duo Torso",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "blue"
+  },
+  "ab_mm_torso_shared_aegis": {
+   "name": "KV Shared Aegis Torso",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_mm_brain_shared_aegis_v2": {
+   "name": "KV Shared Aegis Duo Core",
+   "slot": "brain",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_mm_brain_auto_turret_v2": {
+   "name": "KV Auto Turret Core",
+   "slot": "brain",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_ps_face_shadow_veil": {
+   "name": "AS Shadow Veil Visor",
+   "slot": "face",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_ps_face_ambush_mark": {
+   "name": "AS Ambush Mark Visor",
+   "slot": "face",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ab_mm_torso_smoke_bomb": {
+   "name": "KV Smoke Bomb Duo Torso",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_mm_armR_smoke_bomb_v2": {
+   "name": "KV Smoke Bomb Arm (R)",
+   "slot": "armR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_mm_armL_auto_turret": {
+   "name": "KV Auto Turret Arm (L)",
+   "slot": "armL",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_mm_brain_sentry_drone": {
+   "name": "KV Sentry Drone Core",
+   "slot": "brain",
+   "mfr": "MM",
+   "rarity": "blue"
+  },
+  "ab_ps_brain_virus_upload": {
+   "name": "AS Virus Upload Duo Core",
+   "slot": "brain",
+   "mfr": "PS",
+   "rarity": "blue"
+  },
+  "ab_mm_brain_emp_burst": {
+   "name": "KV EMP Burst Core",
+   "slot": "brain",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_mm_face_emp_burst_v2": {
+   "name": "KV EMP Burst Visor",
+   "slot": "face",
+   "mfr": "MM",
+   "rarity": "green"
+  },
+  "ab_hi_brain_repulsor_drone": {
+   "name": "HB Repulsor Drone Core",
+   "slot": "brain",
+   "mfr": "HI",
+   "rarity": "blue"
+  },
+  "ab_mm_brain_heat_sink": {
+   "name": "KV Heat Sink Core",
+   "slot": "brain",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_mm_torso_heat_sink_v2": {
+   "name": "KV Heat Sink Torso",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_ps_brain_coolant_flush": {
+   "name": "AS Coolant Flush Core",
+   "slot": "brain",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_hi_brain_overclock_core": {
+   "name": "HB Overclock Core Core",
+   "slot": "brain",
+   "mfr": "HI",
+   "rarity": "purple"
+  },
+  "ab_mm_armL_field_stitch_v2": {
+   "name": "KV Field Stitch Arm (L)",
+   "slot": "armL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "ab_ps_torso_triage_cycle": {
+   "name": "AS Triage Cycle Torso",
+   "slot": "torso",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_ps_brain_triage_cycle_v2": {
+   "name": "AS Triage Cycle Core",
+   "slot": "brain",
+   "mfr": "PS",
+   "rarity": "green"
+  },
+  "ab_hi_armR_siege_bot": {
+   "name": "HB Siege Bot Arm (R)",
+   "slot": "armR",
+   "mfr": "HI",
+   "rarity": "purple"
+  },
+  "ab_mm_armL_scrap_swarm": {
+   "name": "KV Scrap Swarm Arm (L)",
+   "slot": "armL",
+   "mfr": "MM",
+   "rarity": "blue"
+  },
+  "ab_ps_face_orbital_strike": {
+   "name": "AS Orbital Strike Visor",
+   "slot": "face",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "ab_ps_face_blackout_protocol": {
+   "name": "AS Blackout Protocol Visor",
+   "slot": "face",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "ab_hi_torso_foundry_meltdown": {
+   "name": "HB Foundry Meltdown Torso",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "orange"
+  },
+  "ab_mm_brain_legion_protocol": {
+   "name": "KV Legion Protocol Core",
+   "slot": "brain",
+   "mfr": "MM",
+   "rarity": "orange"
+  },
+  "ab_hi_armR_chain_reaction": {
+   "name": "HB Chain Reaction Arm (R)",
+   "slot": "armR",
+   "mfr": "HI",
+   "rarity": "orange"
+  },
+  "ab_mm_torso_second_wind": {
+   "name": "KV Second Wind Torso",
+   "slot": "torso",
+   "mfr": "MM",
+   "rarity": "orange"
+  }
+ },
+ "chips": {
+  "ablative": "Ablative Chip",
+  "fineedge": "Fine-Edge Chip",
+  "quench": "Quench Coil",
+  "overdrive": "Overdrive Chip",
+  "gridlink": "Grid-Link Chip",
+  "speed": "Speed Chip",
+  "cutwide": "Wide-Cut Pattern",
+  "bladepat": "Blade Pattern",
+  "coolant": "Coolant Chip",
+  "sustain": "Sustain Chip",
+  "cloakdur": "Cloak Duration",
+  "ctrldur": "Control Uptime",
+  "magnet": "Magnet Chip",
+  "power": "Power Chip",
+  "stride": "Stride Chip",
+  "servo": "Servo Chip",
+  "plating": "Plating Chip"
+ },
+ "abilities": {
+  "sweep": "Powered Sweep",
+  "brace": "Bracing",
+  "forcedcool": "Forced Cooling",
+  "cloak": "Cloak",
+  "bladeburst": "Blade Burst",
+  "reposition": "Reposition",
+  "control": "Enemy Control",
+  "pulse": "Disruption Pulse",
+  "revive": "Team Revival",
+  "defib": "Self-Defib",
+  "piston_jab": "Piston Jab",
+  "rivet_burst": "Rivet Burst",
+  "hammer_slam": "Hammer Slam",
+  "scalpel_flurry": "Scalpel Flurry",
+  "overcharge_shot": "Overcharge Shot",
+  "slag_cannon": "Slag Cannon",
+  "frag_grenade": "Frag Grenade",
+  "shock_ring": "Shock Ring",
+  "thermite_lob": "Thermite Lob",
+  "cascade_arc": "Cascade Arc",
+  "seismic_stomp": "Seismic Stomp",
+  "firestorm_pillar": "Firestorm Pillar",
+  "surgical_cut": "Surgical Cut",
+  "needle_pin": "Needle Pin",
+  "coup_de_grace": "Coup de Grace",
+  "reaper_lunge": "Reaper Lunge",
+  "headshot_protocol": "Headshot Protocol",
+  "static_snare": "Static Snare",
+  "flashbang": "Flashbang",
+  "root_spikes": "Root Spikes",
+  "magnet_pull": "Magnet Pull",
+  "concussion_wave": "Concussion Wave",
+  "gravity_well": "Gravity Well",
+  "sprint_burst": "Sprint Burst",
+  "slipstream": "Slipstream",
+  "blink_step": "Blink Step",
+  "shoulder_charge": "Shoulder Charge",
+  "grapple_hook": "Grapple Hook",
+  "phase_slip": "Phase Slip",
+  "bulwark_plates": "Bulwark Plates",
+  "ablative_shell": "Ablative Shell",
+  "reactive_armour": "Reactive Armour",
+  "phase_barrier": "Phase Barrier",
+  "stoneskin": "Stoneskin",
+  "kinetic_dampers": "Kinetic Dampers",
+  "rally_beacon": "Rally Beacon",
+  "shared_aegis": "Shared Aegis",
+  "warcry_horn": "Warcry Horn",
+  "shadow_veil": "Shadow Veil",
+  "decoy_projector": "Decoy Projector",
+  "ambush_mark": "Ambush Mark",
+  "smoke_bomb": "Smoke Bomb",
+  "mirage_step": "Mirage Step",
+  "auto_turret": "Auto Turret",
+  "sentry_drone": "Sentry Drone",
+  "shock_mine": "Shock Mine",
+  "overwatch_array": "Overwatch Array",
+  "virus_upload": "Virus Upload",
+  "emp_burst": "EMP Burst",
+  "repulsor_drone": "Repulsor Drone",
+  "neural_hijack": "Neural Hijack",
+  "heat_sink": "Heat Sink",
+  "coolant_flush": "Coolant Flush",
+  "thermal_siphon": "Thermal Siphon",
+  "overclock_core": "Overclock Core",
+  "cold_loop": "Cold Loop",
+  "field_stitch": "Field Stitch",
+  "triage_cycle": "Triage Cycle",
+  "leech_blades": "Leech Blades",
+  "adrenal_surge": "Adrenal Surge",
+  "siege_bot": "Siege Bot",
+  "scrap_swarm": "Scrap Swarm",
+  "orbital_strike": "Orbital Strike",
+  "blackout_protocol": "Blackout Protocol",
+  "foundry_meltdown": "Foundry Meltdown",
+  "legion_protocol": "Legion Protocol",
+  "chain_reaction": "Chain Reaction",
+  "second_wind": "Second Wind"
+ },
+ "cosmetics": {
+  "hair_buzz": "Regulation Buzz",
+  "hair_crop": "Salvage Crop",
+  "hair_tail": "Shift-Lead Ponytail",
+  "hair_olive": "Surplus Dye: Olive",
+  "hair_mohawk": "Weld-Line Mohawk",
+  "hair_braids": "Ward-Braid",
+  "hair_undercut": "Aldane Clean-Cut",
+  "hair_spikes": "Slag-Spike Crest",
+  "hair_cinder": "Cinder Fade",
+  "hair_frostlock": "Archive Frostlock",
+  "hair_neonwire": "Fibre-Optic Mane",
+  "hair_flame": "Foundry-Fire Mane",
+  "head_cap": "Shift Cap",
+  "head_bandana": "Rag Bandana",
+  "head_goggles": "Welder's Goggles",
+  "head_resp": "Filter Respirator",
+  "head_visor": "Audit Visor",
+  "head_horns": "Ram-Horn Brackets",
+  "head_mast": "Relay Mast",
+  "head_halo": "Compliance Halo",
+  "head_crown": "Reclaimer's Crown",
+  "head_cowl": "Warrantor's Void Cowl",
+  "eyes_amber": "Amber Retrofit Lenses",
+  "eyes_teal": "Teal Diagnostic Lenses",
+  "eyes_red": "Oxide Targeting Lenses",
+  "eyes_cyclops": "Single-Lens Scanner",
+  "eyes_blank": "Ceramic Blank Eyes",
+  "eyes_void": "Void-Lens Pair",
+  "eyes_sun": "Furnace-Heart Gaze",
+  "torso_mm": "Kestrel Surplus Shell",
+  "torso_hazard": "Hazard-Stripe Tabard",
+  "torso_hi": "Harrow Pattern Shell",
+  "torso_ps": "Aldane Ceramic Shell",
+  "torso_vest": "Reflective Safety Vest",
+  "torso_chevron": "Chevron Plate",
+  "torso_lights": "Status Light Array",
+  "torso_gown": "Ward 9 Surgical Gown",
+  "torso_core": "Exposed Heat Core",
+  "torso_ledger": "Ledger Plate",
+  "torso_cuirass": "Recall-Yard Cuirass",
+  "torso_nova": "Heartstar Casing",
+  "arms_mm": "Kestrel Pattern Arms",
+  "arms_wraps": "Cable Wraps",
+  "arms_hi": "Harrow Pattern Arms",
+  "arms_ps": "Aldane Pattern Arms",
+  "arms_sleeves": "Tarp-Cloth Sleeves",
+  "arms_piston": "Exposed Piston Sleeves",
+  "arms_conduit": "Lit Conduit Bracers",
+  "arms_fused": "Foundry-Fused Arms",
+  "hands_work": "Work Gloves",
+  "hands_hi": "Harrow Pattern Hands",
+  "hands_ps": "Aldane Pattern Hands",
+  "hands_nitrile": "Clinic Nitrile",
+  "hands_signet": "Signet Knuckles",
+  "hands_ember": "Ember-Palm Grips",
+  "legs_mm": "Kestrel Pattern Legs",
+  "legs_stripe": "Hi-Vis Leg Stripes",
+  "legs_hi": "Harrow Pattern Legs",
+  "legs_ps": "Aldane Pattern Legs",
+  "legs_greaves": "Slag-Plate Greaves",
+  "legs_rails": "Strider Light Rails",
+  "back_rucksack": "Salvage Rucksack",
+  "back_cable": "Trailing Cable Tail",
+  "back_cape": "Tarp Cape",
+  "back_vents": "Heat Vent Stacks",
+  "back_tank": "Coolant Tank Rig",
+  "back_array": "Relay Antenna Array",
+  "back_banner": "Reclaim Banner",
+  "back_spine": "Exposed Ceramic Spine",
+  "back_disc": "Warrant Disc",
+  "back_wings": "Cinder Wings",
+  "skin_tan": "Weathered Tan",
+  "skin_pale": "Basin Pallor",
+  "skin_soot": "Soot-Stained",
+  "skin_rust": "Rust Patina",
+  "skin_chrome": "Chrome Plating",
+  "skin_veins": "Lit Veins (Teal)",
+  "skin_veins2": "Lit Veins (Amber)",
+  "skin_frost": "Cold-Archive Rime",
+  "skin_ceramic": "Aldane Glaze Finish",
+  "skin_circuit": "Etched Circuit Dermis",
+  "skin_ember": "Furnace Bloom",
+  "skin_holo": "Starforged Hologram Skin",
+  "tat_barcode": "Asset-Tag Barcode",
+  "tat_serial": "Serial Number Brand",
+  "tat_sigil": "Union Sigil",
+  "tat_cracks": "Stress-Crack Lines",
+  "tat_circuit": "Circuit Trace Sleeve",
+  "tat_bio": "Bioluminescent Ink",
+  "tat_stamp": "Void-Warranty Stamp",
+  "aura_grit": "Grit Cloud",
+  "aura_haze": "Basin Haze",
+  "aura_sparks": "Weld Sparks",
+  "aura_mist": "Coolant Mist",
+  "aura_static": "Static Halo",
+  "aura_foundry": "Foundry Glow",
+  "aura_audit": "Audit Ring",
+  "aura_nova": "Heartstar Corona",
+  "trail_dust": "Dust Wake",
+  "trail_sparks": "Spark Trail",
+  "trail_smoke": "Exhaust Smoke",
+  "trail_ghost": "Afterimage Ghost",
+  "trail_ember": "Ember Wake",
+  "trail_glitch": "Data-Glitch Trail"
+ },
+ "contacts": {
+  "odalys_vane": {
+   "name": "Odalys Vane",
+   "role": "fixer",
+   "bio": "Sells Annex contracts out of a tarp stall. Keeps three ledgers and shows nobody the third."
+  },
+  "tech_marr": {
+   "name": "Marr",
+   "role": "technician",
+   "bio": "Reads replacement-part markings the way others read faces. Will not say who taught them."
+  },
+  "handler_cole": {
+   "name": "Cole",
+   "role": "handler",
+   "bio": "Kestrel Value Systems asset recovery. Tracks controllers and refurbishments that went missing after resale."
+  },
+  "ten_hallowell": {
+   "name": "Teodor \"Ten\" Hallowell",
+   "role": "fixer",
+   "bio": "Retired Line 7 shift lead turned fixer. Still hears the shift horn. Sells foundry contracts to anyone with force hardware."
+  },
+  "noor_abiodun": {
+   "name": "Noor Abiodun",
+   "role": "fixer",
+   "bio": "Street clinician who patches contractors for free and sells Ward 9 leads for a price. Keeps her own scars unrepaired."
+  },
+  "pell_okafor": {
+   "name": "Pell Okafor",
+   "role": "trader",
+   "bio": "Resells everything twice. Trades in salvage, hardware and rumours, and believes the three are the same product."
+  },
+  "ilya_sen": {
+   "name": "Ilya Sen",
+   "role": "technician",
+   "bio": "Ceramics technician who left Aldane with three fingers of calibration notes. Reads Aldane weave patterns by touch."
+  },
+  "liaison_costa": {
+   "name": "Dr. Mireille Costa",
+   "role": "handler",
+   "bio": "Aldane Surgical compliance liaison. Writes the audit commands the Annex terminals obey and denies writing them."
+  },
+  "liaison_dunmore": {
+   "name": "Rhea Dunmore",
+   "role": "handler",
+   "bio": "Harrow-Brandt reclaim liaison. Counts everything that leaves a Harrow facility, including the people."
+  }
+ },
+ "contracts": {
+  "od_floor_sweep": {
+   "title": "Floor sweep",
+   "contact": "odalys_vane"
+  },
+  "od_annex_clear": {
+   "title": "Annex clearance",
+   "contact": "odalys_vane"
+  },
+  "tm_markings": {
+   "title": "Read the markings",
+   "contact": "tech_marr"
+  },
+  "hc_hub_clear": {
+   "title": "Hub 9 audit",
+   "contact": "handler_cole"
+  },
+  "hc_lazarus": {
+   "title": "Close Lazarus",
+   "contact": "handler_cole"
+  },
+  "th_cinders": {
+   "title": "Cinder count",
+   "contact": "ten_hallowell"
+  },
+  "th_foundry_clear": {
+   "title": "Silence Line 7",
+   "contact": "ten_hallowell"
+  },
+  "th_tyrant": {
+   "title": "Wake the Tyrant",
+   "contact": "ten_hallowell"
+  },
+  "na_ward_clear": {
+   "title": "Open the ward",
+   "contact": "noor_abiodun"
+  },
+  "na_quiet": {
+   "title": "Quiet entry",
+   "contact": "noor_abiodun"
+  },
+  "po_haul": {
+   "title": "Haul",
+   "contact": "pell_okafor"
+  },
+  "is_named": {
+   "title": "Name the staff",
+   "contact": "ilya_sen"
+  },
+  "lc_audit": {
+   "title": "Audit commissions",
+   "contact": "liaison_costa"
+  },
+  "ld_reclaim": {
+   "title": "Reclaim actions",
+   "contact": "liaison_dunmore"
+  }
+ },
+ "dungeons": {
+  "warehouse": "Kestrel Distribution Hub 9",
+  "annex": "Reclamation Annex",
+  "foundry": "Harrow-Brandt Foundry Line 7",
+  "clinic": "Aldane Ward 9 Clinic",
+  "coke_ovens": "Basin Coke Ovens",
+  "substation_12": "Substation 12",
+  "scrap_gantry": "Rustline Scrap Gantry",
+  "tailings_pit": "Tailings Pit 3",
+  "bell_foundry": "Calloway Bell Foundry",
+  "cold_archive": "Aldane Cold Archive",
+  "audit_tower": "Aldane Audit Tower",
+  "aesthetic_ward": "Ward 3 Aesthetics",
+  "pharmacy_vault": "Quill Pharmacy Vault",
+  "outlet_mall": "Kestrel Outlet Mall",
+  "drained_reservoir": "Drained Reservoir",
+  "anechoic_lab": "Lindqvist Anechoic Lab",
+  "liquidation_floor": "Kestrel Liquidation Floor",
+  "parcel_tower": "Kestrel Parcel Tower",
+  "freight_depot": "Basin Freight Depot",
+  "warranty_vault": "Kestrel Warranty Vault",
+  "night_tunnels": "Quiet Shift Tunnels",
+  "breaker_yard": "Kellan Breaker Yard",
+  "radio_mast": "Basin Radio Mast",
+  "recall_yard": "Recall Authority Yard"
+ }
+}

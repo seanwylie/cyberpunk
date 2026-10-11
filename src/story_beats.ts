@@ -9,20 +9,21 @@ import { persist } from './state';
 export type BeatTrigger = 'contract_done'|'return_town'|'new_mfr_set';
 export interface JournalEntry { t:number; trigger:BeatTrigger; town:string; text:string; src:'ai'|'authored'; model?:string }
 export interface BeatMeta { seenMfr:Mfr[]; count:number }
-export interface BeatReq { trigger:BeatTrigger; contract?:string; dungeon?:string; force?:boolean }
+export interface BeatReq { trigger:BeatTrigger; /** contract id */ contract?:string; /** dungeon id */ dungeon?:string; force?:boolean }
 export const BEAT_LIMITS = { perSession:3, minGapMs:90_000, journalMax:40, chance:{ contract_done:.5, return_town:.3, new_mfr_set:1 } as Record<BeatTrigger,number>, timeoutMs:14_000 };
 
-const clean=(s:string)=>s.replace(/[^A-Za-z0-9 _\-'.:+&]/g,' ').replace(/\s+/g,' ').trim().slice(0,40);
+/** Random per-page-load session id (server-side per-session limit and repeat-avoidance). Not tied to the player. */
+export const SESSION_ID=(()=>{ try{ const a=new Uint8Array(12); crypto.getRandomValues(a); return Array.from(a,x=>x.toString(16).padStart(2,'0')).join(''); }catch{ return Math.random().toString(16).slice(2).padEnd(24,'0').slice(0,24); } })();
 export function journalOf(s:Save):JournalEntry[]{ const x=s as any; if(!Array.isArray(x.journal)) x.journal=[]; return x.journal; }
 export function metaOf(s:Save):BeatMeta{ const x=s as any; if(!x.beatMeta) x.beatMeta={seenMfr:[],count:0}; return x.beatMeta; }
 
-/** Structured, bounded summary of what the player is wearing. Only ids, catalog names, enums and small numbers. */
+/** Structured, bounded summary: catalog ids and enums ONLY (the server resolves names/makers and rejects unknown ids). */
 export function loadoutSummary(s:Save, ab:string[], req:BeatReq, newMfr?:Mfr){
-  const installed:{slot:string;name:string;mfr:Mfr;rarity:string}[]=[]; const chips=new Set<string>();
-  for(const [slot,uid] of Object.entries(s.installed)){ const it=s.items.find(i=>i.uid===uid); const d=it&&ITEM_BY_ID[it.def]; if(!it||!d) continue; installed.push({slot,name:clean(d.name),mfr:d.mfr,rarity:d.rarity}); for(const c of it.chips){ const cd=CHIPS[c]; if(cd) chips.add(clean(cd.name)); } }
-  const cos=cosOf(s as any); const cosmetics=Object.values(cos.equipped).map(id=>COS_BY_ID[id as string]).filter(Boolean).map(c=>clean(c.name));
-  const out:any={ trigger:req.trigger, town:s.town==='harrow'?'harrow':'rustline', level:Math.max(1,Math.min(99,s.level|0)), installed:installed.slice(0,11), chips:[...chips].slice(0,8), abilities:ab.map(a=>ABILITIES[a]?.name).filter(Boolean).map(clean).slice(0,8), cosmetics:cosmetics.slice(0,8), rep:{HI:s.rep.HI|0,PS:s.rep.PS|0,MM:s.rep.MM|0} };
-  if(req.contract) out.contract=clean(req.contract); if(req.dungeon) out.dungeon=clean(req.dungeon); if(newMfr) out.newMfr=newMfr; return out;
+  const installed:string[]=[]; const chips=new Set<string>();
+  for(const uid of Object.values(s.installed)){ const it=s.items.find(i=>i.uid===uid); const d=it&&ITEM_BY_ID[it.def]; if(!it||!d) continue; installed.push(it.def); for(const c of it.chips){ if(CHIPS[c]) chips.add(c); } }
+  const cos=cosOf(s as any); const cosmetics=Object.values(cos.equipped).filter(id=>!!id&&!!COS_BY_ID[id as string]) as string[];
+  const out:any={ trigger:req.trigger, town:s.town==='harrow'?'harrow':'rustline', level:Math.max(1,Math.min(99,s.level|0)), session:SESSION_ID, installed:installed.slice(0,11), chips:[...chips].slice(0,8), abilities:ab.filter(a=>!!ABILITIES[a]).slice(0,8), cosmetics:cosmetics.slice(0,8), rep:{HI:s.rep.HI|0,PS:s.rep.PS|0,MM:s.rep.MM|0} };
+  if(req.contract) out.contract=req.contract; if(req.dungeon) out.dungeon=req.dungeon; if(newMfr) out.newMfr=newMfr; return out;
 }
 export function dominantMfr(s:Save):Mfr|null{ const n:Record<string,number>={HI:0,PS:0,MM:0}; for(const uid of Object.values(s.installed)){ const it=s.items.find(i=>i.uid===uid); const d=it&&ITEM_BY_ID[it.def]; if(d) n[d.mfr]++; } const top=(Object.keys(n) as Mfr[]).sort((a,b)=>n[b]-n[a])[0]; return n[top]>=4?top:null; }
 
