@@ -3,7 +3,7 @@
 // sustain is rationed, deaths cost credits, packs aggro together. applyHard() multiplies the enemy defs once at load.
 export const HARD = {
   /** class multipliers on top of the authored + BAL values */
-  boss:{ hp:1.05, dmg:1.3 }, elite:{ hp:1.25, dmg:1.3 }, mob:{ hp:1.05, dmg:1.15 },
+  boss:{ hp:1.05, dmg:1.2 }, elite:{ hp:1.25, dmg:1.3 }, mob:{ hp:1.05, dmg:1.15 },
   /** dungeon tier (0 = base dungeons, 1-4 = batch-1 tiers) multipliers, applied to bosses, elites and mobs native to that tier */
   tierDmg:[1.12,1.15,.92,.97,.8], tierHp:[1.12,1.15,.95,.97,.8],
   press:{
@@ -19,7 +19,7 @@ export const HARD = {
     enrageRamp:.02, enrageMax:2.4,
   },
   /** boss mechanics scaling by dungeon tier (0..4): move tempo, hazard tempo, and the 'echo' (a second, fully telegraphed copy of a zone move aimed where you now stand) once a boss is below echoAt of its HP */
-  mech:{ tierCd:[1,1,1.12,1.25,1.35], tierUnder:[1,1,1.2,1.4,1.55], echoMinTier:1, echoAt:.8, echoDelay:1.15, echoEvery:2 },
+  mech:{ tierCd:[1,1,1.12,1.25,1.35], tierUnder:[1,1,1.2,1.4,1.55], echoMinTier:2, echoAt:.75, echoDelay:1.15, echoEvery:2 },
   stimHeal:32, stimCd:9, runRegen:.5,
   packAggroR:10,
   /** pack flanking: melee pack members arc in by up to maxAng radians (gain per tile beyond closeIn), only in packs of minPack+ */
