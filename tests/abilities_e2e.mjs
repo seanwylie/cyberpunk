@@ -9,13 +9,13 @@ const results = await ev(async (ids) => {
   const g = window.__game; const out = [];
   for (const id of ids) {
     const ab = reg.ABILITY_BY_ID[id]; const def = cfg.ABILITIES[id];
-    if (g.mode === 'run') g.enterTown(true); g.startRun(); g.revealing = false; g.dbg.god = true; g.enemies.forEach(e => { e.dead = true; }); g.projs = []; g.zones = [];
+    if (g.mode === 'run') g.enterTown(true); g.startRun('annex', 1001); g.revealing = false; g.dbg.god = true; g.enemies.forEach(e => { e.dead = true; }); g.projs = []; g.zones = [];
     const sp = g.level.spawn; g.px = sp.x; g.py = sp.y; g.face = 0;
     // find an open direction with room (8 tiles) around the spawn
     let ang = 0, best = -1; for (let k = 0; k < 16; k++) { const a = k * Math.PI / 8; let n = 0; for (let d = 1; d <= 9; d += .5) { if (g.solidAt(g.px + Math.cos(a) * d, g.py + Math.sin(a) * d)) break; n = d; } if (n > best) { best = n; ang = a; } }
     const at = (d, side = 0) => ({ x: g.px + Math.cos(ang) * d - Math.sin(ang) * side, y: g.py + Math.sin(ang) * d + Math.cos(ang) * side });
     const mk = (d, side, type = 'worker') => { const p = at(d, side); const e = g.spawnEnemy(type, p.x, p.y); e.hp = e.maxHp = 5000; e.alert = false; e._rt.reveal = 0; e.stunT = 0; return e; };
-    const dT = ab.shape === 'lockon' ? Math.min(3, Math.max(1.2, ab.range * .7)) : 3; const D = { tgt: mk(Math.min(dT, best - .5), 0), n2: mk(Math.min(3.6, best - .3), .9), n3: mk(Math.min(4.2, best - .3), -.9), far: mk(Math.min(6, best), .3) };
+    const near = ab.shape === 'self'; /* self-centred bursts reach only ~2.4 tiles: keep the dummies inside that */ const dT = ab.shape === 'lockon' ? Math.min(3, Math.max(1.2, ab.range * .7)) : near ? 1.4 : 3; const D = { tgt: mk(Math.min(dT, best - .5), 0), n2: mk(Math.min(near ? 1.8 : 3.6, best - .3), .9), n3: mk(Math.min(near ? 1.9 : 4.2, best - .3), -.9), far: mk(Math.min(6, best), .3) };
     // freeze AI so measurements are about the ability only
     for (const e of g.enemies) { e.aiOff = true; e._rt.spdMul = 0; }
     g.build.abilities = [id, 'brace', 'sweep']; g.build.granted = [id, 'brace', 'sweep']; g.abCd = [0, 0, 0]; g.heat = 0; g.overheated = false; g.hp = g.maxHp * .5; g.cloakT = 0; g.abx = eng.newAbx();
