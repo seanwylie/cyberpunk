@@ -198,3 +198,18 @@ casts per run: control 32.5, sweep 28.0, bladeburst 26.0, reposition 22.3, reviv
 What moved the numbers: auto damage x0.45 and heat x2.4; Sweep 34->85, Burst 30->90, Pulse 22->55, Reposition 25->50, Control now deals 45 overload damage to everything it stuns; Revive got a solo effect (it was a dead slot in the T1 par kit); cooldowns 3-5s. To keep clears in band, enemy HP is multiplied by dungeon tier (`BAL.g.tier`: T0-T2 x1.75, T3 x1.4, T4 x1.25) and several boss multipliers were retuned (Overseer, Bellfounder, Auditor, Mirror P.T., Apothecary, Clearance, Courier, Recall). The earlier seeds of this pass are kept in `tools/balance/out/abil_a*.json`.
 
 Tuning notes: the bot found that Control could turn the Overseer's pylons (boss then immune for ever); pylons and static enemies now only get stunned. Outliers left alone: Breaker Yard and Drained Reservoir swing 50-70% on 6 seeds (high variance, boss tele-chain), Recall Yard (T4) ~83%.
+
+## Hard mode pass (difficulty, loot reach, rings, drops)
+
+Tuning lives in `src/content/hardmode.ts` (HARD) plus `DROP`/`DROP_RATE_SCALE` in `config.ts`.
+
+**Bosses punish passivity** (`pressureTick` in `content/mechanics.ts`): camping within body radius + 3.2 for 2 s triggers a telegraphed quake ring (18% max HP, knockback 3.4); a hazard is placed under the player every ~6.5 s (9% max HP, faster under 50% boss HP); 2 ranged adds every 26 s; after 140 s the boss enrages (damage and tempo ramp up to 2x). Class multipliers: boss hp x1.05 dmg x1.05, elite x1.25/x1.3, mob x1.05/x1.15, times a per-tier factor. Sustain: stim heals 32 (was 45) with a 9 s cooldown, run regen halved. Packs aggro together (10 tiles with LOS, or whole group). Death costs 35% of carried credits and repair x1.5.
+
+**Bot results** (boss fights only, par kits, `tools/balance/run.mjs --boss --profile tank|skilled`, `bosssum.mjs`):
+
+| | before | after |
+|---|---|---|
+| tank-and-spank bot loses | 65% | 100% (tests/hardmode.mjs asserts >80%) |
+| skilled bot clears (<=1 death) | not measured (old full-run par clear 63-96%) | 63-67% overall; per tier 79/54/55/69/50% (T0..T4) |
+
+**Drops** (`tools/balance/drops.mjs`): Annex items+chips+stims per run 14.3 -> 3.3 (ground piles 33 -> 7); other dungeons 3.5-5.7, tier IV 7-8. Rarity: re-roll keep chance blue .35, purple .06, orange 0 (signature drops only). Affixed pack leaders roll .25; true elites 1 guaranteed; bosses 2 guaranteed with the second mostly a chip/stim. Grey items auto-sell on pickup (Settings > Gameplay "Auto-sell junk").

@@ -5,7 +5,7 @@ export const HARD = {
   /** class multipliers on top of the authored + BAL values */
   boss:{ hp:1.05, dmg:1.05 }, elite:{ hp:1.25, dmg:1.3 }, mob:{ hp:1.05, dmg:1.15 },
   /** dungeon tier (0 = base dungeons, 1-4 = batch-1 tiers) multipliers, applied to bosses, elites and mobs native to that tier */
-  tierDmg:[1.12,.95,1,1.02,1.05], tierHp:[1.12,.95,1,1.02,1.05],
+  tierDmg:[1.12,1.15,.92,.97,.8], tierHp:[1.12,1.15,.95,.97,.8],
   press:{
     campR:3.2,      // player within boss radius + campR counts as camping
     campT:2.0,      // seconds of camping before the boss answers with a quake
