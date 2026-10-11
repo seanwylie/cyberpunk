@@ -16,3 +16,5 @@ docs/art/loot/frames/
 tools/balance/out/*.json
 !tools/balance/out/before_final.json
 !tools/balance/out/after_final.json
+
+node_modules
