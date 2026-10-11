@@ -142,13 +142,13 @@ Drop weight per ability rarity (relative weights within a converted roll, before
 
 ### Measured distribution (`tests/ability_acq.mjs`, real loot code, seeded)
 
-- **Median runs to first new ability on a fresh save: 1** (worst of 25 fresh saves: 1).
+- **Median runs to first new ability on a fresh save: 1** (worst of 25 fresh saves: 2).
 
 | stage | runs | gear drops/run | ability augments/run | share of gear | grey | green | blue | purple | orange |
 |---|---|---|---|---|---|---|---|---|---|
-| early (L12, rep 0, Annex) | 50 | 7.9 | 3.6 | 45% | 13% | 54% | 33% | 0% | 0% |
-| mid (L24, rank 1, Foundry) | 100 | 8.7 | 4.2 | 49% | 11% | 16% | 63% | 10% | 0% |
-| late (L40, rank 3, tier IV) | 100 | 16.6 | 6.9 | 41% | 10% | 17% | 55% | 16% | 1% |
+| early (L12, rep 0, Annex) | 50 | 5.2 | 2.3 | 45% | 10% | 68% | 22% | 0% | 0% |
+| mid (L24, rank 1, Foundry) | 100 | 6.5 | 3.2 | 49% | 6% | 15% | 63% | 16% | 0% |
+| late (L40, rank 3, tier IV) | 100 | 9.3 | 3.8 | 41% | 8% | 17% | 56% | 16% | 3% |
 
 (Counts include the legacy ability-bearing hardware. Each run kills everything and rolls the boss; the harness freezes XP so a stage keeps its level.)
 
