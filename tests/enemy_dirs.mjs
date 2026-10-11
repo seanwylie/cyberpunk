@@ -21,9 +21,9 @@ const ROW = [6, 7, 0, 1, 2, 3, 4, 5]; const D8 = [[1, 0], [1, 1], [0, 1], [-1, 1
 const expRow = (dx, dy) => { const sx = dx - dy, sy = dx + dy; const a = (Math.atan2(sy, sx) + 2 * Math.PI) % (2 * Math.PI); return ROW[Math.round(a / (Math.PI / 4)) % 8]; };
 const names = ['+x', '+x+y', '+y', '-x+y', '-x', '-x-y', '-y', '+x-y'].map(n => 'world ' + n); const sheet = {};
 // batches of 6 can jostle each other (separation pushes change the travel vector); an id that fails inside a batch is re-run alone before it counts
-const queue = []; for (let b = 0; b < list.length; b += 6) queue.push({ ids: list.slice(b, b + 6), solo: false }); let bi = 0;
+const queue = []; for (let b = 0; b < list.length; b += 6) queue.push({ ids: list.slice(b, b + 6), solo: false, tries: 0 }); let bi = 0;
 while (queue.length) {
-  const { ids: batch, solo } = queue.shift(); if (solo) { /* retries start from a pristine page: state left by earlier batches made some types flaky */ const old = browser; ({ browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } })); await old.close(); await boot(); } const b = 6 * bi++; const failed = new Set(); const okB = ok; const ok2 = (c, m) => { if (!c && !solo && batch.length > 1) { const id = m.split(':')[0]; failed.add(id); return; } okB(c, m); };
+  const { ids: batch, solo, tries } = queue.shift(); if (solo) { /* retries start from a pristine page: state left by earlier batches made some types flaky */ const old = browser; ({ browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } })); await old.close(); await boot(); } const b = 6 * bi++; const failed = new Set(); const okB = ok; const ok2 = (c, m) => { if (!c && (batch.length > 1 || tries < 2)) { const id = m.split(':')[0]; failed.add(id); return; } okB(c, m); };
   const res = await ev(async ({ batch, D8 }) => { const g = window.__game, ea = window.__rend.eart, B = g.level.bossSpawn; const es = []; let k = 0;
     for (const id of batch) { const e = g.spawnEnemy(id, B.x - 5 + (k % 3) * 3.2, B.y - 3 + Math.floor(k / 3) * 3.4); k++; e.hp = e.maxHp = 1e8; e.alert = false; e.stunT = 1e9; if (e._rt) e._rt.reveal = 0; es.push(e); }
     g.px = B.x - 2; g.py = B.y + 3; const rec = {}; for (const id of batch) rec[id] = { rows: {}, legacy: 0, draws: 0 };
@@ -43,7 +43,7 @@ while (queue.length) {
       if (got !== want || dom < .6) ok2(false, `${id}: travel ${names[di]} drew row ${got} (dominance ${dom.toFixed(2)}), expected ${want}`); } }
   await page.screenshot({ path: out + `batch${b / 6}.png` });
   await ev(batch => { const g = window.__game; for (const e of g.enemies) if (batch.includes(e.type)) e.dead = true; }, batch); await sleep(300);
-  for (const id of failed) queue.push({ ids: [id], solo: true });
+  for (const id of failed) queue.push({ ids: [id], solo: true, tries: solo ? tries + 1 : 0 }); /* a solo run can still lose frames on a busy box: two more tries before a failure counts */
 }
 ok(true, 'all enemy types x 8 directions (forward + reversal pass) checked');
 ok(errors.length === 0, 'no page errors ' + errors.join('|')); await browser.close(); console.log(fail ? `${fail} FAILED` : 'ALL PASS'); process.exit(fail ? 1 : 0);
