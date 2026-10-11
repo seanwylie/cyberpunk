@@ -30,6 +30,7 @@ const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const angDiff=(a:number,b:number)=>{ let d=a-b; while(d>Math.PI)d-=Math.PI*2; while(d<-Math.PI)d+=Math.PI*2; return d; };
 export const ISO = { toWorld(sx:number,sy:number,tw:number){ const a=sx/(tw/2), b=sy/(tw/4); return { x:(a+b)/2, y:(b-a)/2 }; }, vec(dx:number,dy:number){ const a=dx, b=dy*2; const x=(a+b)/2, y=(b-a)/2; const l=Math.hypot(x,y)||1; return { x:x/l, y:y/l }; } };
 
+const LOOT_CLEAR=.42;
 export class Game {
   save:Save; level:Level; mode:'town'|'run'='town'; inst:InstanceState|null=null; emit:Emit;
   enemies:En[]=[]; projs:Proj[]=[]; zones:Zone[]=[]; fx:Fx[]=[]; time=0; pickFx:{id:number;x:number;y:number;kind:Drop['kind'];inst?:Drop['inst'];chip?:Drop['chip'];amount:number;t0:number}[]=[];
@@ -78,7 +79,7 @@ export class Game {
     const inst=this.inst!; this.mode='run'; this.level=dungeonOf(inst.dungeon).build(inst.seed); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.downed=false; this.revealing=false;
     this.lastZone=''; this.zoneShown={}; this.zoneAnyAt=-1e9; this.pathWp=null; this.applyDoors(); this.enemies=inst.enemies.map(e=>this.wrap(e));
     // Boss attempts always replay the full reveal: reset a living boss on (re)entry.
-    this.resetBossIfAlive();
+    this.resetBossIfAlive(); this.fixStuckDrops();
     const cp=this.level.checkpoints[0]; this.px=fresh?this.level.spawn.x:cp.x; this.py=fresh?this.level.spawn.y:cp.y;
     if(!fresh && (inst.checkpoint.id!==1)){ /* re-entry always from entry point: must run back through surviving enemies */ }
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.braceT=0; this.defibCd=0; this.abCd=[0,0,0]; this.dodgeCd=0;
@@ -129,7 +130,8 @@ export class Game {
 
   // ---------- helpers ----------
   solidAt(x:number,y:number){ const L=this.level; const ix=Math.floor(x), iy=Math.floor(y); if(ix<0||iy<0||ix>=L.w||iy>=L.h) return true; return L.solid[iy*L.w+ix]===1; }
-  moveCircle(x:number,y:number,dx:number,dy:number,r:number){ let nx=x+dx, ny=y; if(this.circleHits(nx,ny,r)) nx=x; ny=y+dy; if(this.circleHits(nx,ny,r)) ny=y; return {x:nx,y:ny}; }
+  moveCircle(x:number,y:number,dx:number,dy:number,r:number){ const n=Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))/.3); if(n>1){ /* sub-step so large knockbacks/dashes can never tunnel through a thin wall */ let cx=x, cy=y; for(let i=0;i<n;i++){ const p=this.moveCircle1(cx,cy,dx/n,dy/n,r); cx=p.x; cy=p.y; } return {x:cx,y:cy}; } return this.moveCircle1(x,y,dx,dy,r); }
+  moveCircle1(x:number,y:number,dx:number,dy:number,r:number){ let nx=x+dx, ny=y; if(this.circleHits(nx,ny,r)) nx=x; ny=y+dy; if(this.circleHits(nx,ny,r)) ny=y; return {x:nx,y:ny}; }
   circleHits(x:number,y:number,r:number){ const x0=Math.floor(x-r), x1=Math.floor(x+r), y0=Math.floor(y-r), y1=Math.floor(y+r); for(let iy=y0;iy<=y1;iy++)for(let ix=x0;ix<=x1;ix++){ if(!this.solidAt(ix+.5,iy+.5)) continue; const cx=clamp(x,ix,ix+1), cy=clamp(y,iy,iy+1); const dx=x-cx, dy=y-cy; if(dx*dx+dy*dy<r*r-1e-6) return true; } return false; }
   /** Swept circle clearance between two points (used for wide-LOS and path smoothing). */
   clearFor(ax:number,ay:number,bx:number,by:number,r:number){ const d=dist(ax,ay,bx,by); const n=Math.max(1,Math.ceil(d/.3)); for(let i=1;i<=n;i++){ const t=i/n; if(this.circleHits(ax+(bx-ax)*t,ay+(by-ay)*t,r)) return false; } return true; }
@@ -532,7 +534,14 @@ export class Game {
     if(en.item){ const d=ITEM_BY_ID[en.item]; if(d.lvl>this.save.level||d.lvl>this.dd.tierCap){ this.emit('filtered',d.name); return; } this.addDrop(x,y,{kind:'item',inst:mkInst(this.save,en.item),amount:1}); }
     else if(en.chip) this.addDrop(x,y,{kind:'chip',chip:en.chip,amount:1}); else if(en.stim) this.addDrop(x,y,{kind:'stim',amount:1});
   }
-  addDrop(x:number,y:number,d:Partial<Drop>&{kind:Drop['kind']}){ const inst=this.inst!; const a=Math.random()*6.28, r=.3+Math.random()*.8; let px=x+Math.cos(a)*r, py=y+Math.sin(a)*r; if(this.solidAt(px,py)){ px=x; py=y; } const dr:Drop={ id:inst.nextId++, x:px, y:py, kind:d.kind, inst:d.inst, chip:d.chip, amount:d.amount||1, born:this.time }; inst.drops.push(dr); const rar=this.dropRarity(dr); if(RARITY_RANK[rar]>=3) this.emit('sfx','loot_'+rar); return dr; }
+  /** Nearest spot to (x,y) the player can actually stand on and collect: clear of walls/props for LOOT_CLEAR, and visible from the origin (no tossing through walls). */
+  lootSpot(x:number,y:number,prefer?:number):{x:number;y:number}{ const C=LOOT_CLEAR; const okAt=(px:number,py:number,ox:number,oy:number)=>!this.solidAt(px,py)&&!this.circleHits(px,py,C)&&this.los(ox,oy,px,py);
+    let ox=x, oy=y; if(this.circleHits(ox,oy,C)){ let best:{x:number;y:number}|null=null, bd=1e9; for(let r=.25;r<=4&&!best;r+=.25) for(let k=0;k<16;k++){ const a=k/16*6.2832, qx=x+Math.cos(a)*r, qy=y+Math.sin(a)*r; if(!this.solidAt(qx,qy)&&!this.circleHits(qx,qy,C)){ const d=r; if(d<bd){ bd=d; best={x:qx,y:qy}; } } } if(best){ ox=best.x; oy=best.y; } }
+    const a0=prefer??Math.random()*6.2832; for(const r of [.3+Math.random()*.8,.6,.9,.4,1.2,.2]) for(let k=0;k<12;k++){ const a=a0+k*.5236; const px=ox+Math.cos(a)*r, py=oy+Math.sin(a)*r; if(okAt(px,py,ox,oy)) return {x:px,y:py}; }
+    return {x:ox,y:oy}; }
+  /** Existing ground loot that ended up inside a wall/prop edge (older saves, knockback tosses) is moved to the nearest reachable spot. Returns how many moved. */
+  fixStuckDrops():number{ const inst=this.inst; if(!inst) return 0; let n=0; for(const d of inst.drops){ if(this.solidAt(d.x,d.y)||this.circleHits(d.x,d.y,LOOT_CLEAR*.9)){ const p=this.lootSpot(d.x,d.y); d.x=p.x; d.y=p.y; n++; } } return n; }
+  addDrop(x:number,y:number,d:Partial<Drop>&{kind:Drop['kind']}){ const inst=this.inst!; const sp=this.lootSpot(x,y); const px=sp.x, py=sp.y; const dr:Drop={ id:inst.nextId++, x:px, y:py, kind:d.kind, inst:d.inst, chip:d.chip, amount:d.amount||1, born:this.time }; inst.drops.push(dr); const rar=this.dropRarity(dr); if(RARITY_RANK[rar]>=3) this.emit('sfx','loot_'+rar); return dr; }
   dropRarity(d:Drop):Rarity{ if(d.kind==='item') return ITEM_BY_ID[d.inst!.def].rarity; if(d.kind==='chip') return CHIPS[d.chip!].rarity; if(d.kind==='stim') return 'green'; return 'grey'; }
   carriedCount(){ const c=this.inst!.carried; return c.items.length+Object.values(c.chips).filter(v=>v&&v>0).length+(c.stims>0?1:0); }
   autoPickup(){
