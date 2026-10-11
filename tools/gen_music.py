@@ -81,6 +81,23 @@ ELITE2 = {
 for _n, _p in CALM2.items(): TRACKS[_n] = (150, True, _p)
 for _n, _p in ELITE2.items(): TRACKS[_n] = (75, True, _p)
 LOWRATE = set(CALM2)  # long ambient tracks are encoded at 80 kbps to keep the lazy downloads small
+
+# --- boss signature themes (one per top-tier boss, used ONLY by that boss; see docs/AUDIO.md). 150 s multi-section loops, 112 kbps ---
+SIGN = "instrumental, cinematic dark industrial cyberpunk, epic and memorable, multi-section arrangement that builds from an ominous intro through a main theme to a climactic section then returns to the opening for a seamless loop, maximum intensity in the main sections."
+SIG = {
+ 'boss_sig_recall': "Apocalyptic final boss theme, 176 bpm, D minor. Massive wordless choir chanting a repeating four-note motif over crushing distorted industrial bass, blaring recall-alarm sirens, blistering double-time breakbeats, huge brass-like synth hits, tolling bell. " + SIGN,
+ 'boss_sig_recall_p2': "Phase two of the apocalyptic final boss theme, 184 bpm, D minor, even heavier. Full wordless choir at fortissimo repeating the same four-note motif, relentless hardcore kicks, shrieking sirens, thundering taiko-like impacts, distorted bass drops, frantic climax. " + SIGN,
+ 'boss_sig_dispatcher': "Cold machine-intelligence boss theme, 164 bpm, F# minor. Rigid sequenced 16th-note bass ostinato, driving staccato string-like synth ostinato, data-bleep percussion, klaxon brass stabs, a haunting robotic melody in the middle section. " + SIGN,
+ 'boss_sig_dispatcher_p2': "Phase two of the machine-intelligence boss theme, 172 bpm, F# minor, overclocked. Same sequenced bass ostinato doubled in speed, glitching stuttering drums, layered siren brass, corrupted version of the robotic melody, relentless. " + SIGN,
+ 'boss_sig_widow': "Haunting grief-fuelled boss theme, 172 bpm, B minor. Mourning wordless female-style vocal pads and a keening detuned lead lament, shortwave radio static and morse rhythms, snapping snares, screeching saw bass, a tragic soaring melody in the climax. " + SIGN,
+ 'boss_sig_widow_p2': "Phase two of the grief-fuelled boss theme, 180 bpm, B minor, furious. The lament melody screaming over blown-out static, double-time breaks, distorted wailing vocal pads, huge bass, desperate climax. " + SIGN,
+ 'boss_sig_resonance': "Experimental sonic-weapon boss theme, 168 bpm, C minor. Giant standing-wave sub bass, glass harmonica and sonar ping melody, resonant sweeps and sudden silent dropouts, orchestral timpani hits, sharp tuned metallic percussion, shattering climax. " + SIGN,
+ 'boss_sig_courier': "High-speed chase boss theme, drum and bass, 176 bpm, G minor. Heroic-villain brass-like synth fanfare, thundering taiko drums, skittering breakbeats, swarming arpeggios, doppler whooshes, a triumphant yet menacing main melody. " + SIGN,
+ 'boss_sig_rattle': "Creeping horror industrial boss theme, 142 bpm, A minor. Rattling chains and bowed metal scrapes, deep claustrophobic sub, whispering choir-like breathy pads that swell, sudden heavy industrial stomps, building to a crushing relentless climax. " + SIGN,
+ 'boss_sig_breaker': "Colossal demolition boss theme, half-time heavy industrial, 140 bpm, E minor. Gigantic anvil and wrecking-ball percussion, distorted guitar-like power riffs, brass-like synth swells, crushing bass, a slow monumental main riff then a furious double-time section. " + SIGN,
+ 'boss_sig_liquidator': "Ruthless auction-house boss theme, 150 bpm, G# minor. Chanting low male-style choir pads counting down, hardstyle reverse bass kicks, gavel snare hits, ticking countdown, orchestral stabs, menacing main melody and a ruthless climax. " + SIGN,
+}
+for _n, _p in SIG.items(): TRACKS[_n] = (150 if not _n.endswith('_p2') else 120, True, _p)
 XF = 2.0
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'

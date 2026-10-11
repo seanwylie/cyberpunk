@@ -6,9 +6,12 @@ const LOOPS=['harrow_forge','harrow_ember','harrow_steam','town','traversal_a','
 /** Ambient pack 2 + extra elite themes: lazy (never preloaded; fetched one-ahead right before use). */
 export const CALM2=['town_dusk','town_market','town_neonrain','harrow_dawn','harrow_cinder','area_hi_slag','area_hi_press','area_ps_sterile','area_ps_ward','area_mm_muzak','area_mm_aisles','calm_tide','calm_ghost','calm_orbit'];
 export const ELITE2=['elite_chrome','elite_voltage','elite_claw','elite_gridlock','elite_static','elite_ashfall','elite_razor','elite_cull','elite_sleet','elite_quota'];
-export const LAZY=new Set([...CALM2,...ELITE2]);
+/** Boss signature themes: one per top-tier boss, ONLY ever played in that boss's fight (not in any pool). `p2` plays from the first phase change. */
+export const SIGNATURE:Record<string,{main:string;p2?:string}>={ recall:{main:'boss_sig_recall',p2:'boss_sig_recall_p2'}, dispatcher:{main:'boss_sig_dispatcher',p2:'boss_sig_dispatcher_p2'}, widow:{main:'boss_sig_widow',p2:'boss_sig_widow_p2'}, resonance:{main:'boss_sig_resonance'}, courier:{main:'boss_sig_courier'}, rattle:{main:'boss_sig_rattle'}, breaker:{main:'boss_sig_breaker'}, liquidator:{main:'boss_sig_liquidator'} };
+export const SIG_TRACKS=Object.values(SIGNATURE).flatMap(x=>[x.main,...(x.p2?[x.p2]:[])]);
+export const LAZY=new Set([...CALM2,...ELITE2,...SIG_TRACKS]);
 const T:Record<string,TrackDef>={ boss_reveal:{file:'boss_reveal',loop:false,keepPos:false}, clear:{file:'clear',loop:false,keepPos:false} };
-for(const n of [...LOOPS,...CALM2,...ELITE2]) T[n]={file:n,loop:true,keepPos:true};
+for(const n of [...LOOPS,...CALM2,...ELITE2,...SIG_TRACKS]) T[n]={file:n,loop:true,keepPos:true};
 /** Tracks that must load for file music to activate; the rest load best-effort and are dropped from pools when missing. */
 export const CORE_TRACKS=['town','traversal_a','traversal_b','combat_a','combat_b','boss_reveal','boss_fight','clear'];
 /** Per-state track pools (rotation draws from these via a shuffle bag). */
@@ -31,13 +34,10 @@ import { Q } from './quality';
 export const BOSS_MAP:Record<string,string>={ ...Object.fromEntries(BOSSES.map(b=>[b.id,b.track])), overseer:'boss_fight', warden:'boss_overclock', enforcer:'boss_meltdown', teague:'boss_hydraulic', brannoch:'boss_meltdown', ore9:'boss_fight', surgeon:'boss_overclock', autosurgeon:'boss_hydraulic', recovered:'boss_fight', stockmgr:'boss_meltdown', retrieval:'boss_overclock', reclaimer:'boss_hydraulic' };
 /** Relative intensity of each hard track (1 lightest .. 4 maximum); drives playlist building and phase escalation. */
 export const INTENSITY:Record<string,number>={ elite_siege:1,elite_hunt:1,boss_lineman:1,boss_pitboss:1, boss_fight:2,boss_hydraulic:2,boss_bellfounder:2,boss_cryo:2,boss_auditor:2,boss_apothecary:2,boss_clearance:2, boss_overclock:3,boss_meltdown:3,boss_resonance:3,boss_liquidator:3,boss_courier:3,boss_dispatcher:3,boss_warrantor:3,boss_rattle:3,boss_widow:3, boss_recall:4 };
-const hashS=(s:string)=>{ let h=0; for(const c of s) h=(h*31+c.charCodeAt(0))>>>0; return h; };
-/** Per-boss playlist: [signature, +3 others from the boss pool]. Others are the same intensity or higher (lowest first, rotated by a per-boss hash for variety); lower ones only fill the gap. */
-export const BOSS_PLAYLISTS:Record<string,string[]>=Object.fromEntries(Object.entries(BOSS_MAP).map(([id,sig])=>{ const si=INTENSITY[sig]||2; const others=POOLS.bosscombat.filter(t=>t!==sig);
-  const up=others.filter(t=>(INTENSITY[t]||2)>=si).sort((a,b)=>(INTENSITY[a]||2)-(INTENSITY[b]||2)||(a<b?-1:1)), down=others.filter(t=>(INTENSITY[t]||2)<si).sort((a,b)=>(INTENSITY[b]||2)-(INTENSITY[a]||2)||(a<b?-1:1));
-  const h=hashS(id), rot=(a:string[],n:number)=>a.length?a.slice(n%a.length).concat(a.slice(0,n%a.length)):a; const lv=[...new Set(up.map(t=>INTENSITY[t]||2))].sort((a,b)=>a-b), groups=lv.map(L=>rot(up.filter(t=>(INTENSITY[t]||2)===L),h)); const order:string[]=[]; for(let r=0;r<8;r++) for(const g of groups) if(g[r]) order.push(g[r]); // round-robin over intensity levels, lowest first
-  const pick:string[]=[]; for(const t of [...order,...down]) if(pick.length<3&&!pick.includes(t)) pick.push(t);
-  return [id,[sig,...pick]]; }));
+/** Boss tier (1 easiest .. 4 hardest): batch-1 bosses carry it in their data; the original dungeon bosses are all starter-tier (1). */
+export const bossTier=(id:string|null):number=>{ const b=id?BOSSES.find(x=>x.id===id):null; return b?b.tier:1; };
+/** Weighted boss pool for a tier: every boss-pool track is in, tracks whose intensity is near the tier's get more slots (distance 0: 3, 1: 2, 2+: 1). */
+export function bossPool(tier:number):[string,number][]{ const tg=Math.min(4,Math.max(1,tier)); return POOLS.bosscombat.map(t=>[t,Math.abs((INTENSITY[t]||2)-tg)===0?3:Math.abs((INTENSITY[t]||2)-tg)===1?2:1] as [string,number]); }
 /** Shuffle bag: every item once per cycle (weight n = n slots per cycle), never the same item twice in a row (also across cycle refills and, with a storage key, across sessions: bag contents + last track persist in localStorage). */
 export class ShuffleBag{ private bag:string[]=[]; last:string|null=null; items:string[]; private w:Record<string,number>={};
   constructor(items:string[]|[string,number][], private rnd:()=>number=Math.random, private storeKey:string|null=null){ this.items=[]; for(const it of items){ const [n,w]=Array.isArray(it)?it:[it,1]; this.items.push(n); this.w[n]=w; } this.restore(); }
@@ -78,17 +78,20 @@ export class MusicManager {
     catch(e){ console.warn('music files unavailable, using procedural fallback',e); this.loading=false; } }
   now(){ return this.ctx.currentTime; }
   // Game-facing: request a state. Hysteresis is applied in tick().
-  setState(s:MState,key?:string|null){ this.want=s; if(key!==undefined){ this.key=key; if(key&&BOSS_MAP[key]&&(!Q.p.musicVariety||!ALL())) this.ensure(BOSS_MAP[key]); } if((!Q.p.musicVariety||!ALL())&&(s==='combat'||s==='elite'||s==='traversal')){ for(const f of POOLS[s].slice(0,2)) this.ensure(f); } this.tick(); }
+  setState(s:MState,key?:string|null){ this.want=s; if(key!==undefined){ if(key!==this.key) this.fightNext=null; this.key=key; }
+    if((s==='bossreveal'||s==='bosscombat')&&!this.fightNext&&this.state!=='bosscombat') this.planFight(); // choose (and start fetching) the fight track during the reveal, so the fight fades in on time
+    if((!Q.p.musicVariety||!ALL())&&(s==='combat'||s==='elite'||s==='traversal')){ for(const f of POOLS[s].slice(0,2)) this.ensure(f); } this.tick(); }
+  /** Boss fight track: a signature boss always gets its own theme; everyone else draws from the whole boss pool through a persistent, tier-weighted shuffle bag (never the last hard track played). */
+  fightNext:string|null=null; sig:{main:string;p2?:string}|null=null; p2done=false; phasePend:{name:string}|null=null; bossBags:Record<number,ShuffleBag>={};
+  bossBag(tier:number){ return this.bossBags[tier]??=new ShuffleBag(bossPool(tier),Math.random,'wv_music_boss:t'+tier); }
+  planFight(){ const sg=this.key?SIGNATURE[this.key]:undefined; let n:string; if(sg) n=sg.main; else { const b=this.bossBag(bossTier(this.key)); n=b.next(x=>x!==this.lastHard); this.fightBag=b; } this.fightNext=n; this.ensure(n); if(sg?.p2) this.hold.add(sg.p2); }
+  hold=new Set<string>();
   /** Pick the next track for a state: boss key mapping if known, else the state's shuffle bag (no immediate repeat). */
-  playlist():string[]{ const k=this.key&&BOSS_PLAYLISTS[this.key]; return k||POOLS.bosscombat; }
   /** Shuffle-bag key per state (persisted in localStorage, so rotation order survives reloads/sessions). */
   bagKey(s:MState){ return s==='town'?'town:'+this.townId:s==='traversal'?'trav:'+(this.area||'-'):s; }
   bagFor(s:MState):ShuffleBag{ const k=this.bagKey(s); let b=this.bags[k as MState]; if(!b){ const items=s==='traversal'?areaPool(this.area):POOLS[s]; b=this.bags[k as MState]=new ShuffleBag(items,Math.random,'wv_music_bag:'+k); } return b; }
   pick(s:MState):string{ const have=(n:string)=>!!this.buffers[n];
-    if(s==='bosscombat'){ const pl=this.playlist(); const sig=this.key&&BOSS_MAP[this.key]; if(sig){ // first attempt = the boss's signature track; retries after death/reset draw from the persistent per-boss bag. Never the track that just played (also across sessions).
-        const key=this.key!, retry=this.retry; this.retry=false; const bag=this.fightBag=new ShuffleBag(pl,Math.random,'wv_music_boss:'+key);
-        let r:string; if(!retry){ r=sig; bag.last=sig; } else { r=bag.next(x=>x!==this.lastHard&&(have(x)||x===sig)); if(r===this.lastHard) r=pl.find(x=>x!==this.lastHard)||r; }
-        this.setHard(r); return r; } }
+    if(s==='bosscombat'){ if(!this.fightNext) this.planFight(); const r=this.fightNext!; this.fightNext=null; delete this.nextUp.boss; this.sig=this.key?SIGNATURE[this.key]||null:null; this.p2done=false; this.setHard(r); return r; }
     const pool=POOLS[s]; if(pool.length===1) return pool[0];
     if(s==='elite'){ const nu=this.nextUp.elite; if(nu&&have(nu)&&nu!==this.lastHard){ delete this.nextUp.elite; this.setHard(nu); return nu; } const r=this.bagFor(s).next(x=>have(x)&&x!==this.lastHard); this.setHard(r); return r; } // hard entry is never gated: only decoded tracks are picked (lazy ones are prefetched in the background during runs)
     const calm=s==='town'||s==='traversal'; if(calm){ const k=this.bagKey(s), nu=this.nextUp[k]; if(nu&&have(nu)){ delete this.nextUp[k]; return nu; } }
@@ -109,28 +112,32 @@ export class MusicManager {
     if(this.state==='town'||this.want==='town'){ const t=this.now(); const nx=this.pick('town'); this.lastSwitchAt=t; this.enteredAt=t; if(this.buffers[nx]) this.crossfade(nx,3,'town'); else if(this.state==='town') this.pend={name:nx,dur:3,s:'town',at:t}; } }
   /** Boss phase change / enrage: switch to a more intense track from the boss playlist (after PHASE_MIN s on the current one). */
   onPhase(n:number){ if(n<=this.phase){ this.phase=n; return; } this.phase=n; if(this.state!=='bosscombat'||!this.ready) return; const t=this.now(); if(t-this.lastSwitchAt<this.PHASE_MIN) return;
-    const have=(x:string)=>!!this.buffers[x]&&x!==this.cur; const ci=INTENSITY[this.cur||'']||2; const pl=this.playlist().filter(have);
-    const higher=pl.filter(x=>(INTENSITY[x]||2)>ci), pool=higher.length?higher:pl.filter(x=>(INTENSITY[x]||2)>=ci); if(!pool.length) return;
-    const nx=pool.sort((a,b)=>(INTENSITY[a]||2)-(INTENSITY[b]||2))[0]; this.lastSwitchAt=t; this.counts.phase++; this.counts.hard++; this.counts.total++; this.crossfade(nx,1.5,'bosscombat'); if(this.fightBag) this.fightBag.last=nx; this.setHard(nx); }
-  tick(){ if(!this.ready) return; const t=this.now(); this.flushPending(t); let tgt=this.want;
+    let nx:string|null=null; const sg=this.sig;
+    if(sg){ if(sg.p2&&!this.p2done&&this.cur!==sg.p2) nx=sg.p2; else return; } // signature bosses keep their own theme; the phase-two variant (if any) takes over once
+    else { const ci=INTENSITY[this.cur||'']||2; const c=POOLS.bosscombat.filter(x=>x!==this.cur&&x!==this.lastHard); const higher=c.filter(x=>(INTENSITY[x]||2)>ci), pool=higher.length?higher:c.filter(x=>(INTENSITY[x]||2)>=ci); if(!pool.length) return;
+      const lo=Math.min(...pool.map(x=>INTENSITY[x]||2)); const g=pool.filter(x=>(INTENSITY[x]||2)===lo); nx=g[Math.floor(Math.random()*g.length)]; }
+    if(!this.buffers[nx]){ this.ensure(nx); this.phasePend={name:nx}; return; } this.doPhase(nx); }
+  private doPhase(nx:string){ const t=this.now(); this.phasePend=null; this.lastSwitchAt=t; this.counts.phase++; this.counts.hard++; this.counts.total++; this.crossfade(nx,1.5,'bosscombat'); if(this.sig&&nx===this.sig.p2) this.p2done=true; if(this.fightBag) this.fightBag.last=nx; this.setHard(nx); }
+  tick(){ if(!this.ready) return; const t=this.now(); this.flushPending(t); if(this.phasePend){ if(this.state!=='bosscombat') this.phasePend=null; else if(this.buffers[this.phasePend.name]&&this.phasePend.name!==this.cur) this.doPhase(this.phasePend.name); else this.ensure(this.phasePend.name); }
+    if(this.state==='bosscombat'&&this.sig?.p2&&!this.p2done) this.ensure(this.sig.p2); let tgt=this.want;
     const hard=(s:MState|null)=>s==='elite'||s==='bosscombat'||s==='combat';
     if(hard(this.state)&&tgt==='traversal'){ // (town return is explicit and not held) hold hard music: min dwell + sustained calm (exit delay) before fading back to calm
       if(this.leaveSince<0) this.leaveSince=t; if(t-this.enteredAt<this.HARD_MIN||t-this.leaveSince<this.HARD_EXIT_HOLD) tgt=this.state!; }
     else this.leaveSince=-1;
     if(tgt===this.state){ const k=this.state==='town'||this.state==='traversal'?this.bagKey(this.state):null; if(k&&this.nextUp[k]) this.ensure(this.nextUp[k]); this.maybeRotate(t); return; }
-    if(tgt==='bosscombat'&&this.state!=='bossreveal') this.phase=0; // new fight (a reveal->fight handoff keeps the phase)
+    if(tgt==='bosscombat'&&this.state!=='bossreveal') this.phase=0; if(tgt==='bosscombat'&&this.state!=='bossreveal'&&!this.fightNext) this.planFight(); // new fight (a reveal->fight handoff keeps the phase)
     this.enter(tgt); }
   /** Calm states rotate to the next pool track after ROTATE_LOOPS full loops; the fade starts so it lands on the loop boundary. */
-  private maybeRotate(t:number){ const hard=this.state==='elite'||this.state==='bosscombat'; if(!hard&&this.state!=='town'&&this.state!=='traversal') return;
+  private maybeRotate(t:number){ const hard=this.state==='elite'||this.state==='bosscombat'; if(!hard&&this.state!=='town'&&this.state!=='traversal') return; if(this.state==='bosscombat'&&this.sig) return; // signature fights never rotate
     if(hard? t-this.lastSwitchAt<this.HARD_ROTATE : (t-this.lastSwitchAt<this.CALM_MIN||t-this.enteredAt<this.CALM_MIN)) return; if(!hard&&(this.want!==this.state||this.leaveSince>=0)) return; const l=this.live.find(x=>!x.ending); if(!l) return; const b=this.buffers[l.name]; if(!b) return;
     const loops=hard?1:Math.max(this.ROTATE_LOOPS,Math.ceil(this.CALM_MIN/b.duration)); const played=l.offset+(t-l.startedAt); if(played<b.duration*loops-this.ROTATE_FADE) return;
     if(!hard){ const k=this.bagKey(this.state!); if(!this.nextUp[k]) this.prefetch(this.state!); if(!this.buffers[this.nextUp[k]]) return; }
-    let n:string; if(this.state==='bosscombat'){ const have=(x:string)=>!!this.buffers[x]; this.fightBag??=new ShuffleBag(this.playlist()); n=this.fightBag.next(have); } else n=this.pick(this.state!);
+    let n:string; if(this.state==='bosscombat'){ const bag=this.fightBag??=this.bossBag(bossTier(this.key)); let nu=this.nextUp.boss; if(!nu||nu===l.name) nu=this.nextUp.boss=bag.next(x=>x!==l.name); this.ensure(nu); if(!this.buffers[nu]) return; delete this.nextUp.boss; n=nu; this.setHard(n); } else n=this.pick(this.state!);
     if(n===l.name) return; this.lastSwitchAt=t; this.counts.total++; if(hard) this.counts.hard++; else this.counts.calm++; this.crossfade(n,this.ROTATE_FADE,this.state!); }
   pend:{name:string;dur:number;s:MState;at:number}|null=null;
   /** Entering hard music is never gated by dwell/cooldowns. If the wanted track isn't decoded yet it is fetched and started the moment it loads (any decoded hard track after 4 s). */
   private flushPending(t:number){ const p=this.pend; if(!p) return; if(this.state!==p.s){ this.pend=null; return; } let n=p.name; if(!this.buffers[n]){ if(t-p.at<4){ this.ensure(n); return; } const alt=POOLS[p.s].find(x=>this.buffers[x]); if(!alt) return; n=alt; } this.pend=null; this.counts.entries++; this.crossfade(n,p.dur,p.s); }
-  private enter(s:MState){ const prev=this.state; if(s==='resolution'||s==='town') this.retry=false; const t=this.now(); this.state=s; this.enteredAt=t; this.lastSwitchAt=t; this.leaveSince=-1; this.pend=null; const name=this.pick(s);
+  private enter(s:MState){ const prev=this.state; if(s==='resolution'||s==='town') this.retry=false; if(s!=='bossreveal'&&s!=='bosscombat'){ this.fightNext=null; this.sig=null; this.phasePend=null; delete this.nextUp.boss; this.hold.clear(); } const t=this.now(); this.state=s; this.enteredAt=t; this.lastSwitchAt=t; this.leaveSince=-1; this.pend=null; const name=this.pick(s);
     let dur=2; if(s==='traversal'&&(prev===null||prev==='town')) dur=3; else if(s==='town') dur=3; else if(s==='bossreveal') dur=2.5; else if(s==='bosscombat') dur=1.5; else if(s==='resolution') dur=.5; else if(s==='combat'||s==='elite') dur=1.5; else if(prev==='resolution') dur=2.5;
     if(!this.buffers[name]&&(s==='elite'||s==='bosscombat')){ this.ensure(name); this.pend={name,dur,s,at:t}; return; }
     if(s==='elite'||s==='bosscombat') this.counts.entries++; this.crossfade(name,dur,s); }
@@ -140,10 +147,10 @@ export class MusicManager {
     this.log.push({t,from:this.cur,to:name,dur,state:s}); this.cur=name; if(!name) return; this.usedAt[name]=performance.now();
     const d=T[name], buf=this.buffers[name]; const src=this.ctx.createBufferSource(); src.buffer=buf; src.loop=d.loop; const gain=this.ctx.createGain(); gain.gain.value=0; src.connect(gain); gain.connect(this.out);
     let off=d.keepPos?(this.pos[name]||0):0; if(off>=buf.duration-1) off=0; src.start(t,off); this.curve(gain.gain,0,1,t,dur);
-    const l:Live={name,src,gain,startedAt:t,offset:off,ending:false}; this.live.push(l); if(s==='town'||s==='traversal'||s==='elite'){ this.prefetch(s); if(s==='traversal') this.prefetch('elite'); } }
+    const l:Live={name,src,gain,startedAt:t,offset:off,ending:false}; this.live.push(l); if(s==='bosscombat'&&!this.sig&&this.fightBag&&!this.nextUp.boss){ this.nextUp.boss=this.fightBag.next(x=>x!==name); this.ensure(this.nextUp.boss); } if(s==='town'||s==='traversal'||s==='elite'){ this.prefetch(s); if(s==='traversal') this.prefetch('elite'); } }
   /** Lazy tracks are decoded PCM (~50 MB each): drop them once faded out unless they are current or queued next (re-fetched from the HTTP cache when needed). */
   private evict(n:string){ if(!this.evictable(n)) return; delete this.buffers[n]; this.asked.delete(n); this.trim(); }
-  private evictable(n:string){ if(ALL()&&!LAZY.has(n)) return false; return n!==this.cur&&!this.live.some(x=>x.name===n)&&!Object.values(this.nextUp).includes(n)&&this.pend?.name!==n; }
+  private evictable(n:string){ if(ALL()&&!LAZY.has(n)) return false; return n!==this.cur&&!this.live.some(x=>x.name===n)&&!Object.values(this.nextUp).includes(n)&&this.pend?.name!==n&&this.fightNext!==n&&this.phasePend?.name!==n&&!(this.sig&&this.state==='bosscombat'&&this.hold.has(n)); }
   /** max decoded tracks kept (each ~50 MB PCM): High 5, Medium/Low 3 */
   get maxDecoded(){ return ALL()?1e9:Q.tier==='high'?5:3; }
   /** drop the least-recently-used decoded tracks beyond the cap (never current / fading / queued / pending) */

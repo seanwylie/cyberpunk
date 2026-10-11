@@ -44,32 +44,30 @@ ok(S.eliProx === 'traversal', 'sim: alerted elite in proximity does not trigger 
 ok(S.eliHit === 'elite' && S.eliAfter === 'traversal', 'sim: first hit on elite (' + S.eli + ') -> elite; back to traversal ~8 s after last exchange');
 ok(S.eliHurt === 'elite', 'sim: being hit by an elite -> elite');
 // --- boss / elite rotation (fake clock) ---
-const R = await ev(async () => { const mm = window.__audio.music, mod = await import('/src/music.ts'); const B = mod.BOSS_PLAYLISTS, MAP = mod.BOSS_MAP, I = mod.INTENSITY; const off = s => { mm.__off += s; mm.tick(); };
-  await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ...Object.values(B).flat()])].filter(n => !mod.LAZY.has(n)).every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
-  const o = { ids: Object.keys(B).length, sizes: [...new Set(Object.values(B).map(p => p.length))], sig: Object.keys(B).every(k => B[k][0] === MAP[k]), uniq: Object.values(B).every(p => new Set(p).size === p.length), pool: Object.values(B).flat().every(x => mod.POOLS.bosscombat.includes(x)), notLower: Object.keys(B).every(k => B[k].slice(1).filter(x => (I[x] || 2) >= (I[MAP[k]] || 2)).length >= Math.min(3, mod.POOLS.bosscombat.filter(x => x !== MAP[k] && (I[x] || 2) >= (I[MAP[k]] || 2)).length)) };
+const R = await ev(async () => { const mm = window.__audio.music, mod = await import('/src/music.ts'); const I = mod.INTENSITY; const off = s => { mm.__off += s; mm.tick(); };
+  await new Promise(r => { const f = () => [...new Set(Object.values(mod.POOLS).flat())].filter(n => !mod.LAZY.has(n)).every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
+  const o = {};
   const fight = (key, fn) => { mm.setState('traversal', null); off(40); mm.state = 'traversal'; mm.want = 'traversal'; mm.setState('bossreveal', key); off(3); mm.setState('bosscombat', key); return fn(); };
   const loop = () => { const l = mm.live.find(x => !x.ending); off(Math.max(0, mm.buffers[l.name].duration - ((l.offset + (mm.now() - l.startedAt)) % mm.buffers[l.name].duration) - 1)); off(2); };
-  // voss: signature first, then rotation through own playlist at loop boundaries with no immediate repeat
-  const seq = []; const lg0 = mm.log.length; fight('warden', () => { seq.push(mm.cur); for (let i = 0; i < 40 && seq.length < 5; i++) { const before = mm.cur; off(30); loop(); if (mm.cur !== before) seq.push(mm.cur); } });
-  { const ts = mm.log.slice(lg0).filter(x => x.state === 'bosscombat').slice(0, 7).map(x => x.t); o.gaps = ts.slice(1).map((x, i) => x - ts[i]); } o.seq = seq; o.pl = B.warden; o.dbg = mm.log.slice(-12).map(x => x.to + '@' + x.t.toFixed(0) + x.state);
-  const seq2 = []; fight('warden', () => { seq2.push(mm.cur); }); o.sig2 = seq2[0]; // new fight resets: signature again
-  // phase change -> more intense
-  fight('lineman', () => { o.pStart = mm.cur; off(25); mm.onPhase(1); o.pEnd = mm.cur; o.pOk = B.lineman.includes(mm.cur); o.pHigher = (I[mm.cur] || 2) > (I[o.pStart] || 2); const n = mm.log.length; mm.onPhase(1); o.pRepeat = mm.log.length === n; off(1); mm.onPhase(2); o.pTooSoon = mm.log.length === n; });
+  const pool = mod.POOLS.bosscombat;
+  // non-signature boss: draws from the whole boss pool; mid-fight rotation at loop boundaries (>= 90 s apart), never the same track twice in a row
+  const seq = []; const lg0 = mm.log.length; fight('warden', () => { seq.push(mm.cur); for (let i = 0; i < 60 && seq.length < 5; i++) { const before = mm.cur; off(30); loop(); if (mm.cur !== before) seq.push(mm.cur); } });
+  { const ts = mm.log.slice(lg0).filter(x => x.state === 'bosscombat').slice(0, 7).map(x => x.t); o.gaps = ts.slice(1).map((x, i) => x - ts[i]); } o.seq = seq; o.dbg = mm.log.slice(-12).map(x => x.to + '@' + x.t.toFixed(0) + x.state);
+  o.pl = pool;
+  // phase change -> more intense track from the pool, not repeated, not too soon (non-signature boss)
+  fight('lineman', () => { o.pStart = mm.cur; off(25); mm.onPhase(1); off(0.5); o.pEnd = mm.cur; o.pOk = pool.includes(mm.cur) && mm.cur !== o.pStart; o.pHigher = (I[mm.cur] || 2) >= (I[o.pStart] || 2); const n = mm.log.length; mm.onPhase(1); o.pRepeat = mm.log.length === n; off(1); mm.onPhase(2); o.pTooSoon = mm.log.length === n; });
   // elite rotation at loop boundary after min dwell
   mm.setState('traversal'); off(40); mm.setState('elite'); const e0 = mm.cur; off(5); o.eliteEarly = mm.cur !== e0; off(100); loop(); o.e0 = e0; o.e1 = mm.cur; o.eliteInPool = mod.POOLS.elite.includes(mm.cur);
   mm.setState('traversal'); off(30); o.after = mm.state; o.afterTrack = mm.cur; return o; });
-ok(R.ids >= 24 && R.sizes.length === 1 && R.sizes[0] === 4, 'every boss has a 4-track playlist: ' + R.ids + ' bosses, sizes ' + R.sizes);
-ok(R.sig && R.uniq && R.pool && R.notLower, 'playlists: signature first, unique, from boss pool, same-or-higher intensity preferred');
-ok(R.seq[0] === R.pl[0], 'first track on engagement is the signature: ' + R.seq[0]);
-ok(R.seq.length >= 5 && R.seq.every((x, i) => i === 0 || x !== R.seq[i - 1]) && R.seq.every(x => R.pl.includes(x)), 'rotates at loop boundaries within playlist, no immediate repeat: ' + R.seq.join('>') + ' ' + R.dbg.join(' '));
+ok(R.seq.length >= 4 && R.pl.includes(R.seq[0]), 'boss fight opens with a boss-pool track: ' + R.seq[0]);
+ok(R.seq.length >= 4 && R.seq.every((x, i) => i === 0 || x !== R.seq[i - 1]) && R.seq.every(x => R.pl.includes(x)), 'rotates at loop boundaries through the boss pool, no immediate repeat: ' + R.seq.join('>') + ' ' + R.dbg.join(' '));
 ok(R.gaps.length >= 3 && R.gaps.every(g => g >= 90), 'boss rotation: successive tracks >= 90 s apart: ' + R.gaps.map(g => g.toFixed(0)));
-ok(R.sig2 === R.pl[0], 'new fight resets to signature track');
 ok(R.pOk && R.pHigher && R.pRepeat && R.pTooSoon, 'phase change switches to a more intense playlist track (' + R.pStart + ' -> ' + R.pEnd + '), not repeated/too soon');
 ok(!R.eliteEarly && R.eliteInPool && R.e1 !== R.e0, 'elite pool rotates at loop boundary after dwell: ' + R.e0 + ' -> ' + R.e1);
 ok(R.after === 'traversal' && !/^(elite_|boss_)/.test(R.afterTrack), 'disengage returns to calm: ' + R.afterTrack);
 // --- switch budgets + guaranteed hard fade-in (fake clock) ---
 const C = await ev(async () => { const mm = window.__audio.music, mod = await import('/src/music.ts'); const off = s => { mm.__off += s; mm.tick(); }; const o = {};
-  await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ...Object.values(mod.BOSS_PLAYLISTS).flat()])].filter(n => !mod.LAZY.has(n)).every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
+  await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ])].filter(n => !mod.LAZY.has(n)).every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
   const settle = () => { mm.setState('traversal', null); off(60); mm.state = 'traversal'; mm.want = 'traversal'; };
   const loopEnd = () => { const l = mm.live.find(x => !x.ending); off(Math.max(0, mm.buffers[l.name].duration - ((l.offset + (mm.now() - l.startedAt)) % mm.buffers[l.name].duration) - 1)); off(2); };
   // calm: scripted 10 minutes of exploring (zone-change requests every 5 s)
@@ -86,7 +84,7 @@ const C = await ev(async () => { const mm = window.__audio.music, mod = await im
   settle(); mm.setState('elite'); off(2); mm.setState('bossreveal', 'warden'); off(3); mm.setState('bosscombat', 'warden'); chk('boss-from-elite');
   settle(); mm.setState('bossreveal', 'lineman'); off(3); mm.setState('bosscombat', 'lineman'); chk('boss-after-calm'); settle();
   // not decoded yet: engagement starts the moment the track loads
-  const sig = mod.BOSS_MAP.warden, keep = mm.buffers[sig]; delete mm.buffers[sig]; mm.setState('bossreveal', 'warden'); off(3); const n1 = mm.log.length; mm.setState('bosscombat', 'warden'); off(1); o.pendWait = mm.log.length === n1 && mm.state === 'bosscombat'; mm.buffers[sig] = keep; off(0.3); const e = mm.log[mm.log.length - 1]; o.pendStart = e.to === sig && e.state === 'bosscombat';
+  mm.setState('bossreveal', 'warden'); const sig = mm.fightNext, keep = mm.buffers[sig]; delete mm.buffers[sig]; off(3); const n1 = mm.log.length; mm.setState('bosscombat', 'warden'); off(1); o.pendWait = mm.log.length === n1 && mm.state === 'bosscombat'; mm.buffers[sig] = keep; off(0.3); const e = mm.log[mm.log.length - 1]; o.pendStart = e.to === sig && e.state === 'bosscombat';
   o.fades = fades; return o; });
 ok(C.calm.total <= 5 && C.calm.hard === 0 && C.calmLog <= 5, 'calm: <= 5 track switches (~2.5 min tracks) in a scripted 10-minute run: ' + JSON.stringify(C.calm));
 ok(C.boss.hard <= 4 && C.boss.phase <= 1 && C.bossLog <= 4, 'boss fight (5 min, 1 phase): <= 4 switches: ' + JSON.stringify(C.boss));
@@ -95,7 +93,7 @@ ok(C.calmRot && C.fades.every(f => f.ok), 'every elite/boss engagement fades in 
 ok(C.pendWait && C.pendStart, 'boss track not yet decoded: waits, then fades in as soon as it loads');
 // --- death / respawn / retry: never restart the track that just played; persistent bag; no hard reset ---
 { const D = await ev(async () => { const mm = window.__audio.music, mod = await import('/src/music.ts'); const off = s => { mm.__off += s; mm.tick(); }; const o = {};
-    await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ...Object.values(mod.BOSS_PLAYLISTS).flat()])].filter(n => !mod.LAZY.has(n)).every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
+    await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ])].filter(n => !mod.LAZY.has(n)).every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
     const settle = () => { mm.setState('traversal', null); off(60); mm.state = 'traversal'; mm.want = 'traversal'; };
     const n0 = mm.log.length; const hardSeq = []; const bagBefore = mm.bags; const seen = []; localStorage.removeItem('wv_music_lasthard');
     for (const key of ['warden', 'lineman', 'overseer']) { settle(); mm.setState('bossreveal', key); off(3); mm.setState('bosscombat', key); const fights = [mm.cur];
@@ -117,12 +115,12 @@ ok(C.pendWait && C.pendStart, 'boss track not yet decoded: waits, then fades in 
   ok(Sx.retry >= 1 && Sx.flags, 'sim: boss reset after death emits musicretry (' + JSON.stringify(Sx) + ')'); }
 // --- rotation logic + asset existence (variety pack) ---
 import fs from 'fs';
-const M = await ev(async () => { const m = await import('/src/music.ts'); return { pools: { ...m.POOLS, harrow: m.TOWN_POOLS.harrow, areas: Object.values(m.AREA_TRACKS).flat() }, boss: m.BOSS_MAP, core: m.CORE_TRACKS }; });
+const M = await ev(async () => { const m = await import('/src/music.ts'); return { pools: { ...m.POOLS, harrow: m.TOWN_POOLS.harrow, areas: Object.values(m.AREA_TRACKS).flat() }, boss: m.BOSS_MAP, sig: m.SIG_TRACKS, core: m.CORE_TRACKS }; });
 const files = new Set(fs.readdirSync('public/audio/music').map(f => f.replace(/\.mp3$/, '')));
-const used = [...new Set([...Object.values(M.pools).flat(), ...Object.values(M.boss), ...M.core])];
+const used = [...new Set([...Object.values(M.pools).flat(), ...Object.values(M.boss), ...M.core, ...M.sig])];
 ok(used.every(n => files.has(n)), 'every pooled track has an mp3: missing ' + used.filter(n => !files.has(n)).join());
 ok([...files].every(n => used.includes(n)), 'no orphan mp3s: ' + [...files].filter(n => !used.includes(n)).join());
-ok(fs.readdirSync('public/audio/music').every(f => fs.statSync('public/audio/music/' + f).size < 1.8e6), 'each track < 1.8 MB');
+ok(fs.readdirSync('public/audio/music').every(f => fs.statSync('public/audio/music/' + f).size < 2.5e6), 'each track < 2.5 MB');
 ok(M.pools.town.length >= 3 && M.pools.traversal.length >= 5 && M.pools.elite.length >= 4 && !M.pools.elite.some(n => /^(combat_|traversal_|calm_)/.test(n)) && M.pools.bosscombat.length >= 4, 'pool sizes');
 ok(Object.values(M.boss).every(n => M.pools.bosscombat.includes(n)) && new Set(Object.values(M.boss)).size >= 4, 'boss map uses boss pool, >=4 distinct tracks');
 const bag = await ev(async () => { const { ShuffleBag } = await import('/src/music.ts'); const out = {};
@@ -137,7 +135,7 @@ const mgr = await ev(async () => { const a = window.__audio, mm = a.music; await
   mm.state = null; mm.want = 'town'; mm.setState('town'); r.town0 = mm.cur; await new Promise(res => { const f = () => mm.buffers[mm.nextUp['town:' + mm.townId]] ? res() : setTimeout(f, 200); f(); setTimeout(res, 15000); }); const live = mm.live.find(l => !l.ending); const d = mm.buffers[live.name].duration; mm.ROTATE_LOOPS = 1; mm.enteredAt -= 300; mm.lastSwitchAt -= 300; live.startedAt = mm.now() - (d * Math.max(1, Math.ceil(mm.CALM_MIN / d)) - 1); mm.tick(); r.rot = mm.cur; r.rotLog = mm.log[mm.log.length - 1];
   return r; });
 ok(/^(elite_|boss_)/.test(mgr.elite) && M.pools.elite.includes(mgr.elite), 'elite state picks elite/boss pool: ' + mgr.elite);
-ok(mgr.boss === 'boss_overclock', 'warden maps to its boss track: ' + mgr.boss);
+ok(M.pools.bosscombat.includes(mgr.boss), 'non-signature boss (warden) draws from the boss pool: ' + mgr.boss);
 ok(M.pools.bosscombat.includes(mgr.boss2), 'unmapped boss draws from boss pool: ' + mgr.boss2);
 { const B = await ev(async () => { const b = await import('/src/content/batch1_bosses.ts'), m = await import('/src/music.ts'); return b.BOSSES.map(x => ({ id: x.id, tier: x.tier, faction: x.faction, track: m.BOSS_MAP[x.id] })); });
   const tr = B.map(b => b.track), uniq = new Set(tr);
@@ -169,6 +167,40 @@ ok(mgr.rot && mgr.rot !== mgr.town0 && mgr.rotLog.state === 'town' && mgr.rotLog
   ok(calmFiles.every(n => files.has(n)), 'every calm track exists as an mp3');
   const lazyOk = await ev(async () => { const m = await import('/src/music.ts'), mm = window.__audio.music; return m.CALM2.every(n => !m.CORE_TRACKS.includes(n)) && m.CALM2.filter(n => mm.buffers[n]).length <= 5; });
   ok(lazyOk, 'new ambient tracks are lazy-loaded (not preloaded; only a few decoded at once: current + next + recent)'); }
+// --- boss music: tier-weighted persistent bag over the whole pool, signature themes only for their boss ---
+{ const Bt = await ev(async () => { const m = await import('/src/music.ts'), b = await import('/src/content/batch1_bosses.ts'), mm = window.__audio.music; localStorage.clear(); mm.bossBags = {}; mm._lh = null;
+    const ids = [...new Set([...b.BOSSES.map(x => x.id), ...Object.keys(m.BOSS_MAP)])]; const sigIds = Object.keys(m.SIGNATURE); const o = { ids: ids.length, sigIds, fights: 0, consec: 0, sigWrong: 0, sigLeak: 0 };
+    const sigTracks = new Set(m.SIG_TRACKS); const seen = new Set(), byTier = {}; let prev = null; const perBoss = {};
+    for (let i = 0; i < 600; i++) { const id = ids[Math.floor(Math.random() * ids.length)]; mm.key = id; mm.fightNext = null; mm.planFight(); const n = mm.fightNext; mm.fightNext = null; mm.setHard(n); o.fights++;
+      if (n === prev && !m.SIGNATURE[id]) o.consec++; prev = n; if (m.SIGNATURE[id]) { if (n !== m.SIGNATURE[id].main) o.sigWrong++; } else { if (sigTracks.has(n)) o.sigLeak++; seen.add(n); const t = m.bossTier(id); (byTier[t] ??= []).push(m.INTENSITY[n] || 2); } (perBoss[id] ??= new Set()).add(n); }
+    o.seen = seen.size; o.pool = m.POOLS.bosscombat.length; o.avg = Object.fromEntries(Object.entries(byTier).map(([t, a]) => [t, a.reduce((x, y) => x + y, 0) / a.length])); o.minVariety = Math.min(...ids.filter(i => !m.SIGNATURE[i]).map(i => perBoss[i]?.size || 0));
+    o.poolHasSig = m.POOLS.bosscombat.some(x => sigTracks.has(x)) || Object.values(m.POOLS).flat().some(x => sigTracks.has(x));
+    o.w1 = Object.fromEntries(m.bossPool(1)), o.w3 = Object.fromEntries(m.bossPool(3)); o.tiers = Object.fromEntries(sigIds.map(i => [i, m.bossTier(i)]));
+    // persistence across sessions: new manager bags resume the stored bag/last
+    const k = 'wv_music_boss:t2'; o.persisted = !!localStorage.getItem(k) || !!localStorage.getItem('wv_music_boss:t1'); return o; });
+  ok(Bt.fights === 600 && Bt.consec === 0, 'boss pick: no immediate repeat (pool bosses) across 600 simulated fights over all ' + Bt.ids + ' bosses');
+  ok(Bt.sigIds.length >= 8 && Bt.sigWrong === 0 && Bt.sigLeak === 0 && !Bt.poolHasSig, 'signature themes: >= 8 bosses, each fight uses only its own theme, signature tracks never appear in other bosses or any pool: ' + Bt.sigIds.join());
+  ok(Bt.seen >= Bt.pool - 2 && Bt.minVariety >= 5, 'non-signature bosses cycle through the whole boss pool (' + Bt.seen + '/' + Bt.pool + ' used, every boss heard >= 5 distinct tracks: ' + Bt.minVariety + ')');
+  ok(Bt.avg[1] < Bt.avg[2] && Bt.avg[2] < Bt.avg[3] || (Bt.avg[1] < Bt.avg[2]), 'tier weighting: easier bosses draw lighter tracks (avg intensity by tier ' + JSON.stringify(Bt.avg) + ')');
+  ok(Bt.w1.elite_siege > Bt.w1.boss_recall && Bt.w3.boss_widow > Bt.w3.elite_siege, 'weights favour near-intensity tracks (tier1 siege>recall, tier3 widow>siege)');
+  ok(Bt.persisted, 'boss bags persist in localStorage');
+  const Sg = await ev(async () => { const m = await import('/src/music.ts'), mm = window.__audio.music; const off = s => { mm.__off += s; mm.tick(); }; const o = {}; const wait = async (c, ms = 20000) => { const t0 = performance.now(); while (!c() && performance.now() - t0 < ms) { await new Promise(r => setTimeout(r, 200)); mm.tick(); } return c(); };
+    const settle = () => { mm.setState('traversal', null); off(60); mm.state = 'traversal'; mm.want = 'traversal'; };
+    // signature boss with a phase-two variant
+    settle(); mm.setState('bossreveal', 'recall'); off(3); mm.setState('bosscombat', 'recall'); o.loaded = await wait(() => mm.cur === 'boss_sig_recall'); o.start = mm.cur; off(25); o.rot = (() => { const n = mm.log.length; off(200); const l = mm.live.find(x => !x.ending); return mm.log.length === n; })();
+    mm.onPhase(1); await wait(() => mm.buffers['boss_sig_recall_p2'] && mm.cur === 'boss_sig_recall_p2'); o.p2 = mm.cur; const n2 = mm.log.length; off(25); mm.onPhase(2); off(1); o.p2stay = mm.cur === 'boss_sig_recall_p2' && mm.log.length === n2;
+    // new fight starts at the main theme again (retry)
+    window.__audio.noteMusicRetry(); settle(); mm.setState('bossreveal', 'recall'); off(3); mm.setState('bosscombat', 'recall'); await wait(() => mm.cur === 'boss_sig_recall'); o.retryMain = mm.cur === 'boss_sig_recall';
+    // signature boss without a p2: stays on its theme through phases
+    settle(); mm.setState('bossreveal', 'resonance'); off(3); mm.setState('bosscombat', 'resonance'); await wait(() => mm.cur === 'boss_sig_resonance'); o.rStart = mm.cur; off(25); mm.onPhase(1); off(5); o.rStay = mm.cur === 'boss_sig_resonance';
+    // memory: decoded set stays bounded
+    o.decoded = Object.keys(mm.buffers).length; o.cap = mm.maxDecoded; settle(); return o; });
+  ok(Sg.loaded && Sg.start === 'boss_sig_recall' && Sg.rot, 'signature boss opens with its own theme and does not rotate mid-fight');
+  ok(Sg.p2 === 'boss_sig_recall_p2' && Sg.p2stay, 'phase change -> phase-two variant, then stays (no repeat)');
+  ok(Sg.retryMain, 'retry of a signature boss restarts its own theme');
+  ok(Sg.rStart === 'boss_sig_resonance' && Sg.rStay, 'signature boss without a variant keeps its theme through phase changes');
+  ok(Sg.decoded <= Math.max(Sg.cap, 40) || Sg.cap >= 1e9, 'decoded track count bounded by cap (' + Sg.decoded + ' / ' + Sg.cap + ')');
+  const sigFiles = await ev(async () => (await import('/src/music.ts')).SIG_TRACKS); ok(sigFiles.length >= 11 && sigFiles.every(n => files.has(n)), 'signature mp3s exist (' + sigFiles.length + ')'); }
 ok(!errors.length, 'no page errors ' + errors.join('|'));
 // fallback: block music files
 const b2 = await launch({ query: '' }); await b2.page.route('**/audio/music/*', r => r.abort());

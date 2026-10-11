@@ -75,7 +75,7 @@ Tests: `npm run test:music` now also checks that the 20 batch-1 bosses have >= 1
 | Area-specific exploration (HI / PS / MM) | 0 | 6 (2 each) |
 | Elite pool | 4 | 14 |
 | Boss pool (fight tracks, incl. elite_siege/hunt) | 21 | 21 |
-| Total distinct files | 36 | 60 |
+| Total distinct files | 36 | 60 (71 with the boss signature pack) |
 
 (combat_a/b are legacy and unused by the sim.)
 
@@ -100,6 +100,32 @@ Ambient pack: 14 x 150 s (146 s after the loop blend), 80 kbps stereo, -16 LUFS,
 - Tests: `npm run test:music` adds checks for >= 20 calm tracks, >= 10 elite, bag persistence across sessions, no repeats over 300 simulated sessions, area weighting, lazy loading. Calm budget is <= 5 switches in 10 min.
 
 Credits: 24 tracks (2,700 s requested) used ~39,200 credits (counter 37,810 -> 76,988 of 329,944; ~14.5 per requested second).
+
+### Boss music rework: whole-pool rotation + signature themes
+**How a boss fight picks its track (`src/music.ts`)**
+- The old per-boss 4-track playlists (`BOSS_PLAYLISTS`) are gone. `BOSS_MAP` stays only as each boss's legacy "home" track data; it no longer forces the track.
+- Non-signature bosses (all original dungeon bosses + the tier I-III batch-1 bosses without a signature) draw each fight from the **whole boss pool** (21 tracks) through a persistent shuffle bag per boss tier (`wv_music_boss:t<tier>` in localStorage). The bag excludes the last hard track played (`wv_music_lasthard`, persisted), so the same track never opens two fights in a row, also across deaths/retries/sessions. The track is chosen during the boss reveal and fetched then, so the fight fades in on time.
+- Tier weighting (`bossPool(tier)`): each pool track gets 3 slots per bag cycle if its `INTENSITY` equals the boss tier (1 lightest .. 4 heaviest), 2 if one off, 1 otherwise. Easier bosses therefore mostly hear the lighter tracks (elite_siege/hunt, lineman, pitboss), harder ones the heavier ones, but every track still appears each cycle. Original dungeon bosses count as tier 1.
+- Mid-fight: every `HARD_ROTATE` (90 s) at a loop boundary the fight crossfades (3 s) to the bag's next track (prefetched one ahead, never the current one). On a phase change/enrage (`musicphase`) it escalates to a track of higher (else equal) intensity from the pool, never the current or last one, after `PHASE_MIN` 20 s on the current track; if that track is not decoded yet it is fetched and the switch happens when it is ready.
+
+**Signature themes** (11 new tracks; ONLY used by that boss, in no pool/bag; `SIGNATURE` in `src/music.ts`)
+Chosen as the hardest bosses by tier and boss HP/damage multipliers in the balance table (tier IV Recall; tier III with 2.0-2.2x multipliers: Dispatcher, Widow, Resonance, Courier, Rattle, Breaker; plus the Liquidator). 150 s multi-section loops (intro -> main theme -> climax -> back to intro), `_p2` variants 120 s; 112 kbps, -16 LUFS target (measured -15..-16), 2.0 / 1.6 MB each; lazy-loaded (`LAZY`), prefetched on the reveal.
+
+| Boss (tier) | Track | Composition |
+|---|---|---|
+| recall (IV) | boss_sig_recall / boss_sig_recall_p2 | 176 bpm D minor, wordless choir four-note motif + crushing industrial bass, recall sirens / p2 184 bpm full-choir fortissimo |
+| dispatcher (III) | boss_sig_dispatcher / _p2 | 164 bpm F# minor, sequenced bass + staccato string ostinato, robotic melody / p2 172 bpm overclocked |
+| widow (III) | boss_sig_widow / _p2 | 172 bpm B minor, mourning vocal pads + keening lead over static and morse / p2 180 bpm furious |
+| resonance (III) | boss_sig_resonance | 168 bpm C minor, standing-wave sub, glass harmonica + sonar melody, silent dropouts, timpani |
+| courier (III) | boss_sig_courier | 176 bpm G minor DnB, brass fanfare + taiko, doppler whooshes |
+| rattle (III) | boss_sig_rattle | 142 bpm A minor, chains + bowed metal, breathy swells, crushing stomps |
+| breaker (III) | boss_sig_breaker | 140 bpm half-time E minor, anvil/wrecking-ball, power riffs, double-time section |
+| liquidator (III) | boss_sig_liquidator | 150 bpm G# minor, countdown chant pads, hardstyle bass, gavel snares |
+
+Behaviour: a signature boss always opens (and retries) with its main theme, never rotates mid-fight, and a phase change switches once to its `_p2` variant if it has one (else it keeps the theme). The old home tracks of these bosses (boss_recall, boss_dispatcher, ...) remain in the shared pool for other bosses.
+Memory: the main track is fetched during the reveal; the p2 is fetched during the fight and held against eviction; the existing LRU cap (`maxDecoded`: High 5, Medium/Low 3) still applies.
+Credits: 11 tracks (1,560 s requested) ~19,400 credits (counter 76,988 -> 96,372 of 329,944; ~12.4/s).
+Tests: `npm run test:music` covers no-repeat over 600 simulated fights across all 32 boss ids, tier weighting, signature-only usage, p2 handling, retry and persistence.
 
 #### Pools and rotation (`POOLS`, `BOSS_MAP`, `ShuffleBag` in `src/music.ts`)
 - Each state draws from its pool through a shuffle bag: every track once per cycle, never the same track twice in a row (also across refills).
