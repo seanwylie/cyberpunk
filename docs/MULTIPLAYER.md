@@ -1,4 +1,4 @@
-# Multiplayer (Phase 1): party play + shared town presence
+# Multiplayer (Phase 2): party play on the real combat code + shared town presence
 
 Status: working prototype, off by default. Solo/offline play is unchanged and works with no server.
 Context: `docs/UNIVERSE.md` section 8 (MMO roadmap): "a persistent shared hub world plus private instanced 4+1 dungeons", near-zero cost at zero players. This is roadmap phase 1 (networking spike) plus a small slice of phase 4 (parties/invites).
@@ -11,16 +11,33 @@ Context: `docs/UNIVERSE.md` section 8 (MMO roadmap): "a persistent shared hub wo
 | Transport | WebSocket (`ws`), JSON, one Node process | Works from a static web build and phones, trivial hosting. UDP/WebRTC only if profiling demands |
 | Tick | Sim 20 Hz, one full snapshot per tick per player; town presence 10 Hz | Full snapshots (no deltas) make loss/reorder tolerance trivial |
 | Client | Predict own movement with the same fixed-step function as the server (`stepPlayer`), reconcile by replaying unacked inputs; remotes interpolated 120 ms behind | Responsive local feel, smooth remotes |
-| Sim | New small headless `InstanceSim` (`src/net/netsim.ts`) reusing the real seeded dungeon generators, enemy stats and loot tables | See below |
+| Sim | `PartyWorld` (`src/core/party.ts`): one real `Game` per party member + one shared enemy world, all the existing combat code | See "Shared combat core" below |
 | Identity | Anonymous guest id + server-issued secret token, display name; saves stay local | Accounts are roadmap phase 2 |
 | Party | 5-char code or invite link (`?server=..&party=CODE`), max 4, leader, ready check, kick | Spec says 4 + 1 guest; the guest slot is later |
 | Loot | Instanced: each member rolls their own drops from a deterministic per-player stream; the server only sends you your own drops and only you can collect them | No stealing |
 | Scaling | Enemy HP x(1+0.65 per extra player), damage x(1+0.20 per extra player), shown in the panel | Placeholders for the balance harness |
 
-Why not run the existing `Game` on the server yet: `src/sim.ts` is a dense single-player class fused to the one local player, `localStorage`, the save object and UI toasts, and it is only tested headlessly inside a browser page. Extracting a pure multi-player core touches files other jobs are editing. Phase 1 therefore ships a parallel, deliberately small authoritative sim that reuses all the data, and leaves `Game` as the solo source of truth. Phase 2 should extract the shared combat core and delete the duplication.
+## 1b. Shared combat core (phase 2)
+There is no second combat model any more. The server runs the SAME code as solo play:
+- Every party member is a headless `Game` (`src/sim.ts`) built from their validated profile (`src/core/profile.ts`): installed hardware, chips, reputation, level, ability picks. So stats, 50+ abilities (data-driven engine + legacy abilities), cooldowns, heat/overheat/vent, dodge, stims, status effects, deployables, projectiles and the abilities VFX events are the original code paths, not copies.
+- Enemies, enemy projectiles/zones, boss state, doors and puzzle flags are one shared world ticked once per step by an extra "AI" `Game` whose target is re-aimed per enemy at the nearest living player (`Game.bindTarget`, `Game.flowHook`; one flow field per player). All mob/boss mechanics (`src/content/mechanics.ts`, `mobs.ts`, `boss_moves.ts`) run unchanged.
+- Dungeon puzzles are real: gate guard, locks, hack terminals, boss conditions, sensors, hazards, boss reveal and leash. Clients send `use` / dialog-pick actions; flags are shared, doors open for everyone and are mirrored to clients through the snapshot flags.
+- Solo refactors that made this possible (behaviour unchanged, solo tests green): `Game.grantKill` (per-player kill rewards), `Game.grantClear` (per-player clear rewards), `Game.updateWorldRun` (once-per-world logic), three optional hooks (`bindTarget`, `flowHook`, `onTeamRevive`).
+- Determinism: while a host or the world runs, `Math.random` is swapped for a seeded stream (per player: `hash(seed:host:id)`; world: `seed ^ const`). Same seed + same inputs gives byte-identical snapshots; a 1-player party deals exactly the same seeded ability damage as the solo `Game` (tests below).
+- Client: the local `Game` becomes a thin view while in a party instance. `releaseAim` / `dodge` / `ventNow` / `useStim` / `interact` send actions (`acts` on the 20 Hz input message, validated and capped server-side); heat, cooldowns, stims, hp, move speed and the interact prompt come from the snapshot (`you`); ability/combat VFX events (`fx` events) are replayed on every client within range. Prediction uses the server-reported speed; dodge/lunge/slide displacement is server authoritative and reconciled.
+- Build validation (`sanitizeProfile`): items must exist in the catalog, fit their body part, not exceed the player's level; chips must fit the part and the socket cap; level/reputation/pity clamped; invalid entries are replaced by stock hardware and reported. Limit: without accounts the server cannot prove a guest *owns* an item (a hacked local save can claim any catalog item within these bounds). Server-side ownership needs the phase-3 account/ledger.
+
+### Rewards are INDIVIDUAL
+Each member who took part in a kill (dealt damage to it, or was alive within 20 tiles; for bosses also anyone alive in the boss room) gets, on their own host and from their own seeded RNG stream:
+- their own full XP (never split), reputation, contract/objective credit (`contractEvent`, forwarded to that client's own contracts), credits;
+- their own instanced loot rolls (items, chips, stims, credits, signature drops), their own ability-acquisition pity counter (`abAcq`, sent in the profile and returned as `pity`), and their own cosmetic roll;
+- their own clear credit (`grantClear`) when the boss dies.
+A player who did not take part (far away, never hit it) gets nothing from that kill. Drops are server-side per player: other players' drops never appear in your snapshot and `pickup` of someone else's drop is refused and counted. `tests/net_core.mjs` asserts independent rolls and rewards (including that your drops are identical with or without a fourth member present).
+
+Party rules: enemy HP x(1+0.65 per extra player) and damage x(1+0.20); downed members wait for a hold-F revive (2.5 s) or Self-Defib; Team Revival revives downed teammates within 4.5 tiles; a full wipe returns everyone to the entrance and resets the boss; checkpoints heal each player individually.
 
 ## 2. Code map
-- `src/net/shared.ts` protocol, constants, shared movement, scaling, sanitising. `netsim.ts` authoritative instance. `interp.ts` snapshot interpolation. `client.ts` `NetClient` + `InstanceClient` (prediction). `session.ts` bridges a party instance into the existing `Game`/`Renderer`. `remote_render.ts` remote players (real sprite, body variants, cosmetics), one name plate each, ping markers. `party_ui.ts` + `index.ts` Party button, panel, chat overlay, bootstrap.
+- `src/net/shared.ts` protocol, constants, shared movement, scaling, sanitising. `src/core/party.ts` authoritative instance (real Game per member), `src/core/profile.ts` build profile + validation, `src/core/testkit.ts` test helpers. `interp.ts` snapshot interpolation. `client.ts` `NetClient` + `InstanceClient` (prediction). `session.ts` bridges a party instance into the existing `Game`/`Renderer`. `remote_render.ts` remote players (real sprite, body variants, cosmetics), one name plate each, ping markers. `party_ui.ts` + `index.ts` Party button, panel, chat overlay, bootstrap.
 - `server/hub.ts`, `server/main.ts`, `server/Dockerfile`, `docker-compose.yml`, `infra/` (AWS CDK), `infra/ci/deploy.yml.template` (copy to `.github/workflows/deploy.yml`): guests, parties, town shards, instance rooms, chat, pings, rate limits.
 - Shared-file edits are tiny: `Game.netHook` (+1 call at top of `Game.update`), one `netItems` call in `Renderer`, `initNet` in `main.ts`.
 
@@ -35,6 +52,7 @@ The Party button shows on dev/LAN hosts, and in production builds only when a se
 ## 4. Protocol (JSON, `proto: 1`)
 Client to server: `hello`, `ping`, `profile`, `party_create|join|leave|kick|ready|dungeon|start`, `leave_instance`, `input{seq,mx,my,atk,face,revive}` (20 Hz), `chat`, `mark`, `town_join|town_pos|town_leave`, `pickup`.
 Server to client: `welcome`, `pong`, `party`, `instance_start{dungeon,seed}`, `snap` (20 Hz), `loot`, `instance_end`, `chat`, `mark`, `town`, `town_snap`, `town_correct`, `err`, `sys`. The layout is not sent: both sides build `dungeonOf(id).build(seed)` (deterministic) and open all doors.
+- Phase 2 additions: `build {profile}` (client -> server before ready/start; validated by `sanitizeProfile`); `input.acts[]` = `cast {i,wx,wy}`, `dodge`, `vent`, `stim`, `use`, `dlg {i}` (max 4 per message, queue 8, invalid ones dropped); `snap.you` carries heat, overheat, cooldowns, stims, move speed, interact prompt; `snap.ev` adds `fx` (combat/ability VFX), `toast`/`sfx`/`dialog` (private to the recipient); `loot.items[]` adds `xp`, `rep`, `cev` (contract event), `pity`, `cos`, signed `credits`; dev-only `dev_cheat {god,oneShot}` and `dev_boss_tp` (solves the puzzles, teleports to the reveal point).
 
 ## 5. Security model
 - Server accepts inputs only: direction clamped to unit length (NaN rejected), attack and revive flags. Speed is a server constant; damage derives from the server-known level clamped 1-50; position, HP, enemy HP, drops are server decided.
@@ -45,17 +63,19 @@ Server to client: `welcome`, `pong`, `party`, `instance_start{dungeon,seed}`, `s
 ## 6. Tests (`npm run test:net`, run one at a time)
 - `tests/net_sim.mjs`: determinism, scaling, speed-hack clamp, replay rejection, flood bound, boss kill, instanced loot, steal denial, revive, wipe, interpolation, sanitising.
 - `tests/net_integration.mjs`: real ws server, 3 bot clients on the real client core, 150 ms RTT + jitter and 8% loss of snapshots and inputs: party flow, caps, chat limits, same seed everywhere, prediction convergence, input flood, boss kill, loot instancing, state consistency, rtt, token reconnect, leader transfer, town shards, teleport rejection, offline server.
-- `tests/net_hardening.mjs`: origin allow-list incl. wildcard spoofing, room/party caps, `/healthz` + `/metrics`, graceful drain. `tests/net_party_ui.mjs` (Playwright, needs the dev server and `URL=`): Party button in tray, offline panel, connect, invite-link join, ready, scaling text, town presence, chat, two real game pages in one dungeon, remote player, movement vs server, boss kill, personal loot applied locally, soft leave without solo penalties, no page errors.
+- `tests/net_core.mjs` (headless, no browser: every ability casts on a server host, build validation, individual rewards and pity, determinism and solo-vs-party parity, stim/vent/dodge, scaling, revive, wipe, boss + per-player clear), `tests/net_interp.mjs` (input sanitising, interpolation), `tests/net_integration.mjs` (ws server + 3 bots with latency/loss, abilities over the wire, boss kill, individual xp/rep/loot messages), `tests/net_hardening.mjs`: origin allow-list incl. wildcard spoofing, room/party caps, `/healthz` + `/metrics`, graceful drain. `tests/net_party_ui.mjs` (Playwright, needs the dev server and `URL=`): Party button in tray, offline panel, connect, invite-link join, ready, scaling text, town presence, chat, two real game pages in one dungeon, remote player, movement vs server, boss kill, personal loot applied locally, soft leave without solo penalties, no page errors.
 
 ## 7. Works / stubbed
-Works: guests, parties (create/join/leave/kick/ready/leader transfer/60 s reconnect seat), invite links, 2-4 player authoritative instances for any dungeon in `DUNGEONS` (real layouts, enemy stats, boss), prediction/interpolation, auto-attack combat, enemy melee/ranged and boss slam, downed + hold-F revive, wipe reset, instanced loot with local grant, party chat, map ping (G), town presence with real sprites/cosmetics, one range-faded non-overlapping plate per player, soft leave.
+Works: guests, parties (create/join/leave/kick/ready/leader transfer/60 s reconnect seat), invite links, 2-4 player authoritative instances for any dungeon in `DUNGEONS`, **the real combat core**: builds from installed hardware and chips, all abilities, heat/overheat/vent, dodge, stims, status effects, boss/mob mechanics, dungeon puzzles (gates, locks, hacks, conditions, sensors, hazards), per-player scaling, per-player XP/rep/credits/loot/pity/cosmetics/contract credit, downed + hold-F revive, Team Revival, Self-Defib, wipe reset, prediction/interpolation, party chat, map ping (G), town presence, soft leave.
 
-Stubbed / not networked yet:
-- Abilities, dodge, chips/augments, heat, stims: not in the server sim; party runs are auto-attack only (damage from level). Team Revival is replaced by hold-F revive. Top phase 2 item.
-- Gates/locks/hacks/conditions/hazards: doors are all open, hazards ignored; no per-boss move sets, affixes or summons. Enemy AI is simple chase.
-- XP, rep, lockouts, achievements, repair bills are not granted for party runs (loot and credits are).
-- No 5th guest slot, no instance resume beyond 60 s, no server persistence (restart drops parties), town chat only in protocol, no emotes/voice/friends. Look updates only on join/profile change.
-- WebSocket is TCP: the loss shim proves state tolerance, real loss shows up as latency spikes.
+Known gaps / stubbed:
+- Enemy area attacks resolve against the targeted player only (AoE does not hit teammates standing elsewhere); heal/aura abilities are self-only (`ally` aim abilities say "no teammate"); control/ally enemies belong to the world, not to the caster, and their kills reward nobody.
+- Hardware breakage on down (repair bills), repair cost and lost carried credits are simulated on the server host but NOT written back to the client's save; a downed member's broken hardware is restored at the next checkpoint/wipe. Achievement unlocks, story beats and lockout days are not applied to party runs. Clear XP, XP, rep, contract credit, loot, pity and cosmetics ARE applied locally.
+- Without accounts the server cannot prove item ownership (see build validation).
+- Boss leash/reveal use "any player in the boss room". Late joiners are not supported (party is fixed at start, reconnect within 60 s keeps the seat).
+- Music/UI hints are local; the dungeon objective arrow is not synced; dialogs only for conditions that use `emit('dialog')`.
+- No 5th guest slot, no instance resume beyond 60 s, no server persistence (restart drops parties), no emotes/voice/friends. WebSocket is TCP: the loss shim proves state tolerance, real loss shows up as latency spikes.
+- Solo finding (not changed here): `Game.saveNow()` aliases `inst.enemies` to `enemies`, so enemies spawned after the first autosave (boss, sensor alarm adds) are listed twice in solo and are updated/hit twice. Party worlds avoid it. Fixing it changes solo boss pacing, so it needs a balance pass first.
 
 ## 8. Deployment plan (AWS) and cost
 Decision: everything on AWS. Runbook: `docs/DEPLOY_AWS.md`. Infrastructure as code: `infra/` (AWS CDK, TypeScript). Nothing deploys itself; the CI workflow is disabled until variables are set.
@@ -97,4 +117,4 @@ The Lightsail/EC2 start is about US$5-8/month plus client hosting (~US$1-3). Bud
 Origin allow-list (`WV_ORIGINS`, enforced at the WebSocket upgrade, tested), room/party caps (`WV_MAX_ROOMS`, `WV_MAX_PARTIES`, tested), connection cap, `WV_DEV` unset, TLS only (ALB redirect 80 to 443, HSTS on the client), billing alert (Budgets), alarms. Still to do: optional chat profanity filter, WAF rate rules on the ALB/CloudFront if abused (about US$5-10/month), bandwidth reduction (above).
 
 ## 9. Next steps
-1. Extract the combat core from `Game` so abilities, dodge, heat and chips run on the server. 2. Gates, locks and boss mechanics networked. 3. Accounts and a server ledger (roadmap phase 2), host lockouts and the +1 guest. 4. Town emotes/bubbles, cross-shard invites.
+1. Accounts and a server ledger (roadmap phase 2), host lockouts and the +1 guest. 4. Town emotes/bubbles, cross-shard invites.
