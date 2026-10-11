@@ -19,8 +19,10 @@ const noAtlas = list.filter(t => !ids3.includes(t)); ok(noAtlas.length === 0, `e
 const ROW = [6, 7, 0, 1, 2, 3, 4, 5]; const D8 = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]]; // world dirs
 const expRow = (dx, dy) => { const sx = dx - dy, sy = dx + dy; const a = (Math.atan2(sy, sx) + 2 * Math.PI) % (2 * Math.PI); return ROW[Math.round(a / (Math.PI / 4)) % 8]; };
 const names = ['+x', '+x+y', '+y', '-x+y', '-x', '-x-y', '-y', '+x-y'].map(n => 'world ' + n); const sheet = {};
-for (let b = 0; b < list.length; b += 6) {
-  const batch = list.slice(b, b + 6);
+// batches of 6 can jostle each other (separation pushes change the travel vector); an id that fails inside a batch is re-run alone before it counts
+const queue = []; for (let b = 0; b < list.length; b += 6) queue.push({ ids: list.slice(b, b + 6), solo: false }); let bi = 0;
+while (queue.length) {
+  const { ids: batch, solo } = queue.shift(); const b = 6 * bi++; const failed = new Set(); const okB = ok; const ok2 = (c, m) => { if (!c && !solo && batch.length > 1) { const id = m.split(':')[0]; failed.add(id); return; } okB(c, m); };
   const res = await ev(async ({ batch, D8 }) => { const g = window.__game, ea = window.__rend.eart, B = g.level.bossSpawn; const es = []; let k = 0;
     for (const id of batch) { const e = g.spawnEnemy(id, B.x - 5 + (k % 3) * 3.2, B.y - 3 + Math.floor(k / 3) * 3.4); k++; e.hp = e.maxHp = 1e8; e.alert = false; e.stunT = 1e9; if (e._rt) e._rt.reveal = 0; es.push(e); }
     g.px = B.x - 2; g.py = B.y + 3; const rec = {}; for (const id of batch) rec[id] = { rows: {}, legacy: 0, draws: 0 };
@@ -34,12 +36,13 @@ for (let b = 0; b < list.length; b += 6) {
           if (n - t0 > 1000) curDir = di; if (n - t0 < 1400) requestAnimationFrame(step); else res(); }; requestAnimationFrame(step); }); dirsRun.push(di); }
     CanvasRenderingContext2D.prototype.drawImage = od; const out = {}; for (const id of batch) out[id] = rec[id]; out.__order = dirsRun; return out; }, { batch, D8 });
   // per type per pass: check the drawn row for the direction
-  const order = res.__order; for (const id of batch) { const r = res[id]; ok(r.draws > 20, `${id}: atlas frames drawn (${r.draws})`);
+  const order = res.__order; for (const id of batch) { const r = res[id]; ok2(r.draws > 20, `${id}: atlas frames drawn (${r.draws})`);
     for (const di of D8.keys()) { const rows = r.rows[di] || {}; const best = Object.entries(rows).sort((a, b) => b[1] - a[1])[0]; const want = expRow(...D8[di]); const got = best ? +best[0] : -1; const dom = best ? best[1] / Object.values(rows).reduce((a, b) => a + b, 0) : 0;
       // rows[di] is overwritten by the 2nd pass for the same dir; both passes must settle on the expected row
-      if (got !== want || dom < .6) ok(false, `${id}: travel ${names[di]} drew row ${got} (dominance ${dom.toFixed(2)}), expected ${want}`); } }
+      if (got !== want || dom < .6) ok2(false, `${id}: travel ${names[di]} drew row ${got} (dominance ${dom.toFixed(2)}), expected ${want}`); } }
   await page.screenshot({ path: out + `batch${b / 6}.png` });
   await ev(batch => { const g = window.__game; for (const e of g.enemies) if (batch.includes(e.type)) e.dead = true; }, batch); await sleep(300);
+  for (const id of failed) queue.push({ ids: [id], solo: true });
 }
 ok(true, 'all enemy types x 8 directions (forward + reversal pass) checked');
 ok(errors.length === 0, 'no page errors ' + errors.join('|')); await browser.close(); console.log(fail ? `${fail} FAILED` : 'ALL PASS'); process.exit(fail ? 1 : 0);

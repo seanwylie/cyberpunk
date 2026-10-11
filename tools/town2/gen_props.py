@@ -102,6 +102,18 @@ c.d.line([P(1.0,.4,40),P(1.5,.4,40),P(1.5,.4,0)],fill=(60,52,50,255),width=9*SS)
 # steam vents glow
 c.light(*P(1.5,.4,44),22*SS,(255,160,60),110)
 c.finish('furnace_tower',10)
+
+def face_text(c,text,A,B,hgt,col,fsz=64,glowc=None):
+    """Text laid onto an iso wall face: A,B = bottom-left / bottom-right points (px), hgt = face height in px (drawn upward)."""
+    f=font(fsz); tmp=Image.new('RGBA',(900,150),(0,0,0,0)); d=ImageDraw.Draw(tmp); bb=d.textbbox((0,0),text,font=f); d.text((450-(bb[2]-bb[0])/2,75-(bb[3]-bb[1])/2-bb[1]),text,font=f,fill=col+(255,))
+    bb=tmp.getbbox(); tmp=tmp.crop(bb); w,h=tmp.size; dx,dy=B[0]-A[0],B[1]-A[1]; L=math.hypot(dx,dy); sc=min(L*.86/w,hgt*.7/h); tmp=tmp.resize((max(1,int(w*sc)),max(1,int(h*sc))),Image.LANCZOS); w,h=tmp.size
+    m=(A[0]+dx*.5,A[1]+dy*.5-hgt*.5); slope=dy/dx if dx else 0
+    # shear the text vertically so it follows the face's baseline slope
+    sh=tmp.transform((w,int(h+abs(slope)*w)+2),Image.AFFINE,(1,0,0,-slope,1,-(slope*w if slope<0 else 0)*-1 if False else (0 if slope>=0 else -slope*w)),Image.BICUBIC)
+    pos=(int(m[0]-w/2),int(m[1]-h/2-(slope*w/2)))
+    c.im.alpha_composite(sh,(max(0,pos[0]),max(0,pos[1])))
+    if glowc: 
+        g=sh.copy(); c.glow.alpha_composite(g,(max(0,pos[0]),max(0,pos[1])))
 # --- forge_hall (Heavy Works Parts): long low industrial hall with big oxide-red sign slab, loading dock, roller shutter glow ---
 c=Canvas(560,380); ox,oy=250*SS,150*SS
 c.box(-2.4,-1.2,4.8,2.4,0,92,ox,oy,(104,66,56),(86,52,44),(60,36,32),seed=31)
@@ -113,6 +125,16 @@ for k in range(4):
     c.light(*P(x0+.45,1.2,32),60*SS,(255,140,40),150)
 c.d.polygon([P(-2.3,1.2,66),P(2.3,1.2,66),P(2.3,1.2,88),P(-2.3,1.2,88)],fill=(20,18,18,255))
 for k in range(0,9): c.d.polygon([P(-2.3+k*.55,1.2,66),P(-2.3+k*.55+.27,1.2,66),P(-2.3+k*.55+.07,1.2,88),P(-2.3+k*.55-.2,1.2,88)],fill=(210,170,40,255)) if False else None
+# polish: sign slab lettering, hazard chevrons on the dock edge, roof vents + stacks with ember glow, shutter frames
+face_text(c,'HEAVY WORKS',P(-2.3,1.2,66),P(2.3,1.2,66),22*SS,(255,196,96),fsz=72,glowc=True)
+c.d.line([P(-2.3,1.2,64),P(2.3,1.2,64)],fill=(230,150,50,255),width=2*SS); c.d.line([P(-2.3,1.2,90),P(2.3,1.2,90)],fill=(40,28,24,255),width=3*SS)
+for k in range(10):
+    a=-2.3+k*.46; c.d.polygon([P(a,1.2,0),P(a+.2,1.2,0),P(a+.3,1.2,7),P(a+.1,1.2,7)],fill=(210,160,40,255))
+for k in range(4):
+    x0=-2.0+k*1.2; c.d.line([P(x0-.04,1.2,58),P(x0+.94,1.2,58)],fill=(40,26,22,255),width=3*SS); c.d.line([P(x0-.04,1.2,4),P(x0+.94,1.2,4)],fill=(40,26,22,255),width=3*SS)
+for vx in (-1.4,0.2,1.6):
+    c.box(vx,-.6,.5,.5,104,16,ox,oy,(86,56,48),(66,42,36),(46,30,26),seed=60+int(vx*10),rivets=False); c.light(*P(vx+.25,-.35,122),14*SS,(255,140,50),150)
+c.box(1.9,-.9,.45,.45,104,40,ox,oy,(70,52,46),(54,40,36),(38,28,24),seed=70,rivets=False); c.light(*P(2.12,-.68,148),20*SS,(255,120,40),160)
 c.finish('forge_hall',12)
 # --- guild_counter (Retirees' Guild reclaim counter): timber-and-sheet shack with hanging lamps, hooks, counter ---
 c=Canvas(420,330); ox,oy=190*SS,120*SS
@@ -126,6 +148,12 @@ for k in (-1,1):
 # corrugated awning
 c.d.polygon([P(-2.0,1.6,86),P(2.0,1.6,86),P(2.0,.4,112),P(-2.0,.4,112)],fill=(120,52,38,255))
 for k in range(12): a=-2.0+k*.333; c.d.line([P(a,1.6,86),P(a,.4,112)],fill=(86,36,26,255),width=2*SS)
+# polish: painted guild board, stacked reclaim crates and a hanging scale
+face_text(c,"RETIREES' GUILD",P(-1.9,1.4,0),P(1.9,1.4,0),26*SS,(236,214,150),fsz=60)
+c.box(1.5,.2,.7,.7,0,22,ox,oy,(100,80,58),(80,62,44),(56,42,30),seed=47,rivets=False); c.box(1.6,.3,.5,.5,22,16,ox,oy,(110,90,64),(88,70,50),(62,48,34),seed=48,rivets=False)
+c.box(-2.2,.3,.6,.6,0,18,ox,oy,(92,74,54),(74,58,42),(52,40,28),seed=49,rivets=False)
+for k in range(3):
+    hx=-.9+k*.9; a=P(hx,1.0,30); c.d.line([a,(a[0],a[1]+14*SS)],fill=(30,26,24,255),width=2*SS); c.d.ellipse([a[0]-5*SS,a[1]+14*SS,a[0]+5*SS,a[1]+24*SS],fill=(150,150,140,255))
 c.finish('guild_counter',10)
 # --- tram_platform + car (Reach Line transit) ---
 c=Canvas(640,380); ox,oy=300*SS,120*SS
@@ -167,3 +195,15 @@ c.box(-.9,-.55,1.8,1.1,14,34,ox,oy,(90,70,60),(72,56,48),(52,40,34),seed=91)
 c.d.polygon([P(-.8,-.45,48),P(.8,-.45,48),P(.8,.45,48),P(-.8,.45,48)],fill=(255,126,34,255)); c.light(*P(0,0,48),60*SS,(255,110,30),170)
 for (xp,yp) in ((-.6,.6),(.6,.6)): c.d.ellipse([P(xp,yp,10)[0]-12*SS,P(xp,yp,10)[1]-12*SS,P(xp,yp,10)[0]+12*SS,P(xp,yp,10)[1]+12*SS],fill=(22,20,20,255))
 c.finish('slag_cart',8)
+# --- h_junk polish: crisper scrap heap with ember glints and a soft contact shadow ---
+def polish_junk():
+    p=f'{OUT}/h_junk.png'
+    if not os.path.exists(p): return
+    from PIL import ImageEnhance
+    im=Image.open(p).convert('RGBA'); a=im.split()[3]; rgb=im.convert('RGB'); rgb=ImageEnhance.Contrast(rgb).enhance(1.35); rgb=rgb.filter(ImageFilter.UnsharpMask(2,120,2)); rgb=ImageEnhance.Brightness(rgb).enhance(1.08)
+    arr=np.array(rgb).astype(float); lum=arr.mean(-1); r=np.random.RandomState(7); mask=(lum>np.percentile(lum[np.array(a)>200],93))&(r.rand(*lum.shape)<.5)&(np.array(a)>200)
+    arr[mask]=arr[mask]*.4+np.array([255,150,60])*.6
+    out=Image.fromarray(np.clip(arr,0,255).astype(np.uint8)).convert('RGBA'); out.putalpha(a)
+    pad=Image.new('RGBA',(out.width,out.height+10),(0,0,0,0)); sh=Image.new('RGBA',pad.size,(0,0,0,0)); ImageDraw.Draw(sh).ellipse([out.width*.08,out.height*.62,out.width*.92,out.height+8],fill=(0,0,0,110)); sh=sh.filter(ImageFilter.GaussianBlur(6))
+    pad=Image.alpha_composite(pad,sh); pad.alpha_composite(out,(0,0)); pad.save(p); print('h_junk',pad.size)
+polish_junk()
