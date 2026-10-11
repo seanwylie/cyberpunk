@@ -167,6 +167,7 @@ export class Game {
   /** Push an entity out of any collider it ended up inside (dash end, knockback, spawn). */
   unwedge(o:{x:number;y:number},r:number){ if(!this.circleHits(o.x,o.y,r)) return; for(let ring=1;ring<=12;ring++){ const rr=ring*.15; for(let k=0;k<8;k++){ const a=k*Math.PI/4; const nx=o.x+Math.cos(a)*rr, ny=o.y+Math.sin(a)*rr; if(!this.circleHits(nx,ny,r)){ o.x=nx; o.y=ny; return; } } } }
   los(ax:number,ay:number,bx:number,by:number){ const d=dist(ax,ay,bx,by); const n=Math.ceil(d/.4); for(let i=1;i<n;i++){ const t=i/n; if(this.solidAt(ax+(bx-ax)*t,ay+(by-ay)*t)) return false; } return true; }
+  /** where the boss reveal triggers (just inside the boss door); tests and dev tools use this instead of assuming the boss room is east */ revealPoint(){ const L=this.level; return L.reveal?{x:L.reveal.x,y:L.reveal.y}:{x:L.revealX+1,y:L.bossSpawn.y}; }
   zoneAt(x:number,y:number){ const L=this.level; const ix=Math.floor(x), iy=Math.floor(y); if(ix<0||iy<0||ix>=L.w||iy>=L.h) return 'none'; return L.zoneNames[L.zone[iy*L.w+ix]]; }
   stat(){ return this.build.stats; }
 
@@ -421,7 +422,7 @@ export class Game {
     // zone based doors
     if(!f.gate1&&this.enemies.filter(e=>e.type===this.dd.gateGuard&&!e.dead).length===0){ f.gate1=true; this.openDoor('gate1'); this.toast('Security gate released'); }
     // boss reveal trigger
-    if(f.controller&&!f.bossSpawned&&!f.bossDead&&this.px>=L.revealX&&this.zoneAt(this.px,this.py)==='boss') this.spawnBoss();
+    if(f.controller&&!f.bossSpawned&&!f.bossDead&&(L.reveal?dist(L.reveal.x,L.reveal.y,this.px,this.py)<=L.reveal.r:this.px>=L.revealX)&&this.zoneAt(this.px,this.py)==='boss') this.spawnBoss();
     // reveal timer
     const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead);
     if(boss&&boss._rt.reveal>0){ boss._rt.reveal-=dt; this.revealing=true; this.projs=[]; this.zones=this.zones.filter(z=>z.env); if(boss._rt.reveal<=0){ boss._rt.reveal=0; this.revealing=false; boss.alert=true; this.emit('reveal-end'); this.toast('Fight!'); } }

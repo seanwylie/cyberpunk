@@ -7,6 +7,6 @@ await ev(() => { window.__ui.close(); window.__ui.contactSel = 'ten_hallowell'; 
 for (const id of ['foundry', 'clinic', 'warehouse']) {
   await ev(id => { const g = window.__game; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.startRun(id); }, id); await sleep(500); await page.screenshot({ path: out + id + '_entry.png' });
   await ev(() => { const g = window.__game; g.px = g.level.checkpoints[1].x; g.py = g.level.checkpoints[1].y; }); await sleep(500); await page.screenshot({ path: out + id + '_control.png' });
-  await ev(() => { const g = window.__game; g.inst.flags.controller = true; g.px = g.level.revealX + 3; g.py = g.level.bossSpawn.y; }); await sleep(12000); await page.screenshot({ path: out + id + '_boss.png' });
+  await ev(() => { const g = window.__game; g.inst.flags.controller = true; { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } }); await sleep(12000); await page.screenshot({ path: out + id + '_boss.png' });
 }
 console.log('errors', errors); await browser.close();

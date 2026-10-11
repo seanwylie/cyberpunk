@@ -52,7 +52,7 @@ for (const [id, f] of Object.entries(flows)) {
   ok(st.cond === 'A' && st.boss === f.bosses[1], id + ': condition A (' + f.cap.A + ') selects ' + f.bosses[1] + ' (got ' + st.boss + ')');
   await near('cond_B'); await caps([f.cap.B]); await ev(() => window.__game.interact()); ok(await ev(() => /locked/i.test(document.getElementById('dialog').textContent)), id + ': second selector is locked (arbitration)'); await clickDialog(0);
   await near('controller'); await ev(() => window.__game.interact()); ok(await ev(() => window.__game.inst.flags.controller), id + ': objective secured');
-  await ev(() => { const g = window.__game; g.px = g.level.revealX + 1; g.py = g.level.bossSpawn.y; g.update(0.016); }); await step(0.3);
+  await ev(() => { const g = window.__game; { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } g.update(0.016); }); await step(0.3);
   ok(await ev(() => window.__game.revealing && window.__game.enemies.some(e => e.type === window.__game.inst.flags.bossKey)), id + ': boss reveal plays for ' + f.bosses[1]);
   // boss AI smoke: run the fight with god mode and make sure patterns/telegraphs run without errors
   await step(9.5); const zonesSeen = await ev(async () => { const g = window.__game; let maxZ = 0; for (let i = 0; i < 1500; i++) { const b = g.enemies.find(e => e.type === g.inst.flags.bossKey && !e.dead); if (b && i % 30 === 0) { g.px = g.level.bossSpawn.x - 2; g.py = g.level.bossSpawn.y + (i % 60 ? 3 : -3); } g.update(0.016); maxZ = Math.max(maxZ, g.zones.filter(z => !z.env).length); } return maxZ; });
@@ -67,7 +67,7 @@ for (const [id, f] of Object.entries(flows)) {
   for (const [cond, bossId] of [['B', f.bosses[2]], [null, f.bosses[0]]]) {
     await fresh(id, 30); await ev(() => { window.__game.inst.flags.lock2 = true; window.__game.inst.flags.gate1 = true; });
     if (cond) { await caps([f.cap.B]); await near('cond_B'); await ev(() => window.__game.interact()); await clickDialog(0); await step(1.7); }
-    await near('controller'); await ev(() => window.__game.interact()); await ev(() => { const g = window.__game; g.px = g.level.revealX + 1; g.py = g.level.bossSpawn.y; g.update(0.016); });
+    await near('controller'); await ev(() => window.__game.interact()); await ev(() => { const g = window.__game; { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } g.update(0.016); });
     ok(await ev(() => window.__game.enemies.some(e => !e.dead && e.type === window.__game.inst.flags.bossKey)) && await ev(() => window.__game.inst.flags.bossKey) === bossId, id + ': ' + (cond ? 'condition B (' + f.cap.B + ')' : 'no condition') + ' selects ' + bossId);
   }
 }
@@ -104,7 +104,7 @@ await fresh('foundry', 30); await ev(() => { const g = window.__game; g.save.con
 await caps(['force']); await ev(() => { const g = window.__game; g.inst.flags.lock2 = true; });
 await near('cond_A'); await ev(() => window.__game.interact()); await clickDialog(0); await step(1.7);
 ok(await ev(() => window.__game.save.contracts.active.ld_reclaim) === 1, 'force route in a dungeon advances the Dunmore reclaim contract');
-await ev(() => { const g = window.__game; g.inst.flags.controller = true; g.openDoor('boss'); g.px = g.level.revealX + 1; g.py = g.level.bossSpawn.y; g.update(0.016); const b = g.enemies.find(e => e.type === 'brannoch'); g.killEnemy(b); });
+await ev(() => { const g = window.__game; g.inst.flags.controller = true; g.openDoor('boss'); { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } g.update(0.016); const b = g.enemies.find(e => e.type === 'brannoch'); g.killEnemy(b); });
 const cp = await ev(() => window.__game.save.contracts.active); ok(cp.th_tyrant === 1 && cp.th_foundry_clear === 1, 'Brannoch kill completes boss + clear contracts');
 
 // ---- story provider ----

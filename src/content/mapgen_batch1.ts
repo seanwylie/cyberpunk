@@ -15,7 +15,7 @@ function route(g:Gen,r:R4,cyIn:number,cyOut:number){ const mid=hf((r.x0+r.x1)/2)
   const seg=(x0:number,y0:number,x1:number,y1:number)=>{ g.carve(Math.min(x0,x1),Math.min(y0,y1),Math.max(x0,x1),Math.max(y0,y1),r.zone); g.reserve(Math.min(x0,x1),Math.min(y0,y1),Math.max(x0,x1),Math.max(y0,y1)); };
   seg(r.x0,cyIn-1,mid+1,cyIn+1); seg(mid,Math.min(cyIn,cyOut)-1,mid+1,Math.max(cyIn,cyOut)+1); seg(mid,cyOut-1,r.x1,cyOut+1); }
 const solidRect=(g:Gen,x0:number,y0:number,x1:number,y1:number,room:R4)=>{ for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){ if(x<room.x0+1||x>room.x1-1||y<room.y0+1||y>room.y1-1) continue; const k=y*g.w+x; if(g.keep[k]||g.solid[k]||g.pm[k]) continue; g.solid[k]=1; } };
-function shapeRoom(g:Gen,r:R4,shape:Shape,props:LevelSpec['props'],pillarH=2.2){
+export function shapeRoom(g:Gen,r:R4,shape:Shape,props:LevelSpec['props'],pillarH=2.2){
   const w=r.x1-r.x0+1, h=r.y1-r.y0+1, cx=hf((r.x0+r.x1)/2), cy=hf((r.y0+r.y1)/2);
   const prop=()=>{ g.scatterProps([r.zone],'crate',1,1,1,g.ri(Math.max(1,props.crate-2),props.crate+1),2); if(props.machine) g.scatterProps([r.zone],'machine',1.6,2,2,props.machine>3?g.ri(2,3):g.ri(1,2),3); if(props.rack) g.scatterProps([r.zone],'rack',1.8,3,1,Math.min(props.rack,4),2); if(props.conveyor) g.scatterProps([r.zone],'conveyor',.7,5,1,Math.min(props.conveyor,3),2,8); };
   switch(shape){
@@ -75,4 +75,6 @@ function once(spec:LevelSpec,seed:number):Level{
   const L=g.level({spawn,cps:[{id:1,x:spawn.x,y:spawn.y,label:names.yard},{id:2,x:J.x0+2.5,y:cors[1]+.5,label:names.junction}],bossSpawn:ba.spawn,revealX:B.x0+2,salvage:{x:(S.x0+S.x1)/2,y:S.y0+4}});
   (L as any).noConds=true; L.theme=spec.theme; return L;
 }
-export const genBatch1=(spec:LevelSpec,seed:number)=>gen(seed,s=>once(spec,s),spec.id);
+/** legacy 4-room left-to-right chain (kept for reference / tests); the shipped generator is mapgen_arch.ts */
+export const genBatch1Chain=(spec:LevelSpec,seed:number)=>gen(seed,s=>once(spec,s),spec.id);
+export { genArch as genBatch1 } from './mapgen_arch';

@@ -8,6 +8,7 @@ import { buildAnnex } from '../level';
 import type { Level, Interact, Hazard } from '../level';
 import { genFoundry, genClinic, genWarehouse, varyAnnex } from './mapgen';
 import { genBatch1 } from './mapgen_batch1';
+import { symLevel, symOfSeed } from './mapgen_arch';
 import { LEVELS } from './batch1_levels';
 import type { LevelSpec } from './batch1_levels';
 export type { Hazard };
@@ -107,6 +108,8 @@ export function reachable(lv:Level,from:{x:number;y:number},to:{x:number;y:numbe
 
 // THEME TAG: visual theme id on each built level (consumed by src/dungeon_env.ts via themeOf); purely cosmetic.
 for(const id of ['foundry','clinic','warehouse']){ const d=DUNGEONS[id]; const b=d.build; d.build=(s?:number)=>({ ...b(s), theme:id }); }
+// LAYOUT SYMMETRY: the four hand-structured dungeons are rotated / mirrored per run seed (one of 8) so their left-to-right chain does not look identical each run.
+for(const id of ['annex','foundry','clinic','warehouse']){ const d=DUNGEONS[id]; const b=d.build; let salt=0; for(const c of id) salt=(salt*31+c.charCodeAt(0))>>>0; d.build=(s?:number)=>{ const L=b(s); return symLevel(L,symOfSeed((L as any).seed??(s??1),salt)); }; }
 
 /** Unlock path (content batch 1): a dungeon with `unlock` needs every listed dungeon cleared once (save.cleared, or an existing daily-lock record from before this field existed). Returns a player-facing reason or null. */
 export function unlockReason(save:{cleared?:Record<string,number>;lockouts?:Record<string,string>;lastClearDay?:string|null},id:string,bypass=false):string|null{
