@@ -2,7 +2,7 @@
 """Generate music via ElevenLabs /v1/music, post-process to loop-friendly mp3 in public/audio/music/.
 Usage: ELEVENLABS_API_KEY=... python3 tools/gen_music.py [name ...] [--force]
 Needs ffmpeg. Raw downloads are cached in tools/.music_raw (gitignored). Existing outputs are skipped unless --force."""
-import os, sys, json, subprocess, urllib.request, pathlib
+import os, sys, json, subprocess, urllib.request, urllib.error, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RAW = ROOT/'tools'/'.music_raw'; OUT = ROOT/'public'/'audio'/'music'
 RAW.mkdir(exist_ok=True); OUT.mkdir(parents=True, exist_ok=True)
@@ -47,22 +47,63 @@ TRACKS = {
  'boss_widow': (75, True, "Eerie broadcast-static boss battle, 172 bpm, instrumental. Distorted radio carrier tones and shortwave static, morse-like glitchy rhythm, haunting detuned high lead, snapping snares, screeching saw bass, dark cyberpunk, unnerving and furious, steady high intensity throughout, no breakdown, seamless loop."),
  'boss_recall': (75, True, "Apocalyptic final boss battle, 176 bpm, instrumental. Colossal distorted bass with a menacing repeating signature motif, blaring recall-alarm sirens, blistering double-time breakbeats, massive impact hits, choir-free dark industrial cyberpunk, the most intense and epic track, maximum intensity throughout, no breakdown, seamless loop."),
 }
+
+# --- ambient pack 2 (calm pool, 150 s, lazy-loaded, 80 kbps). Area tags: town / harrow / HI (Harrow-Brandt industrial) / PS (Aldane surgical) / MM (Kestrel + Rustline retail/logistics) / explore ---
+AMB = "instrumental, ambient, no vocals, no big drops, quiet dynamics, constant low energy, dark industrial cyberpunk, seamless loop."
+CALM2 = {
+ 'town_dusk': "Warm slow dusk ambient for a dusty cyberpunk settlement, 70 bpm, E-flat major-ish hopeful but weary. Soft felt electric piano chords, slow breathing analog pad, distant market murmur textures, no drums, gentle sub. " + AMB,
+ 'town_market': "Downtempo bazaar groove for a salvage market, 96 bpm, D minor. Muted hand percussion and shaker, plucked kalimba-like synth melody, warm rounded bass, crackle, relaxed and curious. " + AMB,
+ 'town_neonrain': "Late-night rain on neon, 78 bpm, A minor. Soft Rhodes arpeggio, slow sidechained pad, brushed hi-hat, deep warm sub, reverb tail washes. " + AMB,
+ 'harrow_dawn': "Cold industrial dawn over a foundry district, 64 bpm, C major drifting to A minor. Long evolving string-like synth pad, low bell tones, distant steam hiss, slow heartbeat sub pulse, sparse. " + AMB,
+ 'harrow_cinder': "Smouldering embers ambient, 58 bpm, F minor. Granular crackle, warm tape-saturated drone, slow descending three-note motif on a muted vibraphone-like synth, no drums. " + AMB,
+ 'area_hi_slag': "Heavy-industry ambient dub, 84 bpm, G minor. Distant hammer strikes as slow percussion, resonant metal drones, deep dub bass, echoing chord stabs, hot and oppressive but calm. " + AMB,
+ 'area_hi_press': "Mechanical minimalism, 100 bpm, B minor. Rhythmic piston and press thuds, steady muted kick, glassy repeating two-note motif, humming transformer drone, sparse. " + AMB,
+ 'area_ps_sterile': "Sterile clinical ambient, 72 bpm, C# minor. Pure sine-like tones, soft glass harmonics, slow sparse piano notes, faint monitor beeps as rhythm, cold wide reverb. " + AMB,
+ 'area_ps_ward': "Uneasy hospital-corridor ambient, 90 bpm, E minor. Soft pulsing heartbeat-like bass, breathy filtered noise swells, detuned music-box fragments, subtle tension. " + AMB,
+ 'area_mm_muzak': "Hollow dead-mall muzak ambient, 88 bpm, F major but warped. Detuned elevator-music electric piano, slowed and wobbling tape, soft bossa-like brush groove, eerie and nostalgic. " + AMB,
+ 'area_mm_aisles': "Warehouse night-shift ambient, 110 bpm, A minor. Conveyor-like soft rhythm, forklift beeps as sparse melody, deep warm bass, sweeping fluorescent-hum pad, lonely. " + AMB,
+ 'calm_tide': "Slow flooded-tunnel ambient, 66 bpm, D minor. Dripping water, deep rolling sub swells, soft choral-free synth pad, occasional sonar-like ping, spacious. " + AMB,
+ 'calm_ghost': "Haunted signal ambient, 80 bpm, G# minor. Faded radio fragments, slow detuned pad movement, soft pulsing arpeggio buried in reverb, ghostly high harmonics. " + AMB,
+ 'calm_orbit': "Weightless drifting synth ambient, 74 bpm, A major-ish melancholic. Wide airy pads, slow bell arpeggio, gentle glide bass, faint satellite-like blips, no drums. " + AMB,
+}
+ELITE2 = {
+ 'elite_chrome': "Dark electro-industrial elite fight, 140 bpm, instrumental. Stomping kick, snarling distorted mid bass, metallic offbeat clangs, tense minor-key stab riff, menacing, steady high intensity throughout, no breakdown, seamless loop.",
+ 'elite_voltage': "Aggressive hard dubstep-leaning elite fight, 140 bpm half-time, instrumental. Electrical zap leads, wobbling distorted bass, heavy snare on 3, dark cyberpunk, steady high intensity throughout, no breakdown, seamless loop.",
+ 'elite_claw': "Fast dark jungle breakbeat elite fight, 168 bpm, instrumental. Chopped amen-style breaks, deep rolling sub, scratchy staccato synth stabs, predatory, steady high intensity throughout, no breakdown, seamless loop.",
+ 'elite_gridlock': "Rigid industrial EBM elite fight, 132 bpm, instrumental. Driving sequenced bass, pounding gated kick, clanking sheet-metal snares, cold detuned lead hook, steady high intensity throughout, no breakdown, seamless loop.",
+ 'elite_static': "Noisy glitch-hop industrial elite fight, 120 bpm, instrumental. Stuttering chopped vocal-free synth cuts, crunchy bit-crushed drums, growling bass, aggressive and chaotic, steady high intensity throughout, no breakdown, seamless loop.",
+ 'elite_ashfall': "Heavy slow doom-industrial elite fight, 100 bpm, instrumental. Enormous distorted guitar-like synth drone riff, crushing kick and snare, scorched noise, ominous, steady high intensity throughout, no breakdown, seamless loop.",
+ 'elite_razor': "Dark psytrance-leaning elite fight, 148 bpm, instrumental. Rolling galloping bassline, razor-sharp acid squelch, tight hats, hypnotic and relentless, steady high intensity throughout, no breakdown, seamless loop.",
+ 'elite_cull': "Militaristic industrial elite fight, 154 bpm, instrumental. Marching snare rolls, heavy kick, brassy synth fanfare stabs in minor, alarm tones, steady high intensity throughout, no breakdown, seamless loop.",
+ 'elite_sleet': "Icy dark drum and bass elite fight, 170 bpm, instrumental. Cold bright stabs, sharp rimshot snares, deep clean sub, rapid hi-hat patterns, steady high intensity throughout, no breakdown, seamless loop.",
+ 'elite_quota': "Relentless hard techno elite fight, 156 bpm, instrumental. Pounding rumble kick, ticking clock percussion, droning detuned saw, spoken-free stern two-chord riff, steady high intensity throughout, no breakdown, seamless loop.",
+}
+for _n, _p in CALM2.items(): TRACKS[_n] = (150, True, _p)
+for _n, _p in ELITE2.items(): TRACKS[_n] = (75, True, _p)
+LOWRATE = set(CALM2)  # long ambient tracks are encoded at 80 kbps to keep the lazy downloads small
 XF = 2.0
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'
     if raw.exists(): return raw
     body = json.dumps({"prompt": prompt, "music_length_ms": secs*1000, "force_instrumental": True, "model_id": "music_v1"}).encode()
     req = urllib.request.Request("https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128", body, {"xi-api-key": KEY, "Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=300) as r: raw.write_bytes(r.read())
+    import time
+    for attempt in range(8):
+        try:
+            with urllib.request.urlopen(req, timeout=300) as r: raw.write_bytes(r.read())
+            break
+        except urllib.error.HTTPError as e:
+            if e.code != 429 or attempt == 7: raise
+            time.sleep(20)
     return raw
 def dur(p): return float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0',str(p)]).strip())
 def process(name, loop):
-    raw = RAW/f'{name}.mp3'; out = OUT/f'{name}.mp3'; L = dur(raw)
+    raw = RAW/f'{name}.mp3'; out = OUT/f'{name}.mp3'; L = dur(raw); BR = '80k' if name in LOWRATE else '112k'
     if loop:  # equal-power blend of tail into head so the file loops seamlessly
         fc = (f"[0:a]asplit=3[a][b][c];[a]atrim={XF}:{L-XF},asetpts=PTS-STARTPTS[mid];"
               f"[b]atrim={L-XF}:{L},asetpts=PTS-STARTPTS[tail];[c]atrim=0:{XF},asetpts=PTS-STARTPTS[head];"
               f"[tail][head]acrossfade=d={XF-0.01}:c1=qsin:c2=qsin[x];[mid][x]concat=n=2:v=0:a=1,loudnorm=I=-16:TP=-1.5[o]")
-        subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(raw),'-filter_complex',fc,'-map','[o]','-ac','2','-ar','44100','-b:a','112k',str(out)])
+        subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(raw),'-filter_complex',fc,'-map','[o]','-ac','2','-ar','44100','-b:a',BR,str(out)])
     else:
         subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(raw),'-af',f'loudnorm=I=-16:TP=-1.5,afade=t=out:st={L-1.5}:d=1.5' if name=='clear' else 'loudnorm=I=-16:TP=-1.5','-ac','2','-ar','44100','-b:a','112k',str(out)])
     print(name, f'{dur(out):.1f}s', out.stat().st_size//1024, 'KB')

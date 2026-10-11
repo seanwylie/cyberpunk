@@ -213,7 +213,7 @@ export class Game {
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.downed=false; this.emit('inv'); this.toast('IDKFA: best gear equipped'); this.saveNow(); return true; }
   stimCd=0;
   useStim(){ if(this.stimCd>0) return; const c=this.inst?.carried; if(!c||this.downed){ if(this.mode==='town'&&this.save.stims>0){ this.save.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); } return; } if(c.stims>0&&this.hp<this.maxHp){ c.stims--; this.stimCd=HARD.stimCd; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); this.emit('sfx','heal'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.8,text:'+'+COMBAT.stimHeal,c:'#9fb98a'}); } else if(c.stims<=0 && this.save.stims>0 && false){} }
-  musicSet(s:string){ if(this.musicState!==s){ this.musicState=s; this.emit('music',s); } }
+  musicSet(s:string){ if(this.musicState!==s){ this.musicState=s; if(s!=='town') this.emit('musicarea',this.inst?dungeonOf(this.inst.dungeon).mfr:null); this.emit('music',s); } }
 
   // ---------- main update ----------
   update(dtRaw:number){
