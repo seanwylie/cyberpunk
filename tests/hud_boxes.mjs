@@ -4,7 +4,8 @@ import { launch, sleep } from './lib.mjs';
 import fs from 'fs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const OUT = process.env.HUDSHOTS || 'shots/hudboxes'; fs.mkdirSync(OUT, { recursive: true });
-const VPS = [[760, 600, 0], [1024, 768, 0], [1280, 720, 0], [1920, 1080, 0], [2560, 1440, 0], [844, 390, 1], [390, 844, 1]];
+const VPS_ALL = [[760, 600, 0], [1024, 768, 0], [1280, 720, 0], [1920, 1080, 0], [2560, 1440, 0], [844, 390, 1], [390, 844, 1]];
+const VPS = process.env.HUDVP ? VPS_ALL.filter((_, i) => process.env.HUDVP.split(',').includes(String(i))) : VPS_ALL;
 const TOL = 1.5;
 // scripted state: make every HUD element that can appear visible at once (worst case), then measure
 const setup = async (page, mode, tut, touch) => {
@@ -23,6 +24,7 @@ const setup = async (page, mode, tut, touch) => {
     for (const t of ['Picked up Kestrel Nail Driver (blue) with a deliberately long name', 'Chip socketed: Cloak Duration', 'Credits +120', 'Locker updated: best-fit chips applied to every empty socket']) { const e = document.createElement('div'); e.className = 'toast'; e.style.animation = 'none'; e.textContent = t; box.appendChild(e); }
     if (mode === 'run') { g.build.abilities.includes('revive') || g.build.abilities.push('revive'); ui.liveOpen = true; ui.renderLive(); }
     const it = g.level?.interacts?.[0]; if (it) { g.px = it.x; g.py = it.y; for (let i = 0; i < 5; i++) g.update(.016); }
+    ui.banner('Foundry floor · Tier II', 'Slag pools ahead. Keep moving.', 600); if (mode === 'run') ui.handle('dialog', { title: 'Annex security terminal', body: 'Issue the audit command? Selects the boss for this run. Combat continues while this is open.', options: [{ label: 'Issue audit' }, { label: 'Close' }] });
     if (mode === 'run') g.channel = { t: .6, dur: 2, kind: 'hack', cb: () => {} };
     if (tut === 'dock') ui.open(mode === 'town' ? 'inv' : 'pack');
   }, { mode, tut });
@@ -44,6 +46,7 @@ const measure = page => page.evaluate(() => {
   q('#toasts .toast').forEach((e, i) => add('toast' + i, e, 1)); q('#bvgmark').forEach(e => add('bvg', e));
   q('.abtn').forEach((e, i) => add('abtn' + i, e)); q('#dodge').forEach(e => add('dodge', e));
   q('.abtn .aname, #dodge .aname').forEach((e, i) => add('cap' + i, e)); q('.abtn .akey, #dodge .akey').forEach((e, i) => add('key' + i, e));
+  q('#banner').forEach(e => add('banner', e)); q('#dialog').forEach(e => add('dialog', e));
   q('#controls').forEach(e => add('controls', e)); q('#interact small').forEach(e => add('ikey', e));
   const hudrest = []; // anything else visible and pointer-active in the HUD that we did not list
   return { vw: innerWidth, vh: innerHeight, gut: gutPx, gap: gapPx, rad: root.getPropertyValue('--hud-r').trim(), touch: document.body.classList.contains('touch'),
@@ -58,7 +61,7 @@ const audit = (tag, m, mode, tut) => {
   ok(out.length === 0, `${tag}: nothing outside the viewport ${out.join(' ')}`);
   // 2. no overlapping boxes (children of a box and their container are exempt; hidden-under-modal bottom HUD is not rendered in dock state)
   const hits = []; const bs = m.boxes;
-  for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) { const a = bs[i], b = bs[j]; if (a.par.includes(b.name) || b.par.includes(a.name)) continue; if (a.name === 'controls' || b.name === 'controls') continue;
+  for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) { const a = bs[i], b = bs[j]; if (a.par.includes(b.name) || b.par.includes(a.name)) continue; if (a.name === 'controls' || b.name === 'controls') continue; if (m.vw < 900 && (a.name === 'dialog' || b.name === 'dialog')) continue; /* known: below 900px the transient NPC dialog may cover the objective/live panel (it is dismissible and pointer-active) */
     const x = Math.min(a.r.r, b.r.r) - Math.max(a.r.l, b.r.l), y = Math.min(a.r.b, b.r.b) - Math.max(a.r.t, b.r.t); if (x > 1 && y > 1) hits.push(a.name + '/' + b.name); }
   ok(hits.length === 0, `${tag}: no overlapping HUD boxes ${hits.join(' ')}`);
   // 3. top-left stack: one column (same left + right edge), equal gaps, left edge on the gutter
