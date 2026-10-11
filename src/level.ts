@@ -129,7 +129,7 @@ export function buildTown():Level {
   lights.push({x:CX,y:CY,z:0,r:11,c:'cool',a:.07});
   // ---- overhead dressing (drawn above actors, fades when the player is underneath) ----
   const AW=['awn_red','awn_blue','awn_green','awn_grey'] as const; const overhead:Overhead[]=[];
-  for(const s of STATIONS){ overhead.push({spr:AW[STATIONS.indexOf(s)%4],x:s.lx+2,y:s.ly+3.3,z:2.2,sw:3.3}); }
+  for(const s of STATIONS){ if(s.key==='bank') continue; overhead.push({spr:AW[STATIONS.indexOf(s)%4],x:s.lx+2,y:s.ly+3.3,z:2.2,sw:3.3}); }
   overhead.push({spr:'swag1',x:S('jobs').lx+4,y:S('jobs').ly+4,z:2.3,sw:3.0,glow:'lanterns'},{spr:'swag2',x:S('implants').lx+4,y:S('implants').ly+4,z:2.3,sw:3.0,glow:'lanterns'},{spr:'swag3',x:S('store').lx+4,y:S('store').ly+1,z:2.4,sw:3.0,glow:'lanterns'},{spr:'swag1',x:S('repair').lx+4,y:S('repair').ly+3,z:2.3,sw:2.8,glow:'lanterns'},
     {spr:'bulbs',x:CX,y:11,z:3.0,sw:7.5,glow:'bulbs'},{spr:'bulbs',x:CX,y:33,z:2.9,sw:7,glow:'bulbs'},{spr:'rags1',x:S('store').lx-2,y:S('store').ly-1,z:2.7,sw:3.4},{spr:'rags2',x:S('repair').lx+6,y:S('repair').ly+3,z:2.7,sw:3.4},{spr:'leanto',x:S('locker').lx+6,y:S('locker').ly+3.5,z:2.3,sw:3.6});
   const npcs:NpcDef[]=[
