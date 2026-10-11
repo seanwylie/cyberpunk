@@ -1,0 +1,17 @@
+# Local run of the game server:  docker compose up --build   (then open the game with ?server=ws://localhost:8787)
+# The static client is served by `npm run dev`; this file only runs the multiplayer hub (+ optional story proxy via the same image is NOT included: use `npm run dev`).
+services:
+  hub:
+    build: { context: ., dockerfile: server/Dockerfile }
+    ports: ["8787:8787"]
+    environment:
+      PORT: "8787"
+      WV_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173"   # comma list; empty = allow any origin (dev only)
+      WV_ALLOW_NO_ORIGIN: "0"
+      WV_MAX_CONNS: "500"
+      WV_MAX_ROOMS: "100"
+      WV_MAX_PARTIES: "500"
+      WV_GRACE_MS: "8000"
+      # WV_DEV: "1"      # test-only teleports; NEVER set in production
+    stop_grace_period: 15s
+    restart: unless-stopped

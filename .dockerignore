@@ -1,0 +1,11 @@
+node_modules
+dist
+server/dist
+infra
+public
+shots
+docs
+tests
+tools
+.git
+*.log
