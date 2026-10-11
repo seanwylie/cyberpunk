@@ -515,3 +515,9 @@ body:has(#dialog[style*="block"]) #banner{ visibility:hidden; }
 .win.settingswin{ width:min(1040px,calc(var(--vvw,100vw) - 12px)); }
 .win>header,.win>footer{ min-width:0; } .win>header>span:first-child{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .win>header>span:last-child{ flex:none; }
 .win>.body,.win .sbody,.win .stgrid{ overflow-x:hidden; min-width:0; } .win .col{ overflow-x:clip; min-width:0; } /* clip (not hidden): hidden would make .col a scroll container, whose zero min-content contribution collapses auto grid rows and overlaps the locker panels */
+
+/* Story card: one small dismissable line from the Fixer, bottom-left toast area. Only the card itself takes clicks. */
+.toast.storycard{ pointer-events:auto; cursor:pointer; position:relative; display:flex; flex-direction:column; gap:2px; max-width:min(100%,340px); padding-right:calc(var(--hud-padh) + 16px); animation:scfade 14s forwards; --ac:#d8c070; }
+.toast.storycard b{ font-size:max(var(--fmin),calc(11px*var(--fs))); opacity:.8; font-weight:600; }
+.toast.storycard .scx{ position:absolute; top:1px; right:2px; border:0; background:none; color:inherit; opacity:.7; font-size:16px; line-height:1; padding:2px 5px; cursor:pointer; }
+@keyframes scfade{ 0%,90%{opacity:1} 100%{opacity:0} }

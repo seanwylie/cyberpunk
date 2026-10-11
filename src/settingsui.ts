@@ -90,7 +90,7 @@ function badgeHtml(l:any):string{ const real=l.enabled&&l.url&&l.key; return rea
 function storyHtml(ui:UIx):string{ const st=ui.g.save.settings, l=st.llm; const p=makeProvider(l).name;
   const badge=badgeHtml(l);
   return head('Story AI','The fixer and contacts get new story beats from a provider. It never touches bosses, drops or access.')
-  +row('Generated story beats (Story AI)','On: now and then the game writes a short story beat about your gear using an AI service. Only a summary of your equipped gear is sent to the game server, never personal data. Off: authored text only and no network calls.',sw('storyai',st.storyAi!==false,'Generated story beats'),{tag:'label',id:'s-storyai'})
+  +row('Story line after each run','On: the Fixer says one short line about your gear after a run, written by an AI. Only the names of one or two equipped parts are sent, nothing personal. Off: a fixed line, no network calls.',sw('storyai',st.storyAi!==false,'Story line after each run'),{tag:'label',id:'s-storyai'})
   +`<div class="scard"><b>Status ${badge}</b><small>Active provider: ${esc(p)}. The offline mock needs no setup and sends nothing anywhere. A real provider is any OpenAI-compatible chat-completions endpoint; it is called only when a story update runs outside combat.</small></div>`
   +row('Use a real provider','Off = offline mock. Needs a URL and key below.',sw('llmon',!!l.enabled,'Use a real provider'),{tag:'label',id:'s-llmon'})
   +`<div class="sfields${l.enabled?'':' off'}"><label class="sf"><b>Endpoint URL</b><input type="text" data-in="llmurl" placeholder="https://…/v1/chat/completions" value="${esc(l.url)}" autocomplete="off" spellcheck="false" ${l.enabled?'':'disabled'}/></label>`

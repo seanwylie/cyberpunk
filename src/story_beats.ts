@@ -1,67 +1,85 @@
-// Light generative storytelling: occasional short story beats tailored to the player's loadout.
-// The OpenAI key lives ONLY on the server proxy (server/story_beat.mjs, /api/story-beat). The client sends a structured loadout summary,
-// never free text, and falls back to authored templates whenever the proxy is unreachable (offline, no key, static/mobile build).
-import { ITEM_BY_ID, ABILITIES, CHIPS, MFR, type Mfr } from './config';
-import { COS_BY_ID, cosOf } from './content/appearance';
+// Story beat: ONE short line from the Fixer (Odalys Vane) after a run, about one or two parts you are wearing.
+// Shown as a small dismissable card in the bottom-left toast area, only in town with no window open. At most one per run. Never in combat.
+// The OpenAI key lives ONLY on the server proxy (server/story_beat.mjs, the Lambda, or /api/story-beat in dev). The client sends catalog ids and
+// enums (no free text) and falls back to a clean authored line whenever the proxy is unreachable, slow, off, or returns something too long.
+import { ITEM_BY_ID, type Mfr, type Rarity } from './config';
 import type { Save } from './state';
 import { persist } from './state';
 
-export type BeatTrigger = 'contract_done'|'return_town'|'new_mfr_set';
-export interface JournalEntry { t:number; trigger:BeatTrigger; town:string; text:string; src:'ai'|'authored'; model?:string }
+export type BeatTrigger = 'return_town'|'contract_done'|'new_mfr_set';
+export interface JournalEntry { t:number; trigger:BeatTrigger; town:string; text:string; src:'ai'|'authored'; model?:string; /** plain part names the line is about */ parts?:string[] }
 export interface BeatMeta { seenMfr:Mfr[]; count:number }
-export interface BeatReq { trigger:BeatTrigger; /** contract id */ contract?:string; /** dungeon id */ dungeon?:string; force?:boolean }
-export const BEAT_LIMITS = { perSession:3, minGapMs:90_000, journalMax:40, chance:{ contract_done:.5, return_town:.3, new_mfr_set:1 } as Record<BeatTrigger,number>, timeoutMs:14_000 };
+export interface BeatReq { trigger?:BeatTrigger; /** dungeon id of the run that just ended */ dungeon?:string; /** run id: at most one beat per run */ run?:string; force?:boolean }
+export const BEAT = { perSession:5, journalMax:40, maxChars:220, maxSentences:2, timeoutMs:12_000, cardMs:14_000, waitMs:90_000 };
+export const SPEAKER = { name:'Odalys Vane', role:'Fixer' };
 
 /** Random per-page-load session id (server-side per-session limit and repeat-avoidance). Not tied to the player. */
 export const SESSION_ID=(()=>{ try{ const a=new Uint8Array(12); crypto.getRandomValues(a); return Array.from(a,x=>x.toString(16).padStart(2,'0')).join(''); }catch{ return Math.random().toString(16).slice(2).padEnd(24,'0').slice(0,24); } })();
 export function journalOf(s:Save):JournalEntry[]{ const x=s as any; if(!Array.isArray(x.journal)) x.journal=[]; return x.journal; }
 export function metaOf(s:Save):BeatMeta{ const x=s as any; if(!x.beatMeta) x.beatMeta={seenMfr:[],count:0}; return x.beatMeta; }
 
-/** Structured, bounded summary: catalog ids and enums ONLY (the server resolves names/makers and rejects unknown ids). */
-export function loadoutSummary(s:Save, ab:string[], req:BeatReq, newMfr?:Mfr){
-  const installed:string[]=[]; const chips=new Set<string>();
-  for(const uid of Object.values(s.installed)){ const it=s.items.find(i=>i.uid===uid); const d=it&&ITEM_BY_ID[it.def]; if(!it||!d) continue; installed.push(it.def); for(const c of it.chips){ if(CHIPS[c]) chips.add(c); } }
-  const cos=cosOf(s as any); const cosmetics=Object.values(cos.equipped).filter(id=>!!id&&!!COS_BY_ID[id as string]) as string[];
-  const out:any={ trigger:req.trigger, town:s.town==='harrow'?'harrow':'rustline', level:Math.max(1,Math.min(99,s.level|0)), session:SESSION_ID, installed:installed.slice(0,11), chips:[...chips].slice(0,8), abilities:ab.filter(a=>!!ABILITIES[a]).slice(0,8), cosmetics:cosmetics.slice(0,8), rep:{HI:s.rep.HI|0,PS:s.rep.PS|0,MM:s.rep.MM|0} };
-  if(req.contract) out.contract=req.contract; if(req.dungeon) out.dungeon=req.dungeon; if(newMfr) out.newMfr=newMfr; return out;
+/** Plain display name: drops the short maker prefix ("HB Siege Bot Arm" -> "Siege Bot Arm") and a trailing side marker. */
+export const plainName=(n:string)=>n.replace(/^[A-Z]{2,3}(?:-\d+)?\s+/,'').replace(/\s*\((?:L|R)\)$/,'').trim();
+const RANK:Record<Rarity,number>={grey:0,green:1,blue:2,purple:3,orange:4};
+/** The one or two non-standard parts worth mentioning (highest rarity first). Empty when only Standard Issue is worn. */
+export function featuredParts(s:Save):{def:string;name:string;mfr:Mfr}[]{
+  const out:{def:string;name:string;mfr:Mfr;r:number}[]=[];
+  for(const uid of Object.values(s.installed)){ const it=s.items.find(i=>i.uid===uid); const d=it&&ITEM_BY_ID[it.def]; if(!it||!d||it.def.startsWith('stock_')) continue; out.push({def:it.def,name:plainName(d.name),mfr:d.mfr,r:RANK[d.rarity]*100+d.lvl}); }
+  out.sort((a,b)=>b.r-a.r); const seen=new Set<string>(); return out.filter(o=>!seen.has(o.name)&&!!seen.add(o.name)).slice(0,2).map(({def,name,mfr})=>({def,name,mfr}));
 }
-export function dominantMfr(s:Save):Mfr|null{ const n:Record<string,number>={HI:0,PS:0,MM:0}; for(const uid of Object.values(s.installed)){ const it=s.items.find(i=>i.uid===uid); const d=it&&ITEM_BY_ID[it.def]; if(d) n[d.mfr]++; } const top=(Object.keys(n) as Mfr[]).sort((a,b)=>n[b]-n[a])[0]; return n[top]>=4?top:null; }
+/** Request body: catalog ids and enums ONLY, just the featured parts (the server resolves names and makers and rejects unknown ids). */
+export function loadoutSummary(s:Save, req:BeatReq){
+  const out:any={ trigger:'return_town', town:s.town==='harrow'?'harrow':'rustline', level:Math.max(1,Math.min(99,s.level|0)), session:SESSION_ID, installed:featuredParts(s).map(p=>p.def), chips:[], abilities:[], cosmetics:[], rep:{HI:s.rep.HI|0,PS:s.rep.PS|0,MM:s.rep.MM|0} };
+  if(req.dungeon) out.dungeon=req.dungeon; return out;
+}
 
-const T:Record<Mfr,Record<BeatTrigger,string[]>>={
-  HI:{ contract_done:['Odalys squints at your rivet-scarred arms. "Harrow-Brandt iron again. Heavy hardware leaves heavy footprints, and clients do notice."','Ledger entry: contract closed. Foreman note: "Whoever bolted that Harrow-Brandt kit on knows how to take a hit. Keep leasing, keep hauling."'],
-    return_town:['The plaza smells of hot slag as you walk in. A porter mutters that Harrow-Brandt people always arrive loud and leave louder.','Terminal log: wear patterns on your Harrow-Brandt plating consistent with heavy salvage. Warranty status: void, as expected.'],
-    new_mfr_set:['Marr taps your new plating. "That is a full Harrow-Brandt line now. Slow, loud, built to be repaired by someone else. Do not expect the warranty to survive."'] },
-  PS:{ contract_done:['Odalys lowers her voice. "Aldane precision, clean work. The auditors will love your hardware and hate you personally."','Log: contract closed without collateral. Aldane sterile-field residue detected on your gear. Someone upstairs is taking notes.'],
-    return_town:['Marr watches you cross the plaza. "Surgical-grade fittings, no wasted motion. Be careful, Aldane parts report back to Aldane."','Terminal log: ceramic wear within tolerance. Compliance score: suspiciously high. Warranty status: void.'],
-    new_mfr_set:['Marr whistles at your new fittings. "Full Aldane set. Quiet, precise, and every part serialized. Somebody knows exactly where you are."'] },
-  MM:{ contract_done:['Odalys snorts. "Kestrel refurb and still standing. Cheap kit, clever hands. Nobody audits a bargain bin."','Ledger entry: contract closed. Returns desk comment: "Refurbished Kestrel hardware, third owner at least. Shrinkage is within expectations."'],
-    return_town:['A vendor squints at your mismatched Kestrel parts. "Value systems, huh? Half of that was returned by somebody before you."','Terminal log: reconditioned parts verified, mostly. Warranty status: void since the second owner.'],
-    new_mfr_set:['Marr shakes his head, grinning. "A whole Kestrel set. Bargain-bin from head to heel. It will hold, probably."'] },
+/** Clean authored lines, one or two plain sentences, same voice and format as the AI line. {part} = the featured part. */
+const CANNED:Record<Mfr,string[]>={
+  HI:['That {part} looks heavy and ready for work. Bring it back in one piece next time.','Good to see the {part} still holding up. Harrow-Brandt builds them to last.','Nice work out there. The {part} has earned its keep.'],
+  PS:['That {part} is clean work. Aldane parts always look good until they break.','The {part} looks sharp. Keep it clean and it should keep you alive.','Nice run. I like how the {part} fits on you.'],
+  MM:['That {part} has seen a few owners, and it still works. Kestrel parts are like that.','Cheap, patched and still going. The {part} suits you.','Good run. The {part} is not pretty, but it gets the job done.'],
 };
-export function authoredBeat(s:Save, req:BeatReq, newMfr?:Mfr):string{ const m=newMfr||dominantMfr(s)||(Object.keys(MFR) as Mfr[]).sort((a,b)=>s.rep[b]-s.rep[a])[0]; const pool=T[m][req.trigger]||T[m].return_town; const n=journalOf(s).length; return pool[n%pool.length]; }
+export function authoredBeat(s:Save, idx=journalOf(s).length):{text:string;parts:string[]}{
+  const p=featuredParts(s); const stock=ITEM_BY_ID['stock_torso']; const m:Mfr=p[0]?.mfr||'MM'; const part=p[0]?.name||plainName(stock?.name||'gear'); const pool=CANNED[m];
+  return { text:pool[idx%pool.length].replace('{part}',part), parts:p.map(x=>x.name) };
+}
+/** Accept an AI line only if it is short, plain and at most two sentences; otherwise the caller uses the canned line. */
+export function acceptLine(t:unknown):string|null{
+  if(typeof t!=='string') return null; const s=t.replace(/\s+/g,' ').trim(); if(s.length<20||s.length>BEAT.maxChars) return null;
+  if(s.split(/(?<=[.!?])\s+/).filter(Boolean).length>BEAT.maxSentences) return null; return s;
+}
 
 export type Fetcher=(url:string,init:any)=>Promise<{ok:boolean;json:()=>Promise<any>}>;
 export class StoryBeats {
-  private fired=0; private last=0; busy=false; fetcher:Fetcher; endpoint:string=((import.meta as any).env?.VITE_WV_STORY_URL as string)||'api/story-beat'; /* AWS: the story Lambda Function URL (build-time VITE_WV_STORY_URL) */ rng:()=>number=Math.random; now:()=>number=Date.now;
+  private fired=0; private lastRun=''; private runN=0; busy=false; fetcher:Fetcher; now:()=>number=Date.now;
+  endpoint:string=((import.meta as any).env?.VITE_WV_STORY_URL as string)||'api/story-beat'; /* AWS: the story Lambda Function URL (build-time VITE_WV_STORY_URL) */
   onEntry:((e:JournalEntry)=>void)|null=null;
-  constructor(private save:()=>Save, private abilities:()=>string[], fetcher?:Fetcher){ this.fetcher=fetcher||((u,i)=>fetch(u,i) as any); }
-  private mfrSetCheck():Mfr|null{ const s=this.save(); const d=dominantMfr(s); if(d&&!metaOf(s).seenMfr.includes(d)) return d; return null; }
-  /** Called at the three story moments. Returns the entry if one was written (async, never throws). */
-  async fire(req:BeatReq):Promise<JournalEntry|null>{
+  constructor(private save:()=>Save, fetcher?:Fetcher){ this.fetcher=fetcher||((u,i)=>fetch(u,i) as any); }
+  /** Called once when a run ends (back in town). Returns the entry if one was written (async, never throws). */
+  async fire(req:BeatReq={}):Promise<JournalEntry|null>{
     const s=this.save(); if(this.busy) return null;
-    let newMfr:Mfr|undefined; const nm=this.mfrSetCheck();
-    if(nm){ newMfr=nm; req={...req,trigger:'new_mfr_set'}; }
-    if(!req.force){ if(this.fired>=BEAT_LIMITS.perSession) return null; if(this.now()-this.last<BEAT_LIMITS.minGapMs&&this.last) return null; if(this.rng()>=BEAT_LIMITS.chance[req.trigger]) return null; }
-    this.busy=true; this.fired++; this.last=this.now();
+    const run=req.run||('r'+(++this.runN)); if(!req.force){ if(run===this.lastRun||this.fired>=BEAT.perSession) return null; if(!featuredParts(s).length) return null; }
+    this.busy=true; this.fired++; this.lastRun=run;
     try {
-      if(nm) { const m=metaOf(s); m.seenMfr.push(nm); }
       let text:string|null=null, src:'ai'|'authored'='authored', model:string|undefined;
-      if(s.settings.storyAi!==false){ try { const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),BEAT_LIMITS.timeoutMs);
-        const r=await this.fetcher(this.endpoint,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(loadoutSummary(s,this.abilities(),req,newMfr))}).finally(()=>clearTimeout(to));
-        const j=r.ok?await r.json():null; if(j&&j.ok&&typeof j.text==='string'&&j.text.length>=20&&j.text.length<=480){ text=j.text; src='ai'; model=j.model; } } catch{} }
-      if(!text) text=authoredBeat(s,req,newMfr);
-      const e:JournalEntry={ t:this.now(), trigger:req.trigger, town:s.town==='harrow'?'harrow':'rustline', text, src, model };
-      const jr=journalOf(s); jr.push(e); while(jr.length>BEAT_LIMITS.journalMax) jr.shift(); metaOf(s).count++; persist(s); this.onEntry?.(e); return e;
+      if(s.settings.storyAi!==false){ try { const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),BEAT.timeoutMs);
+        const r=await this.fetcher(this.endpoint,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(loadoutSummary(s,req))}).finally(()=>clearTimeout(to));
+        const j=r.ok?await r.json():null; const a=j&&j.ok?acceptLine(j.text):null; if(a){ text=a; src='ai'; model=j.model; } } catch{} }
+      const canned=authoredBeat(s); if(!text) text=canned.text;
+      const e:JournalEntry={ t:this.now(), trigger:'return_town', town:s.town==='harrow'?'harrow':'rustline', text, src, model, parts:canned.parts };
+      const jr=journalOf(s); jr.push(e); while(jr.length>BEAT.journalMax) jr.shift(); metaOf(s).count++; persist(s); this.onEntry?.(e); return e;
     } finally { this.busy=false; }
   }
+}
+
+/** The single place a beat appears: a small card in the bottom-left toast area. Waits (up to 90 s) until you are in town with no window open and no
+ *  tutorial step running, never blocks input (only the card itself takes clicks), auto-hides, and dismisses on click or the x button. Always kept in the Story log. */
+export function showStoryCard(e:JournalEntry, canShow:()=>boolean, host:HTMLElement|null=document.getElementById('toasts')):void{
+  if(!host) return; const t0=Date.now();
+  const tick=()=>{ if(Date.now()-t0>BEAT.waitMs) return; if(!canShow()){ setTimeout(tick,600); return; }
+    const el=document.createElement('div'); el.className='toast storycard'; el.setAttribute('role','status');
+    const who=document.createElement('b'); who.textContent=SPEAKER.name+' · '+SPEAKER.role; const q=document.createElement('span'); q.className='sctext'; q.textContent=e.text;
+    const x=document.createElement('button'); x.type='button'; x.className='scx'; x.setAttribute('aria-label','Dismiss'); x.textContent='×';
+    el.append(who,q,x); const kill=()=>el.remove(); el.addEventListener('click',kill); host.appendChild(el); setTimeout(kill,BEAT.cardMs); };
+  tick();
 }

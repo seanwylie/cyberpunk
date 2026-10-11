@@ -7,29 +7,30 @@ const SES = 'a1b2c3d4e5f60718'; const items = Object.entries(CATALOG.items);
 const hiItem = items.find(([, v]) => v.mfr === 'HI')[0], psItem = items.find(([, v]) => v.mfr === 'PS')[0];
 const contract = Object.keys(CATALOG.contracts)[0];
 const base = { trigger: 'contract_done', town: 'rustline', level: 12, session: SES, contract, installed: [hiItem, psItem], chips: [Object.keys(CATALOG.chips)[0]], abilities: [Object.keys(CATALOG.abilities)[0]], cosmetics: [Object.keys(CATALOG.cosmetics)[0]], rep: { HI: 5, PS: 0, MM: 0 } };
-const GOOD = 'Odalys eyes your arm hardware. "Heavy iron leaves heavy footprints," she mutters. Keep the receipts, contractor.';
+const GOOD = 'That arm looks heavy and ready for work. Bring it back in one piece next time.';
 let calls = 0, lastBody = null, replies = null;
 const mk = (reply, status = 200, env = { OPENAI_API_KEY: 'sk-test-SECRET' }, extra = {}) => createStoryService({ env, ...extra, fetch: async (u, i) => { calls++; lastBody = JSON.parse(i.body); lastBody._auth = i.headers.Authorization; const rp = Array.isArray(reply) ? reply[Math.min(calls - 1, reply.length - 1)] : reply; if (rp === 'throw') throw new Error('net'); return { ok: status === 200, status, json: async () => ({ choices: [{ message: { content: rp } }] }) }; } });
 let s = mk(GOOD); let r = await s.handle(base, { ip: '1.1.1.1' });
 ok(r.json.ok && r.json.text === GOOD && !r.json.cached, 'valid id-only loadout -> text from mocked API');
 ok(lastBody.messages[0].content === SYSTEM_PROMPT && lastBody.messages[0].role === 'system' && lastBody._auth === 'Bearer sk-test-SECRET', 'fixed system prompt, key only in upstream auth header');
 const facts = JSON.parse(lastBody.messages[1].content);
-ok(facts.hardware[0].name === CATALOG.items[hiItem].name && facts.hardware[0].maker === 'Harrow-Brandt Heavy Works' && facts.hardware[1].maker === 'Aldane Surgical', 'names/makers resolved server-side with FULL manufacturer names');
+ok(facts.parts_to_mention[0].name === CATALOG.items[hiItem].name && facts.parts_to_mention[0].maker === 'Harrow-Brandt Heavy Works' && facts.parts_to_mention[1].maker === 'Aldane Surgical', 'names/makers resolved server-side with FULL manufacturer names');
 const codeRe = new RegExp('\\b(' + CATALOG.codeTokens.join('|') + ')\\b');
 ok(CATALOG.codeTokens.join() === 'HI,PS,MM,HB,AS,KV' || ['HB', 'AS', 'KV'].every(t => CATALOG.codeTokens.includes(t)), 'catalog codeTokens derived from game data include HB/AS/KV');
 ok(!codeRe.test(lastBody.messages[1].content), 'no short manufacturer codes reach the model');
 ok(!Object.values(CATALOG.items).some(i => new RegExp('^(' + CATALOG.codeTokens.join('|') + ')\\b').test(i.name)), 'no catalog item name starts with a manufacturer code/prefix (HB, AS, KV, HB-40 ...)');
 ok(!Object.values(CATALOG.items).some(i => codeRe.test(i.name)), 'no catalog item name contains a manufacturer code token');
 { const hb = Object.entries(CATALOG.items).find(([, v]) => v.mfr === 'HI' && /Siege Bot Arm/.test(v.name)); ok(hb && hb[1].name === 'Siege Bot Arm (R)', 'HB Siege Bot Arm -> "Siege Bot Arm" (maker passed separately as full name)'); }
-ok(/never use manufacturer abbreviations/i.test(SYSTEM_PROMPT) && /at most ONCE/.test(SYSTEM_PROMPT), 'prompt: expand codes, limit "warranty void"');
-ok(facts.speaker && facts.speaker.name === CATALOG.contacts[CATALOG.contracts[contract].contact].name && /voice/.test(SYSTEM_PROMPT), 'per-contact voice: speaker (name/role/bio from catalog) from the contract');
+ok(/Never use abbreviations/.test(SYSTEM_PROMPT) && /at most 200 characters/.test(SYSTEM_PROMPT) && /Do not use the phrase "warranty void"/.test(SYSTEM_PROMPT), 'prompt: expand codes, 1-2 sentences / 200 chars, no "warranty void"');
+ok(facts.speaker && facts.speaker.name === 'Odalys Vane' && facts.speaker.role === 'Fixer' && !('bio' in facts.speaker), 'speaker is always the Fixer (Odalys Vane)');
+ok(!('chips' in facts) && !('abilities' in facts) && !('cosmetics' in facts) && Array.isArray(facts.parts_to_mention), 'facts are only the parts to mention (no chips/abilities/cosmetics clutter)');
 ok(!JSON.stringify(r).includes('SECRET'), 'response never includes the key');
 r = await s.handle(base, { ip: '1.1.1.1' }); ok(r.json.cached && calls === 1, 'same session+loadout served from cache');
 // recent entries for repeat-avoidance (server-side memory, not client text)
 calls = 0; const s2 = mk(['First line of a story here, with some words. And another.', 'Second line is something different entirely, friend. Truly.']);
 await s2.handle(base, { ip: '2.2.2.2' }); await s2.handle({ ...base, contract: Object.keys(CATALOG.contracts)[1] }, { ip: '2.2.2.2' });
 ok(JSON.parse(lastBody.messages[1].content).recent_entries.length === 1 && /First line/.test(JSON.parse(lastBody.messages[1].content).recent_entries[0]), 'previous beats are passed back as recent_entries');
-const f2 = promptFacts(sanitizeSummary({ ...base, trigger: 'return_town', contract: undefined }).summary); ok(!f2.speaker && /came back/.test(f2.moment), 'return_town without speaker -> log style');
+const f2 = promptFacts(sanitizeSummary({ ...base, trigger: 'return_town', contract: undefined }).summary); ok(f2.speaker.name === 'Odalys Vane' && /came back/.test(f2.moment), 'return_town (run end) is spoken by the Fixer');
 // validation: ids must be in the catalog
 const bad = (o, m) => ok(!sanitizeSummary({ ...base, ...o }).ok, 'rejects ' + m);
 bad({ trigger: 'free_text' }, 'unknown trigger'); bad({ town: 'mars' }, 'unknown town'); bad({ level: '12' }, 'string level'); bad({ session: 'zz' }, 'bad session id'); bad({ session: undefined }, 'missing session');
@@ -42,9 +43,9 @@ r = await mk(GOOD).handle({ nope: 1 }); ok(r.status === 400, 'garbage body -> 40
 // every id the client can send exists in the catalog (generated from game data)
 ok(items.length > 100 && Object.keys(CATALOG.cosmetics).length >= 100 && Object.keys(CATALOG.abilities).length > 50, 'catalog is populated from game data');
 // output filtering
-for (const [t, why] of [['short', 'too short'], ['x'.repeat(600), 'too long'], ['Visit https://evil.example now, friend, it is a long enough line.', 'url'], ['As an AI language model I cannot help with that request today.', 'meta/AI'], ['This job guarantees you a free item next time, you lucky contractor.', 'reward promise'], ['<b>Bold</b> text that goes on and on for a while here ok.', 'markup'], ['One. Two. Three. Four. Five. Six sentences here are way too many.', 'too many sentences'], ['Your HI plating rattles in the plaza tonight, friend of the stall.', 'short manufacturer code'], ['Marr taps your HB Siege Bot Arm and frowns at the weld marks.', 'item prefix HB'], ['The clerk scans your AS Blackout Protocol Visor twice, slowly.', 'item prefix AS'], ['A KV EMP Burst Core hums under your coat, loudly enough to notice.', 'item prefix KV'], ['The ripper arm, an HB-40 unit, is stamped with old foreman marks.', 'part-number prefix HB-40'], ['The warranty is void, and honestly your void warranty was never real either.', 'repeated "warranty void"']]) ok(cleanOutput(t) === null, 'output rejected: ' + why);
+for (const [t, why] of [['short', 'too short'], ['x'.repeat(260), 'too long (over 220)'], ['Three short ones here. Another short one. And a third short line.', 'more than two sentences'], ['She nods *slowly* and says your arm looks fine to her tonight.', 'markdown/stage marks'], ['The lease says warranty void and nothing else about your arm.', 'any "warranty void"'], ['Visit https://evil.example now, friend, it is a long enough line.', 'url'], ['As an AI language model I cannot help with that request today.', 'meta/AI'], ['This job guarantees you a free item next time, you lucky contractor.', 'reward promise'], ['<b>Bold</b> text that goes on and on for a while here ok.', 'markup'], ['One. Two. Three. Four. Five. Six sentences here are way too many.', 'too many sentences'], ['Your HI plating rattles in the plaza tonight, friend of the stall.', 'short manufacturer code'], ['Marr taps your HB Siege Bot Arm and frowns at the weld marks.', 'item prefix HB'], ['The clerk scans your AS Blackout Protocol Visor twice, slowly.', 'item prefix AS'], ['A KV EMP Burst Core hums under your coat, loudly enough to notice.', 'item prefix KV'], ['The ripper arm, an HB-40 unit, is stamped with old foreman marks.', 'part-number prefix HB-40'], ['The warranty is void, and honestly your void warranty was never real either.', 'repeated "warranty void"']]) ok(cleanOutput(t) === null, 'output rejected: ' + why);
 ok(cleanOutput('The clerk scans your Siege Bot Arm and mutters that Harrow-Brandt never stamps anything twice.') !== null && cleanOutput('Nobody asks as the kestrel crates pass, which is how it goes.') !== null, 'full names and ordinary lowercase words still pass');
-ok(cleanOutput('The lease says warranty void, and that is all anyone will say about your Aldane parts tonight.') !== null, 'a single "warranty void" mention is allowed');
+ok(cleanOutput('That Siege Bot Arm looks tough. Aldane would never build it that heavy.') !== null, 'a plain 2-sentence line passes');
 ok(cleanOutput('"' + GOOD + '"') === GOOD.replace(/\s+/g, ' '), 'wrapping quotes stripped');
 calls = 0; r = await mk(['<b>nope nope nope nope nope nope</b>', GOOD]).handle(base); ok(r.json.ok && calls === 2, 'rejected output is retried once');
 calls = 0; r = await mk('<b>nope nope nope nope nope nope</b>').handle(base); ok(!r.json.ok && r.json.reason === 'rejected_output' && calls === 2, 'still bad after retry -> ok:false (client falls back)');
@@ -94,30 +95,44 @@ const ids = await page.evaluate(async () => { const C = await import('/src/confi
 const miss = (a, t) => a.filter(x => !(x in t)); ok(!miss(ids.items, CATALOG.items).length && !miss(ids.chips, CATALOG.chips).length && !miss(ids.abilities, CATALOG.abilities).length && !miss(ids.cos, CATALOG.cosmetics).length && !miss(ids.contracts, CATALOG.contracts).length && !miss(ids.dungeons, CATALOG.dungeons).length, 'catalog covers every item/chip/ability/cosmetic/contract/dungeon id in game data (regenerate with tools/gen_story_ids.mjs if this fails)');
 ok(await page.evaluate(() => window.__game.save.settings.storyAi === true), 'Story AI setting defaults to on');
 const out = await page.evaluate(async () => {
-  const g = window.__game, B = window.__beats; B.rng = () => 0; const o = {};
-  const e = await B.fire({ trigger: 'contract_done', contract: 'od_floor_sweep' }); o.e = e && { src: e.src, text: e.text };
-  o.gap = await B.fire({ trigger: 'contract_done' });
-  let off = 200000; B.now = () => Date.now() + off; const e2 = await B.fire({ trigger: 'return_town' }); off += 200000; const e3 = await B.fire({ trigger: 'return_town' }); off += 200000; const e4 = await B.fire({ trigger: 'return_town' }); o.cap = [!!e2, !!e3, !!e4];
+  const g = window.__game, B = window.__beats; const o = {};
+  o.none = await B.fire({ run: 'r0' }); // only Standard Issue worn -> no beat
+  const pick = Object.values(g.save.items).length; const { ITEMS } = await import('/src/config.ts'); const { mkInst } = await import('/src/state.ts');
+  for (const id of ['hi_ripper_arm', 'ps_scalpel_visor']) { const d = ITEMS.find(i => i.id === id) || ITEMS.find(i => i.mfr === (id.startsWith('hi') ? 'HI' : 'PS') && !i.id.startsWith('stock_')); const it = mkInst(g.save, d.id); g.save.items.push(it); g.save.installed[d.slot] = it.uid; }
+  const e = await B.fire({ run: 'r1', dungeon: 'annex' }); o.e = e && { src: e.src, text: e.text, parts: e.parts };
+  o.same = await B.fire({ run: 'r1' }); // at most one per run
+  o.e2 = !!(await B.fire({ run: 'r2' })); o.e3 = !!(await B.fire({ run: 'r3' })); o.e4 = !!(await B.fire({ run: 'r4' })); o.e5 = !!(await B.fire({ run: 'r5' })); o.e6 = !!(await B.fire({ run: 'r6' }));
   o.save = JSON.parse(localStorage.getItem('arpg-proto-save-v1')).journal.length; return o; });
-ok(out.e && out.e.src === 'ai' && out.e.text === GOOD, 'browser: AI beat from (mocked) proxy added to journal');
-ok(out.gap === null, 'browser: min gap enforced'); ok(out.cap.filter(Boolean).length === 2 && out.save === 3, 'browser: max 3 per session; journal persisted in save');
-const sent = page.__last; ok(sent && Array.isArray(sent.installed) && sent.installed.every(x => typeof x === 'string' && x in CATALOG.items) && /^[a-f0-9]{16,32}$/.test(sent.session) && JSON.stringify(sent).length < 1500 && sanitizeSummary(sent).ok, 'browser: request is a small id-only summary that the server accepts');
+ok(out.none === null, 'browser: no beat when only Standard Issue is worn');
+ok(out.e && out.e.src === 'ai' && out.e.text === GOOD && out.e.parts.length >= 1 && out.e.parts.length <= 2 && out.e.parts.every(x => !/^[A-Z]{2,3}\b/.test(x)), 'browser: one AI line about 1-2 plain-named parts added to the log');
+ok(out.same === null, 'browser: at most one beat per run');
+ok(out.e2 && out.e3 && out.e4 && out.e5 && !out.e6 && out.save === 5, 'browser: session cap of 5 runs; log persisted in save');
+const sent = page.__last; ok(sent && Array.isArray(sent.installed) && sent.installed.length >= 1 && sent.installed.length <= 2 && sent.chips.length === 0 && sent.installed.every(x => typeof x === 'string' && x in CATALOG.items) && /^[a-f0-9]{16,32}$/.test(sent.session) && JSON.stringify(sent).length < 700 && sanitizeSummary(sent).ok, 'browser: request is a tiny id-only body (1-2 parts) that the server accepts');
+// the card: one place, only in town with no window, dismissable, non-blocking
+const card = await page.evaluate(async () => { const { showStoryCard } = await import('/src/story_beats.ts'); const g = window.__game; document.querySelectorAll('.storycard').forEach(x => x.remove()); g.mode = 'town'; window.__ui.modal = 'locker';
+  showStoryCard({ t: 1, trigger: 'return_town', town: 'rustline', text: 'Test line from the Fixer.', src: 'authored' }, () => !window.__ui.modal);
+  await new Promise(r => setTimeout(r, 900)); const hidden = !document.querySelector('.storycard'); window.__ui.modal = null; await new Promise(r => setTimeout(r, 1200));
+  const el = document.querySelector('.storycard'); const o = { hidden, shown: !!el, who: el && el.querySelector('b').textContent, text: el && el.querySelector('.sctext').textContent, inToasts: el && el.parentElement.id === 'toasts', blocksCanvas: el && getComputedStyle(document.getElementById('toasts')).pointerEvents };
+  el && el.click(); o.gone = !document.querySelector('.storycard'); return o; });
+ok(card.hidden && card.shown && card.inToasts && card.who === 'Odalys Vane · Fixer' && card.text === 'Test line from the Fixer.' && card.gone, 'card: waits while a window is open, then shows in the toast area as "Odalys Vane · Fixer", click dismisses');
+ok(card.blocksCanvas === 'none', 'card: the toast area stays click-through (only the card itself takes clicks)');
+ok(/^[A-Z][^|]{10,}\.$/.test(GOOD), 'format: plain sentence(s)');
 // Settings toggle gates API calls
 await page.evaluate(() => { window.__ui.open('settings'); }); await sleep(300);
 await page.evaluate(() => { document.querySelector('#stab-story')?.click(); }); await sleep(300);
 const tog = await page.evaluate(() => { const el = document.getElementById('s-storyai'); const lbl = el && (el.closest('.srow')?.innerText || ''); return el && { checked: el.checked, lbl }; });
-ok(tog && tog.checked && /Generated story beats/.test(tog.lbl), 'settings: "Generated story beats (Story AI)" switch, on by default, with explanation');
+ok(tog && tog.checked && /Story line after each run/.test(tog.lbl), 'settings: "Story line after each run (Story AI)" switch, on by default, with explanation');
 await page.evaluate(() => { const el = document.getElementById('s-storyai'); el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); });
 ok(await page.evaluate(() => window.__game.save.settings.storyAi === false && JSON.parse(localStorage.getItem('arpg-proto-save-v1')).settings.storyAi === false), 'settings: toggle off persists storyAi=false');
 const before = proxyHits;
-const offBeat = await page.evaluate(async () => { const B = window.__beats; B.fired = 0; B.last = 0; B.now = () => Date.now() + 1500000; const e = await B.fire({ trigger: 'contract_done', force: true }); return e && { src: e.src, len: e.text.length }; });
-ok(offBeat && offBeat.src === 'authored' && offBeat.len > 30 && proxyHits === before, 'story AI off: authored text and ZERO API calls');
+const offBeat = await page.evaluate(async () => { const B = window.__beats; B.fired = 0; const e = await B.fire({ run: 'off1', force: true }); return e && { src: e.src, len: e.text.length }; });
+ok(offBeat && offBeat.src === 'authored' && offBeat.len > 30 && offBeat.len <= 220 && proxyHits === before, 'story AI off: clean canned line and ZERO API calls');
 await page.evaluate(() => { window.__game.save.settings.storyAi = true; });
 await page.unroute('**/api/story-beat'); await page.route('**/api/story-beat', r => r.abort());
-const fb = await page.evaluate(async () => { const B = window.__beats; B.fired = 0; B.last = 0; B.now = () => Date.now() + 1900000; const e = await B.fire({ trigger: 'contract_done', force: true }); return e && { src: e.src, len: e.text.length }; });
+const fb = await page.evaluate(async () => { const B = window.__beats; B.fired = 0; const e = await B.fire({ run: 'off2', force: true }); return e && { src: e.src, len: e.text.length }; });
 ok(fb && fb.src === 'authored' && fb.len > 30, 'browser: proxy unreachable -> authored fallback');
 await page.evaluate(() => { window.__ui.open('fixer'); }); await sleep(300);
 const ui = await page.evaluate(() => { const d = document.querySelector('details.fieldlog'); return d && { n: d.querySelectorAll('.clue').length, closed: !d.open }; });
-ok(ui && ui.closed && ui.n >= 4, 'browser: Field log collapsed by default with entries');
+ok(ui && ui.closed && ui.n >= 5, 'browser: Story log collapsed by default with entries');
 const realErr = errors.filter(e => !/ERR_FAILED/.test(e)); ok(realErr.length === 0, 'no page errors ' + realErr.slice(0, 2).join('|'));
 await browser.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASS'); process.exit(fails ? 1 : 0);

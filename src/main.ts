@@ -6,7 +6,7 @@ import { UI } from './ui';
 import { AudioSys } from './audio';
 import { load, persist } from './state';
 import { newStory } from './story';
-import { StoryBeats } from './story_beats';
+import { StoryBeats, showStoryCard } from './story_beats';
 import './dungeon_fx';
 import { ENEMIES, applyUiScale } from './config';
 import { Q } from './quality';
@@ -23,7 +23,7 @@ Q.setPref(save.settings.quality||'auto'); Q.showFps=!!save.settings.showFps;
 let ui:UI; let tut:Tutorial|undefined; let beats:StoryBeats|undefined;
 const game=new Game(save,(t,p)=>{ tut?.event(t,p); if(t==='sfx') audio.sfx(p); else if(t==='musickey') audio.setMusicKey(p); else if(t==='musicretry') audio.noteMusicRetry(); else if(t==='musicphase') audio.setMusicPhase(p); else if(t==='musicarea') audio.setMusicArea(p); else if(t==='towntheme') audio.setTownTheme(p); else if(t==='music') audio.setState(p); else if(t==='beat') beats?.fire(p); else ui?.handle(t,p); });
 ui=new UI(game,audio);
-beats=new StoryBeats(()=>game.save,()=>game.build.abilities.filter(Boolean) as string[]); beats.onEntry=e=>{ ui.toast('New field log entry (Fixer > Field log).'); if(ui.modal==='fixer') ui.render(); }; (window as any).__beats=beats;
+beats=new StoryBeats(()=>game.save); beats.onEntry=e=>{ showStoryCard(e,()=>game.mode==='town'&&!ui.modal&&!(tut&&!tut.disabled&&game.save.tutorial?.status==='active')); if(ui.modal==='fixer') ui.render(); }; (window as any).__beats=beats;
 const canvas=document.getElementById('game') as HTMLCanvasElement; const rend=new Renderer(canvas,game);
 tut=new Tutorial(game,ui,rend); ui.tut=tut; try{ initNet(game,rend); }catch(e){ console.warn('multiplayer init failed (solo unaffected)',e); }
 game.townPreload=async id=>{ if(id==='harrow') await rend.preloadTown(id,buildHarrow()); };
