@@ -4,9 +4,9 @@ export type Tier = 'high' | 'medium' | 'low';
 export type QPref = 'auto' | Tier;
 interface Params { dprCap: number; maxPixels: number; fx: 0 | 1 | 2; smooth: ImageSmoothingQuality; atlasMax: number; maxFxEnemies: number; musicVariety: boolean }
 export const TIERS: Record<Tier, Params> = {
-  high: { dprCap: 2, maxPixels: Infinity, fx: 0, smooth: 'high', atlasMax: 8, maxFxEnemies: 999, musicVariety: true },
-  medium: { dprCap: 1.5, maxPixels: 2.6e6, fx: 1, smooth: 'medium', atlasMax: 6, maxFxEnemies: 14, musicVariety: false },
-  low: { dprCap: 1, maxPixels: 1.3e6, fx: 2, smooth: 'low', atlasMax: 4, maxFxEnemies: 6, musicVariety: false },
+  high: { dprCap: 2, maxPixels: Infinity, fx: 0, smooth: 'high', atlasMax: 5, maxFxEnemies: 999, musicVariety: true },
+  medium: { dprCap: 1.5, maxPixels: 2.6e6, fx: 1, smooth: 'medium', atlasMax: 4, maxFxEnemies: 14, musicVariety: false },
+  low: { dprCap: 1, maxPixels: 1.3e6, fx: 2, smooth: 'low', atlasMax: 3, maxFxEnemies: 6, musicVariety: false },
 };
 const ORDER: Tier[] = ['high', 'medium', 'low'];
 const nav = (typeof navigator !== 'undefined' ? navigator : {}) as any;
@@ -16,7 +16,7 @@ export function detectTier(): { tier: Tier; why: string } {
   const forced = qs.get('q'); if (forced === 'high' || forced === 'medium' || forced === 'low') return { tier: forced, why: 'query' };
   const coarse = (typeof matchMedia !== 'undefined' && matchMedia('(pointer:coarse)').matches) || qs.has('touch');
   const mem: number | undefined = nav.deviceMemory, cores: number = nav.hardwareConcurrency || 8, saveData = !!nav.connection?.saveData;
-  if (!coarse) return { tier: 'high', why: 'fine pointer (desktop)' };
+  if (!coarse) { if (mem && mem <= 2) return { tier: 'low', why: `desktop, ${mem}GB device memory` }; if (mem && mem <= 4) return { tier: 'medium', why: `desktop, ${mem}GB device memory` }; return { tier: 'high', why: 'fine pointer (desktop)' }; }
   if ((mem && mem <= 3) || cores <= 4 || saveData) return { tier: 'low', why: `coarse pointer, ${mem ? mem + 'GB' : cores + ' cores'}${saveData ? ', save-data' : ''}` };
   return { tier: 'medium', why: 'coarse pointer' };
 }
@@ -42,6 +42,8 @@ class Quality {
       else if (this.tier !== 'low') { const nt = ORDER[ORDER.indexOf(this.tier) + 1]; this.tier = nt; this.floor = nt; this.resScale = .9; this.steps.push('tier ' + nt); this.apply(); } this.warm = 1.5; }
     else if (avg < 15 && this.resScale < 1 && this.downs < 4) { if (++this.good >= this.upDelay && performance.now() - this.downAt > 20000) { this.good = 0; this.resScale = Math.min(1, +(this.resScale + .1).toFixed(2)); this.steps.push('res ' + this.resScale); this.apply(); this.warm = 1.5; } } else this.good = 0;
   }
+  /** Memory-pressure fallback: drop one tier (only on Auto; an explicit Settings choice is respected). Returns true when the tier changed. */
+  lowMem(why: string) { if (this.pref !== 'auto' || this.tier === 'low') return false; const nt = ORDER[ORDER.indexOf(this.tier) + 1]; this.tier = nt; this.floor = nt; this.steps.push('mem ' + nt + ' (' + why + ')'); this.apply(); return true; }
   describe() { return `${this.tier}${this.pref === 'auto' ? ' (auto: ' + this.auto.why + ')' : ''} ×${this.resScale}`; }
 }
 export const Q = new Quality();

@@ -29,7 +29,9 @@ tut=new Tutorial(game,ui,rend); ui.tut=tut; try{ initNet(game,rend); }catch(e){ 
 game.townPreload=async id=>{ if(id==='harrow') await rend.preloadTown(id,buildHarrow()); };
 const input=new Input(game,rend,audio,{ modalOpen:()=>ui.modalOpen(), onToggleInv:()=>ui.toggleLive(), onEsc:()=>ui.esc() },canvas);
 const resize=()=>{ applyUiScale(); rend.resize(); (ui as any).fitModal?.(); }; window.visualViewport?.addEventListener('resize',()=>(ui as any).fitModal?.()); window.visualViewport?.addEventListener('scroll',()=>(ui as any).fitModal?.()); window.addEventListener('resize',resize); Q.onChange=()=>{ rend.resize(); }; resize();
-registerSW(); initMobile(game,audio,()=>{ applyUiScale(); rend.resize(); });
+registerSW();
+// memory-pressure watchdog: JS heap near its limit (or a very low-memory device) -> free idle decoded music and step the quality tier down (Auto only).
+setInterval(()=>{ try{ if(document.hidden) return; const pm=(performance as any).memory; if(pm&&pm.jsHeapSizeLimit&&pm.usedJSHeapSize/pm.jsHeapSizeLimit>.7){ audio.music?.dropIdle(); Q.lowMem('js heap '+Math.round(pm.usedJSHeapSize/1048576)+'MB'); } }catch{} },5000); initMobile(game,audio,()=>{ applyUiScale(); rend.resize(); });
 // Resume an existing, unexpired instance suspended by an interruption (solo save/suspend): offer it at the gate.
 if(save.instance&&save.instance.expiresAt>Date.now()){ game.inst=save.instance; setTimeout(()=>ui.toast('Suspended run found: re-enter via the Annex gate. Boss state resets; loot and kills persist.'),400); }
 else if(save.instance){ save.instance=null; persist(save); }

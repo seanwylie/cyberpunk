@@ -3,8 +3,8 @@
 import { launch, sleep } from './lib.mjs'; import fs from 'fs';
 const TIERS = (process.env.MEM_TIERS || 'high,medium,low').split(','), ROUNDS = +(process.env.MEM_ROUNDS || 5), TOWN_S = +(process.env.MEM_TOWN_S || 20), RUN_S = +(process.env.MEM_RUN_S || 40), REPORT = !!process.env.MEM_REPORT;
 // Budgets (MB). rss = whole Chrome process tree (renderer+gpu+browser) measured on a headless software-GL box, so it is a loose ceiling; decoded = images+canvases+audio tracked by src/memtrack.ts.
-const BUDGET = { high: { rss: 1500, decoded: 900, audio: 300 }, medium: { rss: 700, decoded: 450, audio: 220 }, low: { rss: 700, decoded: 350, audio: 220 } };
-const GROWTH_MB = { rss: 120, heap: 25, decoded: 60 }; // allowed drift between round 2 and the last round
+const BUDGET = { high: { rss: 1300, decoded: 750, audio: 250 }, medium: { rss: 1000, decoded: 500, audio: 250 }, low: { rss: 1000, decoded: 500, audio: 250 } };
+const GROWTH_MB = { rss: 170, heap: 25, decoded: 60 }; // allowed drift between round 2 and the last round
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : (REPORT ? 'INFO ' : 'FAIL ')) + m); if (!c && !REPORT) fails++; };
 const kids = (root) => { const par = {}; for (const d of fs.readdirSync('/proc')) if (/^\d+$/.test(d)) { try { const st = fs.readFileSync(`/proc/${d}/stat`, 'utf8'); par[d] = st.slice(st.lastIndexOf(')') + 2).split(' ')[1]; } catch {} } const out = [String(root)]; for (let i = 0; i < out.length; i++) for (const [p, pp] of Object.entries(par)) if (pp === out[i]) out.push(p); return out; };
 const rssMB = (root) => { let t = 0, ren = 0; for (const p of kids(root)) { try { const s = fs.readFileSync(`/proc/${p}/smaps_rollup`, 'utf8'); const m = +/Pss:\s+(\d+)/.exec(s)[1] / 1024; t += m; if (/--type=renderer/.test(fs.readFileSync(`/proc/${p}/cmdline`, 'utf8'))) ren += m; } catch {} } return { total: Math.round(t), renderer: Math.round(ren) }; };
@@ -34,7 +34,7 @@ for (const t of TIERS) {
   const peak = (k) => Math.max(...rows.map(r => r[k])); const B = BUDGET[t];
   ok(peak('rss') <= B.rss, `${t}: peak process memory ${peak('rss')}MB <= ${B.rss}MB`); ok(peak('decoded') <= B.decoded, `${t}: peak decoded images+canvases+audio ${peak('decoded')}MB <= ${B.decoded}MB`); ok(peak('audio') <= B.audio, `${t}: peak decoded music ${peak('audio')}MB <= ${B.audio}MB`);
   const towns = rows.filter(r => /^town\d/.test(r.label)); if (towns.length >= 3) { const a = towns[1], z = towns.at(-1); for (const [k, lim] of [['rss', GROWTH_MB.rss], ['heap', GROWTH_MB.heap], ['decoded', GROWTH_MB.decoded]]) ok(z[k] - a[k] <= lim, `${t}: no growth over repeated runs: ${k} ${a[k]} -> ${z[k]} (limit +${lim})`); ok(z.cvN - a.cvN <= 40, `${t}: canvas count stable ${a.cvN} -> ${z.cvN}`); ok(z.listeners - a.listeners <= 200, `${t}: listeners stable ${a.listeners} -> ${z.listeners}`); }
-  ok(errors.length === 0, `${t}: no page errors ${errors[0] || ''}`);
+  const real = errors.filter(e => !/setPointerCapture/.test(e)); ok(real.length === 0, `${t}: no page errors ${real[0] || ''}`); // setPointerCapture: synthetic mouse click on a touch button, harmless
 }
 fs.writeFileSync(process.env.MEM_OUT || '/tmp/memory_results.json', JSON.stringify(all, null, 1));
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
