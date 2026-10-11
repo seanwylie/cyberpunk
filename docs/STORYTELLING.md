@@ -26,7 +26,7 @@ Occasional short story beats (2-4 sentences, max 480 chars) tailored to what the
 * Opt-out: Settings > Story AI > "Generated story beats (Story AI)" (`settings.storyAi`, default on). Off means no network calls at all and authored text only. The switch explains that only a gear summary is sent to the game's own server.
 
 ## Quality (variety and voice)
-* Full manufacturer names only: the facts the model sees contain "Harrow-Brandt Heavy Works / Aldane Surgical / Kestrel Value Systems" and the prompt forbids HI/PS/MM and ids; the output filter enforces it.
+* Item names in the catalog have their short maker prefix stripped ("HB Siege Bot Arm" -> "Siege Bot Arm", "KV EMP Burst Core" -> "EMP Burst Core"); the prefixes (HB, AS, KV) are derived from game data by `tools/gen_story_ids.mjs` into `codeTokens`, and the output filter rejects any of HI/PS/MM/HB/AS/KV (optionally with a part number such as HB-40). Full manufacturer names only: the facts the model sees contain "Harrow-Brandt Heavy Works / Aldane Surgical / Kestrel Value Systems" and the prompt forbids HI/PS/MM and ids; the output filter enforces it.
 * "Warranty void" is limited to once per beat and usually omitted; the server remembers the last 3 beats per session and passes them back as `recent_entries` with an instruction not to reuse phrasing, openings or jokes. The cache is per session, so a repeat of the same loadout in one session is not regenerated.
 * Per-contact voice: contract completions are spoken by that contract's contact (Odalys wry and guarded, Marr dry, Cole clipped, others blunt, using the contact's bio from the catalog); first-time manufacturer sets are spoken by Marr; returning to town gives a terminal/ledger log.
 

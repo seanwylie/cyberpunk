@@ -27,7 +27,7 @@ await near('hackproc'); ok(true, 'relay reachable');
 await ev(() => { const g = window.__game; g.inst.flags.lock2 = true; });
 ok(await near('armorydoor') === 'armorydoor', 'armory shutter prompt');
 await ev(() => window.__game.interact()); ok((await state()).flags.armory, 'force hardware opens armory shutter');
-ok(await ev(() => !window.__game.solidAt(59.5, 28.5)), 'armory shutter tile is now walkable');
+ok(await ev(() => { const g = window.__game; const d = g.level.doors.find(d => d.id === 'armory'); return d.tiles.every(([x, y]) => !g.solidAt(x + .5, y + .5)); }), 'armory shutter tiles are now walkable');
 await near('armoryfuse'); await ev(() => window.__game.interact());
 ok(await ev(() => document.getElementById('dialog').style.display === 'block'), 'fuse choice dialog opens (combat continues)');
 await clickDialog(0); const s2 = await state(); ok(s2.flags.cond === 'B' && s2.flags.bossKey === 'enforcer', 'fuse selects Reclamation Enforcer');
@@ -37,7 +37,7 @@ await clickDialog(0);
 // controller -> boss door
 await near('controller'); await ev(() => window.__game.interact()); const s3 = await state(); ok(s3.flags.controller, 'controller secured'); ok(await ev(() => { const g = window.__game; const t = g.level.doors.find(d => d.id === 'boss').tiles[1]; return !g.solidAt(t[0] + .5, t[1] + .5); }), 'boss door opened');
 // boss reveal is damage-free and full length
-{ const t = await ev(() => window.__game.level.doors.find(d => d.id === 'boss').tiles[1]); await tp(t[0] + 5, t[1] + .5); } await step(0.3);
+{ const t = await ev(() => window.__game.revealPoint()); await tp(t.x, t.y); } await step(0.3);
 ok(await ev(() => window.__game.revealing), 'boss reveal started');
 const hp0 = (await state()).hp; await ev(() => window.__game.hurtPlayer(50, 0, 0)); 
 await ev(() => { window.__game.dbg.god = false; window.__game.hurtPlayer(50, 0, 0); window.__game.dbg.god = true; });
@@ -80,9 +80,9 @@ await near('hackproc'); await ev(() => window.__game.interact()); await step(1.7
 await near('terminal'); await ev(() => window.__game.interact()); await clickDialog(0); await step(1.7); const s6 = await state(); ok(s6.flags.cond === 'A' && s6.flags.bossKey === 'warden', 'audit command selects Neural Warden');
 ok(await ev(() => document.getElementById('support').style.display) !== 'none', 'support panel visible only with support ability equipped');
 // control ability validity: invalid release (no target) costs nothing
-{ const c = await ev(() => window.__game.level.checkpoints[1]); await tp(c.x - 8, c.y); } await ev(() => { const g = window.__game; g.enemies.forEach(e => { if (!e.dead && Math.hypot(e.x - g.px, e.y - g.py) < 20) { e.x = 0.5; e.y = 0.5; } }); g.beginAim(2); g.updateAim(g.px + 3, g.py, true); g.releaseAim(); });
+{ const c = await ev(() => window.__game.level.checkpoints[1]); await tp(c.x, c.y); } await ev(() => { const g = window.__game; g.enemies.forEach(e => { if (!e.dead && Math.hypot(e.x - g.px, e.y - g.py) < 20) { e.x = 0.5; e.y = 0.5; } }); g.beginAim(2); g.updateAim(g.px + 3, g.py, true); g.releaseAim(); });
 await step(0.6); ok(await ev(() => window.__game.heat) < 2 && await ev(() => window.__game.abCd[2]) === 0, 'invalid ability release cancels: no heat, no cooldown');
-await ev(() => { const g = window.__game; const e = g.enemies.find(e => e.type === 'worker' && !e.dead); e.x = g.px + 3; e.y = g.py; g.beginAim(2); g.updateAim(e.x, e.y, true); g.releaseAim(); }); await step(0.6);
+await ev(() => { const g = window.__game; const e = g.enemies.find(e => e.type === 'worker' && !e.dead); let d = [1, 0]; for (const c of [[1, 0], [-1, 0], [0, 1], [0, -1], [.7, .7], [-.7, .7], [.7, -.7], [-.7, -.7]]) { let clear = true; for (let k = 0.5; k <= 3.6; k += 0.5) if (g.solidAt(g.px + c[0] * k, g.py + c[1] * k)) clear = false; if (clear) { d = c; break; } } e.x = g.px + d[0] * 3; e.y = g.py + d[1] * 3; g.beginAim(2); g.updateAim(e.x, e.y, true); g.releaseAim(); }); await step(0.6);
 ok(await ev(() => window.__game.enemies.some(e => e.faction === 'ally')), 'valid control release turns an enemy'); ok(await ev(() => window.__game.heat) > 5, 'valid cast commits heat');
 // dodge cancels aim/cast with no cost
 await ev(() => { const g = window.__game; g.abCd = [0, 0, 0]; g.heat = 0; const e = g.enemies.find(e => e.type === 'shooter' && !e.dead && e.faction === 'enemy'); if (e) { e.x = g.px + 3; e.y = g.py; g.beginAim(0); g.updateAim(g.px + 3, g.py, true); g.releaseAim(); g.dodge(); } }); await step(1);

@@ -1,4 +1,12 @@
 {
+ "codeTokens": [
+  "HI",
+  "PS",
+  "MM",
+  "HB",
+  "AS",
+  "KV"
+ ],
  "mfr": {
   "HI": "Harrow-Brandt Heavy Works",
   "PS": "Aldane Surgical",
@@ -72,91 +80,91 @@
    "rarity": "grey"
   },
   "hi_ripper_arm": {
-   "name": "HB-40 Ripper Arm",
+   "name": "Ripper Arm",
    "slot": "armR",
    "mfr": "HI",
    "rarity": "blue"
   },
   "hi_cutting_head": {
-   "name": "HB-12 Cutting Head",
+   "name": "Cutting Head",
    "slot": "handR",
    "mfr": "HI",
    "rarity": "blue"
   },
   "hi_clamp": {
-   "name": "HB-9 Bellows Clamp",
+   "name": "Bellows Clamp",
    "slot": "handL",
    "mfr": "HI",
    "rarity": "green"
   },
   "hi_legs_l": {
-   "name": "HB Loadbearer Leg (L)",
+   "name": "Loadbearer Leg (L)",
    "slot": "legL",
    "mfr": "HI",
    "rarity": "green"
   },
   "hi_legs_r": {
-   "name": "HB Loadbearer Leg (R)",
+   "name": "Loadbearer Leg (R)",
    "slot": "legR",
    "mfr": "HI",
    "rarity": "green"
   },
   "hi_torso_cool": {
-   "name": "HB Thermal Exchange Chassis",
+   "name": "Thermal Exchange Chassis",
    "slot": "torso",
    "mfr": "HI",
    "rarity": "blue"
   },
   "hi_torso_green": {
-   "name": "HB Frame Mk1",
+   "name": "Frame Mk1",
    "slot": "torso",
    "mfr": "HI",
    "rarity": "green"
   },
   "ps_blade_arm": {
-   "name": "AS Fan-Blade Arm",
+   "name": "Fan-Blade Arm",
    "slot": "armR",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ps_blade_hand_r": {
-   "name": "AS Scalpel Hand (R)",
+   "name": "Scalpel Hand (R)",
    "slot": "handR",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ps_blade_hand_l": {
-   "name": "AS Scalpel Hand (L)",
+   "name": "Scalpel Hand (L)",
    "slot": "handL",
    "mfr": "PS",
    "rarity": "green"
   },
   "ps_veil_torso": {
-   "name": "AS Veil Torso",
+   "name": "Veil Torso",
    "slot": "torso",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ps_legs_l": {
-   "name": "AS Strider Leg (L)",
+   "name": "Strider Leg (L)",
    "slot": "legL",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ps_legs_r": {
-   "name": "AS Strider Leg (R)",
+   "name": "Strider Leg (R)",
    "slot": "legR",
    "mfr": "PS",
    "rarity": "green"
   },
   "ps_brain": {
-   "name": "AS Cortex Link Mk2",
+   "name": "Cortex Link Mk2",
    "slot": "brain",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ps_face": {
-   "name": "AS Seamless Faceplate",
+   "name": "Seamless Faceplate",
    "slot": "face",
    "mfr": "PS",
    "rarity": "green"
@@ -216,79 +224,79 @@
    "rarity": "green"
   },
   "pool_b_foot": {
-   "name": "AS Damped Foot (L)",
+   "name": "Damped Foot (L)",
    "slot": "footL",
    "mfr": "PS",
    "rarity": "blue"
   },
   "pool_b_arm": {
-   "name": "HB Piston Arm (L)",
+   "name": "Piston Arm (L)",
    "slot": "armL",
    "mfr": "HI",
    "rarity": "blue"
   },
   "pool_p_hand": {
-   "name": "HB Rotor Hand (R)",
+   "name": "Rotor Hand (R)",
    "slot": "handR",
    "mfr": "HI",
    "rarity": "purple"
   },
   "pool_p_torso": {
-   "name": "AS Lattice Torso",
+   "name": "Lattice Torso",
    "slot": "torso",
    "mfr": "PS",
    "rarity": "purple"
   },
   "pool_o_legs": {
-   "name": "HB Bastion Legs",
+   "name": "Bastion Legs",
    "slot": "legR",
    "mfr": "HI",
    "rarity": "orange"
   },
   "hi_slag_apron": {
-   "name": "HB Slag Apron Frame",
+   "name": "Slag Apron Frame",
    "slot": "torso",
    "mfr": "HI",
    "rarity": "green"
   },
   "hi_crucible_torso": {
-   "name": "HB Crucible Exchange Chassis",
+   "name": "Crucible Exchange Chassis",
    "slot": "torso",
    "mfr": "HI",
    "rarity": "blue"
   },
   "hi_ladle_hand": {
-   "name": "HB Ladle-Saw Hand",
+   "name": "Ladle-Saw Hand",
    "slot": "handR",
    "mfr": "HI",
    "rarity": "blue"
   },
   "hi_press_arm": {
-   "name": "HB Press-Ram Arm (L)",
+   "name": "Press-Ram Arm (L)",
    "slot": "armL",
    "mfr": "HI",
    "rarity": "blue"
   },
   "hi_gantry_leg_l": {
-   "name": "HB Gantry Leg (L)",
+   "name": "Gantry Leg (L)",
    "slot": "legL",
    "mfr": "HI",
    "rarity": "purple"
   },
   "hi_gantry_leg_r": {
-   "name": "HB Gantry Leg (R)",
+   "name": "Gantry Leg (R)",
    "slot": "legR",
    "mfr": "HI",
    "rarity": "purple"
   },
   "hi_slag_face": {
-   "name": "HB Slag Visor",
+   "name": "Slag Visor",
    "slot": "face",
    "mfr": "HI",
    "rarity": "green"
   },
   "hi_anvil_foot": {
-   "name": "HB Anvil Foot (R)",
+   "name": "Anvil Foot (R)",
    "slot": "footR",
    "mfr": "HI",
    "rarity": "blue"
@@ -306,55 +314,55 @@
    "rarity": "orange"
   },
   "ps_sutured_torso": {
-   "name": "AS Sutured Ceramic Torso",
+   "name": "Sutured Ceramic Torso",
    "slot": "torso",
    "mfr": "PS",
    "rarity": "green"
   },
   "ps_theatre_torso": {
-   "name": "AS Theatre Veil Torso",
+   "name": "Theatre Veil Torso",
    "slot": "torso",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ps_scalpel_hand_l2": {
-   "name": "AS Micro-Scalpel Hand (L)",
+   "name": "Micro-Scalpel Hand (L)",
    "slot": "handL",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ps_fan_arm": {
-   "name": "AS Fan-Blade Arm (L)",
+   "name": "Fan-Blade Arm (L)",
    "slot": "armL",
    "mfr": "PS",
    "rarity": "purple"
   },
   "ps_ceramic_leg_l": {
-   "name": "AS Ceramic Strider (L)",
+   "name": "Ceramic Strider (L)",
    "slot": "legL",
    "mfr": "PS",
    "rarity": "purple"
   },
   "ps_ceramic_leg_r": {
-   "name": "AS Ceramic Strider (R)",
+   "name": "Ceramic Strider (R)",
    "slot": "legR",
    "mfr": "PS",
    "rarity": "purple"
   },
   "ps_anesthesia_face": {
-   "name": "AS Anesthesia Mask",
+   "name": "Anesthesia Mask",
    "slot": "face",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ps_sensor_foot": {
-   "name": "AS Sensor Foot (L)",
+   "name": "Sensor Foot (L)",
    "slot": "footL",
    "mfr": "PS",
    "rarity": "green"
   },
   "ps_nerve_brain": {
-   "name": "AS Nerve-Lace Cortex",
+   "name": "Nerve-Lace Cortex",
    "slot": "brain",
    "mfr": "PS",
    "rarity": "purple"
@@ -462,37 +470,37 @@
    "rarity": "green"
   },
   "ps_needle_rifle": {
-   "name": "AS Needle Burst Rifle",
+   "name": "Needle Burst Rifle",
    "slot": "handR",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ps_needle_rifle_p": {
-   "name": "AS Needle Burst Rifle (Theatre)",
+   "name": "Needle Burst Rifle (Theatre)",
    "slot": "handR",
    "mfr": "PS",
    "rarity": "purple"
   },
   "ps_arc_caster": {
-   "name": "AS Chain-Arc Caster",
+   "name": "Chain-Arc Caster",
    "slot": "handR",
    "mfr": "PS",
    "rarity": "purple"
   },
   "hi_shard_arm": {
-   "name": "HB Shard Thrower Arm (R)",
+   "name": "Shard Thrower Arm (R)",
    "slot": "armR",
    "mfr": "HI",
    "rarity": "blue"
   },
   "hi_shard_arm_p": {
-   "name": "HB Foundry Shard Battery (R)",
+   "name": "Foundry Shard Battery (R)",
    "slot": "armR",
    "mfr": "HI",
    "rarity": "purple"
   },
   "hi_slug_cannon": {
-   "name": "HB Foundry Slug Cannon",
+   "name": "Foundry Slug Cannon",
    "slot": "handR",
    "mfr": "HI",
    "rarity": "purple"
@@ -534,469 +542,469 @@
    "rarity": "orange"
   },
   "ab_hi_armL_piston_jab": {
-   "name": "HB Piston Jab Arm (L)",
+   "name": "Piston Jab Arm (L)",
    "slot": "armL",
    "mfr": "HI",
    "rarity": "grey"
   },
   "ab_hi_handL_piston_jab_v2": {
-   "name": "HB Piston Jab Hand (L)",
+   "name": "Piston Jab Hand (L)",
    "slot": "handL",
    "mfr": "HI",
    "rarity": "grey"
   },
   "ab_mm_armR_rivet_burst": {
-   "name": "KV Rivet Burst Duo Arm (R)",
+   "name": "Rivet Burst Duo Arm (R)",
    "slot": "armR",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_mm_handR_rivet_burst_v2": {
-   "name": "KV Rivet Burst Hand (R)",
+   "name": "Rivet Burst Hand (R)",
    "slot": "handR",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_hi_armL_hammer_slam": {
-   "name": "HB Hammer Slam Duo Arm (L)",
+   "name": "Hammer Slam Duo Arm (L)",
    "slot": "armL",
    "mfr": "HI",
    "rarity": "green"
   },
   "ab_hi_handL_hammer_slam_v2": {
-   "name": "HB Hammer Slam Hand (L)",
+   "name": "Hammer Slam Hand (L)",
    "slot": "handL",
    "mfr": "HI",
    "rarity": "green"
   },
   "ab_ps_handL_scalpel_flurry": {
-   "name": "AS Scalpel Flurry Duo Hand (L)",
+   "name": "Scalpel Flurry Duo Hand (L)",
    "slot": "handL",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ab_ps_handR_overcharge_shot": {
-   "name": "AS Overcharge Shot Hand (R)",
+   "name": "Overcharge Shot Hand (R)",
    "slot": "handR",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ab_hi_armR_slag_cannon": {
-   "name": "HB Slag Cannon Arm (R)",
+   "name": "Slag Cannon Arm (R)",
    "slot": "armR",
    "mfr": "HI",
    "rarity": "blue"
   },
   "ab_mm_armL_frag_grenade": {
-   "name": "KV Frag Grenade Arm (L)",
+   "name": "Frag Grenade Arm (L)",
    "slot": "armL",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_mm_handR_frag_grenade_v2": {
-   "name": "KV Frag Grenade Duo Hand (R)",
+   "name": "Frag Grenade Duo Hand (R)",
    "slot": "handR",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_mm_torso_shock_ring_v2": {
-   "name": "KV Shock Ring Duo Torso",
+   "name": "Shock Ring Duo Torso",
    "slot": "torso",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_hi_armL_thermite_lob": {
-   "name": "HB Thermite Lob Duo Arm (L)",
+   "name": "Thermite Lob Duo Arm (L)",
    "slot": "armL",
    "mfr": "HI",
    "rarity": "blue"
   },
   "ab_hi_armL_leech_blades": {
-   "name": "HB Leech Blades Arm (L)",
+   "name": "Leech Blades Arm (L)",
    "slot": "armL",
    "mfr": "HI",
    "rarity": "blue"
   },
   "ab_mm_armR_cascade_arc": {
-   "name": "KV Cascade Arc Duo Arm (R)",
+   "name": "Cascade Arc Duo Arm (R)",
    "slot": "armR",
    "mfr": "MM",
    "rarity": "blue"
   },
   "ab_mm_armR_grapple_hook": {
-   "name": "KV Grapple Hook Arm (R)",
+   "name": "Grapple Hook Arm (R)",
    "slot": "armR",
    "mfr": "MM",
    "rarity": "blue"
   },
   "ab_hi_legR_seismic_stomp": {
-   "name": "HB Seismic Stomp Leg (R)",
+   "name": "Seismic Stomp Leg (R)",
    "slot": "legR",
    "mfr": "HI",
    "rarity": "purple"
   },
   "ab_hi_armL_firestorm_pillar": {
-   "name": "HB Firestorm Pillar Arm (L)",
+   "name": "Firestorm Pillar Arm (L)",
    "slot": "armL",
    "mfr": "HI",
    "rarity": "purple"
   },
   "ab_ps_handL_surgical_cut": {
-   "name": "AS Surgical Cut Hand (L)",
+   "name": "Surgical Cut Hand (L)",
    "slot": "handL",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_ps_armL_surgical_cut_v2": {
-   "name": "AS Surgical Cut Arm (L)",
+   "name": "Surgical Cut Arm (L)",
    "slot": "armL",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_ps_handR_needle_pin": {
-   "name": "AS Needle Pin Hand (R)",
+   "name": "Needle Pin Hand (R)",
    "slot": "handR",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_ps_armR_needle_pin_v2": {
-   "name": "AS Needle Pin Arm (R)",
+   "name": "Needle Pin Arm (R)",
    "slot": "armR",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_ps_legL_reaper_lunge": {
-   "name": "AS Reaper Lunge Leg (L)",
+   "name": "Reaper Lunge Leg (L)",
    "slot": "legL",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ab_ps_face_headshot_protocol": {
-   "name": "AS Headshot Protocol Duo Visor",
+   "name": "Headshot Protocol Duo Visor",
    "slot": "face",
    "mfr": "PS",
    "rarity": "purple"
   },
   "ab_mm_armR_static_snare": {
-   "name": "KV Static Snare Duo Arm (R)",
+   "name": "Static Snare Duo Arm (R)",
    "slot": "armR",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_mm_handL_static_snare_v2": {
-   "name": "KV Static Snare Hand (L)",
+   "name": "Static Snare Hand (L)",
    "slot": "handL",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_mm_face_flashbang": {
-   "name": "KV Flashbang Duo Visor",
+   "name": "Flashbang Duo Visor",
    "slot": "face",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_hi_legR_root_spikes_v2": {
-   "name": "HB Root Spikes Leg (R)",
+   "name": "Root Spikes Leg (R)",
    "slot": "legR",
    "mfr": "HI",
    "rarity": "green"
   },
   "ab_ps_brain_gravity_well": {
-   "name": "AS Gravity Well Duo Core",
+   "name": "Gravity Well Duo Core",
    "slot": "brain",
    "mfr": "PS",
    "rarity": "purple"
   },
   "ab_ps_brain_neural_hijack": {
-   "name": "AS Neural Hijack Core",
+   "name": "Neural Hijack Core",
    "slot": "brain",
    "mfr": "PS",
    "rarity": "purple"
   },
   "ab_mm_legR_sprint_burst": {
-   "name": "KV Sprint Burst Leg (R)",
+   "name": "Sprint Burst Leg (R)",
    "slot": "legR",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_mm_footR_sprint_burst_v2": {
-   "name": "KV Sprint Burst Foot (R)",
+   "name": "Sprint Burst Foot (R)",
    "slot": "footR",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_mm_footR_slipstream": {
-   "name": "KV Slipstream Foot (R)",
+   "name": "Slipstream Foot (R)",
    "slot": "footR",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_mm_legL_slipstream_v2": {
-   "name": "KV Slipstream Leg (L)",
+   "name": "Slipstream Leg (L)",
    "slot": "legL",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_ps_footL_blink_step": {
-   "name": "AS Blink Step Foot (L)",
+   "name": "Blink Step Foot (L)",
    "slot": "footL",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_ps_legR_blink_step_v2": {
-   "name": "AS Blink Step Leg (R)",
+   "name": "Blink Step Leg (R)",
    "slot": "legR",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_hi_legL_shoulder_charge": {
-   "name": "HB Shoulder Charge Leg (L)",
+   "name": "Shoulder Charge Leg (L)",
    "slot": "legL",
    "mfr": "HI",
    "rarity": "green"
   },
   "ab_hi_armL_shoulder_charge_v2": {
-   "name": "HB Shoulder Charge Arm (L)",
+   "name": "Shoulder Charge Arm (L)",
    "slot": "armL",
    "mfr": "HI",
    "rarity": "green"
   },
   "ab_ps_legR_phase_slip": {
-   "name": "AS Phase Slip Leg (R)",
+   "name": "Phase Slip Leg (R)",
    "slot": "legR",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ab_hi_torso_bulwark_plates": {
-   "name": "HB Bulwark Plates Torso",
+   "name": "Bulwark Plates Torso",
    "slot": "torso",
    "mfr": "HI",
    "rarity": "grey"
   },
   "ab_hi_legL_bulwark_plates_v2": {
-   "name": "HB Bulwark Plates Leg (L)",
+   "name": "Bulwark Plates Leg (L)",
    "slot": "legL",
    "mfr": "HI",
    "rarity": "grey"
   },
   "ab_hi_torso_ablative_shell": {
-   "name": "HB Ablative Shell Torso",
+   "name": "Ablative Shell Torso",
    "slot": "torso",
    "mfr": "HI",
    "rarity": "green"
   },
   "ab_hi_torso_reactive_armour": {
-   "name": "HB Reactive Armour Duo Torso",
+   "name": "Reactive Armour Duo Torso",
    "slot": "torso",
    "mfr": "HI",
    "rarity": "blue"
   },
   "ab_hi_torso_thermal_siphon": {
-   "name": "HB Thermal Siphon Torso",
+   "name": "Thermal Siphon Torso",
    "slot": "torso",
    "mfr": "HI",
    "rarity": "blue"
   },
   "ab_ps_torso_phase_barrier": {
-   "name": "AS Phase Barrier Torso",
+   "name": "Phase Barrier Torso",
    "slot": "torso",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ab_hi_torso_stoneskin": {
-   "name": "HB Stoneskin Torso",
+   "name": "Stoneskin Torso",
    "slot": "torso",
    "mfr": "HI",
    "rarity": "purple"
   },
   "ab_ps_legL_kinetic_dampers": {
-   "name": "AS Kinetic Dampers Leg (L)",
+   "name": "Kinetic Dampers Leg (L)",
    "slot": "legL",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_ps_torso_kinetic_dampers_v2": {
-   "name": "AS Kinetic Dampers Duo Torso",
+   "name": "Kinetic Dampers Duo Torso",
    "slot": "torso",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_ps_torso_coolant_flush_v2": {
-   "name": "AS Coolant Flush Torso",
+   "name": "Coolant Flush Torso",
    "slot": "torso",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_mm_torso_rally_beacon": {
-   "name": "KV Rally Beacon Duo Torso",
+   "name": "Rally Beacon Duo Torso",
    "slot": "torso",
    "mfr": "MM",
    "rarity": "blue"
   },
   "ab_mm_torso_shared_aegis": {
-   "name": "KV Shared Aegis Torso",
+   "name": "Shared Aegis Torso",
    "slot": "torso",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_mm_brain_shared_aegis_v2": {
-   "name": "KV Shared Aegis Duo Core",
+   "name": "Shared Aegis Duo Core",
    "slot": "brain",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_mm_brain_auto_turret_v2": {
-   "name": "KV Auto Turret Core",
+   "name": "Auto Turret Core",
    "slot": "brain",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_ps_face_shadow_veil": {
-   "name": "AS Shadow Veil Visor",
+   "name": "Shadow Veil Visor",
    "slot": "face",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_ps_face_ambush_mark": {
-   "name": "AS Ambush Mark Visor",
+   "name": "Ambush Mark Visor",
    "slot": "face",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ab_mm_torso_smoke_bomb": {
-   "name": "KV Smoke Bomb Duo Torso",
+   "name": "Smoke Bomb Duo Torso",
    "slot": "torso",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_mm_armR_smoke_bomb_v2": {
-   "name": "KV Smoke Bomb Arm (R)",
+   "name": "Smoke Bomb Arm (R)",
    "slot": "armR",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_mm_armL_auto_turret": {
-   "name": "KV Auto Turret Arm (L)",
+   "name": "Auto Turret Arm (L)",
    "slot": "armL",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_mm_brain_sentry_drone": {
-   "name": "KV Sentry Drone Core",
+   "name": "Sentry Drone Core",
    "slot": "brain",
    "mfr": "MM",
    "rarity": "blue"
   },
   "ab_ps_brain_virus_upload": {
-   "name": "AS Virus Upload Duo Core",
+   "name": "Virus Upload Duo Core",
    "slot": "brain",
    "mfr": "PS",
    "rarity": "blue"
   },
   "ab_mm_brain_emp_burst": {
-   "name": "KV EMP Burst Core",
+   "name": "EMP Burst Core",
    "slot": "brain",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_mm_face_emp_burst_v2": {
-   "name": "KV EMP Burst Visor",
+   "name": "EMP Burst Visor",
    "slot": "face",
    "mfr": "MM",
    "rarity": "green"
   },
   "ab_hi_brain_repulsor_drone": {
-   "name": "HB Repulsor Drone Core",
+   "name": "Repulsor Drone Core",
    "slot": "brain",
    "mfr": "HI",
    "rarity": "blue"
   },
   "ab_mm_brain_heat_sink": {
-   "name": "KV Heat Sink Core",
+   "name": "Heat Sink Core",
    "slot": "brain",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_mm_torso_heat_sink_v2": {
-   "name": "KV Heat Sink Torso",
+   "name": "Heat Sink Torso",
    "slot": "torso",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_ps_brain_coolant_flush": {
-   "name": "AS Coolant Flush Core",
+   "name": "Coolant Flush Core",
    "slot": "brain",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_hi_brain_overclock_core": {
-   "name": "HB Overclock Core Core",
+   "name": "Overclock Core Core",
    "slot": "brain",
    "mfr": "HI",
    "rarity": "purple"
   },
   "ab_mm_armL_field_stitch_v2": {
-   "name": "KV Field Stitch Arm (L)",
+   "name": "Field Stitch Arm (L)",
    "slot": "armL",
    "mfr": "MM",
    "rarity": "grey"
   },
   "ab_ps_torso_triage_cycle": {
-   "name": "AS Triage Cycle Torso",
+   "name": "Triage Cycle Torso",
    "slot": "torso",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_ps_brain_triage_cycle_v2": {
-   "name": "AS Triage Cycle Core",
+   "name": "Triage Cycle Core",
    "slot": "brain",
    "mfr": "PS",
    "rarity": "green"
   },
   "ab_hi_armR_siege_bot": {
-   "name": "HB Siege Bot Arm (R)",
+   "name": "Siege Bot Arm (R)",
    "slot": "armR",
    "mfr": "HI",
    "rarity": "purple"
   },
   "ab_mm_armL_scrap_swarm": {
-   "name": "KV Scrap Swarm Arm (L)",
+   "name": "Scrap Swarm Arm (L)",
    "slot": "armL",
    "mfr": "MM",
    "rarity": "blue"
   },
   "ab_ps_face_orbital_strike": {
-   "name": "AS Orbital Strike Visor",
+   "name": "Orbital Strike Visor",
    "slot": "face",
    "mfr": "PS",
    "rarity": "orange"
   },
   "ab_ps_face_blackout_protocol": {
-   "name": "AS Blackout Protocol Visor",
+   "name": "Blackout Protocol Visor",
    "slot": "face",
    "mfr": "PS",
    "rarity": "orange"
   },
   "ab_hi_torso_foundry_meltdown": {
-   "name": "HB Foundry Meltdown Torso",
+   "name": "Foundry Meltdown Torso",
    "slot": "torso",
    "mfr": "HI",
    "rarity": "orange"
   },
   "ab_mm_brain_legion_protocol": {
-   "name": "KV Legion Protocol Core",
+   "name": "Legion Protocol Core",
    "slot": "brain",
    "mfr": "MM",
    "rarity": "orange"
   },
   "ab_hi_armR_chain_reaction": {
-   "name": "HB Chain Reaction Arm (R)",
+   "name": "Chain Reaction Arm (R)",
    "slot": "armR",
    "mfr": "HI",
    "rarity": "orange"
   },
   "ab_mm_torso_second_wind": {
-   "name": "KV Second Wind Torso",
+   "name": "Second Wind Torso",
    "slot": "torso",
    "mfr": "MM",
    "rarity": "orange"
