@@ -45,12 +45,12 @@ const CHECK = () => {
       const clipped = el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1;
       if (clipped && !(el.matches('textarea,input') ) && !(/auto|scroll/.test(cs.overflowY) && el.scrollWidth <= el.clientWidth + 1)) { if (!(clampOk(el) && hasName(el))) bad.push('text clipped without clamp+tooltip: ' + desc(el)); }
     }
-    let vr = { l: L, r: R, t: T, b: B }; let scrolls = false;
+    let vr = { l: L, r: R, t: T, b: B }; let scrolls = false; const fixedBelow = (a0) => { for (let q = el; q && q !== a0; q = q.parentElement) if (getComputedStyle(q).position === 'fixed') return true; return false; }; /* a fixed overlay (replace-confirm dialog) is not clipped by its DOM ancestors' overflow */
     for (let a = el.parentElement; a && a !== document.body; a = a.parentElement) {
       const s = getComputedStyle(a), r = a.getBoundingClientRect();
       if (/auto|scroll/.test(s.overflowY)) scrolls = true;
-      if (s.overflowX !== 'visible' && (R > r.right + 1 || L < r.left - 1)) { if (!(clampOk(el) && hasName(el))) bad.push('text clipped by ' + desc(a) + ' : ' + desc(el)); }
-      if (s.overflowY === 'hidden' && !scrolls && (B > r.bottom + 1 || T < r.top - 1)) { if (!(clampOk(el) && hasName(el))) bad.push('text clipped (y) by ' + desc(a) + ' : ' + desc(el)); }
+      if (s.overflowX !== 'visible' && !fixedBelow(a) && (R > r.right + 1 || L < r.left - 1)) { if (!(clampOk(el) && hasName(el))) bad.push('text clipped by ' + desc(a) + ' : ' + desc(el)); }
+      if (s.overflowY === 'hidden' && !scrolls && !fixedBelow(a) && (B > r.bottom + 1 || T < r.top - 1)) { if (!(clampOk(el) && hasName(el))) bad.push('text clipped (y) by ' + desc(a) + ' : ' + desc(el)); }
       if (s.overflowX !== 'visible') { vr.l = Math.max(vr.l, r.left); vr.r = Math.min(vr.r, r.right); } if (s.overflowY !== 'visible') { vr.t = Math.max(vr.t, r.top); vr.b = Math.min(vr.b, r.bottom); }
     }
     if (cs.overflowY !== 'visible') { const r = el.getBoundingClientRect(); vr.t = Math.max(vr.t, r.top); vr.b = Math.min(vr.b, r.bottom); } if (cs.overflowX !== 'visible') { const r = el.getBoundingClientRect(); vr.l = Math.max(vr.l, r.left); vr.r = Math.min(vr.r, r.right); }
