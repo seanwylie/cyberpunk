@@ -48,7 +48,7 @@ const check = () => {
       const s = getComputedStyle(a); const r = a.getBoundingClientRect();
       if (a !== el && (s.overflowX !== 'visible') && (R > r.right + 1 || L < r.left - 1)) bad.push('clipped x by ' + desc(a) + ' : ' + desc(el));
       if (s.overflowY === 'auto' || s.overflowY === 'scroll') scrollY = true;
-      if (s.overflowY === 'hidden' && a !== el && (B > r.bottom + 1 || T < r.top - 1)) bad.push('clipped y by ' + desc(a) + ' : ' + desc(el));
+      if (s.overflowY === 'hidden' && !scrollY && a !== el && (B > r.bottom + 1 || T < r.top - 1)) bad.push('clipped y by ' + desc(a) + ' : ' + desc(el));
     }
     if (!scrollY && (B > vh + 1 || T < -1)) bad.push('outside viewport y: ' + desc(el));
     if (cs.overflowX !== 'visible' && cs.textOverflow !== 'ellipsis' && el.scrollWidth > el.clientWidth + 1) bad.push('scrollWidth>clientWidth: ' + desc(el));

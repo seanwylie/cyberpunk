@@ -3,7 +3,7 @@ import { launch } from './lib.mjs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const { browser, page, errors, ctx } = await launch(); const ev = (f, a) => page.evaluate(f, a);
 const D = await ev(async () => {
-  const reg = await import('/src/abilities/registry.ts'); const cfg = await import('/src/config.ts'); const hw = await import('/src/abilities/hw.ts'); const vfx = await import('/src/abilities/vfx.ts');
+  const reg = await import('/src/abilities/registry.ts'); const cfg = await import('/src/config.ts'); const hw = await import('/src/abilities/hw.ts'); const HEATM = (await import('/src/heat.ts')).HEAT; const vfx = await import('/src/abilities/vfx.ts');
   const data = reg.ABILITY_DATA; const out = { n: data.length, bad: [], dup: [], noItem: [], itemBad: [], noIcon: [], noFx: [], bound: [], chipless: [], nodesc: [], tags: {}, items: hw.ABILITY_ITEMS.length };
   const ids = new Set(), names = new Set(); const GRP = cfg.SLOT_GROUP;
   const sumK = (ps) => ps.reduce((a, p) => a + (['damage', 'cone', 'line', 'circle', 'chain', 'shoot'].includes(p.p) ? (p.k || 0) : p.p === 'dash' ? (p.k || 0) : 0) + (p.then ? sumK(p.then) : 0) + (p.tick ? sumK(p.tick) * 3 : 0) + (p.p === 'summon' ? 0 : 0), 0);
@@ -11,7 +11,7 @@ const D = await ev(async () => {
   const rar = { grey: 0, green: 1, blue: 2, purple: 3, orange: 4 };
   for (const a of data) {
     if (ids.has(a.id)) out.dup.push(a.id); ids.add(a.id); if (names.has(a.name)) out.dup.push(a.name); names.add(a.name);
-    const d = cfg.ABILITIES[a.id]; if (!d || !d.ext || d.heat !== a.heat || d.cd !== a.cd) out.bad.push(a.id + ': not registered'); if (!d?.desc || d.desc.length < 12) out.nodesc.push(a.id);
+    const d = cfg.ABILITIES[a.id]; if (!d || !d.ext || d.heat !== Math.round(a.heat * HEATM.extMul * 10) / 10 || d.cd !== Math.round(a.cd * HEATM.cdMul * 10) / 10) out.bad.push(a.id + ': not registered'); if (!d?.desc || d.desc.length < 12) out.nodesc.push(a.id);
     if (!['self', 'direction', 'ground', 'target'].includes(d?.aim)) out.bad.push(a.id + ': aim');
     if (a.shape === 'lockon' && d.aim !== 'target' || a.shape === 'ground' && d.aim !== 'ground' || (a.shape === 'cone' || a.shape === 'line') && d.aim !== 'direction') out.bad.push(a.id + ': shape/aim mismatch');
     if (!a.flavor || !a.slots.length || !a.steps.length && !a.toggle) out.bad.push(a.id + ': incomplete');

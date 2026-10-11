@@ -112,7 +112,7 @@ ok(C.pendWait && C.pendStart, 'boss track not yet decoded: waits, then fades in 
   ok(D.eliteDiff && D.lastHardStored && D.bagKept, 'respawn keeps the persistent bags (no hard reset) and elite never reuses the last hard track');
   // real sim: killing the player mid-boss-fight and returning to checkpoint emits a retry exactly once and resets the reveal
   const Sx = await ev(async () => { const g = window.__game; g.enterTown(true); g.save.level = 40; g.save.instance = null; g.save.lockouts = {}; g.save.lastClearDay = null; g.startRun('warehouse'); g.revealing = false; const ev2 = []; const old = g.emit; g.emit = (t, p) => { ev2.push(t); return old(t, p); };
-    const f = g.inst.flags; f.gate1 = f.lock2 = f.controller = true; g.px = g.level.revealX + 1.5; g.py = g.level.bossSpawn.y; for (let i = 0; i < 400; i++) g.update(1 / 30); const spawned = g.enemies.some(e => !e.dead && window.__enemies?.[e.type]?.boss);
+    const f = g.inst.flags; f.gate1 = f.lock2 = f.controller = true; { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } for (let i = 0; i < 400; i++) g.update(1 / 30); const spawned = g.enemies.some(e => !e.dead && window.__enemies?.[e.type]?.boss);
     g.playerDown(); g.returnToCheckpoint(); g.emit = old; return { spawned, retry: ev2.filter(t => t === 'musicretry').length, flags: !g.inst.flags.bossSpawned }; });
   ok(Sx.retry >= 1 && Sx.flags, 'sim: boss reset after death emits musicretry (' + JSON.stringify(Sx) + ')'); }
 // --- rotation logic + asset existence (variety pack) ---

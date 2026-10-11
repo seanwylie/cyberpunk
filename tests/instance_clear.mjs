@@ -11,7 +11,7 @@ const clear = (id) => ev(async (id) => {
   const g = window.__game; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lastClearDay = null; g.save.lockouts = {}; g.save.level = 40; g.save.settings.devFreeReset = false;
   const started = g.startRun(id); if (!started) return { started };
   const f = g.inst.flags; f.gate1 = f.lock2 = f.controller = true; g.applyDoors();
-  g.px = g.level.bossSpawn.x; g.py = g.level.bossSpawn.y; for (let i = 0; i < 600 && !g.enemies.some(e => e.type === f.bossKey && !e.dead); i++) g.update(0.016);
+  { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } for (let i = 0; i < 600 && !g.enemies.some(e => e.type === f.bossKey && !e.dead); i++) g.update(0.016);
   const boss = g.enemies.find(e => !e.dead && e.type === f.bossKey); if (!boss) return { started, noBoss: true, key: f.bossKey };
   window.__events = []; const old = g.emit; g.emit = (t, p) => { window.__events.push(t); return old(t, p); };
   g.drops = g.inst.drops; g.killEnemy(boss); g.emit = old;
