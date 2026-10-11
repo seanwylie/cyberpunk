@@ -358,9 +358,9 @@ body.tutdock .popwrap{ bottom:var(--tutdock,0px); } body.tutdock .pop{ max-heigh
    #hudbot : grid [toasts | centre (channel / interact / hint) | ability cluster]; under 820px the centre row sits above toasts | cluster.
    Safe-area insets are added once, at the region edge. */
 :root{ --hud-gut:clamp(8px,1.1vw,14px); --hud-gap:4px; --hud-r:4px; --hud-padv:4px; --hud-padh:8px; --hud-plate:rgba(14,15,16,.84); --hud-line:#4a4c4f; --hud-shadow:0 2px 6px rgba(0,0,0,.45); --abgap:clamp(12px,2.4vw,22px); --ctlgap:14px; --cap-gap:4px; --logo-w:60px; --logo-h:28px; --abs:clamp(46px,7.6vw,64px); --dds:clamp(56px,9.4vw,78px); }
-body{ --hud-col:clamp(190px,30vw,calc(290px*var(--fs))); --tbtn:max(36px,calc(30px*var(--fs))); --trgap:5px; --tray-w:calc(6*var(--tbtn) + 5*var(--trgap) + 14px); --hud-side:max(var(--hud-col),var(--tray-w));
+body{ --hud-col:clamp(190px,30vw,calc(290px*var(--fs))); --tbtn:max(36px,calc(30px*var(--fs))); --trgap:5px; --tray-w:calc(7*var(--tbtn) + 6*var(--trgap) + 14px); --hud-side:max(var(--hud-col),var(--tray-w));
   --capfs:max(var(--fmin),calc(11px*var(--fs))); --cap-h:calc(2.2*var(--capfs) + var(--cap-gap) + 6px); --ctl-w:calc(3*var(--abs) + var(--dds) + 2*var(--abgap) + var(--ctlgap)); }
-body.touch{ --tbtn:44px; --trgap:3px; --tray-w:calc(6*var(--tbtn) + 5*var(--trgap) + 14px); --capfs:max(11px,var(--fmin)); }
+body.touch{ --tbtn:44px; --trgap:3px; --tray-w:calc(3*var(--tbtn) + 2*var(--trgap) + 14px); --capfs:max(11px,var(--fmin)); }
 /* plate style shared by every text box in the HUD */
 #meta,#support,#tut,#objective,#livepanel,#interact,#hint,#channelbar,.toast,#topright{ box-sizing:border-box; background:var(--hud-plate); border:1px solid var(--hud-line); border-radius:var(--hud-r); padding:var(--hud-padv) var(--hud-padh); box-shadow:var(--hud-shadow), inset 3px 0 0 var(--ac,transparent); }
 #topright{ background:linear-gradient(180deg,rgba(34,36,38,.9),rgba(18,19,20,.9)); padding:4px 6px; box-shadow:var(--hud-shadow), inset 0 1px 0 rgba(255,255,255,.05); }
@@ -385,8 +385,10 @@ body.touch{ --tbtn:44px; --trgap:3px; --tray-w:calc(6*var(--tbtn) + 5*var(--trga
   #objective{ grid-column:2; grid-row:1; justify-self:center; max-width:100%; }
   #topright{ grid-column:3; grid-row:1; } #minimap{ grid-column:3; grid-row:2; } #livepanel{ grid-column:3; grid-row:3; }
 }
-@media (max-width:640px){ body.touch #topright{ flex-wrap:wrap; justify-content:center; width:calc(3*var(--tbtn) + 2*var(--trgap) + 14px); } }
-@media (max-height:420px){ #minimap{ width:120px; height:75px; } }
+@media (max-width:520px){ body.touch #topright{ flex-wrap:wrap; justify-content:center; width:calc(3*var(--tbtn) + 2*var(--trgap) + 14px); } }
+@media (min-width:521px) and (max-width:640px){ body.touch #topright{ flex-wrap:wrap; justify-content:flex-end; width:calc(4*var(--tbtn) + 3*var(--trgap) + 14px); } }
+@media (min-width:641px) and (max-width:900px){ body.touch #topright{ flex-wrap:wrap; justify-content:flex-end; width:calc(4*var(--tbtn) + 3*var(--trgap) + 14px); } }
+@media (max-height:420px){ #minimap{ width:120px; height:75px; } body.touch #livepanel{ max-height:60px; } }
 /* bottom region */
 #hudbot{ position:absolute; left:calc(var(--hud-gut) + env(safe-area-inset-left)); right:calc(var(--hud-gut) + env(safe-area-inset-right)); bottom:calc(var(--hud-gut) + env(safe-area-inset-bottom)); display:grid; align-items:end; column-gap:var(--hud-gut); row-gap:var(--hud-gap); pointer-events:none;
   grid-template-columns:minmax(0,1fr) auto; grid-template-areas:"mid mid" "toasts toasts" ". ctl"; }
@@ -483,7 +485,7 @@ body:has(#dialog[style*="block"]) #banner{ visibility:hidden; }
 /* below 900px the NPC dialog sits under the objective bar / live panel instead of covering them */
 @media (max-width:899px){ #dialog{ top:max(14%,112px); } }
 @media (max-width:899px) and (max-height:480px){ #dialog{ top:max(8%,84px); max-height:calc(100vh - 100px); } }
-@media (max-width:520px){ #dialog{ top:max(14%,192px); } }
+@media (max-width:520px){ #dialog{ top:max(14%,244px); } }
 .vs > span{ display:inline-block; }
 /* ---- Wardrobe (wardrobeui.ts) ---- */
 .wdwrap{ display:flex; gap:10px; align-items:flex-start; min-width:0; } .wdleft{ flex:0 0 232px; display:flex; flex-direction:column; gap:6px; align-items:center; } .wdright{ flex:1; min-width:0; }
