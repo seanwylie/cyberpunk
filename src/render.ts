@@ -393,7 +393,8 @@ export class Renderer {
   private drawZone(z:{x:number;y:number;r:number;t:number;life:number;dps:number;windup:number;env?:boolean}){ const warn=z.t<z.windup; const hostile=z.dps>0; const T=this.g.time; const red=!!this.g.save.settings.reducedFx; const left=z.env?1:Math.max(0,Math.min(1,(z.life-z.t)/.7)); const pulse=red?.5:.5+.5*Math.sin(T*6+z.x*3);
     if(warn){ const p=z.t/z.windup; this.poly(this.circle(z.x,z.y,z.r),'#b5483a','#ffd9a0',.18+.25*p,2); this.poly(this.circle(z.x,z.y,z.r*p),'#d8502a',undefined,.35); return; }
     if(!hostile){ this.poly(this.circle(z.x,z.y,z.r),'#4f5f78','#9aa8b8',.22*left,2); return; }
-    const fill=z.env?'#c8741e':'#d8421e'; this.poly(this.circle(z.x,z.y,z.r),fill,z.env?'#ffc060':'#ff8a50',(.16+.14*pulse)*left+(z.env?.04:0),2);
+    if(z.env){ /* permanent level hazard: faint fill + dashed amber rim, clearly not a telegraph */ const c=this.ctx; this.poly(this.circle(z.x,z.y,z.r),'#c8741e',undefined,.07+.03*pulse,1); c.save(); c.setLineDash([6,5]); this.poly(this.circle(z.x,z.y,z.r),undefined,'#ffc060',.55,1.5); c.restore(); return; }
+    const fill='#d8421e'; this.poly(this.circle(z.x,z.y,z.r),fill,'#ff8a50',(.16+.14*pulse)*left,2);
     if(!z.env){ const f=Math.max(.02,Math.min(1,(z.life-z.t)/Math.max(.5,z.life-z.windup))); this.poly(this.circle(z.x,z.y,z.r*f),'#ff6a30',undefined,.1*left); } }
   private syncTown(L:Level){ if(!this.env) return; const want=L.theme==='harrow'?(this.town2??=new TownArt('./town2/',harrowCfg())):this.town1; if(want&&this.town!==want) this.town=want; }
   private drawTownGround(){ const t=this.town!, L=this.g.level; if(!t.ground) t.buildGround(L); const gr=t.ground!; const CH=5, kk=this.TW/GP; const R=Math.ceil(Math.max(this.w,this.h)/this.TW*1.1)+4; const g=this.g;

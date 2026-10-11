@@ -106,7 +106,9 @@ export class Game {
   }
   resumeInstance(fresh=false){
     const inst=this.inst!; abxReset(this); this.clearTransients(); this.mode='run'; this.level=dungeonOf(inst.dungeon).build(inst.seed); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.townFails=0; this.downed=false; this.revealing=false;
-    this.lastZone=''; this.zoneShown={}; this.zoneAnyAt=-1e9; this.pathWp=null; this.applyDoors(); this.enemies=inst.enemies.map(e=>this.wrap(e));
+    this.lastZone=''; this.zoneShown={}; this.zoneAnyAt=-1e9; this.pathWp=null; this.applyDoors();
+    if(!fresh&&!inst.enemies.length&&!this.instDone(inst)&&!inst.flags.bossDead&&!inst.flags.bossSpawned){ /* repair an instance whose enemy list was wiped by an old save-in-town bug: respawn the roster */ const lv=this.level; inst.enemies=[]; for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp*this.hpMul(), maxHp:ENEMIES[sp.type].hp*this.hpMul(), alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); } }
+    this.enemies=inst.enemies.map(e=>this.wrap(e));
     // Boss attempts always replay the full reveal: reset a living boss on (re)entry.
     this.resetBossIfAlive(); this.fixStuckDrops();
     const cp=this.level.checkpoints[0]; this.px=fresh?this.level.spawn.x:cp.x; this.py=fresh?this.level.spawn.y:cp.y;
@@ -156,7 +158,7 @@ export class Game {
   openDoor(id:string){ const d=this.level.doors.find(d=>d.id===id); if(!d) return; for(const [x,y] of d.tiles) this.level.solid[y*this.level.w+x]=0; this.emit('sfx','door'); }
   resetBossIfAlive(){ const inst=this.inst; if(!inst) return; clearBossAdds(this); const bi=inst.enemies.findIndex(e=>ENEMIES[e.type].boss&&!e.dead); if(bi>=0){ const b=inst.enemies[bi]; inst.enemies.splice(bi,1); this.enemies=this.enemies.filter(e=>e.id!==b.id); inst.flags.bossSpawned=false; inst.flags.bossRevealed=false; this.emit('musicretry',null); } this.revealing=false; }
 
-  saveNow(){ if(this.inst){ this.inst.px=this.px; this.inst.py=this.py; this.inst.hp=this.hp; this.inst.enemies=this.enemies.slice() as EnemyState[]; /* a copy: sharing the array made spawnEnemy list late adds twice (updated and hit twice) */ } this.save.instance=this.inst; persist(this.save); }
+  saveNow(){ if(this.inst&&this.mode==='run'){ /* only snapshot while actually in the run: in town this.enemies is empty and would wipe the saved instance (pagehide/visibility saves in town) */ this.inst.px=this.px; this.inst.py=this.py; this.inst.hp=this.hp; this.inst.enemies=this.enemies.slice() as EnemyState[]; /* a copy: sharing the array made spawnEnemy list late adds twice (updated and hit twice) */ } if(!this.inst||!this.inst.id.startsWith('net-')) this.save.instance=this.inst; /* a party (net-) instance is never written into the player's own save */ persist(this.save); }
 
   // ---------- helpers ----------
   solidAt(x:number,y:number){ const L=this.level; const ix=Math.floor(x), iy=Math.floor(y); if(ix<0||iy<0||ix>=L.w||iy>=L.h) return true; return L.solid[iy*L.w+ix]===1; }
