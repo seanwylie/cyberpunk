@@ -245,3 +245,16 @@ Drop weight per ability rarity (relative weights within a converted roll, before
 `docs/abilities_icons.png` (regenerate: `python3 tools/abilities/make_icons.py --sheet docs/abilities_icons.png`).
 
 ![icons](abilities_icons.png)
+
+
+## Heat and cooldowns (balance pass)
+
+Heat is the primary limiter on sustained ability use; cooldown is the secondary limiter (bursts and ultimates). Tunables and formulas: `src/heat.ts`. Full before/after numbers: `docs/BALANCE.md` "Heat pass".
+
+- **Costs:** every ability's heat in the tables above is the *authored* value. In game it is multiplied by 1.8 (`HEAT.abilityMul`) and cooldowns by 0.6 (`HEAT.cdMul`), applied once in `src/config.ts`; damage per cast is x1.7 (`HEAT.powerMul`) so fewer casts still carry the fight. In-game tooltips show the real cost after gear.
+- **Heat reduction is capped:** chips (`coolant`, `quench`) and other `heat` modifiers have diminishing returns and never remove more than 30% of a cast's heat. COOL on gear saturates at x1.4 effective (dissipation max 8.4/s). Cooldown reduction caps at 30%.
+- **The trade:** every point of effective heat reduction costs ability damage (up to about 12% for the reduction cap plus 12% at the COOL cap), so a heat spec sustains rather than spams.
+- **Heat-role augments** (`vent`, `ventHit` primitives, toggles that vent) are scaled with the same factor so Thermal Siphon style abilities keep their value; a toggle's heat per second is also x1.8, so leaving one running is a real cost.
+- **Overheat:** 2.5 s minimum lockout, back online at 50 heat, dissipation x0.8, +25% damage taken, autos at half rate. Abilities cannot be cast, toggles switch off.
+- **Vent (`V` or tap the heat bar):** the manual heat-management skill. See the table in `docs/BALANCE.md`.
+- **Synergies:** `Charged` (spending stored heat for damage) still reads raw heat, so playing hot is rewarded as long as you do not tip over; `Overheated` tag abilities still work as before.

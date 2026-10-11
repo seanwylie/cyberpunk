@@ -213,3 +213,61 @@ Tuning lives in `src/content/hardmode.ts` (HARD) plus `DROP`/`DROP_RATE_SCALE` i
 | skilled bot clears (<=1 death) | not measured (old full-run par clear 63-96%) | 63-67% overall; per tier 79/54/55/69/50% (T0..T4) |
 
 **Drops** (`tools/balance/drops.mjs`): Annex items+chips+stims per run 14.3 -> 3.3 (ground piles 33 -> 7); other dungeons 3.5-5.7, tier IV 7-8. Rarity: re-roll keep chance blue .35, purple .06, orange 0 (signature drops only). Affixed pack leaders roll .25; true elites 1 guaranteed; bosses 2 guaranteed with the second mostly a chip/stim. Grey items auto-sell on pickup (Settings > Gameplay "Auto-sell junk").
+
+
+## Heat pass (heat is the primary limiter, cooldown the secondary one)
+
+Sean: "Heat is not an issue ever, cooldowns make it so heat isn't an issue ... if I spec for heat reduction I can spam abilities. Let's balance cooldowns with heat." All numbers live in `src/heat.ts` (`HEAT`); the pure functions there (`effCooling`, `effReduce`, `heatCost`, `cdAfter`, `throttle`, `dissipation`, `heatBand`) are what the sim, engine, HUD and tests share.
+
+**Before:** passive dissipation was 9 x COOL (COOL is additive and uncapped: a purple kit reached x2.8, a cooling-only spec x5.2, so 25-46 heat/s), abilities cost 8-34 heat on 3-10 s cooldowns, autos built 2.4x weapon heat. Result: average heat 1-5 in every spec, 0 overheats in 300 s of bench time, so cooldowns alone set the cast rate. Chip heat-reduction (`coolant`/`quench`) was uncapped and stacked with COOL. `ABILITY_BAL.heat` was never read.
+
+**What changed**
+| Knob | Before | After |
+|---|---|---|
+| Baseline dissipation | 9/s x COOL | 6/s x effective COOL |
+| Effective COOL | uncapped (x5+) | diminishing, hard cap x1.4 (dissipation never above 8.4/s) |
+| Ability heat cost | authored | x1.8 (heat scales with power; fewer, heavier casts) |
+| Ability cooldown | authored | x0.6 (cooldown is now the burst/ultimate limiter) |
+| Ability power per cast | x1 | x1.7 (`HEAT.powerMul`: `AB` damages, `ABILITY_BAL.dmg`) |
+| Chip heat-cost reduction | uncapped, raw sum | diminishing, hard cap 30% (`reduceCap`, `reduceK`) |
+| Cooldown reduction | cap 50% | hard cap 30% |
+| Auto-attack heat | x2.4 weapon heat | x1.2 (autos are sustainable alone, abilities are what overheats you) |
+| Cast soak | none | dissipation pauses 0.6 s after each cast |
+| Heat-efficiency tax | none | ability damage x(1 - 0.30 x reduction - 0.12 x cooling fraction): a maxed heat spec deals about 12-16% less |
+| Overheat | abilities offline, recover at 35 | 2.5 s minimum lockout, recover at 50, dissipation x0.8, +25% damage taken, autos at half rate/damage, auto heat x0.25, slower movement |
+| Vent (new) | n/a | `V` key or tap the heat bar: 1 s channel (abilities and autos offline, move x0.6), dumps 30 heat (45 when heat >= 75), 12 s cooldown, works while overheated |
+| Stim | heal | heal + vents 25 heat |
+| Toggles, vent abilities | authored | scaled by the same x1.8 so heat-control builds keep their value |
+
+**Meaningful play:** hold heat under ~80, spend it on the right ability (cost tracks power), vent early in a lull (waiting for 75+ pays a bigger hot vent but risks overheating into a telegraph), save the stim for when both HP and heat are low, and use the existing enemy heat sources (hazard zones, hex spikes, boss floor patterns) as pressure that forces a vent. Heat-reduction chips and COOL gear are real but bounded; the damage tax means a pure heat spec is a sustain spec, not a spam spec.
+
+**HUD:** the heat bar reads `HEAT n`, turns amber at 60% (`warm`), orange at 80% (`HOT n`, plus a `V` hint when vent is ready) and red at overheat (`OVERHEATED - V VENT`, the existing 1 Hz pulse). Warm and hot are steady colours (no flashing; `tests/flash.mjs` still applies). The bar tooltip shows the live dissipation rate and vent state; ability buttons mark `!` when a cast would overheat; tooltips show the real cost after gear.
+
+**Bench (`node tools/balance/heat.mjs`, 120 s on an unkillable dummy, bot casts every ready ability; `skilled` stays under 96 heat and vents at 90, `sloppy` ignores heat but vents when overheated, `spam` ignores heat and never vents):**
+
+| spec (profile) | cooling stat | casts/min before -> after | overheats/min before -> after | lockout before -> after |
+|---|---|---|---|---|
+| starter (skilled) | x1.0 | 38.7 -> 16.5 | 0 -> 0 | 0% -> 0% |
+| starter (sloppy) | x1.0 | 38.7 -> 22 | 0 -> 5.5 | 0% -> 72% (no restraint is punished) |
+| purple (skilled) | x2.8 | 17.3 -> 14.5 | 0 -> 0 | 0% |
+| ability purple (skilled) | x2.7 | 21.3 -> 17 | 0 | 0% |
+| max heat-reduction (skilled) | x5.2 | 35.3 -> 19 | 0 | 0% |
+| max heat-reduction (sloppy) | x5.2 | 35.3 -> 32 | 0 -> 5 | 0% -> 54% |
+| ability purple (spam) | x2.7 | 21.3 -> 10.5 | 0 -> 7 | 0% -> 96% |
+
+The max heat-reduction spec used to cast 35/min with heat never above 2; it is now capped near 20 casts/min with average heat 87 (the bot sits at the heat ceiling the whole fight). The cooldown ceiling for three abilities is about 60 casts/min, so heat, not cooldown, is what stops it. Fully unspecced and fully specced builds end up within about 1.2-1.5x of each other in sustained casts because the caps flatten the curve on purpose; the rest of a heat spec's value is burst headroom and recovery speed.
+
+**Level results (par kits, 2 seeds, `tools/balance/out/heat_par_*.json`)**
+| | Before | After first pass (x2.0, no bot vent) | After (shipped) |
+|---|---|---|---|
+| Clear rate | 75% | 35% | **89%** (target 70-90%) |
+| Ability damage share | 64.8% | 74.4% | **76.3%** (target >60%) |
+| Deaths per run | 1.67 | 3.06 | 1.00 |
+| Overheats per minute | 0.01 | 2.6 | **1.2** |
+| Time locked out | 0% | 39% | **10%** |
+| Casts per run | 149 | 102 | 98 |
+| Mean time to clear | 384 s | 436 s | 287 s |
+
+The first pass showed the cost of getting heat wrong: 2.6 overheats/min and 39% lockout turned par clears from 75% to 35%. The shipped numbers keep overheat a recurring, survivable event (about once a minute for the greedy bot that pushes into overheat on elites and bosses, with vent as the answer). Tank-and-spank bot (boss fights, par kits): loses 100% (target >80%). See the boss table below for the skilled bot.
+
+**Re-run:** `node tools/balance/heat.mjs --secs 120`, `node tools/balance/run.mjs --par --seeds 2`, `node tools/balance/abilshare.mjs out.json`, `node tools/balance/heatsum.mjs out.json`; `npm run test:heat` for the assertions (caps, consequences, vent, HUD bands, bench cast-rate limits).
