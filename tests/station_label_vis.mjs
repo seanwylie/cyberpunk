@@ -1,6 +1,7 @@
 // Every station label (interact pill) in both towns: full text visible, inside the screen, not covered by anything drawn after it, one label per station.
 // Labels are queued and drawn in the overlay pass above all props/NPCs/signs; we verify by hooking the draw calls that happen AFTER the label text.
 import { launch, sleep } from './lib.mjs';
+import fs from 'fs'; fs.mkdirSync('shots/station_labels', { recursive: true });
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 for (const [W, H, T] of [[1280, 720, 0], [800, 600, 0], [844, 390, 1]]) {
   const { browser, page, errors } = await launch({ viewport: { width: W, height: H }, touch: !!T, query: '?splash=hold' }); const ev = (f, a) => page.evaluate(f, a);
@@ -18,14 +19,19 @@ for (const [W, H, T] of [[1280, 720, 0], [800, 600, 0], [844, 390, 1]]) {
       const placed = await ev(st => { const g = window.__game; for (const dx of [0, .6, 1.2]) for (let a = 0; a < 16; a++) { const x = st.x + Math.cos(a * Math.PI / 8) * dx, y = st.y + Math.sin(a * Math.PI / 8) * dx; if (!g.solidAt(x, y)) { g.px = x; g.py = y; for (let i = 0; i < 4; i++) g.update(.016); if (g.prompt?.id === st.id) return true; } } return false; }, st);
       if (!placed) { ok(false, `${W}x${H} ${town}/${st.key}: could not enter interact range`); continue; }
       await ev(() => { window.__occ = []; window.__lbl = null; }); await sleep(700);
-      const r = await ev(st => { const R = (window.__rend.lblRects || []).filter(q => q.id === st.id); const g = window.__game; return { hits: (() => { const L0 = (window.__rend.lblRects || []).find(q => q.id === st.id); if (!L0) return ['no label']; const R = window.__rend; return R.stationProps(R.sx(st.x, st.y), R.sy(st.x, st.y), st.x, st.y).filter(p => L0.x < p.x + p.w && L0.x + L0.w > p.x && L0.y < p.y + p.h && L0.y + L0.h > p.y).map(p => Math.round(p.x) + ',' + Math.round(p.y) + ',' + Math.round(p.w) + 'x' + Math.round(p.h)); })(), ax: window.__rend.sx(st.x, st.y), padL: R[0] ? R[0].ix - R[0].x : -1, padR: R[0] ? R[0].x + R[0].w - (R[0].tx + R[0].tw) : -1, isz: R[0]?.isz, n: R.length, r: R[0], occ: window.__occ.filter(x => x === st.id).length, vw: innerWidth, vh: innerHeight, name: window.__game.level.interacts.find(i => i.id === st.id)?.label }; }, st);
+      const r = await ev(st => { const R = (window.__rend.lblRects || []).filter(q => q.id === st.id); const g = window.__game; return { vis: window.__rend.stationVisual(st.x, st.y), hits: (() => { const L0 = (window.__rend.lblRects || []).find(q => q.id === st.id); if (!L0) return ['no label']; const R = window.__rend; return R.stationProps(R.sx(st.x, st.y), R.sy(st.x, st.y), st.x, st.y).filter(p => L0.x < p.x + p.w && L0.x + L0.w > p.x && L0.y < p.y + p.h && L0.y + L0.h > p.y).map(p => Math.round(p.x) + ',' + Math.round(p.y) + ',' + Math.round(p.w) + 'x' + Math.round(p.h)); })(), s: window.__rend.TW / 64, ax: window.__rend.sx(st.x, st.y), padL: R[0] ? R[0].ix - R[0].x : -1, padR: R[0] ? R[0].x + R[0].w - (R[0].tx + R[0].tw) : -1, isz: R[0]?.isz, n: R.length, r: R[0], occ: window.__occ.filter(x => x === st.id).length, vw: innerWidth, vh: innerHeight, name: window.__game.level.interacts.find(i => i.id === st.id)?.label }; }, st);
       const L = r.r; const inside = L && L.x >= 0 && L.y >= 0 && L.x + L.w <= r.vw && L.y + L.h <= r.vh;
-      const cx = L ? L.x + L.w / 2 : 1e9; const clamped = L && (L.x <= 8.5 || L.x + L.w >= r.vw - 8.5 || L.y <= 8.5 || L.y + L.h >= r.vh - 8.5); ok(clamped || Math.abs(cx - r.ax) <= 3, `${W}x${H} ${town}/${st.key}: label centred on the pad anchor (label ${Math.round(cx)} vs anchor ${Math.round(r.ax)})`);
+      const cx = L ? L.x + L.w / 2 : 1e9; const clamped = L && (L.x <= 8.5 || L.x + L.w >= r.vw - 8.5 || L.y <= 8.5 || L.y + L.h >= r.vh - 8.5); const vc = r.vis ? r.vis.cx : null; const want = vc == null ? r.ax : (Math.abs(vc - r.ax) <= 70 * (L?.lim || 70) ? vc : r.ax + Math.sign(vc - r.ax) * 70 * (L?.lim || 70));
+      ok(clamped || Math.abs(cx - want) <= 3 || Math.abs(cx - vc) <= Math.abs(r.ax - vc) + 3 && Math.abs(cx - want) <= 3, `${W}x${H} ${town}/${st.key}: label centred over the station's visual centre (label ${Math.round(cx)} vs visual ${vc == null ? 'n/a' : Math.round(vc)} / anchor ${Math.round(r.ax)})`);
+      ok(L && Math.abs(L.tailX - cx) <= 3 + (clamped ? L.w / 2 : 0) && L.tailX >= L.x && L.tailX <= L.x + L.w, `${W}x${H} ${town}/${st.key}: pointer directly under the pill (tail ${Math.round(L?.tailX)} vs pill centre ${Math.round(cx)})`);
       ok(Math.abs(r.padL - r.padR) <= 2 && r.padL >= 8 && r.isz >= 8, `${W}x${H} ${town}/${st.key}: pill left/right padding equal (${r.padL?.toFixed(1)} / ${r.padR?.toFixed(1)} px, icon ${r.isz}px)`);
       ok(clamped || r.hits.length === 0, `${W}x${H} ${town}/${st.key}: label clear of its station's prop sprites (${r.hits.join(' | ') || 'none intersect'})`);
+      if (W === 1280) { const cl = { x: Math.max(0, Math.round(L.x - 60)), y: Math.max(0, Math.round(L.y - 50)), width: 0, height: 0 }; cl.width = Math.min(W - cl.x, Math.round(L.w + 120)); cl.height = Math.min(H - cl.y, Math.round(L.h + 190)); await page.screenshot({ path: `shots/station_labels/${town}_${st.key}.png`, clip: cl }); }
+      (globalThis.__aud ||= []).push([W + 'x' + H, town, st.key, Math.round(cx - r.ax), r.vis ? Math.round(cx - r.vis.cx) : 'n/a', r.vis ? Math.round(r.vis.w) : '', clamped ? 'clamped' : ''].join('\t'));
       ok(r.n === 1 && !!L && L.text.length >= 3 && inside && r.occ === 0, `${W}x${H} ${town}/${st.key}: one label "${L?.text}" fully on screen=${inside}, occluding draws after label=${r.occ}`);
     }
   }
   ok(errors.length === 0, `${W}x${H}: no page errors ${errors[0] || ''}`); await browser.close();
 }
+console.log('AUDIT size\ttown\tstation\tlabel-anchor dx\tlabel-visualcentre dx\tprop w\tnote\n' + (globalThis.__aud || []).join('\n'));
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
