@@ -109,7 +109,7 @@ export function buildTown():Level {
   // ---- TRANSIT (plaza centre, orange): Reach Line tram stop to the other towns ----
   { const s=S('transit'); D('tram_platform',s.lx,s.ly,4,2,5.6,{station:s.key,glow:'warm'}); D('lamp',s.lx-1,s.ly+3,1,1,1.0,{glow:'warm'}); D('lamp',s.lx+4,s.ly+3,1,1,1.0,{glow:'warm'}); }
   // big readable world-space signs (pole + neon panel with icon and label), one per station
-  for(const s of STATIONS) D('sign_'+s.key,s.sx,s.sy,1,1,3.9,{station:s.key,ay:.93,glow:undefined});
+  for(const s of STATIONS) D('sign_'+s.key,s.sx,s.sy,1,1,1.9,{station:s.key,ay:.93,glow:undefined});
   // ---- plaza hub furniture (kept low so spawn reads from afar): directory kiosk, benches, fire barrel ring ----
   D('bench',26,19,2,1,2.0); D('bench',33,25,2,1,2.0); D('bench',23,26,1,2,1.8); D('barrels',36,18,2,2,2.4); D('cables',27,25,1,1,1.5); D('scaffold',22,16,3,3,3.2,{solid:true}); D('steam_drums',37,25,2,2,2.5,{steam:true});
   for(const [lx,ly] of [[24,14],[36,14],[24,29],[36,29],[19,21],[41,22],[30,11],[30,32]]) D('lamp',lx,ly,1,1,1.0,{glow:'warm'});

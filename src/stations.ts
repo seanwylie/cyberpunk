@@ -16,7 +16,7 @@ export const RUSTLINE_STATIONS: Station[] = [
   { key: 'locker', id: 'locker', opens: 'locker', name: 'Locker', short: 'LOCKER', verb: 'swap gear and chips', color: '#46e08a', rgb: '70,224,138', icon: 'locker', x: 30, y: 35.2, lx: 28, ly: 37, sx: 27, sy: 35, kind: 'locker', ambient: 'scan' },
   { key: 'store', id: 'store', opens: 'store', name: 'Outfitter', short: 'STORE', verb: 'shop (simulated)', color: '#ff5cc8', rgb: '255,92,200', icon: 'store', x: 12.5, y: 30.6, lx: 9, ly: 32, sx: 9, sy: 30, kind: 'terminal', ambient: 'neon' },
   { key: 'bank', id: 'bank', opens: 'bank', name: 'Bank', short: 'BANK', verb: 'store gear and credits', color: '#f2ecc4', rgb: '242,236,196', icon: 'bank', x: 30, y: 8.6, lx: 28, ly: 4, sx: 25, sy: 7, kind: 'terminal', ambient: 'vault' },
-  { key: 'transit', id: 'transit', opens: 'travel', name: 'Reach Line', short: 'TRANSIT', verb: 'travel to other towns', color: '#ff8f3a', rgb: '255,143,58', icon: 'transit', x: 32.5, y: 20.2, lx: 32, ly: 16, sx: 35, sy: 19, kind: 'terminal', ambient: 'beacon' },
+  { key: 'transit', id: 'transit', opens: 'travel', name: 'Reach Line', short: 'TRANSIT', verb: 'travel to other towns', color: '#a0e632', rgb: '160,230,50', icon: 'transit', x: 32.5, y: 20.2, lx: 32, ly: 16, sx: 35, sy: 19, kind: 'terminal', ambient: 'beacon' },
 ];
 /** Active town's stations. Mutated IN PLACE by setTownStations() so every consumer (minimap, markers, prompts) follows the current town. */
 export const STATIONS: Station[] = [...RUSTLINE_STATIONS];
@@ -26,7 +26,7 @@ export function setTownStations(list: Station[]) { if (STATIONS.length === list.
 export const HARROW_W = 76, HARROW_H = 54, HARROW_CX = 38, HARROW_CY = 27;
 export const HARROW_SPAWN = { x: 18.5, y: 27.5 }, HARROW_RETURN_SPAWN = { x: 59.5, y: 27.5 };
 export const HARROW_STATIONS: Station[] = [
-  { key: 'h_transit', id: 'h_transit', opens: 'travel', name: 'Reach Line', short: 'TRANSIT', verb: 'ride back to Rustline', color: '#ff8f3a', rgb: '255,143,58', icon: 'transit', x: 13.5, y: 27.5, lx: 8, ly: 21, sx: 6, sy: 25, kind: 'terminal', ambient: 'beacon' },
+  { key: 'h_transit', id: 'h_transit', opens: 'travel', name: 'Reach Line', short: 'TRANSIT', verb: 'ride back to Rustline', color: '#a0e632', rgb: '160,230,50', icon: 'transit', x: 13.5, y: 27.5, lx: 8, ly: 21, sx: 6, sy: 25, kind: 'terminal', ambient: 'beacon' },
   { key: 'h_jobs', id: 'h_jobs', opens: 'fixer', name: 'Job Board', short: 'JOBS', verb: 'foundry contracts', color: '#ffb02e', rgb: '255,176,46', icon: 'jobs', x: 22, y: 12, lx: 18, ly: 6.5, sx: 20, sy: 9, kind: 'npc', ambient: 'screens' },
   { key: 'h_bank', id: 'h_bank', opens: 'bank', name: 'Bank', short: 'BANK', verb: 'Reach branch', color: '#f2ecc4', rgb: '242,236,196', icon: 'bank', x: 38, y: 9, lx: 36, ly: 4.5, sx: 33, sy: 7.5, kind: 'terminal', ambient: 'vault' },
   { key: 'h_parts', id: 'h_parts', opens: 'vendor', name: 'Heavy Works Parts', short: 'PARTS', verb: 'tier hardware', color: '#38d8ff', rgb: '56,216,255', icon: 'implants', x: 54.5, y: 12, lx: 50, ly: 6, sx: 53, sy: 9.5, kind: 'vendor', ambient: 'sparks' },

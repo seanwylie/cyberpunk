@@ -17,15 +17,15 @@ const FONTS = '"Roboto Condensed","Bahnschrift","Arial Narrow",Impact,sans-serif
 export function makeSign(st: Station): HTMLCanvasElement {
   const W = 480, H = 560, cv = mk(W, H), c = cv.getContext('2d')!; const col = st.color;
   // pole + base
-  c.fillStyle = '#17191c'; c.fillRect(W / 2 - 9, 200, 18, 330); c.fillStyle = col; c.globalAlpha = .75; c.fillRect(W / 2 - 2, 200, 4, 330); c.globalAlpha = 1; c.fillStyle = '#26292d'; c.fillRect(W / 2 - 34, 520, 68, 18);
+  c.fillStyle = '#17191c'; c.fillRect(W / 2 - 9, 138, 18, 392); c.fillStyle = col; c.globalAlpha = .75; c.fillRect(W / 2 - 2, 138, 4, 392); c.globalAlpha = 1; c.fillStyle = '#26292d'; c.fillRect(W / 2 - 34, 520, 68, 18);
   // panel with glow
-  c.save(); c.shadowColor = col; c.shadowBlur = 26; c.fillStyle = '#0a0c0f'; c.strokeStyle = col; c.lineWidth = 7; const r = 16, x0 = 12, y0 = 18, pw = W - 24, ph = 176; c.beginPath(); c.moveTo(x0 + r, y0); c.arcTo(x0 + pw, y0, x0 + pw, y0 + ph, r); c.arcTo(x0 + pw, y0 + ph, x0, y0 + ph, r); c.arcTo(x0, y0 + ph, x0, y0, r); c.arcTo(x0, y0, x0 + pw, y0, r); c.closePath(); c.fill(); c.stroke(); c.restore();
+  c.save(); c.shadowColor = col; c.shadowBlur = 26; c.fillStyle = '#0a0c0f'; c.strokeStyle = col; c.lineWidth = 7; const r = 16, x0 = 12, y0 = 18, pw = W - 24, ph = 120; c.beginPath(); c.moveTo(x0 + r, y0); c.arcTo(x0 + pw, y0, x0 + pw, y0 + ph, r); c.arcTo(x0 + pw, y0 + ph, x0, y0 + ph, r); c.arcTo(x0, y0 + ph, x0, y0, r); c.arcTo(x0, y0, x0 + pw, y0, r); c.closePath(); c.fill(); c.stroke(); c.restore();
   // colour band + icon medallion
   c.fillStyle = `rgba(${st.rgb},.18)`; c.fillRect(x0 + 6, y0 + 6, 150, ph - 12); c.save(); c.shadowColor = col; c.shadowBlur = 14; drawIcon(c, st.icon, x0 + 81, y0 + ph / 2, 52, col, 8); c.restore();
   // text
   c.textAlign = 'left'; c.textBaseline = 'middle'; let fs = 70; c.font = `800 ${fs}px ${FONTS}`; const label = st.name.toUpperCase(); while (c.measureText(label).width > 290 && fs > 36) { fs -= 4; c.font = `800 ${fs}px ${FONTS}`; }
-  c.save(); c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = '#fff'; c.fillText(label, x0 + 170, y0 + 66); c.restore();
-  let vs = 34; c.font = `600 ${vs}px ${FONTS}`; while (c.measureText(st.verb.toUpperCase()).width > 285 && vs > 20) { vs -= 2; c.font = `600 ${vs}px ${FONTS}`; } c.fillStyle = col; c.fillText(st.verb.toUpperCase(), x0 + 170, y0 + 126);
+  c.save(); c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = '#fff'; c.fillText(label, x0 + 170, y0 + ph / 2 + 2); c.restore();
+  if (false) { let vs = 34; c.font = `600 ${vs}px ${FONTS}`; while (c.measureText(st.verb.toUpperCase()).width > 285 && vs > 20) { vs -= 2; c.font = `600 ${vs}px ${FONTS}`; } c.fillStyle = col; c.fillText(st.verb.toUpperCase(), x0 + 170, y0 + 126); }
   // rivets
   c.fillStyle = '#2c3035'; for (const [rx, ry] of [[24, 30], [W - 24, 30], [24, y0 + ph - 12], [W - 24, y0 + ph - 12]]) { c.beginPath(); c.arc(rx, ry, 5, 0, 7); c.fill(); }
   return cv;
@@ -95,11 +95,11 @@ export class TownArt {
   paintStationDecals(x: CanvasRenderingContext2D) {
     x.save(); x.lineCap = 'round';
     for (const st of this.stations) { const px = st.x * GP, py = st.y * GP; const [HX, HY] = this.hub;
-      x.strokeStyle = `rgba(${st.rgb},.30)`; x.lineWidth = GP * .22; x.setLineDash([GP * .55, GP * .5]); x.beginPath(); x.moveTo(HX * GP, HY * GP); x.quadraticCurveTo((HX + st.x) / 2 * GP + Math.sin(st.x) * 1.2 * GP, (HY + st.y) / 2 * GP + Math.cos(st.y) * 1.2 * GP, px, py); x.stroke(); x.setLineDash([]);
-      const g = x.createRadialGradient(px, py, 0, px, py, GP * 2.4); g.addColorStop(0, `rgba(${st.rgb},.30)`); g.addColorStop(.7, `rgba(${st.rgb},.12)`); g.addColorStop(1, `rgba(${st.rgb},0)`); x.fillStyle = g; x.beginPath(); x.arc(px, py, GP * 2.4, 0, 7); x.fill();
-      x.strokeStyle = `rgba(${st.rgb},.75)`; x.lineWidth = GP * .12; x.beginPath(); x.arc(px, py, GP * 1.5, 0, 7); x.stroke(); x.strokeStyle = `rgba(${st.rgb},.4)`; x.beginPath(); x.arc(px, py, GP * 1.9, 0, 7); x.stroke();
-      drawIcon(x, st.icon, px, py, GP * .85, `rgba(${st.rgb},.85)`, GP * .1);
-      x.save(); x.font = `bold ${GP * .62}px "Arial Narrow",Impact,sans-serif`; x.textAlign = 'center'; x.fillStyle = `rgba(${st.rgb},.55)`; x.fillText(st.name.toUpperCase(), px, py + GP * 2.9); x.restore(); }
+      x.strokeStyle = `rgba(${st.rgb},.2)`; x.lineWidth = GP * .09; x.setLineDash([GP * .45, GP * .6]); x.beginPath(); x.moveTo(HX * GP, HY * GP); x.quadraticCurveTo((HX + st.x) / 2 * GP + Math.sin(st.x) * 1.2 * GP, (HY + st.y) / 2 * GP + Math.cos(st.y) * 1.2 * GP, px, py); x.stroke(); x.setLineDash([]);
+      const g = x.createRadialGradient(px, py, 0, px, py, GP * 1.9); g.addColorStop(0, `rgba(${st.rgb},.10)`); g.addColorStop(.7, `rgba(${st.rgb},.04)`); g.addColorStop(1, `rgba(${st.rgb},0)`); x.fillStyle = g; x.beginPath(); x.arc(px, py, GP * 1.9, 0, 7); x.fill();
+      x.strokeStyle = `rgba(${st.rgb},.4)`; x.lineWidth = GP * .06; x.beginPath(); x.arc(px, py, GP * 1.3, 0, 7); x.stroke();
+      drawIcon(x, st.icon, px, py, GP * .5, `rgba(${st.rgb},.5)`, GP * .07);
+    }
     // hazard stripes across the gate approach
     const gs = this.stations.find(s => s.icon === 'gate')!; x.save(); x.beginPath(); x.rect((gs.x - 3.6) * GP, (gs.y + 2) * GP, 7.2 * GP, GP * .7); x.clip(); x.fillStyle = 'rgba(255,68,85,.45)'; for (let i = -10; i < 24; i++) { x.beginPath(); x.moveTo((gs.x - 3.6 + i * .7) * GP, (gs.y + 2.7) * GP); x.lineTo((gs.x - 3.6 + i * .7 + .35) * GP, (gs.y + 2.7) * GP); x.lineTo((gs.x - 3.6 + i * .7 + 1.05) * GP, (gs.y + 2) * GP); x.lineTo((gs.x - 3.6 + i * .7 + .7) * GP, (gs.y + 2) * GP); x.fill(); } x.restore();
     x.restore();
