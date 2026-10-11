@@ -5,7 +5,7 @@ Raw downloads are cached in tools/.sfx_raw/ (gitignored); outputs are trimmed, p
 Layers: windup (charge-up before the cast), cast (the release), impact (hit), travel (short loopable projectile/beam whoosh, only for families that fire things).
 The game maps all 78 abilities onto these families (src/abilities/sfxprofile.ts) and varies pitch/filter/gain per ability, so no more than ~56 files are needed."""
 import os, sys, json, subprocess, urllib.request, urllib.error, pathlib
-KEY = os.environ.get('ELEVENLABS_API_KEY')
+KEY = os.environ.get('ELEVENLABS_API_KEY_SFX') or os.environ.get('ELEVENLABS_API_KEY')
 if not KEY: sys.exit('ELEVENLABS_API_KEY not set')
 RAW = pathlib.Path(__file__).parent / '.sfx_raw'; OUT = pathlib.Path(__file__).parent.parent / 'public' / 'audio' / 'sfx'; RAW.mkdir(exist_ok=True); OUT.mkdir(parents=True, exist_ok=True)
 S = 'game sound effect, cyberpunk industrial, dry, no music, no voice, '

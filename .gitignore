@@ -21,3 +21,10 @@ node_modules
 !.env.example
 server/dist/
 tools/.sfx_raw/
+
+# secrets (never commit)
+*.pem
+*.key
+secrets*.json
+.aws/
+cdk.context.json.local
