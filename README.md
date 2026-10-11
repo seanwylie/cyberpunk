@@ -121,3 +121,5 @@ Lore bible, factions, recurring cast, districts, season-1 framing, MMO roadmap a
 ## Credits
 
 With Big Viking Games. The Big Viking Games logo (`public/brand/`, original from bigvikinggames.com plus an unaltered light-tint version for dark UI) is a mark of its owner and appears as a neutral credit only; it implies no endorsement.
+
+To update the live AWS deployment, run `./update.sh` (see docs/DEPLOY_AWS.md, section 8a).

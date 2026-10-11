@@ -82,3 +82,15 @@ Or without Docker: `npm run server`. Env vars: see `server/main.ts` header and `
 - **Scale:** do not raise `maxTasks` above 1 before the room-ownership layer exists (parties live in memory).
 - **Tear down:** `npx cdk destroy --all` (the S3 bucket and ECR repo are RETAINed on purpose; delete them manually).
 - **Cost control:** the Budgets email, plus `aws ecs update-service --desired-count 0` to stop the server while idle (the ALB still bills).
+
+## 8a. Updating the live deployment (`update.sh`)
+From WSL/Linux/macOS at the repo root, with an admin-capable AWS login for account 382598155084:
+```
+./update.sh                 # pull, then server (image -> ECS) and client (S3 + CloudFront)
+./update.sh server          # only the hub image + ECS redeploy (active parties drop)
+./update.sh client          # only the web client
+./update.sh --no-pull --yes # skip git pull, skip the confirmation prompt
+./update.sh --dry-run       # print every command without running anything
+```
+It refuses to run with uncommitted changes, checks the AWS account, builds the image for `linux/$ARCH` (default `amd64`, matching `-c arch=x86`; set `ARCH=arm64` otherwise), tags it `latest` and the short git sha, waits for ECS to be stable, uploads the client with the same cache headers as the CI template, invalidates `/*`, then curls `/healthz` and the client URL. Defaults for the live resources are at the top of the script; override any of them via environment variables (`BUCKET`, `DISTRIBUTION_ID`, `CLUSTER`, `SERVICE`, `DOMAIN`, `WV_SERVER_URL`, ...). If `CLUSTER`/`SERVICE` change after a stack recreate, take the new names from the `ClusterName`/`ServiceName` outputs.
+
