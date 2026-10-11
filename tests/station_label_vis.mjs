@@ -18,8 +18,9 @@ for (const [W, H, T] of [[1280, 720, 0], [800, 600, 0], [844, 390, 1]]) {
       const placed = await ev(st => { const g = window.__game; for (const dx of [0, .6, 1.2]) for (let a = 0; a < 16; a++) { const x = st.x + Math.cos(a * Math.PI / 8) * dx, y = st.y + Math.sin(a * Math.PI / 8) * dx; if (!g.solidAt(x, y)) { g.px = x; g.py = y; for (let i = 0; i < 4; i++) g.update(.016); if (g.prompt?.id === st.id) return true; } } return false; }, st);
       if (!placed) { ok(false, `${W}x${H} ${town}/${st.key}: could not enter interact range`); continue; }
       await ev(() => { window.__occ = []; window.__lbl = null; }); await sleep(700);
-      const r = await ev(st => { const R = (window.__rend.lblRects || []).filter(q => q.id === st.id); const g = window.__game; return { n: R.length, r: R[0], occ: window.__occ.filter(x => x === st.id).length, vw: innerWidth, vh: innerHeight, name: window.__game.level.interacts.find(i => i.id === st.id)?.label }; }, st);
+      const r = await ev(st => { const R = (window.__rend.lblRects || []).filter(q => q.id === st.id); const g = window.__game; return { ax: window.__rend.sx(st.x, st.y), n: R.length, r: R[0], occ: window.__occ.filter(x => x === st.id).length, vw: innerWidth, vh: innerHeight, name: window.__game.level.interacts.find(i => i.id === st.id)?.label }; }, st);
       const L = r.r; const inside = L && L.x >= 0 && L.y >= 0 && L.x + L.w <= r.vw && L.y + L.h <= r.vh;
+      const cx = L ? L.x + L.w / 2 : 1e9; const clamped = L && (L.x <= 8.5 || L.x + L.w >= r.vw - 8.5 || L.y <= 8.5 || L.y + L.h >= r.vh - 8.5); ok(clamped || Math.abs(cx - r.ax) <= 3, `${W}x${H} ${town}/${st.key}: label centred on the pad anchor (label ${Math.round(cx)} vs anchor ${Math.round(r.ax)})`);
       ok(r.n === 1 && !!L && L.text.length >= 3 && inside && r.occ === 0, `${W}x${H} ${town}/${st.key}: one label "${L?.text}" fully on screen=${inside}, occluding draws after label=${r.occ}`);
     }
   }
