@@ -61,7 +61,7 @@ export class EnemyArt {
   atlasFor(type: string, now: number): Atl | null {
     if (!this.a3.has(type)) return null; let a = this.atl.get(type);
     if (!a) { a = { meta: null, ims: {}, state: 'loading', used: now }; this.atl.set(type, a); const A = a; const dir = `${this.base}../enemies3d/`;
-      fetch(`${dir}${type}.json`).then(r => r.json()).then(m => { A.meta = m; return Promise.all(Object.entries(m.anims as Record<string, AAnim>).map(([k, v]) => new Promise<void>(res => { const i = new Image(); i.onload = () => { A.ims[k] = i; res(); }; i.onerror = () => res(); i.src = dir + v.image; }))); }).then(() => { A.state = Object.keys(A.ims).length ? 'ready' : 'fail'; }).catch(() => { A.state = 'fail'; });
+      fetch(`${dir}${type}.json`).then(r => r.json()).then(m => { A.meta = m; return Promise.all(Object.entries(m.anims as Record<string, AAnim>).map(([k, v]) => new Promise<void>(res => { const i = new Image(); i.onload = () => { A.ims[k] = i; res(); }; i.onerror = () => res(); i.src = dir + (Q.tier !== 'high' ? v.image.replace(/\.webp$/, '_h.webp') : v.image); i.onerror = () => { if (!i.src.endsWith('_h.webp')) return res(); i.onerror = () => res(); i.src = dir + v.image; }; }))); }).then(() => { A.state = Object.keys(A.ims).length ? 'ready' : 'fail'; }).catch(() => { A.state = 'fail'; });
       while (this.atl.size > Math.min(this.atlasMax, Q.p.atlasMax)) { let ok = '', ou = 1e18; for (const [k, v] of this.atl) if (k !== type && v.used < ou && v.used < now - 4) { ok = k; ou = v.used; } /* never evict an atlas drawn in the last 4 s (no load/evict thrash when many types are on screen) */ if (!ok) break; const ev = this.atl.get(ok)!; for (const i of Object.values(ev.ims)) i.src = ''; this.atl.delete(ok); } }
     a.used = now; return a.state === 'ready' && a.meta ? a : null;
   }
@@ -147,9 +147,10 @@ export class EnemyArt {
         const k = H / m.hpx, W = m.frame, row = ROW[s.dir], ax = m.anchor[0], ay = m.anchor[1], dw = W * k, bx = -ax * k, by = -ay * k;
         const ds = Math.max(1, Math.round(dw * dpr)); const tc = this.tmp || (this.tmp = mk(ds, ds)); if (tc.width !== ds) { tc.width = ds; tc.height = ds; }
         c.save(); if (clipTop) { c.beginPath(); c.rect(a - dw, b - dw * 2 - hov, dw * 2, dw * 2 + hov + 2); c.clip(); } c.imageSmoothingEnabled = true; c.imageSmoothingQuality = Q.p.smooth; c.translate(a + ox, b + oy);
-        const draw = (ff: number, al: number) => { c.globalAlpha = (e.faction === 'ally' ? .88 : 1) * alpha * al; c.drawImage(im, ff * W, row * W, W, W, bx, by, dw, dw); };
+        const SW = im.naturalWidth / (d.frames * W) || 1, Ws = W * SW; // 0.5 for the half-res sheets used on Low/Medium
+        const draw = (ff: number, al: number) => { c.globalAlpha = (e.faction === 'ally' ? .88 : 1) * alpha * al; c.drawImage(im, ff * Ws, row * Ws, Ws, Ws, bx, by, dw, dw); };
         draw(f, 1); if (fr > .02 && nf !== f && (Q.fx < 2 || boss || !!def.elite)) draw(nf, fr);
-        const fl = Math.max(hitK, flashD, phF); if (fl > .01) { const x = tc.getContext('2d')!; x.clearRect(0, 0, tc.width, tc.height); x.globalCompositeOperation = 'source-over'; x.drawImage(im, f * W, row * W, W, W, 0, 0, tc.width, tc.height); x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(238,230,210,.5)'; x.fillRect(0, 0, tc.width, tc.height); c.globalAlpha = fl * alpha; c.drawImage(tc, bx, by, dw, dw); }
+        const fl = Math.max(hitK, flashD, phF); if (fl > .01) { const x = tc.getContext('2d')!; x.clearRect(0, 0, tc.width, tc.height); x.globalCompositeOperation = 'source-over'; x.drawImage(im, f * Ws, row * Ws, Ws, Ws, 0, 0, tc.width, tc.height); x.globalCompositeOperation = 'source-atop'; x.fillStyle = 'rgba(238,230,210,.5)'; x.fillRect(0, 0, tc.width, tc.height); c.globalAlpha = fl * alpha; c.drawImage(tc, bx, by, dw, dw); }
         c.restore(); if (e.faction === 'ally') { c.save(); c.globalAlpha = .18; c.globalCompositeOperation = 'lighter'; c.fillStyle = '#6f93a8'; c.fillRect(a - dw * .25, b - ay * k, dw * .5, ay * k); c.restore(); }
         return { top: H + hov + 6 }; } }
     const hasA = { back: !!this.img[art.spr + '_back'], side: !!this.img[art.spr + '_side'], tfront: !!this.img[art.spr + '_tfront'] };
