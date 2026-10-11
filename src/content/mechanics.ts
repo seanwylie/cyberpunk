@@ -7,6 +7,7 @@ import { MOVES, MOVE_ATK, MOVE_DMG } from './boss_moves';
 export { MOVES, MOVE_ATK, MOVE_DMG };
 import { ENEMIES } from '../config';
 import { HARD } from './hardmode';
+import { DUNGEONS } from './dungeons';
 const N=(p:MoveSpec['p']|undefined,k:string,d:number)=>{ const v=p?.[k]; return typeof v==='number'?v:d; };
 interface Z { x:number; y:number; r:number; windup:number; life:number; heat:number }
 interface PatCtx { ox:number; oy:number; aim:number; tx:number; ty:number; w:number; rnd:()=>number; arena?:Arena|null }
@@ -38,7 +39,10 @@ export function movePattern(sim:any,e:any,a:string,tx:number,ty:number,dps:numbe
   const mv=MOVES[a]; if(!mv) return null; if(mv.spec.k==='fan'||mv.spec.k==='nova'||mv.spec.k==='adds') return null;
   const aim=Math.atan2(ty-e.y,tx-e.x); const zs=patternZones(mv.spec.k,mv.spec.p,{ox:e.x,oy:e.y,aim,tx,ty,w:windup,rnd:rndOf()}); const out:{x:number;y:number}[]=[];
   for(const z of zs){ if(sim.solidAt(z.x,z.y)) continue; out.push({x:z.x,y:z.y}); sim.zones.push({x:z.x,y:z.y,r:z.r,t:0,life:z.life,dps,heat:z.heat,windup:z.windup}); }
+  // echo: below echoAt of its HP a high-tier boss repeats every echoEvery-th zone move where you stand NOW, after echoDelay, with a full telegraph (same windup): keep moving, do not park in the gap
+  { const rt=e._rt, MX=HARD.mech, t=bossTierOf(e.type); if(t>=MX.echoMinTier&&e.hp<e.maxHp*MX.echoAt){ rt.echoN=(rt.echoN||0)+1; if(rt.echoN%MX.echoEvery===0){ rtQ(e,MX.echoDelay,()=>{ if(e.dead||sim.downed||sim.revealing) return; const ax=sim.px, ay=sim.py; const z2=patternZones(mv.spec.k,mv.spec.p,{ox:e.x,oy:e.y,aim:Math.atan2(ay-e.y,ax-e.x),tx:ax,ty:ay,w:windup,rnd:rndOf()}); for(const z of z2){ if(sim.solidAt(z.x,z.y)) continue; sim.zones.push({x:z.x,y:z.y,r:z.r,t:0,life:z.life,dps,heat:z.heat,windup:z.windup,src:e.type+':echo'}); } sim.fx.push({kind:'ring',x:e.x,y:e.y,r:2.6,t:0,life:.5,c:'#e8c46a'}); sim.emit('sfx','telegraph_elite'); }); } } }
   return out; }
+const _tierOfBoss:Record<string,number>={}; function bossTierOf(id:string):number{ if(_tierOfBoss[id]===undefined){ let t=0; for(const d of Object.values(DUNGEONS) as any[]) if(d.defaultBoss===id) t=d.tier||0; _tierOfBoss[id]=t; } return _tierOfBoss[id]; }
 /** called from Game.resolveAttack for projectile / summon moves (zone moves already spawned at telegraph start). Returns true if handled. */
 export function resolveMove(sim:any,e:any,a:string,tx:number,ty:number,dmg:number):boolean{
   const mv=MOVES[a]; if(!mv) return false; const p=mv.spec.p; const rt=e._rt; const aim=rt.ang;
@@ -64,7 +68,7 @@ function applyAct(sim:any,e:any,act:PhaseAct){ const rt=e._rt; const def=ENEMIES
 /** per-frame boss logic: phase transitions, shield timer, tether line fx, enrage cooldown scaling, arena gimmick. Skipped during the reveal. */
 export function bossTick(sim:any,e:any,dt:number){
   const spec=BOSS_BY_ID[e.type]; if(!spec||e.dead) return; const rt=e._rt; if(rt.reveal>0||!e.alert) return;
-  if(rt.gim===undefined){ rt.gim=spec.gimmick||null; rt.gimT=(spec.gimmick?.every||0)*.7; rt.q=[]; if(e.phase===undefined) e.phase=0; if(e.phase>0){ /* resumed mid-fight: re-apply passive phase acts that are not one-offs */ for(let i=0;i<e.phase;i++) for(const a of spec.phases[i].acts) if(a.k==='enrage'||a.k==='gimmick') applyAct(sim,e,a); } }
+  if(rt.gim===undefined){ if(!rt.mechInit){ rt.mechInit=1; const tc=HARD.mech.tierCd[bossTierOf(e.type)]||1; if(tc!==1) rt.cdMul=(rt.cdMul||1)/tc; }  rt.gim=spec.gimmick||null; rt.gimT=(spec.gimmick?.every||0)*.7; rt.q=[]; if(e.phase===undefined) e.phase=0; if(e.phase>0){ /* resumed mid-fight: re-apply passive phase acts that are not one-offs */ for(let i=0;i<e.phase;i++) for(const a of spec.phases[i].acts) if(a.k==='enrage'||a.k==='gimmick') applyAct(sim,e,a); } }
   const frac=e.hp/e.maxHp; const ph=spec.phases[e.phase||0];
   if(ph&&frac<=ph.at){ e.phase=(e.phase||0)+1; sim.toast(spec.name+': "'+ph.say+'"'); for(const a of ph.acts) applyAct(sim,e,a); }
   if(rt.cdMul&&rt.cdMul!==1){ const extra=dt*(1/rt.cdMul-1); for(const k in rt.acd) rt.acd[k]-=extra; }
@@ -104,7 +108,7 @@ function pressureTick(sim:any,e:any,dt:number){ const P=HARD.press, rt=e._rt, de
   if(rt.camp>=P.campT&&rt.quakeCd<=0){ rt.camp=0; rt.quakeCd=P.quakeCd; const R=def.radius+P.quakeR; sim.zones.push({x:e.x,y:e.y,r:R,t:0,life:P.quakeWind+.6,dps:P.quakeDmg*sim.maxHp*(rt.hardDmg||1),heat:12,windup:P.quakeWind,src:e.type+':quake'}); sim.emit('sfx','telegraph_elite');
     rtQ(e,P.quakeWind,()=>{ if(e.dead||sim.downed) return; if(Math.hypot(sim.px-e.x,sim.py-e.y)<R){ const a=Math.atan2(sim.py-e.y,sim.px-e.x); sim.slideFx=Math.cos(a)*P.quakePush/.15; sim.slideFy=Math.sin(a)*P.quakePush/.15; sim.slideT=.15; sim.fx.push({kind:'ring',x:e.x,y:e.y,r:R,t:0,life:.4,c:'#e8d890'}); } }); }
   // a hazard under the player, so passivity is punished
-  const hurt=e.hp<e.maxHp*.5; rt.underT=(rt.underT===undefined?P.underEvery*.6:rt.underT)-dt/(hurt?1.4:1)/(rt.hardCd||1);
+  const hurt=e.hp<e.maxHp*.5; rt.underT=(rt.underT===undefined?P.underEvery*.6:rt.underT)-dt/(hurt?1.4:1)/(rt.hardCd||1)*(HARD.mech.tierUnder[bossTierOf(e.type)]||1);
   if(rt.underT<=0){ rt.underT=P.underEvery*(.85+Math.random()*.3); if(d<30) sim.zones.push({x:sim.px,y:sim.py,r:P.underR,t:0,life:P.underWind+.6,dps:P.underDmg*sim.maxHp*(rt.hardDmg||1),heat:8,windup:P.underWind,src:e.type+':hazard'}); }
   // reinforcements: flanking ranged adds
   rt.addsT=(rt.addsT===undefined?P.addsEvery*.5:rt.addsT)-dt; if(rt.addsT<=0){ rt.addsT=P.addsEvery; if(ENEMIES[P.addsType]) spawnAdds(sim,e,P.addsType,P.addsN,P.addsCap); } }

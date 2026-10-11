@@ -13,11 +13,13 @@ export const HARD = {
     quakeR:3.9,     // quake ring radius beyond the boss body
     quakeWind:1.1, quakeDmg:.18, quakePush:3.4 /* quakeDmg/underDmg are fractions of the player's max HP per hit, so pressure scales with the kit, not with boss dmgMul */,
     underEvery:6.5, // a ground hazard is placed under the player (stationary or not) this often; faster below half HP
-    underWind:1.25, underR:2.1, underDmg:.09,
+    underWind:1.25, underR:2.1, underDmg:.11,
     addsEvery:26, addsN:2, addsCap:6, addsType:'shooter',
-    enrageAt:140,   // seconds in the fight before it enrages (damage and tempo ramp)
-    enrageRamp:.012, enrageMax:2.0,
+    enrageAt:100,   // seconds in the fight before it enrages (damage and tempo ramp): a DPS check on top of the mechanics
+    enrageRamp:.02, enrageMax:2.4,
   },
+  /** boss mechanics scaling by dungeon tier (0..4): move tempo, hazard tempo, and the 'echo' (a second, fully telegraphed copy of a zone move aimed where you now stand) once a boss is below echoAt of its HP */
+  mech:{ tierCd:[1,1,1.12,1.25,1.35], tierUnder:[1,1,1.2,1.4,1.55], echoMinTier:2, echoAt:.7, echoDelay:1.15, echoEvery:2 },
   stimHeal:32, stimCd:9, runRegen:.5,
   packAggroR:10,
   /** pack flanking: melee pack members arc in by up to maxAng radians (gain per tile beyond closeIn), only in packs of minPack+ */
