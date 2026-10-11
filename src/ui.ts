@@ -24,6 +24,7 @@ import { travelHtml, guildHtml, townClick, TV } from './townui';
 import { bankHtml, bankClick, bankInput, BK } from './bankui';
 import { wardrobeHtml, wardrobeClick, wardrobeAfter } from './wardrobeui';
 import { settingsHtml, settingsAfterRender, settingsReset, settingsEsc, settingsInput, settingsClick, settingsKey, settingsTab } from './settingsui';
+import { HEAT, heatCost, heatBand, dissipation } from './heat';
 
 export const abIconUrl=(id:string)=>'abilities/'+id+'.webp';
 const abChip=(id:keyof typeof ABILITIES)=>abChipX(id);
@@ -147,12 +148,12 @@ export class UI {
     document.querySelectorAll<HTMLElement>('.abtn').forEach(btn=>{
       const i=+btn.dataset.idx!; const id=g.build.abilities[i]; const def=id?ABILITIES[id]:null; btn.classList.toggle('empty',!def);
       const img=btn.querySelector('.aicon') as HTMLImageElement, nm=btn.querySelector('.aname') as HTMLElement;
-      if(this.abKey[i]!==(id||'')){ this.abKey[i]=id||''; if(def){ img.onerror=()=>{ img.onerror=null; img.src=abFallbackIcon(def.id); }; img.src=abIconUrl(def.id); btn.style.setProperty('--tc',ABILITY_TYPE_COLOR[def.type]); btn.dataset.type=def.type; btn.querySelector('.heatpips')!.innerHTML='<b></b>'.repeat(Math.min(6,Math.max(0,Math.ceil(def.heat/10)))); } else { img.removeAttribute('src'); delete btn.dataset.type; } nm.textContent=def?def.name:''; }
+      if(this.abKey[i]!==(id||'')){ this.abKey[i]=id||''; if(def){ img.onerror=()=>{ img.onerror=null; img.src=abFallbackIcon(def.id); }; img.src=abIconUrl(def.id); btn.style.setProperty('--tc',ABILITY_TYPE_COLOR[def.type]); btn.dataset.type=def.type; btn.querySelector('.heatpips')!.innerHTML='<b></b>'.repeat(Math.min(6,Math.max(0,Math.ceil(def.heat/20)))); } else { img.removeAttribute('src'); delete btn.dataset.type; } nm.textContent=def?def.name:''; }
       if(!def){ return; }
-      const cdn=Math.max(0,g.abCd[i]/def.cd); (btn.querySelector('.cdsweep') as HTMLElement).style.setProperty('--cd',(cdn*360).toFixed(1)+'deg');
+      const cdn=Math.min(1,Math.max(0,g.abCd[i]/def.cd)); (btn.querySelector('.cdsweep') as HTMLElement).style.setProperty('--cd',(cdn*360).toFixed(1)+'deg');
       if(this.abPrev[i]>0&&g.abCd[i]<=0){ btn.classList.remove('ready'); void btn.offsetWidth; btn.classList.add('ready'); setTimeout(()=>btn.classList.remove('ready'),700); }
       this.abPrev[i]=g.abCd[i];
-      const offline=g.overheated, short=!offline&&def.heat>0&&g.heat+def.heat>HMAX;
+      const offline=g.overheated, short=!offline&&def.heat>0&&g.heat+heatCost(def.heat,g.build.abMods.heat)>HMAX;
       btn.classList.toggle('off',offline); btn.classList.toggle('hot',short); btn.classList.toggle('cd',g.abCd[i]>0);
       (btn.querySelector('.mark') as HTMLElement).textContent=offline?'\u2715':short?'!':'';
       (btn.querySelector('.mark') as HTMLElement).title=offline?'Offline: overheated':short?'Would overheat':'';
@@ -166,7 +167,7 @@ export class UI {
     const tip=$('abtip'); const show=(btn:HTMLElement)=>{ const i=+(btn.dataset.idx??-1); const id=btn.id==='dodge'?null:this.g.build.abilities[i]; const d=id?ABILITIES[id]:null;
       if(btn.id==='dodge') tip.innerHTML=`<b>Dodge</b> <i style="color:${ABILITY_TYPE_COLOR.mobility}">Mobility</i><br>Quick roll with brief invulnerability. Cooldown ${COMBAT.dodge.cd}s.`;
       else if(d&&d.ext) tip.innerHTML=abTip(id!)+'<br><span class="mut">Shift+'+['Q','E','R'][i]+' swaps</span>';
-      else if(d) tip.innerHTML=`<b>${esc(d.name)}</b> <i style="color:${ABILITY_TYPE_COLOR[d.type]}">${ABILITY_TYPE_LABEL[d.type]}</i><br>${esc(d.desc)}<br><span class="mut">Heat ${d.heat} · Cooldown ${d.cd}s${d.range?' · Range '+d.range:''}</span>`; else tip.innerHTML=`<b>Empty ability slot</b><br>Abilities come from installed hardware. Equip arms, torso, legs or brain with abilities in the Body workspace.`;
+      else if(d) tip.innerHTML=`<b>${esc(d.name)}</b> <i style="color:${ABILITY_TYPE_COLOR[d.type]}">${ABILITY_TYPE_LABEL[d.type]}</i><br>${esc(d.desc)}<br><span class="mut">Heat ${Math.round(heatCost(d.heat,this.g.build.abMods.heat))} · Cooldown ${d.cd}s${d.range?' · Range '+d.range:''}</span>`; else tip.innerHTML=`<b>Empty ability slot</b><br>Abilities come from installed hardware. Equip arms, torso, legs or brain with abilities in the Body workspace.`;
       const r=btn.getBoundingClientRect(); tip.style.display='block'; tip.style.setProperty('--tc',d?ABILITY_TYPE_COLOR[d.type]:ABILITY_TYPE_COLOR.mobility); const w=tip.offsetWidth; tip.style.left=Math.max(6,Math.min(innerWidth-w-6,r.left+r.width/2-w/2))+'px'; tip.style.bottom=(innerHeight-r.top+8)+'px'; };
     const hide=()=>{ tip.style.display='none'; };
     document.querySelectorAll<HTMLElement>('.abtn,#dodge').forEach(btn=>{ let timer=0,sx=0,sy=0;
@@ -178,7 +179,9 @@ export class UI {
 
   hud(){
     const g=this.g, st=g.build.stats; $('hpfill').style.width=Math.max(0,g.hp/g.maxHp*100)+'%'; $('hptxt').textContent=Math.ceil(Math.max(0,g.hp))+' / '+Math.round(g.maxHp);
-    $('heatfill').style.width=Math.min(100,g.heat)+'%'; document.querySelector('.bar.heat')!.classList.toggle('over',g.overheated); $('heattxt').textContent=g.overheated?'OVERHEATED':'HEAT';
+    { const hb=document.querySelector('.bar.heat')!, band=heatBand(g.heat,g.overheated); $('heatfill').style.width=Math.min(100,g.heat)+'%'; hb.classList.toggle('over',band==='over'); hb.classList.toggle('hot',band==='hot'); hb.classList.toggle('warm',band==='warm'); (hb as HTMLElement).dataset.band=band;
+      const vr=g.ventCd<=0&&g.ventLock<=0; $('heattxt').textContent=band==='over'?(vr?'OVERHEATED · '+key('vent')+' VENT':'OVERHEATED'):band==='hot'?'HOT '+Math.round(g.heat)+(vr?' · '+key('vent'):''):'HEAT '+Math.round(g.heat);
+      (hb as HTMLElement).title=`Heat ${Math.round(g.heat)}/${HEAT.max}. Cools ${dissipation(g.build.stats.cooling,g.overheated,g.heatSoak).toFixed(1)}/s. ${vr?'Vent ready ('+key('vent')+' or tap this bar)':g.ventLock>0?'Venting...':'Vent recharging '+Math.ceil(g.ventCd)+'s'}`; }
     const s=g.save; $('lvl').title='Level, credits, repair bill'; $('lvl').textContent=`Lv ${s.level} · ${s.credits}c`+(s.repairBill>0?` · fix ${s.repairBill}c`:'');
     const inst=g.inst; if(g.mode==='run'&&inst){ const rem=Math.max(0,inst.expiresAt-Date.now()); const h=Math.floor(rem/3600000), m=Math.floor(rem%3600000/60000); $('timer').textContent='Instance '+h+'h'+String(m).padStart(2,'0')+'m'+(rem<1800000?' ⚠':''); $('carry').textContent=`Pack ${g.carriedCount()}/${COMBAT.missionSlots} · +${inst.carried.credits}c`; $('stimn').textContent=String(inst.carried.stims); } else { $('timer').textContent=g.hasLiveInstance()?'Instance live':''; $('carry').textContent=''; $('stimn').textContent=String(s.stims); }
     this.guideHud();

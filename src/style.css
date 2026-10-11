@@ -11,7 +11,7 @@ canvas#game{ position:fixed; inset:0; display:block; touch-action:none; }
 button{ font:inherit; color:inherit; cursor:pointer; }
 .bar{ position:relative; height:max(calc(var(--fmin) + 4px),calc(14px*var(--fs))); background:rgba(10,10,10,.65); border:1px solid #4a4c4f; overflow:hidden; }
 .bar>div{ height:100%; width:50%; } .bar span{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:max(var(--fmin),calc(10px*var(--fs))); line-height:max(var(--fmin),calc(13px*var(--fs))); text-align:center; letter-spacing:.08em; text-shadow:0 0 3px #000; }
-.hp>div{ background:#8a4a3a; } .heat>div{ background:#a88a4a; } .heat.over>div{ background:#a0443a; animation:pulse .5s infinite alternate; } .heat.over{ border-color:#a0443a; }
+.hp>div{ background:#8a4a3a; } .heat>div{ background:#a88a4a; } .heat.warm>div{ background:#c9a24a; } .heat.hot>div{ background:#c8703a; } .heat.hot{ border-color:#c8703a; } .heat.over>div{ background:#a0443a; animation:pulse .5s infinite alternate; } .heat.over{ border-color:#a0443a; }
 @keyframes pulse{ to{ opacity:.5; } }
 .chip-btn{ background:rgba(24,25,27,.75); border:1px solid #55585b; padding:6px 10px; font-size:max(var(--fmin),calc(12px*var(--fs))); border-radius:3px; min-height:34px; }
 .chip-btn:active{ background:#3b3d40; }
