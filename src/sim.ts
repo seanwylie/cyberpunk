@@ -1,4 +1,5 @@
 import { PROFILES } from './abilities/vfxprofile';
+import { SFX } from './abilities/sfxprofile';
 import { VFX } from './vfx';
 import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, SELL_VALUE, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING, STARTER_ABILITIES} from './config';
 import { HEAT, effCooling, heatCost, cdAfter, throttle, dissipation } from './heat';
@@ -51,7 +52,7 @@ export class Game {
   enemies:En[]=[]; projs:Proj[]=[]; zones:Zone[]=[]; fx:Fx[]=[]; time=0; pickFx:{id:number;x:number;y:number;kind:Drop['kind'];inst?:Drop['inst'];chip?:Drop['chip'];amount:number;t0:number}[]=[];
   // player
   bankedOverflow=0; px=0; py=0; face=0; hp=100; heat=0; overheated=false; overheats=0; vents=0; ohT=0; ventCd=0; ventLock=0; heatSoak=0; dodgeT=0; dodgeCd=0; iframes=0; dodgeDx=0; dodgeDy=0; atkCd=0; weaponOff=0; cloakT=0; braceT=0; slowT=0; downed=false; downT=0; defibCd=0; revealing=false;
-  /** ability power pass: damage dealt per source tag ('auto' or ability id), cast counts, synergy state */ kick=0; lastStop=-9; curTag='auto'; dealt:Record<string,number>={}; casts:Record<string,number>={}; comboN=0; comboT=0; lastAb=''; ovT=0; hitStop=0; sinceAb=0; nudgeCd=0;
+  /** ability power pass: damage dealt per source tag ('auto' or ability id), cast counts, synergy state */ kick=0; lastStop=-9; _band='ok'; curTag='auto'; dealt:Record<string,number>={}; casts:Record<string,number>={}; comboN=0; comboT=0; lastAb=''; ovT=0; hitStop=0; sinceAb=0; nudgeCd=0;
   abx:Abx=newAbx(); codexT=0;
   abCd:number[]=[0,0,0]; cast:{ idx:number; t:number; aim:AimState; ab:AbilityDef }|null=null; aim:AimState|null=null; target:number|null=null; lungeT=0; lungeDx=0; lungeDy=0; lungeHit:Set<number>=new Set();
   slideT=0; slideFx=0; slideFy=0; channel:{ kind:'town'|'hack'; t:number; dur:number; cb:()=>void; hard?:boolean }|null=null; townFails=0;
@@ -116,7 +117,7 @@ export class Game {
     const cp=this.level.checkpoints[0]; this.px=fresh?this.level.spawn.x:cp.x; this.py=fresh?this.level.spawn.y:cp.y; { const me={x:this.px,y:this.py}; if(this.snapWalkable(me,COMBAT.playerRadius)){ this.px=me.x; this.py=me.y; } }
     if(!fresh && (inst.checkpoint.id!==1)){ /* re-entry always from entry point: must run back through surviving enemies */ }
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.braceT=0; this.defibCd=0; this.abCd=[0,0,0]; this.dodgeCd=0;
-    this.musicSet('traversal'); this.emit('mode','run'); this.saveNow();
+    this.musicSet('traversal'); this.emit('mode','run'); this.emit('sfx','abwarm:'+this.build.abilities.filter(Boolean).join(',')); this.saveNow();
     if(this.save.story && !this.save.story) {}
     this.toast(fresh?this.dd.intro:'Re-entered existing instance. Surviving enemies and loot remain.');
   }
@@ -200,7 +201,7 @@ export class Game {
     if(this.ventLock>0){ this.toast('Venting...'); this.emit('sfx','deny'); return; }
     if(this.abCd[a.idx]>0){ this.toast(def.name+' is cooling down'); return; }
     if(this.cast) return; if(this.weaponOff>0&&def.id!=='forcedcool'&&false) return;
-    this.cast={ idx:a.idx, t:0, aim:{...a}, ab:def }; this.emit('sfx','windup'); }
+    this.cast={ idx:a.idx, t:0, aim:{...a}, ab:def }; this.emit('sfx','windup'); this.abSfx(def.id,'windup'); }
   validateAim(def:AbilityDef, a:AimState):{valid:boolean;why:string;tx?:number;ty?:number;target?:En}{
     switch(def.aim){
       case 'self': return {valid:true,why:''};
@@ -261,13 +262,14 @@ export class Game {
   updatePlayer(dt:number){
     const st=this.stat(); const revealLock=this.revealing;
     if(this.stimCd>0) this.stimCd-=dt; if(this.dodgeCd>0) this.dodgeCd-=dt; if(this.iframes>0) this.iframes-=dt; if(this.atkCd>0) this.atkCd-=dt; if(this.weaponOff>0) this.weaponOff-=dt; if(this.defibCd>0) this.defibCd-=dt;
-    for(let i=0;i<3;i++) if(this.abCd[i]>0){ this.abCd[i]-=dt; if(this.abCd[i]<=0&&this.mode==='run'&&this.combatHold>0&&this.build.abilities[i]) this.emit('sfx','ab_ready'); }
+    for(let i=0;i<3;i++) if(this.abCd[i]>0){ this.abCd[i]-=dt; if(this.abCd[i]<=0&&this.mode==='run'&&this.combatHold>0&&this.build.abilities[i]) this.emit('sfx','ab_ready_'+(ABILITIES[this.build.abilities[i]]?.type||'attack')); }
     if(this.comboT>0){ this.comboT-=dt; if(this.comboT<=0) this.comboN=0; } if(this.ovT>0) this.ovT-=dt;
     if(this.cloakT>0){ this.cloakT-=dt; } if(this.braceT>0) this.braceT-=dt; if(this.slowT>0) this.slowT-=dt;
     // heat
     if(this.ventCd>0) this.ventCd-=dt; if(this.ventLock>0) this.ventLock-=dt; if(this.ohT>0) this.ohT-=dt; if(this.heatSoak>0) this.heatSoak-=dt;
     this.heat=Math.max(0,this.heat-dissipation(st.cooling,this.overheated,this.heatSoak)*dt);   // slower baseline, capped by effCooling; halved-ish while overheated; paused briefly after each cast
     if(this.overheated&&this.heat<=COMBAT.heat.overheatRecover&&this.ohT<=0){ this.overheated=false; this.emit('sfx','cooled'); this.toast('Heat nominal: abilities online'); }
+    { const band=this.heat>=COMBAT.heat.max*.85?'hot':this.heat>=COMBAT.heat.max*.7?'warm':'ok'; if(this.mode==='run'&&band==='hot'&&this._band!=='hot'&&!this.overheated) this.emit('sfx','amb_hot'); this._band=band; }
     if(this.heat>=COMBAT.heat.max&&!this.overheated){ this.heat=COMBAT.heat.max; this.overheated=true; this.ohT=HEAT.overheat.lockT; this.cast=null; this.aim=null; this.ventLock=0; this.overheats=(this.overheats||0)+1; this.emit('sfx','overheat'); this.toast(`OVERHEATED: abilities offline, +${Math.round((HEAT.overheat.takenMul-1)*100)}% damage taken. Vent (${key('vent')}) to recover faster`); }
     if(this.hp<this.maxHp&&!this.downed&&st.regen>0) this.hp=Math.min(this.maxHp,this.hp+st.regen*dt*(this.mode==='town'?4:HARD.runRegen));
     if(this.downed){ this.downT+=dt; this.cast=null; this.aim=null; if(this.channel){ this.channel.t+=dt; if(this.channel.t>=this.channel.dur){ const cb=this.channel.cb; this.channel=null; cb(); } } return; }
@@ -333,9 +335,9 @@ export class Game {
   /** visual-effect events consumed by the renderer's particle system (src/vfx.ts); capped so headless runs never grow it */
   vev:{k:string;x:number;y:number;a?:number;r?:number;len?:number;x2?:number;y2?:number;n?:number}[]=[];
   vfx(k:string,x:number,y:number,o:{a?:number;r?:number;len?:number;x2?:number;y2?:number;n?:number}={}){ if(this.vev.length>160) this.vev.shift(); this.vev.push({k,x,y,...o});
-    /* synth stinger per element (audio.ts: abc_ cast, abh_ hit names), rate-limited there; big abilities add a low swell */
-    const dot=k.indexOf('.'); if(dot>0){ const ph=k.slice(dot+1); if(ph==='cast'||ph==='hit'||ph==='fire'){ const P=PROFILES[k.slice(0,dot)]; if(P){ this.emit('sfx',ph==='hit'?P.hit:P.cast); if(ph!=='hit'&&P.power>=.8) this.emit('sfx','abx_big'); } } } }
-  popup(x:number,y:number,text:string,c='#e8c46a'){ this.fx.push({kind:'text',x,y,t:0,life:1.1,text,c}); }
+    /* augment-specific ability sfx layers (audio.ts -> abilities/sfxplay.ts): cast / travel / impact; windup is emitted when the cast starts. Run mode only (towns never cast). */
+    const dot=k.indexOf('.'); if(dot>0){ const ph=k.slice(dot+1); const L=ph==='trail'?'travel':ph==='hit'||ph==='arc'||ph==='shatter'?'impact':(ph==='cast'||ph==='fire'||ph==='deploy'||ph==='buff')?'cast':''; if(L) this.abSfx(k.slice(0,dot),L as any); } }
+  abSfx(id:string,layer:'windup'|'cast'|'travel'|'impact'){ if(this.mode!=='run'||!SFX[id]) return; this.emit('sfx','ab:'+id+':'+layer+(this.save.settings.reducedFx?':r':'')); }  popup(x:number,y:number,text:string,c='#e8c46a'){ this.fx.push({kind:'text',x,y,t:0,life:1.1,text,c}); }
   /** nearby telegraph the player is about to be hit by (zone windup/active, enemy wind-up, incoming enemy shot): Reposition into it is a PERFECT EVADE */
   dangerNear():boolean{ for(const z of this.zones){ if(z.env||z.dps<=0) continue; if(z.t<z.windup+.25&&Math.hypot(z.x-this.px,z.y-this.py)<z.r+1.2) return true; }
     for(const e of this.enemies){ if(!e.dead&&e.faction==='enemy'&&e._rt.st==='tele'&&Math.hypot(e.x-this.px,e.y-this.py)<4.2) return true; }

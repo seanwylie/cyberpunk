@@ -1,4 +1,6 @@
 import { MusicManager, type MState } from './music';
+import { AbilitySfx } from './abilities/sfxplay';
+import type { Layer } from './abilities/sfxprofile';
 // Procedural WebAudio fallback + file-based music manager (music.ts). Fully procedural WebAudio: original synthesis only (no samples, no reference audio copied).
 // Music states: town, traversal (lo-fi trance/techno), combat (drum & bass), bossreveal (breather + motif), bosscombat, resolution.
 export class AudioSys {
@@ -49,7 +51,11 @@ export class AudioSys {
     const m=[55,65.4,49,77.8]; m.forEach((f,i)=>{ const tt=t+1.6+i*1.25; this.osc('sawtooth',f*2,tt,1.1,.12,B,500); this.osc('sine',f,tt,1.3,.2,B); this.noiseAt(tt,.12,.1,900,B); });
     this.osc('sawtooth',220,t+7.4,1.4,.1,B,800,60); this.hit(1.1); }
   // --- sfx ---
-  sfx(name:string){ const c=this.ctx; if(!c||c.state!=='running') return; const now=c.currentTime; const gap:Record<string,number>={ hit:.05,enemy_swing:.08,pickup:.05,coin:.05,atk_ripper:.09,atk_blade:.06,atk_fist:.08,atk_slug:.1,atk_popper:.05,atk_autopistol:.04,atk_burst:.03,atk_shard:.08,atk_arc:.08,death_MM:.05,death_HI:.06,death_PS:.06,telegraph_basic:.15,hurt:.1,enemy_shot:.08,alert:.2,combo:.1,ab_ready:.15,abx_big:.25 }; const g=gap[name]??(name.startsWith('ab')?.06:.02); if(this.last[name]&&now-this.last[name]<g) return; this.last[name]=now; if(this.playing>14) return; const B=this.sfxBus; const t=now; this.playing++; setTimeout(()=>this.playing--,300);
+  /** ability sfx (augment-specific layers, src/abilities/sfxplay.ts) */
+  abSfx:AbilitySfx|null=null;
+  abilitySfx(id:string,layer:Layer,red=false){ if(!this.ctx) return false; if(!this.abSfx) this.abSfx=new AbilitySfx(this,this.musicBase.replace(/music\/$/,'sfx/')); return this.abSfx.play(id,layer,red); }
+  warmAbilitySfx(ids:string[]){ if(!this.ctx) return; if(!this.abSfx) this.abSfx=new AbilitySfx(this,this.musicBase.replace(/music\/$/,'sfx/')); this.abSfx.warm(ids); }
+  sfx(name:string){ if(name.startsWith('ab:')){ const [,id,layer,r]=name.split(':'); this.abilitySfx(id,layer as Layer,r==='r'); return; } if(name.startsWith('abwarm:')){ this.warmAbilitySfx(name.slice(7).split(',')); return; } const c=this.ctx; if(!c||c.state!=='running') return; const now=c.currentTime; const gap:Record<string,number>={ hit:.05,enemy_swing:.08,pickup:.05,coin:.05,atk_ripper:.09,atk_blade:.06,atk_fist:.08,atk_slug:.1,atk_popper:.05,atk_autopistol:.04,atk_burst:.03,atk_shard:.08,atk_arc:.08,death_MM:.05,death_HI:.06,death_PS:.06,telegraph_basic:.15,hurt:.1,enemy_shot:.08,alert:.2,combo:.1,ab_ready:.15,abx_big:.25 }; const g=gap[name]??(name.startsWith('ab')?.06:.02); if(this.last[name]&&now-this.last[name]<g) return; this.last[name]=now; if(this.playing>14) return; const B=this.sfxBus; const t=now; this.playing++; setTimeout(()=>this.playing--,300);
     switch(name){
       case 'hit': this.noiseAt(t,.06,.2,2400,B); this.osc('sine',140,t,.1,.25,B,undefined,60); break;
       case 'atk_ripper': this.noiseAt(t,.14,.16,1400,B,'bandpass',4); this.osc('sawtooth',95,t,.14,.1,B,500,70); break;
@@ -100,6 +106,11 @@ export class AudioSys {
       case 'abh_holo': this.osc('triangle',1100,t,.07,.05,B,undefined,700); break;
       case 'abx_big': this.osc('sine',90,t,.5,.16,B,undefined,45); this.noiseAt(t,.35,.08,400,B); break;
       case 'combo': this.osc('triangle',660,t,.12,.08,B); this.osc('triangle',880,t+.06,.14,.08,B); this.osc('triangle',1320,t+.12,.2,.07,B); break;
+      case 'ab_ready_attack': this.osc('square',500,t,.06,.05,B,undefined,900); break;
+      case 'ab_ready_defense': this.osc('triangle',880,t,.12,.05,B); this.osc('triangle',1320,t+.04,.12,.04,B); break;
+      case 'ab_ready_hacking': this.osc('square',1500,t,.04,.04,B); this.osc('square',2000,t+.05,.05,.04,B); break;
+      case 'ab_ready_mobility': this.osc('sine',700,t,.1,.05,B,undefined,1600); break;
+      case 'amb_hot': this.osc('square',620,t,.07,.05,B); this.osc('square',620,t+.12,.07,.05,B); this.noiseAt(t,.2,.04,4000,B,'highpass'); break;
       case 'ab_ready': this.osc('sine',1200,t,.09,.05,B,undefined,1800); break;
       case 'enemy_swing': this.noiseAt(t,.12,.1,1100,B); break;
       case 'enemy_shot': this.osc('square',420,t,.1,.06,B,1200,200); break;

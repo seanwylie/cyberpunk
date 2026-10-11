@@ -172,3 +172,27 @@ Plan: Creator, 329,944 credits/month, 1,627 used before work. Whole job (1 probe
 
 ## SFX
 Still fully procedural (`src/audio.ts`).
+
+## Ability sfx (augment-specific)
+Every ability (78: 10 core + 68 augment) has a profile in `src/abilities/sfxprofile.ts`. The **family** says what the augment physically is; the body **slot**, **manufacturer** (HI heavy / MM mid / PS precision) and **rarity** vary pitch, filter, weight and layers, so no two abilities share a fingerprint (test: 78 distinct).
+
+| Family | Used for | Character |
+|---|---|---|
+| servo (6) | piston/arm/charge/grapple/plates | hydraulic thump, clank, servo whine |
+| blade (7) | sweep, scalpel, cuts, lunges, leech | whoosh + metallic ring |
+| optic (3) | overcharge shot, needle, headshot | rising whine, laser zap |
+| arc (6) | shock ring, cascade, snare, mine, EMP, defib | crackle, zap |
+| fire (5) | slag, thermite, firestorm, overclock, siphon | whoomp, crackle |
+| vent (5) | forced cool, heat sink, coolant, smoke, cold loop | hiss, frost |
+| drone (3) / summon (4) | drones, turrets, bots, legion | electronic chirps, servo boot, ticking |
+| shield (5) | brace, shells, barriers, aegis | resonant hum, glassy pulse |
+| kinetic (4), gravity (2), sonic (3) | slams, stoneskin / pulls / flash, horn, shockwave | boom, implosion, concussion |
+| heal (6), blink (5), stealth (5), hack (5), blast (4) | repair / mobility / cloak / control / ultimates | chimes, zips, muffled hum, glitch chirps, explosions |
+
+**Layers:** `windup` (when the cast starts), `cast` (release), `travel` (projectile/beam ticks, 0.14 s gap), `impact` (hit/arc). Rarity scales gain and windup level; purple+ casts add a low sub boom. Each play uses the ability's base pitch +- a per-cast random spread (4-7%).
+
+**Playback (`src/abilities/sfxplay.ts`):** a lazily loaded sample `public/audio/sfx/<family>_<layer>.mp3` when it exists, otherwise a per-family synth fallback (this is what ships today). Max 8 concurrent ability voices (power-priority drop), per-layer gaps (windup .18 s, cast .07, travel .14, impact .045), Reduced FX plays cast + impact only at 60% level, volume 0 / mute plays nothing, and the sim only emits ability sfx in a run (towns never cast). Samples for the equipped abilities are warmed at run start; max ~56 files at 32 kHz mono (~5-8 KB each, < 1.5 MB total; decoded buffers are only for families actually used).
+
+**Generating the samples:** `ELEVENLABS_API_KEY=... python3 tools/gen_sfx.py [family_layer ...] [--force]` (needs ffmpeg). It calls the ElevenLabs sound-generation API, trims silence, compresses, peak-normalises and writes mono 32 kHz 56 kbps mp3s. **Status:** the key currently on the box returns 401 `missing the permission sound_generation`, so no samples were generated; the synth fallback is what plays. Enable the Sound Effects permission on the key and run the script, then commit `public/audio/sfx/`; no code change is needed.
+
+**Ambient feedback:** per-type cooldown-ready pings (`ab_ready_attack/defense/hacking/mobility`, different timbres), an overheat-warning double blip when heat crosses 85% (`amb_hot`), and the existing vent / cooled cues.
