@@ -10,6 +10,7 @@ import { chipFits, chipFitLabel, chipReason, CHIP_FITS, SLOT_GROUP, GROUP_LABEL,
 import { recommend, Rec, RecResult, repDiscount } from './recommend';
 import { Layout, cloneLayout, computeBuild, hardConflicts, installedLayout, repRank, wouldConflict } from './build';
 import { Inst, capacityUsed, lockerItems, mkInst, persist, wipe, todayStr, newSave } from './state';
+import { journalOf, type JournalEntry } from './story_beats';
 import { makeProvider, runStoryStep, newStory, MockProvider, record } from './story';
 import { DUNGEON_LIST, DUNGEONS, dungeonOf, inBand, unlockReason } from './content/dungeons';
 import { CONTACTS, CONTACT_BY_ID, CONTRACT_BY_ID, MAX_ACTIVE_CONTRACTS, ContractDef } from './content/npcs';
@@ -411,6 +412,8 @@ export class UI {
   /** Job board hint: where Tier III-IV work is and how to unlock Harrow Reach (hidden once the player is already in Harrow) */
   harrowHint():string{ const s=this.g.save; if(currentTown(s)==='harrow') return ''; const pr=unlockProgress(s,'harrow'); const un=isUnlocked(s,'harrow');
     return `<div class="draftbar" data-hint="harrow" style="border-color:#ff6a3a"><b>Heavier contracts: Harrow Reach.</b> <span class="mut">${un?'It is open. Take the Reach Line from the plaza tram stop for Tier III and IV dungeons and Heavy Works hardware.':'Locked. '+pr.lines.map(l=>esc(l)).join(' ')+' The Reach Line tram stop in the plaza takes you there.'}</span></div>`; }
+  fieldLog():string{ const jr=journalOf(this.g.save); if(!jr.length) return ''; const row=(e:JournalEntry)=>`<div class="clue"><span class="ci" aria-hidden="true">${e.src==='ai'?'✎':'▤'}</span><span class="cl"><b>${esc(e.town==='harrow'?'Harrow Reach':'Rustline')} · ${esc(new Date(e.t).toLocaleDateString())}</b>${esc(e.text)}</span></div>`; const last=jr[jr.length-1];
+    return `<details class="devd fieldlog"><summary>Field log (${jr.length})</summary><div class="devbody">${[...jr].reverse().map(row).join('')}</div></details>`; }
   fixer():string{ const g=this.g; const st=g.story(); const clue=st.clues; const t=st.town; const c=CONTACT_BY_ID['odalys_vane'];
     const quote=t?t.text:c.greeting.replace(/^"|"$/g,'');
     const found=[clue.A,clue.B,clue.general].filter(Boolean).length; const dl=Object.entries(st.dclues||{});
@@ -424,6 +427,7 @@ export class UI {
       <div class="lead"><b>Next:</b> ${esc(lead)}</div>
       ${t?`<div class="offers">${t.options.map(o=>`<button class="btn primary" data-act="townchoice" data-id="${o.id}" data-boost="${o.boosts}">${esc(o.label)}</button>`).join('')}</div>`:''}
       ${this.harrowHint()}
+      ${this.fieldLog()}
       <h3>Clues (${found}/3)</h3>
       ${row('🔓','Hack clue',clue.A)}${row('💪','Force clue',clue.B)}${row('📌','General lead',clue.general)}
       ${dl.length?`<h3>Dungeon leads</h3>${dl.map(([d,v])=>row('📍',esc(DUNGEONS[d]?.short||d),[v.A,v.B,v.general].filter(Boolean).join(' / ')||null)).join('')}`:''}
@@ -481,7 +485,7 @@ export class UI {
       case 'opencontacts': this.open('contacts'); return; case 'dsel': this.contactSel=el.dataset.id!; this.render(); return; case 'openstory': this.open('fixer'); return;
       case 'accept': { const k=CONTRACT_BY_ID[el.dataset.id!]; const cs=contractState(s); if(k&&s.level>=k.minLevel&&Object.keys(cs.active).length<MAX_ACTIVE_CONTRACTS&&!cs.done.includes(k.id)&&cs.doneDay[k.id]!==todayStr()){ cs.active[k.id]=0; persist(s); } this.render(); return; }
       case 'dropk': { const cs=contractState(s); delete cs.active[el.dataset.id!]; persist(s); this.render(); return; }
-      case 'claim': { const k=CONTRACT_BY_ID[el.dataset.id!]; const cs=contractState(s); if(k&&(cs.active[k.id]||0)>=k.goal.n){ s.credits+=k.reward.credits; for(const [m,v] of Object.entries(k.reward.rep||{})) s.rep[m as 'HI']+=v as number; delete cs.active[k.id]; if(k.repeat==='once') cs.done.push(k.id); else cs.doneDay[k.id]=todayStr(); record(g.story(),'contract_done',k.id); g.toast('Contract complete: '+k.title+' (+'+k.reward.credits+'c)'); persist(s); } this.render(); return; }
+      case 'claim': { const k=CONTRACT_BY_ID[el.dataset.id!]; const cs=contractState(s); if(k&&(cs.active[k.id]||0)>=k.goal.n){ s.credits+=k.reward.credits; for(const [m,v] of Object.entries(k.reward.rep||{})) s.rep[m as 'HI']+=v as number; delete cs.active[k.id]; if(k.repeat==='once') cs.done.push(k.id); else cs.doneDay[k.id]=todayStr(); record(g.story(),'contract_done',k.id); g.emit('beat',{trigger:'contract_done',contract:k.title}); g.toast('Contract complete: '+k.title+' (+'+k.reward.credits+'c)'); persist(s); } this.render(); return; }
       case 'setlvl': s.level=Math.max(1,Math.min(PROGRESSION.maxLevel,+el.dataset.d!)); g.recompute(); persist(s); this.render(); return;
       case 'grantnew': { for(const d of [...EXTRA_ITEMS,...WEAPON_ITEMS]){ if(!s.items.some(i=>i.def===d.id)) s.items.push(mkInst(s,d.id)); } for(const c of ['ablative','fineedge','quench','overdrive','gridlink'] as ChipId[]) s.lockerChips[c]=(s.lockerChips[c]||0)+3; s.lockerCap=Math.max(s.lockerCap,120); persist(s); g.toast('Granted all dungeon-pack hardware (dev)'); this.render(); return; }
       case 'leave': g.leaveInstance(); $('downpanel').style.display='none'; return;

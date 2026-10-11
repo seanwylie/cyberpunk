@@ -18,3 +18,4 @@ tools/balance/out/*.json
 !tools/balance/out/after_final.json
 
 node_modules
+!.env.example

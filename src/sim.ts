@@ -66,10 +66,10 @@ export class Game {
 
   // ---------- mode transitions ----------
   enterTown(first=false){
-    this.settleCompleted();
+    const wasRun=this.mode==='run'; this.settleCompleted();
     if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this); this.clearTransients();
     const tid=currentTown(this.save); this.townId=tid; setTownStations(TOWN_STATIONS[tid]); this.mode='town'; this.level=tid==='harrow'?buildHarrow():buildTown(); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.townFails=0; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
-    this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); this.emit('towntheme',tid); this.checkTownUnlocks(); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.');
+    this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); this.emit('towntheme',tid); this.checkTownUnlocks(); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.'); if(!first&&wasRun) this.emit('beat',{trigger:'return_town',dungeon:this.save.instance?.dungeon||undefined});
   }
   townId:TownId='rustline';
   /** Unlock towns whose condition is newly met (clears, level ups, load). Returns the ids unlocked now. */
