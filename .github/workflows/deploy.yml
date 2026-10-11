@@ -1,0 +1,67 @@
+# TEMPLATE: copy to .github/workflows/deploy.yml (the automation token lacks the `workflow` scope, so this repo ships it as a template).
+# AWS deploy (client -> S3 + CloudFront, game server image -> ECR -> ECS Fargate).
+# DISABLED until you set the repository variable AWS_DEPLOY_ENABLED=true (Settings > Secrets and variables > Actions > Variables).
+# Required variables: AWS_REGION, AWS_ROLE_ARN (GitHub OIDC role), WV_SERVER_URL (wss://game.example.com), S3_BUCKET, CLOUDFRONT_ID,
+#                     ECR_REPO (wv-hub), ECS_CLUSTER, ECS_SERVICE. Optional: WV_STORY_URL. No long-lived AWS keys are used. See docs/DEPLOY_AWS.md.
+name: deploy-aws
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+permissions:
+  id-token: write   # OIDC
+  contents: read
+concurrency: { group: deploy-aws, cancel-in-progress: false }
+jobs:
+  client:
+    if: ${{ vars.AWS_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_WV_SERVER: ${{ vars.WV_SERVER_URL }}
+          VITE_WV_STORY_URL: ${{ vars.WV_STORY_URL }}
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: "${{ vars.AWS_ROLE_ARN }}", aws-region: "${{ vars.AWS_REGION }}" }
+      # Cache rules (see docs/MULTIPLAYER.md): content-hashed assets are immutable; HTML, the service worker and the manifest must always revalidate
+      # (sw.js is registered as sw.js?v=<build>, so each build gets a fresh cache name); other static art/audio: 1 h + invalidation on deploy.
+      - name: Upload hashed assets (immutable)
+        run: aws s3 sync dist/assets "s3://${{ vars.S3_BUCKET }}/assets" --cache-control "public,max-age=31536000,immutable"
+      - name: Upload other static files (1 h)
+        run: aws s3 sync dist "s3://${{ vars.S3_BUCKET }}" --exclude "assets/*" --exclude "index.html" --exclude "sw.js" --exclude "*.webmanifest" --cache-control "public,max-age=3600"
+      - name: Upload entry points last (no-cache)
+        run: |
+          aws s3 cp dist/index.html "s3://${{ vars.S3_BUCKET }}/index.html" --cache-control "no-cache"
+          aws s3 cp dist/sw.js "s3://${{ vars.S3_BUCKET }}/sw.js" --cache-control "no-cache" --content-type "text/javascript"
+          aws s3 cp dist/manifest.webmanifest "s3://${{ vars.S3_BUCKET }}/manifest.webmanifest" --cache-control "no-cache" --content-type "application/manifest+json"
+      - run: aws cloudfront create-invalidation --distribution-id "${{ vars.CLOUDFRONT_ID }}" --paths "/index.html" "/sw.js" "/manifest.webmanifest" "/sprites/*" "/audio/*" "/town/*" "/town2/*" "/dungeons/*" "/loot/*" "/abilities/*" "/brand/*" "/icons/*"
+  server:
+    if: ${{ vars.AWS_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: "${{ vars.AWS_ROLE_ARN }}", aws-region: "${{ vars.AWS_REGION }}" }
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Build and push (linux/arm64, matches the Fargate task)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: server/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPO }}:${{ github.sha }}
+            ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPO }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      # The task definition uses the :latest tag; force a new deployment (circuit breaker rolls back on failed health checks)
+      - run: aws ecs update-service --cluster "${{ vars.ECS_CLUSTER }}" --service "${{ vars.ECS_SERVICE }}" --force-new-deployment >/dev/null
+      - run: aws ecs wait services-stable --cluster "${{ vars.ECS_CLUSTER }}" --services "${{ vars.ECS_SERVICE }}"
