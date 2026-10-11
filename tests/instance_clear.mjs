@@ -39,7 +39,7 @@ for (const id of ids) {
 for (const id of [ids[0], ids[ids.length - 1]]) {
   // B / channel path with loot on ground: auto-collect and instance retired or retained correctly
   await clear(id);
-  const a = await ev(() => { const g = window.__game; const inst = g.inst; inst.drops.push({ id: 9001, kind: 'credits', amount: 50, x: g.px, y: g.py }); g.townReturn(); for (let i = 0; i < 600 && g.mode === 'run'; i++) g.update(0.016); return { mode: g.mode, inst: !!g.save.instance, credits: g.save.credits }; });
+  const a = await ev(() => { const g = window.__game; const inst = g.inst; inst.drops.push({ id: 9001, kind: 'credits', amount: 50, x: g.px, y: g.py }); g.enemies.forEach(e => { e.dead = true; }); g.townReturn(); for (let i = 0; i < 600 && g.mode === 'run'; i++) g.update(0.016); return { mode: g.mode, inst: !!g.save.instance, credits: g.save.credits }; });
   ok(a.mode === 'town', id + ': return to town (channel) completes after clear');
   ok(!a.inst, id + ': finished instance retired on return (ground loot auto-collected, pack banked)');
   const again = await ev((id) => { const g = window.__game; return { locked: g.dailyLocked(id), rs: g.resetInfo().has }; }, id);
