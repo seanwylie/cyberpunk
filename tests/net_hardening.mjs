@@ -1,0 +1,17 @@
+// Origin allow-list, room/party caps, health + metrics endpoints, graceful drain.
+import WebSocket from 'ws'; import http from 'node:http'; import { load, mkTest, sleep, until } from './net_lib.mjs';
+const { ok, done } = mkTest(); const { startHub } = await load('server/hub.ts', 'hub'); const { NetClient } = await load('src/net/client.ts', 'client');
+const store = () => { const m = new Map(); return { get: k => m.get(k) ?? null, set: (k, v) => m.set(k, v) }; };
+const get = (port, path) => new Promise(r => http.get({ port, host: '127.0.0.1', path }, res => { let b = ''; res.on('data', d => b += d); res.on('end', () => r({ status: res.statusCode, body: b })); }).on('error', () => r({ status: 0, body: '' })));
+const tryWs = (url, origin) => new Promise(r => { const w = new WebSocket(url, origin ? { origin } : {}); w.on('open', () => { w.close(); r('open'); }); w.on('unexpected-response', (q, res) => r(res.statusCode)); w.on('error', () => r('err')); });
+const hub = startHub({ port: 0, host: '127.0.0.1', dev: true, origins: ['https://play.example.com', '*.cdn.example.org'], allowNoOrigin: false, maxRooms: 1, maxParties: 2 }); await hub.ready; const port = hub.port(); const url = 'ws://127.0.0.1:' + port;
+ok(await tryWs(url, 'https://play.example.com') === 'open', 'allowed origin connects'); ok(await tryWs(url, 'https://evil.example.net') === 403, 'unlisted origin rejected with 403'); ok(await tryWs(url, 'https://a.cdn.example.org') === 'open', 'wildcard origin pattern matches'); ok(await tryWs(url, 'https://cdn.example.org.evil.com') === 403, 'wildcard cannot be spoofed by suffix tricks'); ok(await tryWs(url, null) === 403, 'missing Origin rejected when allowNoOrigin is false'); ok(hub.stats.badOrigin >= 3, 'rejections counted in metrics');
+const h = await get(port, '/healthz'); ok(h.status === 200 && JSON.parse(h.body).ok === true, '/healthz returns 200 ok'); const m = await get(port, '/metrics'); ok(m.status === 200 && 'conns' in JSON.parse(m.body), '/metrics returns counters'); ok((await get(port, '/nope')).status === 404, 'unknown path 404');
+// caps (connect with allowed origin via ws option)
+class WSO extends WebSocket { constructor(u) { super(u, { origin: 'https://play.example.com' }); } }
+const bot = n => new NetClient({ url, name: n, lvl: 5, WS: WSO, store: store() }); const [A, B, C] = [bot('A'), bot('B'), bot('C')]; [A, B, C].forEach(b => b.connect()); await until(() => [A, B, C].every(b => b.state === 'online'));
+let errs = []; C.on('err', e => errs.push(e.code)); A.createParty(); B.createParty(); await sleep(200); C.createParty(); ok(await until(() => errs.includes('busy')), 'party cap: third party refused with busy'); 
+A.setDungeon('annex'); A.start(); await until(() => A.inst); B.setDungeon('annex'); let e2 = []; B.on('err', e => e2.push(e.code)); B.start(); ok(await until(() => e2.includes('busy')), 'room cap: second instance refused with busy'); ok(hub.stats.roomCapHits >= 2, 'cap hits counted');
+// graceful drain
+let ended = null; A.on('instance_end', r => ended = r); hub.drain(); ok((await get(port, '/healthz')).status === 503, '/healthz turns 503 while draining (ALB stops routing)'); ok(await tryWs(url, 'https://play.example.com') === 503, 'new sockets refused while draining'); await hub.shutdown(100); ok(ended === 'server restart', 'running instances are ended cleanly on shutdown');
+[A, B, C].forEach(b => b.close()); done();
