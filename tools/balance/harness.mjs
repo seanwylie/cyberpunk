@@ -145,10 +145,10 @@ export async function runJob(job) {
     // ---- full level run ----
     if (!g.startRun(job.id)) return { error: 'startRun failed: ' + job.id };
     g.recompute(); g.hp = g.maxHp; L = g.level; result.kitInfo = kitInfo();
-    if (job.bossOnly) { /* skip the dungeon: stand at the boss door with the gates open and a few stims, fight starts at the reveal */ for (let i = 0; i < 20; i++) stepSim(); const f0 = g.inst.flags; f0.gate1 = f0.lock2 = f0.controller = true; g.inst.carried.stims = job.stims ?? 3; g.px = L.revealX + 1.5; g.py = L.bossSpawn.y; g.hp = g.maxHp; } const nEnemies = g.enemies.length; let bossSeen = 0, stuckT = 0, lastPos = [g.px, g.py], lastCheck = 0, deathsHere = 0;
+    if (job.bossOnly) { /* skip the dungeon: stand at the boss door with the gates open and a few stims, fight starts at the reveal */ for (let i = 0; i < 20; i++) stepSim(); const f0 = g.inst.flags; f0.gate1 = f0.lock2 = f0.controller = true; g.inst.carried.stims = job.stims ?? 3; { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } g.hp = g.maxHp; } const nEnemies = g.enemies.length; let bossSeen = 0, stuckT = 0, lastPos = [g.px, g.py], lastCheck = 0, deathsHere = 0;
     const dd = g.dd; let phaseLog = {}; let reachCache = { key: '', t: -9, ok: true };
     while (simT < maxT && !g.inst.flags.bossDead) {
-      if (g.downed) { R.deaths++; deathsHere++; if (R.deaths >= maxDeaths) break; g.returnToCheckpoint(); if (job.bossOnly) { g.inst.carried.stims = Math.max(g.inst.carried.stims, job.stims ?? 3); g.px = L.revealX + 1.5; g.py = L.bossSpawn.y; } flowKey = ''; stuckT = 0; continue; }
+      if (g.downed) { R.deaths++; deathsHere++; if (R.deaths >= maxDeaths) break; g.returnToCheckpoint(); if (job.bossOnly) { g.inst.carried.stims = Math.max(g.inst.carried.stims, job.stims ?? 3); { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } } flowKey = ''; stuckT = 0; continue; }
       if (g.channel) g.channel = null;
       trackAlert();
       const f = g.inst.flags; const boss = g.enemies.find(e => !e.dead && ENEMIES[e.type].boss && e._rt.reveal <= 0);
@@ -163,7 +163,7 @@ export async function runJob(job) {
           const elites = (f.gate1 && !f.lock2 && !f.controller) ? g.enemies.filter(e => !e.dead && e.type === dd.lockElite) : [];
           if (guards.length) { guards.sort((a, b) => dist(a.x, a.y, g.px, g.py) - dist(b.x, b.y, g.px, g.py)); tx = guards[0].x; ty = guards[0].y; if (dist(tx, ty, g.px, g.py) < 9 && !guards[0].alert) { /* approach to aggro */ } }
           else if (elites.length) { elites.sort((a, b) => dist(a.x, a.y, g.px, g.py) - dist(b.x, b.y, g.px, g.py)); tx = elites[0].x; ty = elites[0].y; }
-          else if (f.controller && !f.bossSpawned) { tx = L.revealX + 2; ty = L.bossSpawn.y; }
+          else if (f.controller && !f.bossSpawned) { { const rp = g.revealPoint(); tx = rp.x; ty = rp.y; } }
           else { const o = g.objective(); if (o) { tx = o.x; ty = o.y; if (o.kind === 'controller' && dist(g.px, g.py, tx, ty) < 1.6 && g.prompt) { g.interact(); stepSim(); continue; } } }
           if (tx !== undefined && (guards.length || elites.length)) { const reach = (x, y) => { const f2 = bfs(x, y); return f2[(g.py | 0) * L.w + (g.px | 0)] >= 0; }; const key = 'r' + (tx | 0) + ',' + (ty | 0); if (reachCache.key !== key || simT - reachCache.t > 5) reachCache = { key, t: simT, ok: reach(tx, ty) }; if (!reachCache.ok) { const door = L.doors.find(d => d.id === (guards.length ? 'gate1' : 'lock2')); if (door && door.tiles.length) { tx = door.tiles.reduce((a, t) => a + t[0], 0) / door.tiles.length + .5; ty = door.tiles.reduce((a, t) => a + t[1], 0) / door.tiles.length + .5; } } }
           if (tx !== undefined) { if (dist(g.px, g.py, tx, ty) > 1.2) nav(tx, ty); else g.setMove(0, 0); }
