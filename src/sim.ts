@@ -156,7 +156,7 @@ export class Game {
   openDoor(id:string){ const d=this.level.doors.find(d=>d.id===id); if(!d) return; for(const [x,y] of d.tiles) this.level.solid[y*this.level.w+x]=0; this.emit('sfx','door'); }
   resetBossIfAlive(){ const inst=this.inst; if(!inst) return; clearBossAdds(this); const bi=inst.enemies.findIndex(e=>ENEMIES[e.type].boss&&!e.dead); if(bi>=0){ const b=inst.enemies[bi]; inst.enemies.splice(bi,1); this.enemies=this.enemies.filter(e=>e.id!==b.id); inst.flags.bossSpawned=false; inst.flags.bossRevealed=false; this.emit('musicretry',null); } this.revealing=false; }
 
-  saveNow(){ if(this.inst){ this.inst.px=this.px; this.inst.py=this.py; this.inst.hp=this.hp; this.inst.enemies=this.enemies as EnemyState[]; } this.save.instance=this.inst; persist(this.save); }
+  saveNow(){ if(this.inst){ this.inst.px=this.px; this.inst.py=this.py; this.inst.hp=this.hp; this.inst.enemies=this.enemies.slice() as EnemyState[]; /* a copy: sharing the array made spawnEnemy list late adds twice (updated and hit twice) */ } this.save.instance=this.inst; persist(this.save); }
 
   // ---------- helpers ----------
   solidAt(x:number,y:number){ const L=this.level; const ix=Math.floor(x), iy=Math.floor(y); if(ix<0||iy<0||ix>=L.w||iy>=L.h) return true; return L.solid[iy*L.w+ix]===1; }
