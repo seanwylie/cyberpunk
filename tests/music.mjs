@@ -45,7 +45,7 @@ ok(S.eliHit === 'elite' && S.eliAfter === 'traversal', 'sim: first hit on elite 
 ok(S.eliHurt === 'elite', 'sim: being hit by an elite -> elite');
 // --- boss / elite rotation (fake clock) ---
 const R = await ev(async () => { const mm = window.__audio.music, mod = await import('/src/music.ts'); const I = mod.INTENSITY; const off = s => { mm.__off += s; mm.tick(); };
-  await new Promise(r => { const f = () => [...new Set(Object.values(mod.POOLS).flat())].filter(n => !mod.LAZY.has(n)).every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
+  await new Promise(r => { const f = () => [...new Set(Object.values(mod.POOLS).flat())].filter(n => !mod.LAZY.has(n) || (/^(boss_|elite_)/.test(n) && !mod.SIG_TRACKS.includes(n))).every(n => (mm.ensure(n), mm.buffers[n])) ? r() : setTimeout(f, 300); f(); setTimeout(r, 120000); });
   const o = {};
   const fight = (key, fn) => { mm.setState('traversal', null); off(40); mm.state = 'traversal'; mm.want = 'traversal'; mm.setState('bossreveal', key); off(3); mm.setState('bosscombat', key); return fn(); };
   const loop = () => { const l = mm.live.find(x => !x.ending); off(Math.max(0, mm.buffers[l.name].duration - ((l.offset + (mm.now() - l.startedAt)) % mm.buffers[l.name].duration) - 1)); off(2); };
@@ -67,7 +67,7 @@ ok(!R.eliteEarly && R.eliteInPool && R.e1 !== R.e0, 'elite pool rotates at loop 
 ok(R.after === 'traversal' && !/^(elite_|boss_)/.test(R.afterTrack), 'disengage returns to calm: ' + R.afterTrack);
 // --- switch budgets + guaranteed hard fade-in (fake clock) ---
 const C = await ev(async () => { const mm = window.__audio.music, mod = await import('/src/music.ts'); const off = s => { mm.__off += s; mm.tick(); }; const o = {};
-  await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ])].filter(n => !mod.LAZY.has(n)).every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
+  await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ])].filter(n => !mod.LAZY.has(n) || (/^(boss_|elite_)/.test(n) && !mod.SIG_TRACKS.includes(n))).every(n => (mm.ensure(n), mm.buffers[n])) ? r() : setTimeout(f, 300); f(); setTimeout(r, 120000); });
   const settle = () => { mm.setState('traversal', null); off(60); mm.state = 'traversal'; mm.want = 'traversal'; };
   const loopEnd = () => { const l = mm.live.find(x => !x.ending); off(Math.max(0, mm.buffers[l.name].duration - ((l.offset + (mm.now() - l.startedAt)) % mm.buffers[l.name].duration) - 1)); off(2); };
   // calm: scripted 10 minutes of exploring (zone-change requests every 5 s)
@@ -93,7 +93,7 @@ ok(C.calmRot && C.fades.every(f => f.ok), 'every elite/boss engagement fades in 
 ok(C.pendWait && C.pendStart, 'boss track not yet decoded: waits, then fades in as soon as it loads');
 // --- death / respawn / retry: never restart the track that just played; persistent bag; no hard reset ---
 { const D = await ev(async () => { const mm = window.__audio.music, mod = await import('/src/music.ts'); const off = s => { mm.__off += s; mm.tick(); }; const o = {};
-    await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ])].filter(n => !mod.LAZY.has(n)).every(n => mm.buffers[n]) ? r() : setTimeout(f, 200); f(); setTimeout(r, 30000); });
+    await new Promise(r => { const f = () => [...new Set([...Object.values(mod.POOLS).flat(), ])].filter(n => !mod.LAZY.has(n) || (/^(boss_|elite_)/.test(n) && !mod.SIG_TRACKS.includes(n))).every(n => (mm.ensure(n), mm.buffers[n])) ? r() : setTimeout(f, 300); f(); setTimeout(r, 120000); });
     const settle = () => { mm.setState('traversal', null); off(60); mm.state = 'traversal'; mm.want = 'traversal'; };
     const n0 = mm.log.length; const hardSeq = []; const bagBefore = mm.bags; const seen = []; localStorage.removeItem('wv_music_lasthard');
     for (const key of ['warden', 'lineman', 'overseer']) { settle(); mm.setState('bossreveal', key); off(3); mm.setState('bosscombat', key); const fights = [mm.cur];

@@ -19,6 +19,7 @@ export const ELITE2=['elite_chrome','elite_voltage','elite_claw','elite_gridlock
 /** Boss signature themes: one per top-tier boss, ONLY ever played in that boss's fight (not in any pool). `p2` plays from the first phase change. */
 export const SIGNATURE:Record<string,{main:string;p2?:string}>={ recall:{main:'boss_sig_recall',p2:'boss_sig_recall_p2'}, dispatcher:{main:'boss_sig_dispatcher',p2:'boss_sig_dispatcher_p2'}, widow:{main:'boss_sig_widow',p2:'boss_sig_widow_p2'}, resonance:{main:'boss_sig_resonance'}, courier:{main:'boss_sig_courier'}, rattle:{main:'boss_sig_rattle'}, breaker:{main:'boss_sig_breaker'}, liquidator:{main:'boss_sig_liquidator'} };
 export const SIG_TRACKS=Object.values(SIGNATURE).flatMap(x=>[x.main,...(x.p2?[x.p2]:[])]);
+export const CALM_LAZY=new Set([...CALM2,...CALM3,...CALM4]);
 export const LAZY=new Set([...CALM2,...CALM3,...CALM4,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]);
 const T:Record<string,TrackDef>={ boss_reveal:{file:'boss_reveal',loop:false,keepPos:false}, clear:{file:'clear',loop:false,keepPos:false} };
 for(const n of STINGERS) T[n]={file:n,loop:false,keepPos:false};
@@ -182,7 +183,7 @@ export class MusicManager {
     const l:Live={name,src,gain,startedAt:t,offset:off,ending:false}; this.live.push(l); if(s==='town'||s==='traversal'){ this.noteCalm(name); this.calmDwell=this.CALM_MIN+this.rnd()*(this.CALM_MAX-this.CALM_MIN); } if(s==='bosscombat'&&!this.sig&&this.fightBag&&!this.nextUp.boss){ this.nextUp.boss=this.fightBag.next(x=>x!==name); this.ensure(this.nextUp.boss); } if(s==='town'||s==='traversal'||s==='elite'){ this.prefetch(s); if(s==='traversal') this.prefetch('elite'); } }
   /** Lazy tracks are decoded PCM (~50 MB each): drop them once faded out unless they are current or queued next (re-fetched from the HTTP cache when needed). */
   private evict(n:string){ if(!this.evictable(n)) return; delete this.buffers[n]; this.asked.delete(n); this.trim(); }
-  private evictable(n:string){ if(ALL()&&!LAZY.has(n)) return false; return n!==this.cur&&!this.live.some(x=>x.name===n)&&!Object.values(this.nextUp).includes(n)&&this.pend?.name!==n&&this.fightNext!==n&&this.phasePend?.name!==n&&!(this.sig&&this.state==='bosscombat'&&this.hold.has(n)); }
+  private evictable(n:string){ if(ALL()&&!CALM_LAZY.has(n)) return false; return n!==this.cur&&!this.live.some(x=>x.name===n)&&!Object.values(this.nextUp).includes(n)&&this.pend?.name!==n&&this.fightNext!==n&&this.phasePend?.name!==n&&!(this.sig&&this.state==='bosscombat'&&this.hold.has(n)); }
   /** max decoded tracks kept (each ~50 MB PCM): High 5, Medium/Low 3 */
   get maxDecoded(){ return ALL()?1e9:Q.tier==='high'?5:3; }
   /** drop the least-recently-used decoded tracks beyond the cap (never current / fading / queued / pending) */
