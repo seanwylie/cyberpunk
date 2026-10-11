@@ -11,6 +11,7 @@ import { ENEMIES, applyUiScale } from './config';
 import { Q } from './quality';
 import { initMobile, registerSW } from './mobile';
 import { Tutorial } from './tutorial';
+import { initNet } from './net';
 
 try{ (document as any).fonts?.load('600 14px "Roboto Condensed"'); }catch{}
 import { buildHarrow } from './town2';
@@ -23,7 +24,7 @@ const game=new Game(save,(t,p)=>{ tut?.event(t,p); if(t==='sfx') audio.sfx(p); e
 ui=new UI(game,audio);
 beats=new StoryBeats(()=>game.save,()=>game.build.abilities.filter(Boolean) as string[]); beats.onEntry=e=>{ ui.toast('New field log entry (Fixer > Field log).'); if(ui.modal==='fixer') ui.render(); }; (window as any).__beats=beats;
 const canvas=document.getElementById('game') as HTMLCanvasElement; const rend=new Renderer(canvas,game);
-tut=new Tutorial(game,ui,rend); ui.tut=tut;
+tut=new Tutorial(game,ui,rend); ui.tut=tut; try{ initNet(game,rend); }catch(e){ console.warn('multiplayer init failed (solo unaffected)',e); }
 game.townPreload=async id=>{ if(id==='harrow') await rend.preloadTown(id,buildHarrow()); };
 const input=new Input(game,rend,audio,{ modalOpen:()=>ui.modalOpen(), onToggleInv:()=>ui.toggleLive(), onEsc:()=>ui.esc() },canvas);
 const resize=()=>{ applyUiScale(); rend.resize(); (ui as any).fitModal?.(); }; window.visualViewport?.addEventListener('resize',()=>(ui as any).fitModal?.()); window.visualViewport?.addEventListener('scroll',()=>(ui as any).fitModal?.()); window.addEventListener('resize',resize); Q.onChange=()=>{ rend.resize(); }; resize();
