@@ -40,6 +40,7 @@ export function settingsHtml(ui:UIx):string{
     +row('Minimap','Show the minimap during runs. Press '+key('minimap')+' to toggle it anywhere.',sw('minimap',st.minimap!==false,'Minimap'),{tag:'label',id:'s-minimap'})
     +row('Graphics quality','Auto picks for your device and adapts to keep the frame rate up. High is the full desktop look; Medium and Low trade resolution and effects for speed and battery. Now: '+Q.describe()+'.',seg('quality',st.quality||'auto',[['auto','Auto'],['high','High'],['medium','Medium'],['low','Low']],'Graphics quality'))
     +row('FPS overlay','Show frame rate and render resolution (F3 on desktop).',sw('showfps',!!st.showFps,'FPS overlay'),{tag:'label',id:'s-showfps'})
+    +row('Auto-sell junk','Grey (junk) items are sold for credits the moment you pick them up, so they never fill your bag.',sw('autosell',st.autoSellGrey!==false,'Auto-sell junk'),{tag:'label',id:'s-autosell'})
     +row('Reduced incidental effects','Tones down flashes, shake and ambient particles. Combat telegraphs stay.',sw('reduced',!!st.reducedFx,'Reduced incidental effects'),{tag:'label',id:'s-reduced'});
   else if(tab==='audio') c=head('Audio','Volumes are saved per browser. Master scales everything.')
     +row('Master volume','Overall loudness.',slider('vol',st.volume,'Master volume'),{wide:true})
@@ -122,12 +123,12 @@ function keep(ui:UIx,focusEl?:HTMLElement|null,reset=false){ const sb=document.q
 export function settingsTab(ui:UIx,id:string){ setTab(ui,id,false); }
 function setTab(ui:UIx,id:string,focus=true){ if(!TABS.some(t=>t[0]===id)) return; S.tab=id; S.confirm=null; try{ localStorage.setItem(TAB_KEY,id); }catch{} S.focus=focus?'#stab-'+id:''; S.scroll=0; ui.render(); }
 
-const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','recnudge','stationmk','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','llmurl','llmkey','llmmodel','devreset']);
+const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','autosell','recnudge','stationmk','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','llmurl','llmkey','llmmodel','devreset']);
 /** returns true if handled. v is the new value (string for selects/ranges/text, boolean for switches) */
 function apply(ui:UIx,k:string,v:any,final=true){ const g=ui.g, s=g.save, st=s.settings;
   switch(k){
     case 'gore': st.gore=v; break; case 'dmgnum': st.damageNumbers=!!v; break; case 'lootlabels': st.lootLabels=v; break; case 'lootmin': st.lootMin=v; break;
-    case 'uisize': st.uiSize=v; applyUiScale(v); break; case 'reduced': st.reducedFx=!!v; document.body.classList.toggle('reducefx',!!v); break; case 'joyfixed': st.joystickFixed=!!v; break;
+    case 'uisize': st.uiSize=v; applyUiScale(v); break; case 'reduced': st.reducedFx=!!v; document.body.classList.toggle('reducefx',!!v); break; case 'joyfixed': st.joystickFixed=!!v; break; case 'autosell': st.autoSellGrey=!!v; break;
     case 'music': st.music=!!v; ui.audio.setMusicOn(!!v); break;
     case 'vol': st.volume=+v; ui.audio.setVolume(st.volume); if(final) preview(ui); break;
     case 'musicvol': st.musicVol=+v; ui.audio.setMusicVolume(st.musicVol); break;

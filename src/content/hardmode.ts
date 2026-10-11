@@ -23,6 +23,13 @@ export const HARD = {
   death:{ creditLoss:.35, repairMul:1.5 },
   /** ground-drop volume (tools/balance/drops.mjs) */
   autoSellGrey:true,
+  /** keep-probability per rarity when a loot roll picks it (re-rolled otherwise); orange never rolls from pools (signature drops only) */
+  rarityKeep:{ grey:1, green:1, blue:.35, purple:.06, orange:0 } as Record<string,number>,
+  /** per dungeon tier multiplier on DROP.scale (tier IV drops more, but slowly) */
+  dropTier:[1,1,1.1,1.3,1.8],
+  /** chance that an affixed (non-boss, non-true-elite) pack leader drops its first roll; true elites and bosses keep their guaranteed rolls */
+  affixChance:.25,
+  bossSecondNonItem:.75,
 };
 /** once: scale defs. tierOf maps enemy id -> dungeon tier (bosses via dungeon default boss, mobs via their own tier). */
 let applied=false;

@@ -1,4 +1,4 @@
-import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING} from './config';
+import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, SELL_VALUE, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING} from './config';
 import { counterFor, hintText } from './content/abilfx';
 import { bankOverflowItem, bankOverflowChip } from './bank';
 import { computeBuild, installedLayout, BuildResult } from './build';
@@ -370,7 +370,8 @@ export class Game {
   playerDown(){
     this.hp=0; this.downed=true; this.downT=0; this.cast=null; this.aim=null; this.channel=null; this.emit('sfx','down');
     const inst=this.inst!; const cand=SLOTS.filter(s=>!inst.broken.includes(s)&&!inst.protectedSlots.includes(s)&&this.save.installed[s]&&!ITEM_BY_ID[this.save.items.find(i=>i.uid===this.save.installed[s])!.def].id.startsWith('stock_'));
-    let broke:Slot|null=null; if(cand.length){ broke=cand[Math.floor(Math.random()*cand.length)]; inst.broken.push(broke); const it=this.save.items.find(i=>i.uid===this.save.installed[broke!])!; const cost=REPAIR_COST[ITEM_BY_ID[it.def].rarity]; this.save.repairBill+=cost; inst.repairAdded+=cost; }
+    let broke:Slot|null=null; if(cand.length){ broke=cand[Math.floor(Math.random()*cand.length)]; inst.broken.push(broke); const it=this.save.items.find(i=>i.uid===this.save.installed[broke!])!; const cost=Math.round(REPAIR_COST[ITEM_BY_ID[it.def].rarity]*HARD.death.repairMul); this.save.repairBill+=cost; inst.repairAdded+=cost; }
+    { const lost=Math.floor(inst.carried.credits*HARD.death.creditLoss); if(lost>0){ inst.carried.credits-=lost; this.toast('Downed: lost '+lost+' carried credits.'); } }
     const hasDefib=this.build.passives.includes('defib')&&this.defibCd<=0;
     this.recompute(); this.hp=0; this.emit('down',{ broke:broke&&ITEM_BY_ID[this.save.items.find(i=>i.uid===this.save.installed[broke!])!.def].name, defib:hasDefib });
   }
@@ -587,13 +588,16 @@ export class Game {
     if(def.boss) this.onBossDead(e);
   }
   addXp(n:number){ const s=this.save; s.xp+=n; while(s.level<PROGRESSION.maxLevel&&s.xp>=PROGRESSION.xpForLevel(s.level)){ s.xp-=PROGRESSION.xpForLevel(s.level); s.level++; this.toast('Level up! Level '+s.level); this.recompute(); } }
-  pickEntry(pool:LootEntry[]):LootEntry{ const tot=pool.reduce((a,b)=>a+b.w,0); let r=Math.random()*tot; for(const e of pool){ r-=e.w; if(r<=0) return e; } return pool[0]; }
+  pickEntry(pool:LootEntry[]):LootEntry{ const tot=pool.reduce((a,b)=>a+b.w,0); let last=pool[0];
+    for(let tries=0;tries<10;tries++){ let r=Math.random()*tot, pick=pool[0]; for(const e of pool){ r-=e.w; if(r<=0){ pick=e; break; } } last=pick;
+      const rar:Rarity=pick.item?ITEM_BY_ID[pick.item].rarity:pick.chip?CHIPS[pick.chip].rarity:'green'; if(Math.random()<(HARD.rarityKeep[rar]??1)) return pick; } /* slower power curve: rarer rarities are re-rolled away; orange is signature-only */
+    return pool.find(e=>(e.item?ITEM_BY_ID[e.item].rarity:'grey')==='grey'||e.stim)||last; }
   rollLoot(e:En){
     const def=ENEMIES[e.type]; const inst=this.inst!; const tier=def.boss?'boss':(def.elite||(e as any).affix?.length)?'elite':'ordinary'; const T=LOOT[tier]; const pool=this.dd.loot?this.dd.loot[tier]:T.pool; const rolls=def.boss?LOOT.boss.rolls:def.elite?2:1;
-    const sc=DROP.scale, ord=tier==='ordinary', pile=ord?Math.min(1,DROP.creditPile*sc):1, cm=ord?(sc>=1?1:Math.min(4,DROP.creditKeep/sc)):1;
+    const sc=DROP.scale*(HARD.dropTier[this.dd.tier||0]||1), ord=tier==='ordinary', pile=ord?Math.min(1,DROP.creditPile*sc):1, cm=ord?(sc>=1?1:Math.min(8,DROP.creditKeep/sc)):1;
     const cr=T.credits.map(c=>c*this.dd.creditMul*cm) as [number,number]; if(Math.random()<pile) this.addDrop(e.x,e.y,{kind:'credits',amount:Math.round(cr[0]+Math.random()*(cr[1]-cr[0]))});
-    const guar=def.boss?DROP.bossGuaranteed:def.elite||tier==='elite'?DROP.eliteGuaranteed:0, extra=def.boss?DROP.bossExtra:tier==='elite'?DROP.eliteExtra:0;
-    for(let i=0;i<rolls;i++){ const ch=ord?T.chance*Math.min(1,sc):i<guar?1:Math.min(1,extra*(sc/DROP_RATE_SCALE)); if(Math.random()>ch) continue; this.dropEntry(this.pickEntry(pool),e.x,e.y); }
+    const affixOnly=tier==='elite'&&!def.elite, guar=def.boss?DROP.bossGuaranteed:def.elite?DROP.eliteGuaranteed:0, extra=def.boss?DROP.bossExtra:tier==='elite'?DROP.eliteExtra:0;
+    for(let i=0;i<rolls;i++){ const ch=ord?T.chance*Math.min(1,sc):i<guar?1:affixOnly&&i===0?HARD.affixChance:Math.min(1,extra*(sc/DROP_RATE_SCALE)); if(Math.random()>ch) continue; let pl=pool; if(def.boss&&i===1&&Math.random()<HARD.bossSecondNonItem){ const alt=pool.filter(x=>!x.item); if(alt.length) pl=alt; } this.dropEntry(this.pickEntry(pl),e.x,e.y); }
     const sig=def.boss?(this.dd.id==='annex'?LOOT.signature[e.type]:this.dd.signature?.[e.type]):null; if(sig&&Math.random()<sig.chance) this.dropEntry({item:sig.item,w:1},e.x,e.y);
   }
   /** Personal loot, filtered against the recipient level. Ineligible items are NOT rerolled downward (spec). */
@@ -615,6 +619,7 @@ export class Game {
     const inst=this.inst!; if(this.downed) return; const rad=COMBAT.pickupRadius+this.stat().pickup; const near=inst.drops.filter(d=>dist(d.x,d.y,this.px,this.py)<rad);
     near.sort((a,b)=>RARITY_RANK[this.dropRarity(b)]-RARITY_RANK[this.dropRarity(a)]); const c=inst.carried;
     for(const d of near){ this.pickFx.push({id:d.id,x:d.x,y:d.y,kind:d.kind,inst:d.inst,chip:d.chip,amount:d.amount,t0:this.time}); if(this.pickFx.length>24) this.pickFx.shift(); if(d.kind==='credits'){ c.credits+=d.amount; this.rm(d); this.emit('sfx','coin'); continue; }
+      if(d.kind==='item'&&HARD.autoSellGrey&&this.save.settings.autoSellGrey!==false&&ITEM_BY_ID[d.inst!.def].rarity==='grey'){ const v=SELL_VALUE.grey; c.credits+=v; this.rm(d); this.emit('sfx','coin'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.9,text:'sold junk +'+v+'c',c:'#c9b87a'}); continue; }
       const stacksOk=(d.kind==='chip'&&(c.chips[d.chip!]||0)>0)||(d.kind==='stim'&&c.stims>0); const fits=stacksOk||this.carriedCount()<COMBAT.missionSlots;
       if(!fits){ if(!d.marker){ d.marker=true; this.toast('Inventory full: item left on the ground (marked).'); } continue; }
       if(d.kind==='item') c.items.push(d.inst!); else if(d.kind==='chip') c.chips[d.chip!]=(c.chips[d.chip!]||0)+1; else if(d.kind==='stim') c.stims++;

@@ -224,8 +224,8 @@ export const LOOT = {
 /** Global drop-volume knob (docs/BALANCE.md). Scales the chance of every ordinary-mob item/chip/stim roll, the optional extra rolls of elites and bosses,
  *  and the chance of an ordinary-mob credit pile (pile size is raised so credit income only drops to ~DROP.creditKeep). Guaranteed rolls (1 per elite, 2 per boss)
  *  and signature drops are never scaled. Does not touch tutorial grants or idkfa. Mutable object so tests/reports can override DROP.scale. */
-export const DROP_RATE_SCALE = 0.3;
-export const DROP = { scale:DROP_RATE_SCALE, eliteGuaranteed:1, eliteExtra:.4, bossGuaranteed:2, bossExtra:.4, creditPile:.5, creditKeep:.5 };
+export const DROP_RATE_SCALE = 0.09;
+export const DROP = { scale:DROP_RATE_SCALE, eliteGuaranteed:1, eliteExtra:.15, bossGuaranteed:2, bossExtra:.25, creditPile:.3, creditKeep:.8 };
 
 /** Baseline abilities when no installed hardware provides any (stock Standard Issue body), so a fresh character can act. */
 export const STARTER_ABILITIES:AbilityId[]=['sweep','brace','reposition'];

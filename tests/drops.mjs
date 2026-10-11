@@ -15,11 +15,11 @@ const R = await page.evaluate(async () => {
   for (let s = 0; s < 80; s++) { let n0 = g.inst.drops.length; g.rollLoot({ type: bossId, x: g.px, y: g.py, affix: [] }); bossMin = Math.min(bossMin, g.inst.drops.slice(n0).filter(d => d.kind !== 'credits').length); n0 = g.inst.drops.length; g.rollLoot({ type: eliteId, x: g.px, y: g.py, affix: [] }); out.eliteMin = Math.min(out.eliteMin, g.inst.drops.slice(n0).filter(d => d.kind !== 'credits').length); }
   out.bossMin = bossMin; Math.random = real; Cfg.DROP.scale = Cfg.DROP_RATE_SCALE; return out; });
 const b = R.runs.before, a = R.runs.after; console.log(JSON.stringify(R));
-ok(R.scale > 0 && R.scale < 0.6, 'DROP_RATE_SCALE knob exists and is a real cut: ' + R.scale);
-ok(a.gear / b.gear >= 0.3 && a.gear / b.gear <= 0.55, `annex gear drops per run ${b.gear.toFixed(1)} -> ${a.gear.toFixed(1)} (ratio ${(a.gear / b.gear).toFixed(2)} within 0.30-0.55)`);
-ok(a.gear >= 4 && a.max <= 14, 'annex run: ' + a.gear.toFixed(1) + ' drops avg, max ' + a.max + ' (not dozens)');
-ok(a.piles < b.piles * 0.6, `ground piles incl. credits ${b.piles.toFixed(1)} -> ${a.piles.toFixed(1)}`);
-ok(a.credits >= b.credits * 0.5, `credit income kept meaningful: ${b.credits.toFixed(0)} -> ${a.credits.toFixed(0)}`);
+ok(R.scale > 0 && R.scale <= 0.12, 'DROP_RATE_SCALE knob exists and is a real cut: ' + R.scale);
+ok(a.gear / b.gear >= 0.1 && a.gear / b.gear <= 0.35, `annex gear drops per run ${b.gear.toFixed(1)} -> ${a.gear.toFixed(1)} (ratio ${(a.gear / b.gear).toFixed(2)} within 0.10-0.35)`);
+ok(a.gear >= 1.8 && a.gear <= 4.5 && a.max <= 9, 'annex run: ' + a.gear.toFixed(1) + ' drops avg, max ' + a.max + ' (not dozens)');
+ok(a.piles < b.piles * 0.25, `ground piles incl. credits ${b.piles.toFixed(1)} -> ${a.piles.toFixed(1)}`);
+ok(a.credits >= b.credits * 0.25, `credit income kept meaningful: ${b.credits.toFixed(0)} -> ${a.credits.toFixed(0)}`);
 ok(R.eliteMin >= 1, 'elite always drops >= 1 gear item/chip: min ' + R.eliteMin);
 ok(R.bossMin >= 2 && R.bossMin < 99, 'boss always drops >= 2 gear items/chips: min ' + R.bossMin);
 ok(!errors.length, 'no page errors ' + errors.join('|'));
