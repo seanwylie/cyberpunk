@@ -104,6 +104,8 @@ export function buildTown():Level {
   { const s=S('locker'); D('lockers',s.lx,s.ly,1,2,1.8,{station:s.key,glow:'cool'}); D('lockers',s.lx+1,s.ly,1,2,1.8,{station:s.key}); D('lockers',s.lx+2,s.ly,1,2,1.8,{station:s.key}); D('container',s.lx+4,s.ly+1,4,2,3.7); D('bench',s.lx-3,s.ly,2,1,2.0); D('crates',s.lx-6,s.ly+1,2,2,2.6); D('lamp',s.lx-1,s.ly-2,1,1,1.0,{glow:'cool'}); }
   // ---- DISTRICT: OUTFITTER (SW, magenta): clothes + goods stalls, neon ----
   { const s=S('store'); D('stall_clothes',s.lx,s.ly,3,3,3.5,{station:s.key,glow:'warm'}); D('stall_goods',s.lx+4,s.ly+2,3,3,4.1,{station:s.key,glow:'warm'}); D('stall_noodle',s.lx-4,s.ly-3,3,3,4.2,{glow:'warm'}); D('stall_junk',s.lx+5,s.ly-3,3,3,4.1,{glow:'warm'}); D('lamp',s.lx+3,s.ly-1,1,1,1.0,{glow:'warm'}); }
+  // ---- DISTRICT: BANK (N, brass): riveted vault house, two guards' crates, lamps; interact pad on the plaza side ----
+  { const s=S('bank'); D('bank_vault',s.lx,s.ly,4,3,5.4,{station:s.key,glow:'warm'}); D('crates',s.lx-3,s.ly+1,2,2,2.4); D('barrier',s.lx+5,s.ly+1,3,1,3.0); D('lamp',s.lx-1,s.ly+4,1,1,1.0,{glow:'warm'}); D('lamp',s.lx+4,s.ly+4,1,1,1.0,{glow:'warm'}); }
   // big readable world-space signs (pole + neon panel with icon and label), one per station
   for(const s of STATIONS) D('sign_'+s.key,s.sx,s.sy,1,1,3.9,{station:s.key,ay:.93,glow:undefined});
   // ---- plaza hub furniture (kept low so spawn reads from afar): directory kiosk, benches, fire barrel ring ----
@@ -138,6 +140,8 @@ export function buildTown():Level {
     {spr:'np_hooded_wall',x:S('implants').x+3,y:S('implants').y-.5,ph:1.8,h:1.55},{spr:'npc3',x:S('implants').x-2.5,y:S('implants').y+.6,ph:3.3,h:1.25},
     // gate: guards
     {spr:'np_guard_l',x:50,y:21,ph:1.3,h:1.35},{spr:'np_guard_r',x:50.5,y:24.2,ph:.4,h:1.35},
+    // bank: two guards flank the vault steps
+    {spr:'np_guard_l',x:S('bank').x-3.2,y:S('bank').y-1.6,ph:.9,h:1.35},{spr:'np_guard_r',x:S('bank').x+3.2,y:S('bank').y-1.6,ph:1.6,h:1.35},
     // repair, locker, store
     {spr:'np_porter',x:S('repair').x-3,y:S('repair').y-1,ph:.7,wander:[S('repair').x-3,S('repair').y-5],speed:.3,h:1.3},{spr:'np_kneel_r',x:S('repair').x+2.5,y:S('repair').y-.5,ph:4.1,h:.95},
     {spr:'npc1',x:S('locker').x+3.5,y:S('locker').y-.5,ph:4.4,h:1.25},{spr:'npc2',x:S('store').x+2.5,y:S('store').y-1,ph:4.9,wander:[S('store').x+2.5,S('store').y-4],speed:.25,h:1.25},{spr:'npc4',x:S('store').x-2,y:S('store').y-.5,ph:3.9,h:1.25},

@@ -3,6 +3,7 @@
 // Everything heavy is baked once to offscreen canvases; per-frame work is drawImage of cached, pre-scaled sprites.
 // Drop-in: replace any PNG in public/town/props with another of the same name (see public/town/manifest.json); missing files are skipped.
 import type { Level, Decor } from './level';
+import { makeVault } from './town_vault';
 import { STATIONS, drawIcon, type Station } from './stations';
 
 export const TOWN_PROPS = ['stall_a','stall_clothes','stall_goods','stall_vendor_sign','fixer_booth','gate_arch','scaffold','steam_drums','npc1','npc2','npc3','npc4','lockers','fence','poster_wall','sign_fixer','stall_vendor','workbench','stall_awning','crates','barrels','lamp','cables','bench','junk','grate','vending','noticeboard','barrel_fire','awn_red','awn_blue','awn_green','awn_grey','swag1','swag2','swag3','bulbs','rags1','rags2','leanto','stall_noodle','stall_implant','stall_clinic','stall_weapons','stall_junk','board_jobs','banner_pole','np_kneel_l','np_kneel_r','np_woman_table','np_pair_talk','np_kid_l','np_kid_r','np_guard_l','np_guard_r','np_porter','np_hooded_wall','np_lantern_l','np_lantern_r','bld1','bld2','bld3','container','slab','gantry','barrier','barrier_corner'];
@@ -41,6 +42,7 @@ export class TownArt {
   async load() { this.total = TOWN_PROPS.length + GROUND.length; const tick = () => { this.loaded++; (window as any).__loadPct = this.loaded / this.total; };
     await Promise.all([...TOWN_PROPS.map(async n => { const i = await loadImg(`${this.base}props/${n}.png`); if (i) this.img[n] = i; tick(); }), ...GROUND.map(async n => { const i = await loadImg(`${this.base}ground/${n}.jpg`); if (i) this.gimg[n] = i; tick(); })]);
     for (const st of STATIONS) this.img['sign_' + st.key] = makeSign(st) as any;
+    this.img['bank_vault'] = makeVault() as any;
     this.ready = !!this.gimg.cobble && Object.keys(this.img).length > 8;
   }
   /** pre-scaled sprite (one cached canvas per sprite per zoom) so per-frame drawing is a 1:1 blit */

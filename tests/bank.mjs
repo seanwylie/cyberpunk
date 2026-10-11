@@ -9,6 +9,17 @@ await ev(() => { const g = window.__game, s = g.save, S = window.__S; s.items = 
   const defs = Object.values(window.__C.ITEM_BY_ID); const pick = r => defs.filter(d => d.rarity === r && !d.id.startsWith('stock_')); for (let i = 0; i < 5; i++) s.items.push(S.mkInst(s, pick('grey')[i % pick('grey').length].id)); s.items.push(S.mkInst(s, pick('blue')[0].id)); s.lockerChips = { speed: 5, coolant: 3 }; s.credits = 1500; });
 let r = await ev(() => { const s = window.__game.save, B = window.__B; const b = B.bankOf(s); return { tabs: b.tabs, cap: B.bankCapacity(b), per: B.BANK_TAB_SLOTS }; });
 ok(r.tabs === 2 && r.cap === 120 && r.per === 60, 'new bank: 2 tabs x 60 slots open');
+// world station: reachable, distinct, 11+ tiles from every other station, F opens the bank
+r = await ev(async () => { const g = window.__game; g.enterTown(); const L = g.level; const b = L.interacts.find(i => i.id === 'bank'); const others = L.interacts.filter(i => i !== b); const SM = await import('/src/stations.ts');
+  const minD = Math.min(...others.map(i => Math.hypot(i.x - b.x, i.y - b.y))); const st = SM.STATION_BY_ID.bank; const colors = SM.STATIONS.filter(s => s.key !== 'bank').map(s => s.color);
+  // BFS reachability from spawn on the walkable grid
+  const w = L.w, h = L.h, seen = new Uint8Array(w * h), q = [[Math.floor(L.spawn.x), Math.floor(L.spawn.y)]]; seen[q[0][1] * w + q[0][0]] = 1; while (q.length) { const [x, y] = q.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= h || seen[ny * w + nx] || L.solid[ny * w + nx]) continue; seen[ny * w + nx] = 1; q.push([nx, ny]); } }
+  g.px = b.x; g.py = b.y; g.update(0.05); const prompt = g.prompt && g.prompt.label;
+  return { minD, min: SM.MIN_STATION_DIST, reach: !!seen[Math.floor(b.y) * w + Math.floor(b.x)], unique: !colors.includes(st.color), prompt, icon: st.icon, sign: !!document.getElementById('x') || true }; });
+ok(r.minD >= r.min && r.reach && r.unique && /^Bank:/.test(r.prompt) && r.icon === 'bank', 'bank station: reachable, ' + r.minD.toFixed(1) + ' tiles from others, unique colour, prompt ' + JSON.stringify(r.prompt));
+await ev(() => { window.__game.interact?.(); });
+ok(await ev(() => window.__ui.modal === 'bank'), 'interacting at the bank station opens the bank modal');
+await ev(() => window.__ui.close());
 // UI flow
 await ev(() => window.__ui.open('bank'));
 ok(await ev(() => !!document.querySelector('#modal [data-bank]')), 'bank modal opens in town');
