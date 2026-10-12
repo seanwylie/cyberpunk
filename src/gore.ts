@@ -29,7 +29,7 @@ export function fluidsOf(type: string): Fluid[] {
   if (b === 'organic') return [pri]; if (b === 'hybrid') return [pri, FLUIDS.coolant]; return [type.includes('doll') || type === 'fittingdoll' ? FLUIDS.oil : FLUIDS.coolant, FLUIDS.oil];
 }
 interface Decal { x: number; y: number; r: number; t0: number; life: number; a: number; fl: Fluid; sh: number; flip: number }
-interface Chunk { x: number; y: number; vx: number; vy: number; z: number; vz: number; t0: number; life: number; kind: 'limb' | 'head' | 'lump' | 'plate' | 'shard'; fl: Fluid; metal: boolean; size: number; rot: number; spin: number; landed: boolean; big: boolean }
+interface Chunk { x: number; y: number; vx: number; vy: number; z: number; vz: number; t0: number; life: number; kind: 'limb' | 'head' | 'lump' | 'plate' | 'shard'; fl: Fluid; metal: boolean; size: number; rot: number; spin: number; landed: boolean; big: boolean; path: Float32Array; dt: number; fx: number; fy: number }
 interface Drop { x: number; y: number; z: number; vx: number; vy: number; vz: number; t0: number; life: number; col: string; s: number; spark: boolean }
 export const CAPS: Record<'high' | 'medium' | 'low', { decals: number; chunks: number; drops: number }> = { high: { decals: 160, chunks: 48, drops: 150 }, medium: { decals: 70, chunks: 22, drops: 60 }, low: { decals: 32, chunks: 10, drops: 24 } };
 const G = 16, DECAL_LIFE = [34, 52];
@@ -38,6 +38,31 @@ const caps = () => CAPS[Q.tier] || CAPS.high;
 interface Info { ang: number; heavy: boolean; dmg: number; bits: number }
 const info = new WeakMap<object, Info>();
 
+/** walkable = not solid (walls, wall tops, props, void). Gore only ever rests on these cells. */
+const floorAt = (g: any, x: number, y: number) => !(g.solidAt ? g.solidAt(x, y) : false);
+const M = .2; // keep a gib's footprint this far from any wall face so its sprite never overlaps a wall
+const clearAt = (g: any, x: number, y: number) => floorAt(g, x, y) && floorAt(g, x - M, y) && floorAt(g, x + M, y) && floorAt(g, x, y - M) && floorAt(g, x, y + M);
+/** nearest floor cell centre (spiral search, radius 6); falls back to the given point */
+export function nearestFloor(g: any, x: number, y: number): [number, number] {
+  if (clearAt(g, x, y)) return [x, y]; const ix = Math.floor(x), iy = Math.floor(y); let best: [number, number] | null = null, bd = 1e9;
+  for (let r = 0; r <= 6 && !best; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const cx = ix + dx + .5, cy = iy + dy + .5; if (!clearAt(g, cx, cy) && !floorAt(g, cx, cy)) continue; const d = (cx - x) ** 2 + (cy - y) ** 2; if (d < bd) { bd = d; best = [cx, cy]; } }
+  return best || [x, y];
+}
+/** Step-simulate a gib (30 Hz): ballistic arc, bounces off wall faces (per-axis reflect), bounces/slides on the floor, then settles on a walkable cell.
+ *  Stores samples [x,y,z]* in ch.path and the resting spot in ch.fx/fy. Deterministic given the initial velocity. */
+function simChunk(g: any, ch: any) {
+  const dt = ch.dt, out: number[] = []; let x = ch.x, y = ch.y, z = ch.z, vx = ch.vx, vy = ch.vy, vz = ch.vz, bounces = 0;
+  if (!clearAt(g, x, y)) [x, y] = nearestFloor(g, x, y);
+  for (let i = 0; i < 90; i++) {
+    out.push(x, y, z);
+    const nx = x + vx * dt; if (clearAt(g, nx, y)) x = nx; else vx = -vx * .35;
+    const ny = y + vy * dt; if (clearAt(g, x, ny)) y = ny; else vy = -vy * .35;
+    vz -= G * dt; z += vz * dt;
+    if (z <= 0) { z = 0; if (bounces < 1 && vz < -2) { vz = -vz * .28; bounces++; } else vz = 0; vx *= z === 0 && vz === 0 ? .82 : .7; vy *= z === 0 && vz === 0 ? .82 : .7; }
+    if (z === 0 && vz === 0 && vx * vx + vy * vy < .01) break;
+  }
+  [x, y] = nearestFloor(g, x, y); out.push(x, y, 0); ch.path = new Float32Array(out); ch.fx = x; ch.fy = y;
+}
 class GoreSys {
   decals: Decal[] = []; chunks: Chunk[] = []; drops: Drop[] = []; edge: { t0: number; seed: number; fl: Fluid } | null = null;
   private lvl: any = null; private inst: any = null; private sweepAt = 0; private budgetT = 0; private budget = 0; stats = { spawned: 0, cleared: 0, dropsCapped: 0 };
@@ -48,7 +73,7 @@ class GoreSys {
   sync(g: any) { if (g.level !== this.lvl || g.inst !== this.inst || !this.active(g)) { if (this.decals.length || this.chunks.length || this.drops.length || this.edge) this.reset(); this.lvl = g.level; this.inst = g.inst; } }
   private take(g: any, n: number) { if (g.time - this.budgetT > .12) { this.budgetT = g.time; this.budget = 0; } if (this.budget + n > 60) return false; this.budget += n; return true; }
   private decal(g: any, x: number, y: number, r: number, fl: Fluid, a = .85, delay = 0) {
-    if (g.solidAt?.(x, y)) return; const c = caps(), red = !!g.save.settings.reducedFx; if (this.decals.length >= (red ? c.decals >> 1 : c.decals)) this.decals.shift();
+    if (!floorAt(g, x, y)) return; const c = caps(), red = !!g.save.settings.reducedFx; if (this.decals.length >= (red ? c.decals >> 1 : c.decals)) this.decals.shift();
     this.decals.push({ x, y, r, t0: g.time + delay, life: rnd(DECAL_LIFE[0], DECAL_LIFE[1]) * (fl.kind === 'oil' ? 1.15 : 1), a, fl, sh: (Math.random() * 6) | 0, flip: Math.random() < .5 ? -1 : 1 }); this.stats.spawned++;
   }
   private drop(g: any, x: number, y: number, ang: number, sp: number, fl: Fluid, spark = false) {
@@ -57,9 +82,10 @@ class GoreSys {
   }
   private chunk(g: any, e: any, kind: Chunk['kind'], fl: Fluid, metal: boolean, ang: number, power: number, size: number, big = false) {
     const c = caps(); if (this.chunks.length >= c.chunks) this.chunks.shift(); const a = ang + rnd(-.8, .8), s = power * rnd(.6, 1.1), red = !!g.save.settings.reducedFx;
-    const ch: Chunk = { x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: rnd(.4, 1.0), vz: rnd(3, 6.5) * (big ? 1.2 : 1), t0: g.time, life: rnd(26, 42), kind, fl, metal, size, rot: Math.random() * 6.28, spin: rnd(-9, 9), landed: false, big };
-    for (let i = 0; i < 6; i++) { const tl = (ch.vz + Math.sqrt(ch.vz * ch.vz + 2 * G * ch.z)) / G; if (!g.solidAt?.(ch.x + ch.vx * tl * 1.3, ch.y + ch.vy * tl * 1.3)) break; ch.vx *= .6; ch.vy *= .6; } // never land inside a wall / the void
-    if (red) { ch.t0 = g.time - 3; ch.vx *= .2; ch.vy *= .2; ch.spin = 0; } this.chunks.push(ch);
+    const ch: Chunk = { x: e.x, y: e.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, z: rnd(.4, 1.0), vz: rnd(3, 6.5) * (big ? 1.2 : 1), t0: g.time, life: rnd(26, 42), kind, fl, metal, size, rot: Math.random() * 6.28, spin: rnd(-9, 9), landed: false, big, path: new Float32Array(0), dt: 1 / 30, fx: e.x, fy: e.y };
+    if (red) { ch.vx *= .2; ch.vy *= .2; }
+    simChunk(g, ch);
+    if (red) { ch.t0 = g.time - 3; ch.spin = 0; } this.chunks.push(ch);
   }
   // ---------------------------------------------------------------- sim hooks
   hit(g: any, e: any, dmg: number, heavy: boolean, sx: number, sy: number) {
@@ -102,25 +128,40 @@ class GoreSys {
     x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = fl.dk; for (let i = 0; i < 6; i++) { x.beginPath(); x.ellipse(48 + (r() - .5) * 84, 24 + (r() - .5) * 38, 1 + r() * 2.5, .6 + r() * 1.2, 0, 0, 7); x.fill(); }
     x.globalCompositeOperation = 'source-atop'; x.fillStyle = gl ? 'rgba(220,240,244,.16)' : 'rgba(255,200,190,.09)'; x.beginPath(); x.ellipse(40, 18, 14, 4, -.2, 0, 7); x.fill(); this.tex.set(k, cv); return cv;
   }
+  /** clip a decal to the walkable floor cells it covers, so a splat next to a wall never paints onto the wall face or wall top */
+  private clipFloor(r: any, d: Decal) {
+    const g = r.g, c = r.ctx, R = Math.ceil(d.r * .7) + 1, ix = Math.floor(d.x), iy = Math.floor(d.y); let all = true; const cells: number[] = [];
+    for (let y = iy - R; y <= iy + R; y++) for (let x = ix - R; x <= ix + R; x++) { if (floorAt(g, x + .5, y + .5)) cells.push(x, y); else all = false; }
+    if (all) return; c.beginPath(); for (let i = 0; i < cells.length; i += 2) { const x = cells[i], y = cells[i + 1]; c.moveTo(r.sx(x, y), r.sy(x, y)); c.lineTo(r.sx(x + 1, y), r.sy(x + 1, y)); c.lineTo(r.sx(x + 1, y + 1), r.sy(x + 1, y + 1)); c.lineTo(r.sx(x, y + 1), r.sy(x, y + 1)); c.closePath(); } c.clip();
+  }
   drawGround(r: any) {
     const g = r.g; this.sync(g); if (!this.decals.length) return; const c = r.ctx, t = g.time, TW = r.TW; c.save();
     if (t - this.sweepAt > 1) { this.sweepAt = t; this.decals = this.decals.filter(d => t - d.t0 < d.life); }
-    for (const d of this.decals) { const age = t - d.t0; if (age < 0) continue; const a = d.a * Math.min(1, age / .25) * (age > d.life * .6 ? 1 - (age - d.life * .6) / (d.life * .4) : 1); if (a <= .02) continue; const sx = r.sx(d.x, d.y), sy = r.sy(d.x, d.y), w = d.r * TW * 1.25; if (sx < -w || sx > r.w + w || sy < -w || sy > r.h + w) continue; const grow = Math.min(1, .55 + age * 2.2); c.globalAlpha = a; c.drawImage(this.splat(d.fl, d.sh), sx - w * grow * d.flip / 2 * (d.flip < 0 ? -1 : 1), sy - w * grow / 4, w * grow * d.flip, w * grow / 2); }
+    for (const d of this.decals) { const age = t - d.t0; if (age < 0) continue; const a = d.a * Math.min(1, age / .25) * (age > d.life * .6 ? 1 - (age - d.life * .6) / (d.life * .4) : 1); if (a <= .02) continue; const sx = r.sx(d.x, d.y), sy = r.sy(d.x, d.y), w = d.r * TW * 1.25; if (sx < -w || sx > r.w + w || sy < -w || sy > r.h + w) continue; const grow = Math.min(1, .55 + age * 2.2); c.save(); this.clipFloor(r, d); c.globalAlpha = a; c.drawImage(this.splat(d.fl, d.sh), sx - w * grow * d.flip / 2 * (d.flip < 0 ? -1 : 1), sy - w * grow / 4, w * grow * d.flip, w * grow / 2); c.restore(); }
     c.restore();
   }
   drawAir(r: any) {
-    const g = r.g; if (!this.active(g) || (!this.chunks.length && !this.drops.length)) return; const c = r.ctx, t = g.time, TW = r.TW; c.save();
+    const g = r.g; if (!this.active(g) || !this.drops.length) return; const c = r.ctx, t = g.time, TW = r.TW; c.save();
     if (this.drops.length) { this.drops = this.drops.filter(d => t - d.t0 < d.life); }
-    for (const d of this.drops) { const a = t - d.t0, z = d.z + d.vz * a - .5 * G * a * a; if (z < 0) { if (!d.spark && a < d.life - .3) d.life = a + .3; } const zz = Math.max(0, z), px = r.sx(d.x + d.vx * a, d.y + d.vy * a), py = r.sy(d.x + d.vx * a, d.y + d.vy * a) - zz * TW * .5; c.globalAlpha = Math.max(0, Math.min(1, (d.life - a) / .25)); c.fillStyle = d.col; if (d.spark) { c.fillRect(px - 1, py - 1, 2.2, 2.2); } else { c.beginPath(); c.ellipse(px, py, d.s, d.s * (z > 0 ? 1.35 : .6), 0, 0, 7); c.fill(); } }
-    this.chunks = this.chunks.filter(k => t - k.t0 < k.life);
-    for (const k of this.chunks) {
-      const a = t - k.t0, tl = (k.vz + Math.sqrt(k.vz * k.vz + 2 * G * k.z)) / G; let wx: number, wy: number, z = 0, rot = k.rot;
-      if (a < tl) { wx = k.x + k.vx * a; wy = k.y + k.vy * a; z = k.z + k.vz * a - .5 * G * a * a; rot += k.spin * a; }
-      else { const lx = k.x + k.vx * tl, ly = k.y + k.vy * tl, b = a - tl, sl = 1 - Math.exp(-b * 4) * 1; wx = lx + k.vx * .22 * sl; wy = ly + k.vy * .22 * sl; const vb = (k.vz - G * tl) * -.28, tb = 2 * vb / G; z = b < tb ? Math.max(0, vb * b - .5 * G * b * b) : 0; rot += k.spin * tl + (b < .5 ? k.spin * b * .4 : k.spin * .2);
-        if (!k.landed && b > .05) { k.landed = true; const mode = goreMode(g); if (mode === 'bloody') this.decal(g, wx, wy, k.big ? .9 : .4, k.fl, .85); } }
-      const px = r.sx(wx, wy), py = r.sy(wx, wy) - z * TW * .5, s = TW * .13 * k.size; if (px < -40 || px > r.w + 40 || py < -40 || py > r.h + 40) continue; const fade = Math.min(1, (k.life - a) / 4);
-      c.globalAlpha = fade; c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(px, py + z * TW * .5, s * .8, s * .35, 0, 0, 7); c.fill();
-      c.save(); c.translate(px, py); c.rotate(rot); c.lineWidth = 1.2; c.strokeStyle = 'rgba(14,10,8,.85)';
+    for (const d of this.drops) { const a = t - d.t0, z = d.z + d.vz * a - .5 * G * a * a; if (z < 0) { if (!d.spark && a < d.life - .3) d.life = a + .3; } if (!floorAt(g, d.x + d.vx * a, d.y + d.vy * a)) { d.life = Math.min(d.life, a); continue; } const zz = Math.max(0, z), px = r.sx(d.x + d.vx * a, d.y + d.vy * a), py = r.sy(d.x + d.vx * a, d.y + d.vy * a) - zz * TW * .5; c.globalAlpha = Math.max(0, Math.min(1, (d.life - a) / .25)); c.fillStyle = d.col; if (d.spark) { c.fillRect(px - 1, py - 1, 2.2, 2.2); } else { c.beginPath(); c.ellipse(px, py, d.s, d.s * (z > 0 ? 1.35 : .6), 0, 0, 7); c.fill(); } }
+    c.restore();
+  }
+  /** world position of a gib at time t: [x, y, z, landed] */
+  pos(k: Chunk, t: number): [number, number, number, boolean] {
+    const P = k.path, n = P.length / 3, f = Math.max(0, (t - k.t0) / k.dt); if (f >= n - 1) return [P[(n - 1) * 3], P[(n - 1) * 3 + 1], 0, true];
+    const i = Math.floor(f), u = f - i, j = i * 3; return [P[j] + (P[j + 3] - P[j]) * u, P[j + 1] + (P[j + 4] - P[j + 1]) * u, P[j + 2] + (P[j + 5] - P[j + 2]) * u, false];
+  }
+  /** gibs go into the renderer's isometric depth sort (d = x + y of the ground point under them) so walls in front correctly cover them */
+  items(r: any, items: { d: number; f: () => void }[]) {
+    const g = r.g; if (!this.active(g) || !this.chunks.length) return; const t = g.time; this.chunks = this.chunks.filter(k => t - k.t0 < k.life);
+    for (const k of this.chunks) { const [wx, wy] = this.pos(k, t); items.push({ d: wx + wy, f: () => this.drawChunk(r, k) }); }
+  }
+  drawChunk(r: any, k: Chunk) {
+    const g = r.g, c = r.ctx, t = g.time, TW = r.TW, a = t - k.t0; const [wx, wy, z, done] = this.pos(k, t); const tl = k.path.length / 3 * k.dt; const rot = k.rot + k.spin * Math.min(a, tl) * (done ? 1 : 1);
+    if (done && !k.landed) { k.landed = true; if (goreMode(g) === 'bloody') this.decal(g, wx, wy, k.big ? .9 : .4, k.fl, .85); }
+    const px = r.sx(wx, wy), py = r.sy(wx, wy) - z * TW * .5, s = TW * .13 * k.size; if (px < -40 || px > r.w + 40 || py < -40 || py > r.h + 40) return; const fade = Math.max(0, Math.min(1, (k.life - a) / 4));
+    c.save(); c.globalAlpha = fade; c.fillStyle = 'rgba(0,0,0,.28)'; c.beginPath(); c.ellipse(px, py + z * TW * .5, s * .8, s * .35, 0, 0, 7); c.fill();
+    c.save(); c.translate(px, py); c.rotate(rot); c.lineWidth = 1.2; c.strokeStyle = 'rgba(14,10,8,.85)';
       const body = k.metal ? '#6a6a68' : k.fl.col, edge = k.metal ? '#3a3a3a' : k.fl.dk; c.fillStyle = body;
       if (k.kind === 'limb') { c.beginPath(); c.moveTo(-s * 1.1, -s * .32); c.lineTo(s * 1.1, -s * .2); c.lineTo(s * 1.1, s * .2); c.lineTo(-s * 1.1, s * .34); c.closePath(); c.fill(); c.stroke(); c.fillStyle = k.metal ? '#aaa' : '#d8cfc0'; c.beginPath(); c.arc(-s * 1.1, 0, s * .26, 0, 7); c.fill(); c.fillStyle = edge; c.beginPath(); c.arc(s * 1.1, 0, s * .3, 0, 7); c.fill(); }
       else if (k.kind === 'head') { c.beginPath(); c.arc(0, 0, s * .8, 0, 7); c.fill(); c.stroke(); c.fillStyle = k.metal ? '#ffb040' : 'rgba(10,6,6,.8)'; c.beginPath(); c.arc(s * .25, -s * .1, s * .16, 0, 7); c.fill(); }
@@ -128,9 +169,7 @@ class GoreSys {
       else if (k.kind === 'shard') { c.beginPath(); c.moveTo(0, -s); c.lineTo(s * .7, s * .6); c.lineTo(-s * .7, s * .6); c.closePath(); c.fill(); }
       else { c.beginPath(); c.moveTo(-s, 0); c.quadraticCurveTo(-s * .6, -s * .9, s * .3, -s * .7); c.quadraticCurveTo(s * 1.1, -s * .2, s * .6, s * .7); c.quadraticCurveTo(-s * .2, s * 1.0, -s, 0); c.fill(); c.stroke(); c.fillStyle = edge; c.beginPath(); c.arc(-s * .1, s * .1, s * .3, 0, 7); c.fill(); }
       if (!k.metal) { c.fillStyle = 'rgba(255,230,220,.22)'; c.beginPath(); c.ellipse(-s * .25, -s * .3, s * .22, s * .1, -.5, 0, 7); c.fill(); }
-      c.restore();
-    }
-    c.restore();
+      c.restore(); c.restore();
   }
   /** subtle screen-edge spray after a heavy kill close to the player (alpha <= .16, ~1.4 s, never with Reduced FX; the flash guard was consulted when it was queued) */
   drawScreen(r: any) {

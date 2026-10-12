@@ -150,7 +150,7 @@ export class Renderer {
     for(const e of g.enemies){ if(e.dead){ if(this.eart.dying(e,g.time)) items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); continue; } items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); }
     if(!g.downed||true) items.push({d:g.px+g.py,f:()=>this.drawPlayer()});
     (this as any).netItems?.(items);
-    vfxItems(this,items);
+    vfxItems(this,items); GORE.items(this,items);
     items.sort((a,b)=>a.d-b.d);
     // ground-level telegraphs/zones go under actors
     this.drawGroundFx();
