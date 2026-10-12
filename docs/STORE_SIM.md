@@ -21,7 +21,7 @@ Tiers must be bought in order. All prices are labelled **SIMULATED** in the UI.
 
 ## Entry points
 * Town station **Outfitter**, the **Store** button in the Wardrobe and in the Locker header.
-* Wardrobe: clicking a locked premium skin previews it on the character and offers **Buy** (preview then buy).
+* Dressing room (Wardrobe): try any store skin or set on the rotatable model and **Buy** in place through the same purchase flow (docs/DRESSING_ROOM.md).
 * Locker or Bank full: one gentle inline row ("Locker is full. Optional: ... Not now"). It is dismissable for 15 minutes and logged once per appearance.
 The Store, Wardrobe, Locker and Bank modals refuse to open outside town, and the prompt helpers return nothing when `mode !== 'town'`, so nothing appears in a run or mid-combat.
 
