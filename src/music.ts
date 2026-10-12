@@ -119,7 +119,7 @@ export class MusicManager {
   sbuf:Record<string,AudioBuffer>={}; lastSting=-1e9;
   /** One-shot stinger (level-up, rare loot, run complete, death) layered over the current music; rate-limited, lazy fetched, ~1 MB decoded. */
   async stinger(name:string){ if(!this.ready||!STINGERS.includes(name)) return; const n=performance.now(); if(n-this.lastSting<4000) return; this.lastSting=n;
-    try{ let b=this.sbuf[name]; if(!b){ const r=await fetch(this.base+name+'.mp3'); if(!r.ok) return; b=this.sbuf[name]=await this.ctx.decodeAudioData(await r.arrayBuffer()); } const src=this.ctx.createBufferSource(); src.buffer=b; const g=this.ctx.createGain(); g.gain.value=.8; src.connect(g); g.connect(this.out); src.start(); }catch{} }
+    try{ let b=this.sbuf[name]; if(!b){ const r=await fetch(this.base+name+'.mp3'); if(!r.ok) return; b=this.sbuf[name]=await this.ctx.decodeAudioData(await r.arrayBuffer()); } const src=this.ctx.createBufferSource(); src.buffer=b; const g=this.ctx.createGain(), ct=this.ctx.currentTime; g.gain.setValueAtTime(0,ct); g.gain.linearRampToValueAtTime(.8,ct+.05); src.connect(g); g.connect(this.out); src.start(ct); }catch{} }
   nudge(){ if(this.state!=='town'&&this.state!=='traversal') return; const t=this.now(); this.calmDwell=Math.min(this.calmDwell,Math.max(this.NUDGE_MIN,t-this.lastSwitchAt)); }
   /** Pick (and start fetching) the track that follows the current calm one so a rotation never waits on the network. */
   private prefetch(s:MState){ if(s!=='town'&&s!=='traversal'&&s!=='elite') return; const k=this.bagKey(s); if(this.nextUp[k]&&this.nextUp[k]!==this.cur) { this.ensure(this.nextUp[k]); return; } const bag=this.bagFor(s); const n=s==='elite'?bag.next(x=>x!==this.cur):this.chooseCalm(bag,x=>x!==this.cur); this.nextUp[k]=n; this.ensure(n); }
@@ -150,7 +150,7 @@ export class MusicManager {
     else { const ci=INTENSITY[this.cur||'']||2; const hh=this.hardHist(); let c=POOLS.bosscombat.filter(x=>x!==this.cur&&x!==this.lastHard); { const c2=c.filter(x=>!hh.includes(x)); if(c2.length>=2) c=c2; } const higher=c.filter(x=>(INTENSITY[x]||2)>ci), pool=higher.length?higher:c.filter(x=>(INTENSITY[x]||2)>=ci); if(!pool.length) return;
       const lo=Math.min(...pool.map(x=>INTENSITY[x]||2)); const g=pool.filter(x=>(INTENSITY[x]||2)===lo); nx=g[Math.floor(Math.random()*g.length)]; }
     if(!this.buffers[nx]){ this.ensure(nx); this.phasePend={name:nx}; return; } this.doPhase(nx); }
-  private doPhase(nx:string){ const t=this.now(); this.phasePend=null; this.lastSwitchAt=t; this.counts.phase++; this.counts.hard++; this.counts.total++; this.crossfade(nx,1.5,'bosscombat'); if(this.sig&&nx===this.sig.p2) this.p2done=true; if(this.fightBag) this.fightBag.last=nx; this.setHard(nx); }
+  private doPhase(nx:string){ const t=this.now(); this.phasePend=null; this.lastSwitchAt=t; this.counts.phase++; this.counts.hard++; this.counts.total++; this.crossfade(nx,2,'bosscombat'); if(this.sig&&nx===this.sig.p2) this.p2done=true; if(this.fightBag) this.fightBag.last=nx; this.setHard(nx); }
   tick(){ if(!this.ready) return; const t=this.now(); this.flushPending(t); this.applyPhase(); if(this.phasePend){ if(this.state!=='bosscombat') this.phasePend=null; else if(this.buffers[this.phasePend.name]&&this.phasePend.name!==this.cur) this.doPhase(this.phasePend.name); else this.ensure(this.phasePend.name); }
     if(this.state==='bosscombat'&&this.sig?.p2&&!this.p2done) this.ensure(this.sig.p2); let tgt=this.want;
     const hard=(s:MState|null)=>s==='elite'||s==='bosscombat'||s==='combat';
@@ -169,17 +169,20 @@ export class MusicManager {
     if(n===l.name) return; this.lastSwitchAt=t; this.counts.total++; if(hard) this.counts.hard++; else this.counts.calm++; this.crossfade(n,hard?this.ROTATE_FADE:this.CALM_FADE,this.state!); }
   pend:{name:string;dur:number;s:MState;at:number}|null=null;
   /** Entering hard music is never gated by dwell/cooldowns. If the wanted track isn't decoded yet it is fetched and started the moment it loads (any decoded hard track after 4 s). */
-  private flushPending(t:number){ const p=this.pend; if(!p) return; if(this.state!==p.s){ this.pend=null; return; } let n=p.name; if(!this.buffers[n]){ if(t-p.at<4){ this.ensure(n); return; } const alt=POOLS[p.s].find(x=>this.buffers[x]); if(!alt) return; n=alt; } this.pend=null; this.counts.entries++; this.crossfade(n,p.dur,p.s); }
+  private flushPending(t:number){ const p=this.pend; if(!p) return; if(this.state!==p.s){ this.pend=null; return; } let n=p.name; if(!this.buffers[n]){ this.ensure(n); if(t-p.at<4) return; const alt=POOLS[p.s].find(x=>this.buffers[x])||(p.s==='bosscombat'&&this.buffers.boss_fight?'boss_fight':''); if(!alt) return; n=alt; } this.pend=null; this.counts.entries++; this.crossfade(n,p.dur,p.s); }
   private enter(s:MState){ const prev=this.state; if(s==='resolution'||s==='town') this.retry=false; if(s!=='bossreveal'&&s!=='bosscombat'){ this.phaseDue=false; this.fightNext=null; this.sig=null; this.phasePend=null; delete this.nextUp.boss; this.hold.clear(); } const t=this.now(); this.state=s; this.enteredAt=t; this.lastSwitchAt=t; this.leaveSince=-1; this.pend=null; const name=this.pick(s);
-    let dur=2; if(s==='traversal'&&(prev===null||prev==='town')) dur=3; else if(s==='town') dur=3; else if(s==='bossreveal') dur=2.5; else if(s==='bosscombat') dur=1.5; else if(s==='resolution') dur=.5; else if(s==='combat'||s==='elite') dur=1.5; else if(prev==='resolution') dur=2.5;
+    let dur=2; if(s==='traversal'&&(prev===null||prev==='town')) dur=3; else if(s==='town') dur=3; else if(s==='bossreveal') dur=2.5; else if(s==='bosscombat') dur=1.5; else if(s==='resolution') dur=4; else if(s==='combat'||s==='elite') dur=1.5; else if(prev==='resolution') dur=2.5; else if(s==='traversal'&&(prev==='elite'||prev==='bosscombat'||prev==='combat'||prev==='bossreveal')) dur=4;
     if(!this.buffers[name]&&(s==='elite'||s==='bosscombat')){ this.ensure(name); this.pend={name,dur,s,at:t}; return; }
-    if(s==='elite'||s==='bosscombat') this.counts.entries++; this.crossfade(name,dur,s); }
-  crossfade(name:string|null,dur:number,s:MState){ const t=this.now(); const out=this.live.filter(l=>!l.ending);
-    for(const l of out){ l.ending=true; this.savePos(l,t); const g=l.gain.gain; g.cancelScheduledValues(t); g.setValueAtTime(g.value,t); this.curve(g,g.value,0,t,dur); l.src.stop(t+dur+.05); setTimeout(()=>{ this.live=this.live.filter(x=>x!==l); this.evict(l.name); },(dur+.2)*1000); }
-    if(name&&!this.buffers[name]){ this.pend={name,dur,s,at:t}; return; } // track not decoded yet: start it the moment it is
+    if(s==='elite'||s==='bosscombat') this.counts.entries++; this.crossfade(name,dur,s,s==='resolution'?1.5:dur); }
+  /** Equal-power crossfade: the old track(s) fade out over `dur`, the new one fades in over `inDur` (default `dur`). If the new track is not decoded yet the old one keeps playing untouched and the whole crossfade starts the moment the new one is ready (no silence gap, no abrupt start). */
+  crossfade(name:string|null,dur:number,s:MState,inDur:number=dur){ const t=this.now();
+    if(name&&!this.buffers[name]){ this.pend={name,dur,s,at:t}; this.ensure(name); return; } // track not decoded yet: fade in once ready
+    const out=this.live.filter(l=>!l.ending);
+    for(const l of out){ l.ending=true; this.savePos(l,t); const g=l.gain.gain; g.cancelScheduledValues(t); const v=g.value; try{ g.setValueAtTime(v,t); }catch{} this.curve(g,v,0,t,dur); l.src.stop(t+dur+.05); setTimeout(()=>{ this.live=this.live.filter(x=>x!==l); this.evict(l.name); },(dur+.2)*1000); }
     this.log.push({t,from:this.cur,to:name,dur,state:s}); this.cur=name; if(!name) return; this.usedAt[name]=performance.now();
     const d=T[name], buf=this.buffers[name]; const src=this.ctx.createBufferSource(); src.buffer=buf; src.loop=d.loop; const gain=this.ctx.createGain(); gain.gain.value=0; src.connect(gain); gain.connect(this.out);
-    let off=d.keepPos?(this.pos[name]||0):0; if(off>=buf.duration-1) off=0; src.start(t,off); this.curve(gain.gain,0,1,t,dur);
+    let off=d.keepPos?(this.pos[name]||0):0; if(off>=buf.duration-1) off=0; src.start(t,off); this.curve(gain.gain,0,1,t,inDur);
+    if(!d.loop){ const rem=buf.duration-off, fd=Math.min(1.5,Math.max(.2,(rem-inDur)/2)); if(rem-fd>inDur) this.curve(gain.gain,1,0,t+rem-fd,fd); } // one-shots (reveal, clear) fade out before their natural end: never a hard cut
     const l:Live={name,src,gain,startedAt:t,offset:off,ending:false}; this.live.push(l); if(s==='town'||s==='traversal'){ this.noteCalm(name); this.calmDwell=this.CALM_MIN+this.rnd()*(this.CALM_MAX-this.CALM_MIN); } if(s==='bosscombat'&&!this.sig&&this.fightBag&&!this.nextUp.boss){ this.nextUp.boss=this.fightBag.next(x=>x!==name); this.ensure(this.nextUp.boss); } if(s==='town'||s==='traversal'||s==='elite'){ this.prefetch(s); if(s==='traversal') this.prefetch('elite'); } }
   /** Lazy tracks are decoded PCM (~50 MB each): drop them once faded out unless they are current or queued next (re-fetched from the HTTP cache when needed). */
   private evict(n:string){ if(!this.evictable(n)) return; delete this.buffers[n]; this.asked.delete(n); this.trim(); }
@@ -194,5 +197,5 @@ export class MusicManager {
   private savePos(l:Live,t:number){ const d=T[l.name]; if(!d.keepPos) return; const b=this.buffers[l.name]; this.pos[l.name]=(l.offset+(t-l.startedAt))%b.duration; }
   // equal-power (cos/sin) fade curve
   private curve(p:AudioParam,a:number,b:number,t:number,dur:number){ const n=32, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=i/(n-1); c[i]=a<b?Math.sin(x*Math.PI/2)*(b-a)+a:Math.cos(x*Math.PI/2)*(a-b)+b; } try{ p.setValueCurveAtTime(c,t,dur); }catch{ p.linearRampToValueAtTime(b,t+dur); } }
-  stopAll(dur=1){ this.state=null; this.crossfade(null,dur,'town'); }
+  stopAll(dur=2){ this.state=null; this.crossfade(null,dur,'town'); }
 }

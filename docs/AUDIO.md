@@ -215,3 +215,24 @@ Every ability (78: 10 core + 68 augment) has a profile in `src/abilities/sfxprof
 **Generating the samples:** `ELEVENLABS_API_KEY=... python3 tools/gen_sfx.py [family_layer ...] [--force]` (needs ffmpeg). It calls the ElevenLabs sound-generation API, trims silence, compresses, peak-normalises and writes mono 32 kHz 56 kbps mp3s. **Status:** 57 generated samples (17 families x windup/cast/impact + 6 travel layers) ship in `public/audio/sfx/`, 253 KB total (max 7.6 KB each, mono 32 kHz 56 kbps, peak-normalised to about -3 dB). The generator clamps durations to the API minimum of 0.5 s. Any sample that fails to load or decode falls back to the synth for that layer.
 
 **Ambient feedback:** per-type cooldown-ready pings (`ab_ready_attack/defense/hacking/mobility`, different timbres), an overheat-warning double blip when heat crosses 85% (`amb_hot`), and the existing vent / cooled cues.
+
+## Fade audit: every transition is an equal-power ramp
+
+Every start/stop/switch in `MusicManager.crossfade()` uses sin/cos (equal-power) curves; nothing starts or stops abruptly.
+
+| Transition | Fade-out (old) | Fade-in (new) |
+|---|---|---|
+| First track at game start / procedural -> file handoff | - | 3 s (bus handoff smoothed) |
+| Enter town / leave to town (incl. abandon, leave instance) | 3 s | 3 s |
+| Calm rotation (town / traversal) | 6-8 s | 6-8 s |
+| Boss reveal / boss fight / elite entry | 1.5-2.5 s | same |
+| Boss phase change | 2 s | 2 s |
+| Boss kill -> resolution sting | 4 s (was 0.5 s) | 1.5 s |
+| Boss/elite/combat -> calm (death, disengage, exit) | 4 s (was 2 s) | 4 s |
+| `stopAll()` | 2 s (was 1 s) | - |
+| Stingers | baked tail | 50 ms attack ramp (no click) |
+| One-shot tracks (boss reveal, clear) reaching natural end | scheduled 1.5 s fade before the buffer end | - |
+
+**Loading delays:** if the next track is not decoded yet, the old track is left playing untouched (no early fade-out, no silence gap); the full crossfade starts the moment the new buffer is ready. Tab hide/resume only drops idle (non-playing) buffers and never touches live gains.
+
+**Tests (`npm run test:music`, "gain-ramp audit")** wrap `AudioParam` automation and assert, across town entry, town rotation, town->run, elite start/end, reveal->fight, phase change, kill->resolution->run, abandon->town, a still-loading target and a one-shot natural end: every start has a fade-in >= 1.4 s, no ramp sample step > 0.12, no raw gain jumps, every stop happens after its fade-out finishes (>= 1.4 s), kill fade-out >= 3 s, loading keeps the old track un-ramped until ready.

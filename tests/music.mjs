@@ -22,7 +22,7 @@ const n1 = L.length; await m('traversal'); await adv(2); await m('elite'); await
 await adv(60); L = await log(); ok(L.length === n1 + 1 && L[L.length - 1].state === 'traversal' && !hardTrack.test(L[L.length - 1].to), 'disengage returns to calm after dwell and ~10 s delay');
 await m('traversal'); await adv(1); await m('elite'); await adv(50); await m('traversal'); await adv(1); L = await log(); ok(L[L.length - 1].state === 'elite', 'exit delay: still hard 1 s after calm resumes');
 await adv(10); L = await log(); ok(L[L.length - 1].state === 'traversal', 'exit delay: calm after ~10 s');
-await m('bossreveal'); await m('bosscombat'); L = await log(); ok(L.slice(-2)[0].to === 'boss_reveal' && /^(boss_|elite_)/.test(L[L.length - 1].to) && L[L.length - 1].state === 'bosscombat', 'boss reveal -> boss fight ' + JSON.stringify(L.slice(-3)));
+await m('bossreveal'); await m('bosscombat'); for (let i = 0; i < 100; i++) { L = await log(); if (L[L.length - 1].state === 'bosscombat') break; await sleep(150); } L = await log(); ok(L.slice(-2)[0].to === 'boss_reveal' && /^(boss_|elite_)/.test(L[L.length - 1].to) && L[L.length - 1].state === 'bosscombat', 'boss reveal -> boss fight ' + JSON.stringify(L.slice(-3)));
 await m('resolution'); await m('traversal'); L = await log(); ok(L.slice(-2)[0].to === 'clear' && L[L.length - 1].state === 'traversal', 'resolution -> traversal');
 await m('town'); L = await log(); ok(L[L.length - 1].state === 'town' && L[L.length - 1].dur >= 3, 'return to town: slow fade-out/in');
 ok(await ev(() => window.__audio.music.live.filter(l => !l.ending).length === 1), 'exactly one active (non-fading) track');
@@ -236,9 +236,9 @@ ok(mgr.rot && mgr.rot !== mgr.town0 && mgr.rotLog.state === 'town' && mgr.rotLog
 { const K = await ev(async () => { const m = await import('/src/music.ts'), mm = window.__audio.music; clearInterval(mm.timer); { const base = mm.ctx.currentTime + (mm.__off || 0); mm.__off = 0; mm.now = () => base + mm.__off; }
     const off = s => { mm.__off += s; mm.tick(); }; const wait = async (c, ms = 15000) => { const t0 = performance.now(); while (!c() && performance.now() - t0 < ms) { await new Promise(r => setTimeout(r, 100)); mm.tick(); } return c(); };
     const o = {}; const calm = new Set([...m.POOLS.town, ...m.POOLS.traversal, ...m.TOWN_POOLS.harrow, ...Object.values(m.AREA_TRACKS).flat()]); o.calm = calm.size; o.rust = m.TOWN_POOLS.rustline.length; o.harrowN = m.TOWN_POOLS.harrow.length; o.noFamily = [...calm].filter(n => !m.FAMILY[n]); o.families = [...new Set([...calm].map(n => m.FAMILY[n]))].length;
-    const run = async (state, area, theme, mins) => { localStorage.clear(); mm.bags = {}; mm.nextUp = {}; mm.hist = null; mm.setTownTheme(theme); mm.setArea(area); mm.state = null; mm.want = state; mm.setState(state); mm.pend = null; mm.setState(state); await wait(() => !mm.pend && mm.cur && mm.live.some(l => !l.ending)); const n0 = mm.log.length; const seq = [{ to: mm.cur, t: mm.now() }];
+    const run = async (state, area, theme, mins) => { localStorage.clear(); mm.bags = {}; mm.nextUp = {}; mm.hist = null; mm.setTownTheme(theme); mm.setArea(area); mm.state = null; mm.want = state; mm.setState(state); await wait(() => !mm.pend && mm.cur && mm.live.some(l => !l.ending && l.name === mm.cur), 30000); const n0 = mm.log.length; const seq = [{ to: mm.cur, t: mm.now() }];
       for (let t = 0; t < mins * 60; t += 2) { off(2); const k = mm.bagKey(mm.state); if (mm.nextUp[k] && !mm.buffers[mm.nextUp[k]]) await wait(() => mm.buffers[mm.nextUp[k]], 20000); }
-      const L = mm.log.slice(n0).filter(x => x.state === state); return { seq: [seq[0].to, ...L.map(x => x.to)], gaps: L.map((x, i) => x.t - (i ? L[i - 1].t : seq[0].t)), durs: L.map(x => x.dur) }; };
+      const L = mm.log.slice(n0).filter(x => x.state === state); (o.dg ??= {})[theme + state] = { bad: mm.log.slice(n0).filter(x => x.state !== state).map(x => x.state + ':' + x.to + '@' + x.t.toFixed(0)), n0t: seq[0].to, pend: mm.pend, nb: Object.keys(mm.buffers).length, cap: mm.maxDecoded, nu: { ...mm.nextUp }, asked: [...mm.asked].length, cur: mm.cur }; return { seq: [seq[0].to, ...L.map(x => x.to)], gaps: L.map((x, i) => x.t - (i ? L[i - 1].t : seq[0].t)), durs: L.map(x => x.dur) }; };
     for (const [name, st, area, th] of [['town', 'town', null, 'rustline'], ['harrow', 'town', null, 'harrow'], ['trav', 'traversal', 'HI', 'rustline']]) { const r = await run(st, area, th, 40); const q = r.seq, fam = q.map(x => m.FAMILY[x]); let rep = 0, famSame = 0, win = 0; for (let i = 1; i < q.length; i++) { if (q[i] === q[i - 1]) rep++; if (fam[i] === fam[i - 1]) famSame++; }
       for (let i = 0; i < q.length; i++) for (let j = Math.max(0, i - 5); j < i; j++) if (q[i] === q[j]) win++; o[name] = { n: q.length, rep, famSame, win, min: Math.min(...r.gaps), max: Math.max(...r.gaps), avg: r.gaps.reduce((a, b) => a + b, 0) / r.gaps.length, fade: Math.min(...r.durs), distinct: new Set(q).size, seq: q.join('>') }; }
     // natural triggers: nudge before 45 s does nothing, after 45 s switches soon
@@ -246,6 +246,7 @@ ok(mgr.rot && mgr.rot !== mgr.town0 && mgr.rotLog.state === 'town' && mgr.rotLog
     // memory: only a few lazy tracks decoded at once
     await new Promise(r => setTimeout(r, 9000)); o.lazyDecoded = [...m.CALM2, ...m.CALM3].filter(n => mm.buffers[n]).length; return o; });
   ok(K.calm >= 60, 'calm/ambient pool has >= 60 distinct tracks: ' + K.calm);
+  console.log('DG ' + JSON.stringify(K.dg));
   ok(K.rust >= 13 && K.harrowN >= 12, 'town sets: Rustline ' + K.rust + ', Harrow Reach ' + K.harrowN);
   ok(K.noFamily.length === 0 && K.families === 4, 'every calm track has a mood family (4 families): ' + K.noFamily.join());
   for (const n of ['town', 'harrow', 'trav']) { const r = K[n]; ok(r.n >= 14 && r.min >= 88 && r.max <= 160 && r.avg >= 100 && r.avg <= 140, n + ' cadence over 40 min: ' + (r.n - 1) + ' switches, dwell ' + r.min.toFixed(0) + '-' + r.max.toFixed(0) + ' s (avg ' + r.avg.toFixed(0) + ')'); ok(r.rep === 0 && r.win === 0, n + ': no track repeats within the previous 5 (incl. immediate repeats)'); ok(r.famSame <= (r.n - 1) * 0.2, n + ': adjacent tracks contrast in mood family (' + r.famSame + ' same of ' + (r.n - 1) + ')'); ok(r.fade >= 6 && r.fade <= 8, n + ': calm crossfades 6-8 s'); ok(r.distinct >= 9, n + ': ' + r.distinct + ' distinct tracks in 40 min'); }
@@ -264,6 +265,47 @@ ok(mgr.rot && mgr.rot !== mgr.town0 && mgr.rotLog.state === 'town' && mgr.rotLog
   ok(V.boss >= 40 && V.elite >= 25, 'pools: boss ' + V.boss + ' (>= 40), elite ' + V.elite + ' (>= 25), signature ' + V.sigN + ', stingers ' + V.sting);
   ok(V.imm === 0 && V.win8 === 0, '50 simulated boss fights + retries (' + V.n + ' picks): no immediate repeat and none within the previous 8 (persistent history): imm ' + V.imm + ', window ' + V.win8);
   ok(V.distinct >= 25 && V.edistinct >= 18, 'variety: ' + V.distinct + ' distinct boss tracks over ' + V.n + ' picks, ' + V.edistinct + ' distinct elite tracks over 50'); }
+// --- gain-ramp audit: every start/stop/switch is an equal-power ramp (no step changes) ---
+{ const G = await ev(async () => { const m = await import('/src/music.ts'), mm = window.__audio.music; clearInterval(mm.timer); { const base = mm.ctx.currentTime + (mm.__off || 0) + 5; mm.__off = 0; mm.now = () => base + mm.__off; }
+    const rec = new Map(); const P = AudioParam.prototype; if (!P.__wrapped) { P.__wrapped = true; for (const fn of ['setValueCurveAtTime', 'setValueAtTime', 'linearRampToValueAtTime', 'cancelScheduledValues', 'setTargetAtTime']) { const o = P[fn]; P[fn] = function (...a) { if (window.__rec) { const l = window.__rec.get(this) || []; l.push({ fn, a: fn === 'setValueCurveAtTime' ? [Array.from(a[0]), a[1], a[2]] : a }); window.__rec.set(this, l); } return o.apply(this, a); }; } const S = AudioBufferSourceNode.prototype, os = S.stop; S.stop = function (t) { (window.__stops ??= new Map()).set(this, t); return os.apply(this, arguments); }; }
+    window.__rec = rec; window.__stops = new Map(); const off = s => { mm.__off += s; mm.tick(); };
+    const wait = async (c, ms = 20000) => { const t0 = performance.now(); while (!c() && performance.now() - t0 < ms) { await new Promise(r => setTimeout(r, 100)); mm.tick(); } return c(); };
+    const lens = []; const stepMax = (arr) => arr.reduce((mx, v, i) => i ? Math.max(mx, Math.abs(v - arr[i - 1])) : mx, 0);
+    // analyse one gain param: fade-in curve (0->1) and fade-out curve (->0) with durations, max sample step, and whether any raw non-zero setValueAtTime step exists
+    const an = (g) => { const ev = rec.get(g) || []; const curves = ev.filter(e => e.fn === 'setValueCurveAtTime').map(e => ({ v: e.a[0], t: e.a[1], d: e.a[2] })); const steps = ev.filter(e => e.fn === 'setValueAtTime' && Math.abs(e.a[0]) > 0.001); return { curves, steps: steps.length, ramps: ev.filter(e => e.fn === 'linearRampToValueAtTime').length }; };
+    const out = {}; const track = []; // record each live entry we see so ended ones are analysed too
+    const snap = () => { for (const l of mm.live) if (!track.includes(l)) track.push(l); };
+    const T = async (name, fn) => { await fn(); snap(); };
+    const settleTo = async (st, key) => { mm.setState(st, key); await wait(() => !mm.pend && mm.live.some(l => !l.ending)); snap(); };
+    // preload everything we play
+    await wait(() => ['town', 'traversal_a', 'boss_reveal', 'clear'].every(n => mm.buffers[n]));
+    mm.state = null; mm.want = 'town'; mm.setTownTheme('rustline'); mm.setState('town'); await wait(() => !mm.pend && mm.live.length); snap();           // 1 first track / enter town
+    off(100); mm.calmDwell = 90; off(10); await wait(() => mm.buffers[mm.nextUp[mm.bagKey('town')]]); off(2); snap();                                      // 2 town rotation
+    mm.setState('traversal'); await wait(() => !mm.pend); snap();                                                                                         // 3 town -> run
+    mm.setState('elite'); await wait(() => !mm.pend && mm.state === 'elite'); snap(); off(60); mm.setState('traversal'); off(15); snap();                 // 4 elite start + end
+    mm.setState('bossreveal', 'warden'); off(3); mm.setState('bosscombat', 'warden'); await wait(() => !mm.pend && mm.state === 'bosscombat'); snap();   // 5 boss reveal -> fight
+    off(30); mm.onPhase(1); await wait(() => !mm.phasePend); off(1); snap();                                                                               // 6 phase change
+    mm.setState('resolution'); off(1); snap(); off(10); mm.setState('traversal'); off(5); snap();                                                         // 7 boss kill -> resolution -> run
+    mm.setState('bossreveal', 'warden'); off(3); mm.setState('bosscombat', 'warden'); await wait(() => !mm.pend); off(60); mm.setState('town'); off(5); snap(); // 8 abandon / leave instance mid-fight -> town
+    // 9 new track still loading: old keeps playing, no ramp-out until the new one is ready
+    mm.state = null; mm.want = 'town'; mm.setState('town'); await wait(() => !mm.pend); const old = mm.live.find(l => !l.ending); const nx = ['calm_hollow', 'calm_relay', 'calm_alley'].find(n => !mm.buffers[n]); delete mm.buffers[nx]; mm.asked.delete(nx);
+    mm.crossfade(nx, 3, 'town'); const before = an(old.gain.gain).curves.length; const oldPlaying = !old.ending && !!mm.pend; await wait(() => !mm.pend); snap(); const after = an(old.gain.gain).curves.length; out.load = { oldPlaying, noRampWhileLoading: before === 1, rampedAfter: after >= 2 && old.ending };
+    // 10 one-shot natural end fade (boss_reveal): last curve is a fade-out ending at the buffer end
+    mm.state = null; mm.want = 'bossreveal'; mm.setState('bossreveal', 'warden'); await wait(() => !mm.pend && mm.cur === 'boss_reveal'); snap(); const rl = mm.live.find(l => l.name === 'boss_reveal'); { const cs = an(rl.gain.gain).curves; out.oneShotFadeOut = cs.some(c => c.v[0] > 0.9 && c.v[c.v.length - 1] < 0.01 && c.t > cs[0].t + 20 && c.t + c.d <= cs[0].t + 28.03); }
+    // analysis
+    const rows = track.map(l => { const a = an(l.gain.gain); const fin = a.curves.find(c => c.v[0] < .01), fout = a.curves.filter(c => c.v[c.v.length - 1] < .01); const st = window.__stops.get(l.src); return { name: l.name, inDur: fin ? fin.d : 0, outDurs: fout.map(c => c.d), maxStep: Math.max(0, ...a.curves.map(c => stepMax(c.v))), rawSteps: a.steps, stop: st, outEnd: fout.length ? fout[fout.length - 1].t + fout[fout.length - 1].d : null, ended: l.ending }; });
+    out.rows = rows; return out; });
+  const rows = G.rows; ok(rows.length >= 14, 'ramp audit covered ' + rows.length + ' track starts across all transitions');
+  ok(rows.every(r => r.inDur >= 1.4), 'every track start fades in over >= 1.4 s equal-power (no abrupt starts): ' + rows.filter(r => r.inDur < 1.4).map(r => r.name + ':' + r.inDur).join());
+  ok(rows.every(r => r.maxStep <= 0.12), 'no gain step above 0.12 in any ramp (max ' + Math.max(...rows.map(r => r.maxStep)).toFixed(3) + ')');
+  ok(rows.every(r => r.rawSteps <= 1), 'no raw non-zero gain jumps beyond the single hold-current-value anchor');
+  ok(rows.filter(r => r.ended).every(r => r.outDurs.length && r.outDurs[r.outDurs.length - 1] >= 1.4 && r.stop >= r.outEnd - 1e-6), 'every stopped track faded out >= 1.4 s and was stopped only after its ramp ended');
+  ok(G.load.oldPlaying && G.load.noRampWhileLoading && G.load.rampedAfter, 'new track still loading: old keeps playing un-ramped, then crossfades once ready: ' + JSON.stringify(G.load));
+  ok(G.oneShotFadeOut, 'one-shot tracks (boss reveal) carry a scheduled fade-out before their natural end');
+  { const byName = (n) => rows.filter(r => r.name === n); const ko = rows.filter(r => r.ended && /^(boss_|elite_)/.test(r.name)); ok(ko.every(r => r.outDurs[r.outDurs.length - 1] >= 1.4), 'boss/elite fade-outs >= 1.4 s'); const cl = rows.find(r => r.name === 'clear'); ok(!cl || cl.inDur >= 1.4, 'resolution sting fades in'); }
+  const rs = await ev(async () => { const mm = window.__audio.music; const o = []; const l = mm.log.filter(x => x.state === 'resolution'); return { resDur: l.map(x => x.dur), calmBack: mm.log.filter(x => x.state === 'traversal').map(x => x.dur) }; });
+  ok(rs.resDur.length && rs.resDur.every(d => d >= 3), 'boss kill: old boss track fades out over >= 3 s into the resolution sting: ' + rs.resDur);
+  ok(rs.calmBack.every(d => d >= 2), 'return to calm fades >= 2 s'); }
 ok(!errors.length, 'no page errors ' + errors.join('|'));
 // fallback: block music files
 const b2 = await launch({ query: '' }); await b2.page.route('**/audio/music/*', r => r.abort());
