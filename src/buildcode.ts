@@ -12,14 +12,14 @@ import type { BuildSlots } from './catalog_snap';
 export const BUILD_CODE_PREFIX='WVB1.'; export const BUILD_CODE_MAX=3000;
 export interface BuildExport { v:1; game:string; cat:string; lvl:number; slots:BuildSlots; picks?:(string|null)[] }
 const b64e=(s:string)=>{ const b=btoa(Array.from(new TextEncoder().encode(s),c=>String.fromCharCode(c)).join('')); return b.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); };
-const b64d=(s:string)=>{ const t=s.replace(/-/g,'+').replace(/_/g,'/'); return new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(t),c=>c.charCodeAt(0))); };
+const b64d=(s:string)=>{ let t=s.replace(/-/g,'+').replace(/_/g,'/'); while(t.length%4) t+='='; return new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(t),c=>c.charCodeAt(0))); };
 
 export function exportBuild(s:Save):BuildExport{
   const slots:BuildSlots={}; for(const sl of SLOTS){ const u=s.installed[sl]; const it=u?s.items.find(i=>i.uid===u):undefined; if(it) slots[sl]={ d:it.def, c:[...it.chips] }; }
   const picks=s.abPick; return { v:1, game:BUILD_ID, cat:CATALOG_VERSION, lvl:s.level|0, slots, ...(Array.isArray(picks)?{picks:picks.slice(0,3)}:{}) };
 }
 export const encodeBuild=(b:BuildExport)=>BUILD_CODE_PREFIX+b64e(JSON.stringify(b));
-const ID=/^[a-z0-9_]{1,64}$/;
+const ID=/^[A-Za-z0-9_-]{1,64}$/;
 /** Strict validation. Unknown item/chip ids are ALLOWED (they may come from another catalog version) but must be well-formed; diffBuild reports them. */
 export function decodeBuild(input:string):{ok:true;build:BuildExport}|{ok:false;why:string}{
   if(typeof input!=='string') return {ok:false,why:'not a string'}; let code=input.trim();
