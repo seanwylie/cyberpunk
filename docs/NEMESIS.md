@@ -10,6 +10,7 @@ Code: `src/nemesis.ts` (pure save logic and every number), `src/nemesis_sim.ts` 
 | Boss kill makes a nemesis | always (seeded roll, `chanceBoss` 1) |
 | Elite (or affixed mob) kill makes a nemesis | 50% (`chanceElite`) |
 | Plain mob kill | never |
+| Fleeing (leave/abandon a run while an alerted boss or elite is within 9 tiles and you are in combat) | can mark a **new** nemesis with the same rolls and caps; never ranks up an existing one, so avoiding is always safe |
 | Active nemeses per character | 3 (`maxActive`) |
 | Chance an active nemesis joins a run | 60%, at most one per run, weighted toward higher rank |
 | Rank | 1 to 5, +1 each time it kills you again |

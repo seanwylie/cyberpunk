@@ -43,3 +43,6 @@ Every control has a short label and a tooltip. The panel fits at 1280 and 390 px
 
 ## Flags
 `moments` (default on, Settings > Display > Moment cards) and `momentClip` (default off).
+
+
+The card painter (`src/moment_card.ts`) is lazy-loaded at capture time and is not in the boot bundle. Each card prints the game build and catalog versions; nemesis cards also list the nemesis name, how many times it killed you, and its rank.
