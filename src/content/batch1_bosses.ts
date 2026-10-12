@@ -6,7 +6,7 @@ export type MoveKind='marks'|'ring'|'spokes'|'cross'|'lanes'|'spiral'|'rain'|'fa
 export interface MoveSpec { k:MoveKind; p?:Record<string,number|string>; /** overrides: windup, recovery, cooldown, dmg */ w?:number; rec?:number; cd?:number; dmg?:number; min?:number; max?:number }
 export type PhaseAct =
   |{k:'shield';pct:number;dur:number}               // absorbs pct of max HP for up to dur s; breaking it staggers the boss (1.5x damage taken for 4 s)
-  |{k:'pylons';type:string;n:number}                // n static nodes; boss takes 90% less damage while any live (tether). Killing all staggers.
+  |{k:'pylons';type:string;n:number;hp?:number}                // n static nodes; boss takes 90% less damage while any live (tether). Killing all staggers.
   |{k:'enrage';spd:number;cd:number}                // speed multiplier, cooldown multiplier
   |{k:'adds';type:string;n:number}                  // one-off wave
   |{k:'gimmick';g:Gimmick};                         // switch on / replace the arena gimmick

@@ -120,7 +120,7 @@ const MECHS:Record<MechId,(c:C)=>number|null>={
   ricochet(c){ const n=1+Math.min(2,c.ph), w=wind(c,1.2), sp=6.2, a0=aimAt(c); for(let i=0;i<n;i++){ const a=a0+(i-(n-1)/2)*.7, vx=Math.cos(a)*sp, vy=Math.sin(a)*sp; const path=bouncePath(c.sim,c.e.x,c.e.y,vx,vy,3);
     c.add({shape:'disc',style:'roller',x:c.e.x,y:c.e.y,r:.85,vx,vy,bounces:3,path,windup:w,life:w+6.5,dps:c.dmg(.09),burst:true,rearm:.9,label:i?undefined:'ROLLER',onFire:i?undefined:fireSfx(c)}); }
     sfx(c,'tell'); return w+5; },
-  pylons(c){ const live=c.sim.enemies.some((o:any)=>o.pylon&&!o.dead&&o.bossAdd); if(live) return null; applyAct(c.sim,c.e,{k:'pylons',type:String(c.km.p?.type||'camgun'),n:2+(c.ph>=2?1:0)}); c.rt.kit.snipeT=3; sfx(c,'fire'); return 4; },
+  pylons(c){ const live=c.sim.enemies.some((o:any)=>o.pylon&&!o.dead&&o.bossAdd); if(live||c.rt.kit.pylDone===c.ph) return null; c.rt.kit.pylDone=c.ph; applyAct(c.sim,c.e,{k:'pylons',type:String(c.km.p?.type||'camgun'),n:2+(c.ph>=2?1:0),hp:1.8}); for(const o of c.sim.enemies) if(o.pylon&&!o.kitBorn) o.kitBorn=c.rt.kit.t; c.rt.kit.snipeT=6; sfx(c,'fire'); return 4; },
   safe(c){ const ar=c.ar, w=wind(c,3.1), r=2.6-.25*c.ph, R=ar.maxR+2.5; const pts:{x:number;y:number;r:number}[]=[]; const T=tgt(c);
     for(let tries=0;tries<80&&pts.length<2;tries++){ const [tx,ty]=ar.tiles[Math.floor(c.rng()*ar.tiles.length)]; const x=tx+.5,y=ty+.5; if(!c.free(x,y)) continue; const dp=Math.hypot(x-T.x,y-T.y); if(pts.length===0&&(dp<4||dp>9)) continue; if(pts.length===1&&Math.hypot(x-pts[0].x,y-pts[0].y)<6) continue; pts.push({x,y,r}); }
     if(pts.length<1) pts.push({x:T.x,y:T.y,r});
@@ -169,18 +169,22 @@ export function kitTick(sim:any,e:any,dt:number){
   if(k.bufPrev>0&&bufs===0){ rt.vuln=Math.max(rt.vuln||0,3.5); sim.toast('Buff nodes down: '+ENEMIES[e.type].name+' is exposed!'); sim.emit('sfx','bk:break'); } k.bufPrev=bufs;
   // pylon snipes: every live tether pylon locks a crosshair line onto you (>= 1.3 s tell, tracking freezes .45 s before it fires)
   const pyl=sim.enemies.filter((o:any)=>o.pylon&&!o.dead&&o.bossAdd);
-  if(pyl.length){ k.snipeT-=dt; if(k.snipeT<=0){ k.snipeT=6.5/(1+.2*ph); const o=pyl[Math.floor(((k.n+k.t*7)|0)%pyl.length)]; if(sim.zones.filter((q:any)=>q.kit).length<22){ const a=Math.atan2(sim.py-o.y,sim.px-o.x); sim.zones.push({t:0,heat:0,kit:'pylons',pal:kit.pal,shape:'line',style:'snipe',x:o.x,y:o.y,a,len:14,R:15,w:.8,track:'ray',freeze:.45,windup:1.4,life:1.9,r:1,dps:.07*sim.maxHp*(rt.hardDmg||1),burst:true,label:'SNIPE',onFire:(s:any)=>s.emit('sfx','bk:pylon:fire')}); sim.emit('sfx','bk:pylon:tell'); } } }
+  for(const o of pyl) if(o.kitBorn!==undefined&&k.t-o.kitBorn>PYLON_LIFE){ o.dead=true; o.hp=0; sim.fx.push({kind:'ring',x:o.x,y:o.y,r:1.8,t:0,life:.5,c:PALS[kit.pal].a}); }
+  if(pyl.length){ k.snipeT-=dt; if(k.snipeT<=0){ k.snipeT=11/(1+.15*ph); const o=pyl[Math.floor(((k.n+k.t*7)|0)%pyl.length)]; if(sim.zones.filter((q:any)=>q.kit).length<22){ const a=Math.atan2(sim.py-o.y,sim.px-o.x); sim.zones.push({t:0,heat:0,kit:'pylons',pal:kit.pal,shape:'line',style:'snipe',x:o.x,y:o.y,a,len:14,R:15,w:.8,track:'ray',freeze:.45,windup:1.4,life:1.9,r:1,dps:.07*sim.maxHp*(rt.hardDmg||1),burst:true,label:'SNIPE',onFire:(s:any)=>s.emit('sfx','bk:pylon:fire')}); sim.emit('sfx','bk:pylon:tell'); } } }
   // shield hex ends with the shield
   if(k.hex&&(!rt.shield||rt.shield.hp<=0)){ k.hex.life=Math.min(k.hex.life,k.hex.t+.1); k.hex=null; sim.emit('sfx','bk:break'); }
   // scheduling: one signature mechanic at a time, never while the boss is mid-windup of a normal attack
   if(k.t<k.busy||rt.st==='tele'||rt.st==='dash') return;
   const tc=HARD.mech.tierCd[bossTierOf(e.type)]||1; let best:KitMech|null=null, bi=-1, bo=-1e9;
-  kit.mechs.forEach((km,i)=>{ if(km.at!==undefined&&e.hp/e.maxHp>km.at) return; if(km.m===k.last&&kit.mechs.length>1) return; const nx=k.next[i]??(km.first??km.cd*.6); const over=k.t-nx; if(over>=0&&over>bo){ bo=over; best=km; bi=i; } });
+  kit.mechs.forEach((km,i)=>{ if(km.at!==undefined&&e.hp/e.maxHp>km.at) return; if(km.m===k.last&&kit.mechs.length>1) return; const nx=k.next[i]??((km.first??km.cd*.6)+KIT_FIRST_ADD); const over=k.t-nx; if(over>=0&&over>bo){ bo=over; best=km; bi=i; } });
   if(!best) return; const km=best as KitMech; const c=mkCtx(sim,e,km,kit,k.n++); const dur=MECHS[km.m](c);
-  if(dur===null){ k.next[bi]=k.t+4; return; } k.last=km.m; const cd=km.cd/tc*(1-.06*ph)*(.9+c.rng()*.2); k.next[bi]=k.t+dur+cd; k.busy=k.t+dur+1.6;
+  if(dur===null){ k.next[bi]=k.t+4; return; } k.last=km.m; const cd=km.cd*KIT_CD_SCALE/tc*(1-.06*ph)*(.9+c.rng()*.2); k.next[bi]=k.t+dur+cd; k.busy=k.t+dur+1.6;
   rt.underT=Math.max(rt.underT||0,4.5); // a signature mechanic is the pressure: delay the generic under-your-feet hazard
 }
 export const KIT_ZONE_CAP=26;
+/** balance knobs (docs/BOSSES.md): signature mechanics are the pressure on top of the old move list, so they run slower than their nominal cd */
+export const PYLON_LIFE=20; // tethers overload and shut down by themselves so a fight can never stall on them
+export const KIT_CD_SCALE=2, KIT_FIRST_ADD=8;
 
 /** shield timer + pylon/tether upkeep that bossTick does for the batch-1 bosses; the 12 original bosses get it here so every kit mechanic works for them too */
 function originalSupport(sim:any,e:any,dt:number,rt:any){ const def=ENEMIES[e.type];

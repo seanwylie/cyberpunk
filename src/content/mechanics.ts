@@ -73,7 +73,7 @@ let gimPal='amber'; const addZone=(sim:any,x:number,y:number,r:number,windup:num
 export function applyAct(sim:any,e:any,act:PhaseAct){ const rt=e._rt; const def=ENEMIES[e.type];
   switch(act.k){
     case 'shield': rt.shield={hp:e.maxHp*act.pct,max:e.maxHp*act.pct,t:act.dur}; sim.fx.push({kind:'ring',x:e.x,y:e.y,r:3,t:0,life:.6,c:'#8fb8d8'}); break;
-    case 'pylons': { const ar=arenaOf(sim); let made=0; for(let i=0;i<act.n;i++){ const t=freeTile(sim,ar,5,e); if(!t) continue; const p=sim.spawnEnemy(act.type,t.x,t.y); p.alert=true; p.bossAdd=true; p.pylon=true; p.maxHp=p.hp=Math.round(p.maxHp*3); made++; sim.fx.push({kind:'ring',x:t.x,y:t.y,r:1.6,t:0,life:.6,c:'#e0c060'}); } if(made) sim.toast('Tether nodes online: destroy them to expose '+def.name+'.'); break; }
+    case 'pylons': { const ar=arenaOf(sim); let made=0; for(let i=0;i<act.n;i++){ const t=freeTile(sim,ar,5,e); if(!t) continue; const p=sim.spawnEnemy(act.type,t.x,t.y); p.alert=true; p.bossAdd=true; p.pylon=true; p.maxHp=p.hp=Math.round(p.maxHp*(act.hp??3)); made++; sim.fx.push({kind:'ring',x:t.x,y:t.y,r:1.6,t:0,life:.6,c:'#e0c060'}); } if(made) sim.toast('Tether nodes online: destroy them to expose '+def.name+'.'); break; }
     case 'enrage': rt.spdMul=(rt.spdMul||1)*act.spd; rt.cdMul=(rt.cdMul||1)*act.cd; sim.fx.push({kind:'ring',x:e.x,y:e.y,r:4,t:0,life:.7,c:'#d85a3a'}); break;
     case 'adds': spawnAdds(sim,e,act.type,act.n,99); break;
     case 'gimmick': rt.gim=act.g; rt.gimT=act.g.every*.6; break; } }

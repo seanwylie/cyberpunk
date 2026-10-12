@@ -114,7 +114,7 @@ export async function runJob(job) {
     const ranged = () => g.build.weapon.range;
     const fight = () => {
       const alive = g.enemies.filter(e => !e.dead && e.faction === 'enemy' && e._rt.reveal <= 0 && !e.pylonLocked && dist(e.x, e.y, g.px, g.py) < (e.alert ? 10 : 6) && g.los(g.px, g.py, e.x, e.y));
-      if (!alive.length) return false;
+      if (!alive.length) { const pl = g.enemies.filter(e => !e.dead && e.pylon).sort((a, b) => dist(a.x, a.y, g.px, g.py) - dist(b.x, b.y, g.px, g.py))[0]; if (pl) { nav(pl.x, pl.y); return true; } return false; }
       // priority targets: pylons / boss adds that gate the boss, then support roles, then nearest
       const pri = e => (e.pylon ? 0 : /healer|mender|warder|summoner|matron/.test(e.type) ? 1 : e.bossAdd ? 2 : 3);
       alive.sort((a, b) => pri(a) - pri(b) || dist(a.x, a.y, g.px, g.py) - dist(b.x, b.y, g.px, g.py));
@@ -133,7 +133,7 @@ export async function runJob(job) {
       const n = job.n || 3; const spots = []; const sx = g.px, sy = g.py; for (let a = 0; a < 36 && spots.length < n; a++) { const ang = a * .55; const x = sx + Math.cos(ang) * 7, y = sy + Math.sin(ang) * 7; if (!g.solidAt(x, y) && g.los(sx, sy, x, y)) spots.push([x, y]); }
       const es = spots.map(([x, y]) => { const e = g.spawnEnemy(job.id, x, y); e.alert = true; return e; }); const hp0 = g.hp; let t = 0, hpLost = 0;
       R.kitInfo = kitInfo();
-      while (t < 60 && g.enemies.some(e => !e.dead && e.faction === 'enemy' && (e.type === job.id || e.minionOf)) && !g.downed) { const hpb = g.hp; trackAlert(); const act = heroLogic(); if (!act && !fight()) g.setMove(0, 0); stepSim(); t += dt; if (g.hp < g.maxHp * .3) g.hp = g.maxHp, R.refills = (R.refills || 0) + 1; }
+      while (t < 60 && g.enemies.some(e => !e.dead && e.faction === 'enemy' && (e.type === job.id || e.minionOf)) && !g.downed) { const hpb = g.hp; trackAlert(); const act = heroLogic(); if (job.debug && (simT | 0) % 15 === 0 && R._l !== (simT | 0) && (R._l = simT | 0)) (R.bst ||= []).push([+simT.toFixed(0), g.enemies.filter(e => e.pylon && !e.dead).length, g.enemies.filter(e => ENEMIES[e.type].boss).map(e => Math.round(e.hp / e.maxHp * 100) + (e._rt.vuln > 0 ? 'v' : '')).join(), g.enemies.filter(e => e.bossAdd && !e.dead).length, Math.round(dist(g.px, g.py, g.enemies.find(e => e.pylon && !e.dead)?.x ?? 0, g.enemies.find(e => e.pylon && !e.dead)?.y ?? 0))]); if (!act && !fight()) g.setMove(0, 0); stepSim(); t += dt; if (g.hp < g.maxHp * .3) g.hp = g.maxHp, R.refills = (R.refills || 0) + 1; }
       return { id: job.id, kit: job.kit, level: job.level, seed: job.seed, par: job.par, n, t: +t.toFixed(1), downed: g.downed, kitInfo: R.kitInfo, src: R.src, maxHit: R.maxHit, maxHitSrc: R.maxHitSrc, mobTtk: R.mobTtk, abil: R.abil, dealt: { ...g.dealt }, refills: R.refills || 0, mobHp: ENEMIES[job.id].hp };
     }
 
@@ -183,6 +183,6 @@ export async function runJob(job) {
     }
     const cleared = !!g.inst.flags.bossDead; const bossDef = ENEMIES[dd.defaultBoss];
     const bossRun = g.enemies.find(e => ENEMIES[e.type].boss);
-    return { ...result, fleeBy: R.fleeBy, cleared, deaths: R.deaths, t: +simT.toFixed(1), bossReached: bossSeen ? +bossSeen.toFixed(1) : null, bossTtk: R.bossTtk, bossFightT: bossSeen && cleared ? +(simT - bossSeen).toFixed(1) : null, bossHpLeft: bossRun && !cleared ? +(bossRun.hp / bossRun.maxHp).toFixed(2) : 0, boss: bossRun?.type || dd.defaultBoss, heat: { overheats: H.over, overheatT: +H.overT.toFixed(1), avgHeat: +(H.heatSum / Math.max(1, H.n)).toFixed(1), casts: H.casts, mult: g.build.stats.cooling }, src: R.src, abil: R.abil, dealt: { ...g.dealt }, mobTtk: R.mobTtk, maxHit: +R.maxHit.toFixed(1), maxHitSrc: R.maxHitSrc, dodges: R.dodges, stims: R.stims, stuck: R.stuck || 0, nEnemies, kills: g.kills, tier: dd.tier || 0, maxHp: Math.round(g.maxHp), stuckAt: R.stuckAt, trace: R.trace, failWhy: cleared ? '' : (R.stuck ? 'stuck' : R.deaths >= maxDeaths ? 'deaths' : 'timeout') };
+    return { ...result, bst: R.bst, fleeBy: R.fleeBy, cleared, deaths: R.deaths, t: +simT.toFixed(1), bossReached: bossSeen ? +bossSeen.toFixed(1) : null, bossTtk: R.bossTtk, bossFightT: bossSeen && cleared ? +(simT - bossSeen).toFixed(1) : null, bossHpLeft: bossRun && !cleared ? +(bossRun.hp / bossRun.maxHp).toFixed(2) : 0, boss: bossRun?.type || dd.defaultBoss, heat: { overheats: H.over, overheatT: +H.overT.toFixed(1), avgHeat: +(H.heatSum / Math.max(1, H.n)).toFixed(1), casts: H.casts, mult: g.build.stats.cooling }, src: R.src, abil: R.abil, dealt: { ...g.dealt }, mobTtk: R.mobTtk, maxHit: +R.maxHit.toFixed(1), maxHitSrc: R.maxHitSrc, dodges: R.dodges, stims: R.stims, stuck: R.stuck || 0, nEnemies, kills: g.kills, tier: dd.tier || 0, maxHp: Math.round(g.maxHp), stuckAt: R.stuckAt, trace: R.trace, failWhy: cleared ? '' : (R.stuck ? 'stuck' : R.deaths >= maxDeaths ? 'deaths' : 'timeout') };
   } finally { Math.random = realRandom; }
 }
