@@ -14,12 +14,13 @@ import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subs from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as secrets from 'aws-cdk-lib/aws-secretsmanager';
 import * as appscaling from 'aws-cdk-lib/aws-applicationautoscaling';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { WvConfig, clientHost, serverHost } from './config';
 
 /** Game WebSocket server: ECS Fargate behind an ALB (WebSocket upgrade works natively, idle timeout 3600 s). One task per region to start. */
 export class ServerStack extends Stack {
   readonly repo: ecr.IRepository; readonly service: ecs.FargateService; readonly cluster: ecs.Cluster; readonly alb: elbv2.ApplicationLoadBalancer; readonly wsUrl: string;
-  constructor(scope: Construct, id: string, cfg: WvConfig, clientUrl: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, cfg: WvConfig, clientUrl: string, props?: StackProps, extra: { cityTable?: dynamodb.ITable } = {}) {
     super(scope, id, props);
     // Public subnets only (no NAT gateway = ~US$32/mo saved). Tasks get public IPs but the security group only admits the ALB.
     const vpc = new ec2.Vpc(this, 'Vpc', { availabilityZones: cfg.azs ?? [`${this.region}a`, `${this.region}b`], // explicit: no AWS lookup, so synth needs no credentials
@@ -33,6 +34,7 @@ export class ServerStack extends Stack {
     this.repo.grantPull(task.obtainExecutionRole()); // explicit pull permission (also needed for an imported repo)
     const origins = [clientUrl].filter(Boolean).join(',');
     const env: Record<string, string> = { PORT: '8787', WV_ORIGINS: origins, WV_ALLOW_NO_ORIGIN: '0', WV_MAX_CONNS: String(cfg.maxConns), WV_MAX_ROOMS: String(cfg.maxRooms), WV_MAX_PARTIES: String(cfg.maxParties), WV_GRACE_MS: '20000' };
+    if (extra.cityTable) { env.WV_CITY_TABLE = extra.cityTable.tableName; extra.cityTable.grantReadWriteData(task.taskRole); } // living city state (GetItem/PutItem via the task role)
     const secretMap: Record<string, ecs.Secret> = {};
     if (cfg.enableStoryInService) { // optional: serve /api/story-beat from the same service (otherwise use the Lambda in StoryStack)
       const key = new secrets.Secret(this, 'OpenAiKeyInService', { secretName: 'wv/openai-api-key-service', description: 'OPENAI_API_KEY for the in-service story proxy. Overwrite with: aws secretsmanager put-secret-value' });

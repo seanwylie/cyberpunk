@@ -73,3 +73,7 @@ test('committed infra/cdk.context.json carries the live deployment values (no co
   Template.fromStack(s.client).hasResourceProperties('AWS::CloudFront::Distribution', { DistributionConfig: Match.objectLike({ Aliases: ['play.seanwylie.ca'] }) });
   Template.fromStack(s.server).resourceCountIs('AWS::ECR::Repository', 0); Template.fromStack(s.story).hasResourceProperties('AWS::Lambda::Function', { Architectures: ['x86_64'] });
 });
+test('city: world-state table + weekly news Lambda; hub gets the table name and read/write on it', () => { const { app, cfg } = base(domain); const s = buildApp(app, cfg); const c = Template.fromStack(s.city);
+  c.hasResourceProperties('AWS::DynamoDB::Table', { BillingMode: 'PAY_PER_REQUEST' }); c.hasResourceProperties('AWS::Events::Rule', { ScheduleExpression: 'cron(0 6 ? * MON *)' }); c.hasResourceProperties('AWS::Lambda::Function', { Handler: 'city-news.handler', ReservedConcurrentExecutions: 1 });
+  const t = Template.fromStack(s.server); t.hasResourceProperties('AWS::ECS::TaskDefinition', { ContainerDefinitions: [Match.objectLike({ Environment: Match.arrayWith([Match.objectLike({ Name: 'WV_CITY_TABLE' })]) })] });
+  t.hasResourceProperties('AWS::IAM::Policy', { PolicyDocument: { Statement: Match.arrayWith([Match.objectLike({ Action: Match.arrayWith(['dynamodb:GetItem', 'dynamodb:PutItem']) })]) } }); });
