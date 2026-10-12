@@ -12,6 +12,8 @@ import { RemoteDrawer, RemoteP } from './remote_render';
 import { SHARED_FLAGS } from './shared';
 import { bodyOf } from '../bodyvariants';
 import { equippedCos } from '../content/appearance';
+import { encodeGear } from '../cosfx';
+import { gearFxOf } from '../gearfx';
 
 const PARTICIPATE_R = 20, REVIVE_HOLD = 2.5, REVIVE_REACH = 2.4;
 const DOOR_FLAGS = new Set(['gate1', 'lock2', 'controller', 'armory']);
@@ -74,7 +76,7 @@ export class NetSession {
     if (g.mode === 'run') g.enterTown(); g.recompute(); g.hp = g.maxHp; persist(g.save); if (!local) g.toast('Left the party dungeon (' + reason + ').'); this.onExit?.(reason);
   }
   /** the player's look for others to render: body variants + equipped cosmetics ids */
-  look() { try { return { body: bodyOf(this.g.save) as any, cos: equippedCos(this.g.save).map(c => c.id) }; } catch { return undefined; } }
+  look() { try { return { body: bodyOf(this.g.save) as any, cos: equippedCos(this.g.save).map(c => c.id), gear: encodeGear(gearFxOf(this.g.save)) }; } catch { return undefined; } }
   sendProfile() { const s = this.g.save as any; this.net.profile(this.net.o.name || 'Guest', Math.max(1, Math.min(60, s.level || 1)), this.look());  }
   // ---------- per-frame hook: the game's own update always runs (return false); this only does the network side, all non-blocking
   private hook(dtRaw: number): boolean {

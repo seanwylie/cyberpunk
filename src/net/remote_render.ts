@@ -4,6 +4,7 @@ import type { Renderer } from '../render';
 import { PlayerAnimator } from '../sprites';
 import { COS_BY_ID, CosDef } from '../content/appearance';
 import { drawCosmetics, CosCtx } from '../cosmetics';
+import { drawGearFx, decodeGear, topTier } from '../cosfx';
 import { cpx } from '../config';
 
 export interface RemoteP { id: string; name: string; x: number; y: number; face: number; moving?: boolean; down?: boolean; atk?: boolean; hp?: number; maxHp?: number; look?: any; lvl?: number }
@@ -23,7 +24,7 @@ export class RemoteDrawer {
     const o = this.animFor(p); let drew = false;
     if (o) { const dt = Math.min(.1, (now - o.t) / 1000); o.t = now; if (p.atk) o.atk = .5; else o.atk = Math.max(0, o.atk - dt); try { if (p.look?.body) o.a.setBody(p.look.body); } catch {} o.a.update(this.fake(p, o) as any, dt);
       const cos = ((p.look?.cos || []) as string[]).map(id => COS_BY_ID[id]).filter(Boolean) as CosDef[]; const ck: CosCtx = { c, x: a, y: b, u: s, t: now / 1000, moving: !!p.moving, face: p.face, id: 'net:' + p.id };
-      try { if (cos.length) drawCosmetics(ck, cos, 'back'); } catch {} drew = o.a.draw(c, a, b, s); try { if (drew && cos.length) drawCosmetics(ck, cos, 'front'); } catch {} }
+      try { if (cos.length) drawCosmetics(ck, cos, 'back'); } catch {} drew = o.a.draw(c, a, b, s); try { if (drew && cos.length) drawCosmetics(ck, cos, 'front'); } catch {} try { if (drew && p.look?.gear?.length) drawGearFx({ ...ck, id: 'net:' + p.id }, decodeGear(p.look.gear), topTier(cos)); } catch {} }
     if (!drew) { c.translate(a, b); c.fillStyle = TINTS[(p.id.charCodeAt(1) || 0) % TINTS.length]; c.beginPath(); c.arc(0, -22 * s, 9 * s, 0, 7); c.fill(); c.fillRect(-6 * s, -14 * s, 12 * s, 14 * s); }
     c.restore();
     this.plate(p, a, b, s, Math.hypot(p.x - me.x, p.y - me.y), alwaysPlate);

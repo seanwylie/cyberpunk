@@ -18,7 +18,7 @@ export const INTERP_DELAY = 0.12;         // seconds remote entities are rendere
 export const CHAT_MAX = 140;
 export const NAME_MAX = 16;
 
-export interface Look { body?: Record<string, string>; cos?: string[]; tint?: string }
+export interface Look { body?: Record<string, string>; cos?: string[]; tint?: string; /** purple/orange hardware for the scaled-down gear FX: 'slot:o' | 'slot:p' */ gear?: string[] }
 export type Dungeon = string;
 
 /** client -> server, once per client tick (20 Hz) while in an instance */
@@ -75,6 +75,7 @@ export function cleanLook(l: any): Look | undefined {
   if (!l || typeof l !== 'object') return undefined; const o: Look = {};
   if (l.body && typeof l.body === 'object') { o.body = {}; for (const k of Object.keys(l.body).slice(0, 12)) { const v = String(l.body[k]).slice(0, 24); o.body[String(k).slice(0, 16)] = v; } }
   if (Array.isArray(l.cos)) o.cos = l.cos.slice(0, 14).map((c: any) => String(c).slice(0, 32));
+  if (Array.isArray(l.gear)) o.gear = l.gear.slice(0, 11).map((g: any) => String(g).slice(0, 8)).filter((g: string) => /^[a-zA-Z]{4,6}:[op]$/.test(g));
   if (typeof l.tint === 'string' && /^#[0-9a-f]{6}$/i.test(l.tint)) o.tint = l.tint;
   return o;
 }
