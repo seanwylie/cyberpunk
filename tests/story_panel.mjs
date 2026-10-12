@@ -53,7 +53,7 @@ for (const [w, h, tag, touch] of VPS) {
   const after = await page.evaluate(() => ({ t: document.getElementById('stext').textContent, msg: document.getElementById('storymsg2').textContent }));
   ok(hits === h0 + 1 && bodies[bodies.length - 1].variant >= 1 && after.t !== before && /New line/.test(after.msg), `${tag}: Regenerate calls the same endpoint with a new variant and replaces the line`);
   await page.evaluate(() => document.querySelector('[data-act=storyregen]').click()); await sleep(400);
-  ok(hits === h0 + 1 && /wait/i.test(await page.evaluate(() => document.getElementById('storymsg2').textContent)), `${tag}: second Regenerate within 20 s is rate-limited (no request)`);
+  ok(hits === h0 + 1 && await page.evaluate(() => { const b = document.querySelector('[data-act=storyregen]'); return b.disabled && /Regenerate \(\d+ s\)/.test(b.textContent); }), `${tag}: second Regenerate within the 60 s cooldown is blocked (button shows the countdown, no request)`);
   // copy
   await page.evaluate(() => { window.__copied = null; Object.defineProperty(navigator, 'clipboard', { value: { writeText: async t => { window.__copied = t; } }, configurable: true }); Object.defineProperty(navigator, 'share', { value: undefined, configurable: true }); });
   await page.evaluate(() => document.querySelector('[data-act=storycopy]').click()); await sleep(300);

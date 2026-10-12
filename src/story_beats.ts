@@ -17,6 +17,8 @@ export const SPEAKER = { name:'Odalys Vane', role:'Fixer' };
 export const SESSION_ID=(()=>{ try{ const a=new Uint8Array(12); crypto.getRandomValues(a); return Array.from(a,x=>x.toString(16).padStart(2,'0')).join(''); }catch{ return Math.random().toString(16).slice(2).padEnd(24,'0').slice(0,24); } })();
 /** display names retired by the content-rating pass (no drug references): old saved story lines / run labels are rewritten on load */
 export const RENAMED:[RegExp,string][]=[[/Basin Coke Ovens/g,'Basin Slag Ovens'],[/Coke Ovens/g,'Slag Ovens'],[/Coke-Tender/g,'Oven-Tender'],[/coke ovens/g,'slag ovens'],[/Quill Pharmacy Vault/g,'Quill Reagent Vault'],[/Pharmacy Vault/g,'Reagent Vault'],[/Apothecary Dessa Quill/g,'Formulator Dessa Quill'],[/\bApothecary\b/g,'Formulator'],[/Sedative Bloom/g,'Torpor Bloom'],[/Stim injector/g,'Nano-patch'],[/\bstims\b/g,'patches'],[/\bstim\b/g,'patch'],[/\bStims?\b/g,'Patch']];
+/** Persistent anonymous player id (localStorage), the identity the server keys per-player story limits on. The server also limits per IP. */
+export const PLAYER_ID=(()=>{ const K='wv_story_pid'; try{ const v=localStorage.getItem(K); if(v&&/^[a-f0-9]{24}$/.test(v)) return v; const n=SESSION_ID; localStorage.setItem(K,n); return n; }catch{ return SESSION_ID; } })();
 export const renameLegacy=(t:string)=>{ for(const [re,to] of RENAMED) t=t.replace(re,to); return t; };
 export function journalOf(s:Save):JournalEntry[]{ const x=s as any; if(!Array.isArray(x.journal)) x.journal=[]; if(!x._jrMig){ x._jrMig=true; for(const e of x.journal){ if(typeof e.text==='string') e.text=renameLegacy(e.text); if(typeof e.result==='string') e.result=renameLegacy(e.result); if(Array.isArray(e.parts)) e.parts=e.parts.map((p:any)=>typeof p==='string'?renameLegacy(p):p); if(typeof e.dungeonName==='string') e.dungeonName=renameLegacy(e.dungeonName); } } return x.journal; }
 export function metaOf(s:Save):BeatMeta{ const x=s as any; if(!x.beatMeta) x.beatMeta={seenMfr:[],count:0}; return x.beatMeta; }
@@ -32,7 +34,7 @@ export function featuredParts(s:Save):{def:string;name:string;mfr:Mfr}[]{
 }
 /** Request body: catalog ids and enums ONLY, just the featured parts (the server resolves names and makers and rejects unknown ids). */
 export function loadoutSummary(s:Save, req:BeatReq, variant=0){
-  const out:any={ trigger:'return_town', town:s.town==='harrow'?'harrow':'rustline', level:Math.max(1,Math.min(99,s.level|0)), session:SESSION_ID, installed:featuredParts(s).map(p=>p.def), chips:[], abilities:[], cosmetics:[], rep:{HI:s.rep.HI|0,PS:s.rep.PS|0,MM:s.rep.MM|0}, variant };
+  const out:any={ trigger:'return_town', town:s.town==='harrow'?'harrow':'rustline', level:Math.max(1,Math.min(99,s.level|0)), session:SESSION_ID, player:PLAYER_ID, installed:featuredParts(s).map(p=>p.def), chips:[], abilities:[], cosmetics:[], rep:{HI:s.rep.HI|0,PS:s.rep.PS|0,MM:s.rep.MM|0}, variant };
   if(req.dungeon) out.dungeon=req.dungeon; return out;
 }
 
@@ -53,25 +55,34 @@ export function acceptLine(t:unknown):string|null{
 }
 
 export const unreadCount=(s:Save)=>journalOf(s).filter(e=>e.read===false).length;
-export const REGEN={ minGapMs:20_000, perSession:6 };
-export type Fetcher=(url:string,init:any)=>Promise<{ok:boolean;json:()=>Promise<any>}>;
+/** Client mirror of the SERVER limits (server/story_limits.mjs is authoritative; this only drives the button). */
+export const REGEN={ minGapMs:60_000, perDay:5 };
+export type Fetcher=(url:string,init:any)=>Promise<{ok:boolean;status?:number;json:()=>Promise<any>}>;
+export interface RegenResult { ok:boolean; why?:string; retryAfter?:number; capped?:boolean }
 export class StoryBeats {
   private fired=0; private lastRun=''; private runN=0; busy=false; fetcher:Fetcher; now:()=>number=Date.now;
   endpoint:string=((import.meta as any).env?.VITE_WV_STORY_URL as string)||'api/story-beat'; /* AWS: the story Lambda Function URL (build-time VITE_WV_STORY_URL) */
   onEntry:((e:JournalEntry)=>void)|null=null;
   constructor(private save:()=>Save, fetcher?:Fetcher){ this.fetcher=fetcher||((u,i)=>fetch(u,i) as any); }
-    private regenN=0; private lastRegen=0;
-  /** Rewrites one log entry with a fresh line (same endpoint, new variant). Rate-limited (20 s apart, 6 per session); falls back to the next canned line. */
-  async regenerate(e:JournalEntry):Promise<{ok:boolean;why?:string}>{
+  private regenN=0; cooldownUntil=0; cappedUntil=0;
+  /** Button state for the story panel: seconds left on the cooldown, or capped for the day. */
+  regenState():{wait:number;capped:boolean}{ const t=this.now(); return { wait:Math.max(0,Math.ceil((this.cooldownUntil-t)/1000)), capped:this.cappedUntil>t }; }
+  /** Rewrites one log entry with a fresh line (same endpoint, new variant). The server enforces a 60 s cooldown and a daily cap and answers
+   *  {reason:'rate_limited'|'daily_cap', retryAfter}; the line is then kept as-is. If the AI is off/unreachable/over budget, a canned line is used. */
+  async regenerate(e:JournalEntry):Promise<RegenResult>{
     const s=this.save(); const now=this.now(); if(this.busy) return {ok:false,why:'busy'};
-    if(this.regenN>=REGEN.perSession) return {ok:false,why:'Regeneration limit reached for this session.'}; if(this.lastRegen&&now-this.lastRegen<REGEN.minGapMs) return {ok:false,why:'Please wait a few seconds before regenerating.'};
-    this.busy=true; this.regenN++; this.lastRegen=now;
+    const st=this.regenState(); if(st.capped) return {ok:false,capped:true,why:'No more rewrites today.'}; if(st.wait>0) return {ok:false,retryAfter:st.wait,why:`Please wait ${st.wait} s before another rewrite.`};
+    this.busy=true; this.regenN++; this.cooldownUntil=now+REGEN.minGapMs;
     try { let text:string|null=null, src:'ai'|'authored'='authored', model:string|undefined;
       if(s.settings.storyAi!==false){ try { const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),BEAT.timeoutMs);
         const r=await this.fetcher(this.endpoint,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(loadoutSummary(s,{dungeon:e.dungeon},1+(this.regenN%20)))}).finally(()=>clearTimeout(to));
-        const j=r.ok?await r.json():null; const a=j&&j.ok?acceptLine(j.text):null; if(a&&a!==e.text){ text=a; src='ai'; model=j.model; } } catch{} }
+        const j=await r.json().catch(()=>null);
+        if(j&&!j.ok&&(j.reason==='rate_limited'||j.reason==='daily_cap')){ const ra=Math.max(1,Number(j.retryAfter)||60);
+          if(j.reason==='daily_cap'){ this.cappedUntil=this.now()+ra*1000; return {ok:false,capped:true,retryAfter:ra,why:'No more rewrites today.'}; }
+          this.cooldownUntil=this.now()+ra*1000; return {ok:false,retryAfter:ra,why:`Please wait ${ra} s before another rewrite.`}; }
+        const a=r.ok&&j&&j.ok?acceptLine(j.text):null; if(a&&a!==e.text){ text=a; src='ai'; model=j.model; } } catch{} }
       if(!text){ const pool=journalOf(s).length+this.regenN+1; text=authoredBeat(s,pool).text; if(text===e.text) text=authoredBeat(s,pool+1).text; }
-      e.text=text; e.src=src; e.model=model; persist(s); return {ok:true};
+      e.text=text; e.src=src; e.model=model; persist(s); if(this.regenN>=REGEN.perDay) this.cappedUntil=Math.max(this.cappedUntil,now+3600_000); return {ok:true};
     } finally { this.busy=false; } }
   /** Called once when a run ends (back in town). Returns the entry if one was written (async, never throws). */
   async fire(req:BeatReq={}):Promise<JournalEntry|null>{
