@@ -64,9 +64,9 @@ Every boss (12 original, 20 from content batch 1) has a **kit** of 2-3 themed me
 | `bellfounder` | Foundry Bell | gold | Safe zones (19); Shield-break window (34, <=70% HP); Gapped shockwave (11) |
 | `cryo` | Deep Freeze | ice | Laser grid (13); Shield-break window (34, <=75% HP); Tile sequence (14) |
 | `auditor` | Audit Trail | blue | Tile sequence (13); Afterimage strike (13) |
-| `mirrorpt` | Hall of Mirrors | orchid | Afterimage strike (11); Line-of-sight gaze (13); Buff nodes (34, <=70% HP) |
+| `mirrorpt` | Hall of Mirrors | orchid | Afterimage strike (16); Line-of-sight gaze (19) |
 | `apothecary` | Dispensary | magenta | Chain bombs (14); Heat overload (24) |
-| `resonance` | Anechoic Cell | white | Rotating beam (12); Safe zones (19); Gapped shockwave (13) |
+| `resonance` | Anechoic Cell | white | Rotating beam (13); Safe zones (26); Gapped shockwave (15) |
 | `clearance` | Final Markdown | coral | Conveyor floor (14); Ricochet roller (12); Tile sequence (15) |
 | `liquidator` | Liquidation | bronze | Chain bombs (18); Laser grid (20) |
 | `courier` | Express Route | yellow | Afterimage strike (9); Conveyor floor (16); Ricochet roller (13) |
