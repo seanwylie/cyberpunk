@@ -34,3 +34,19 @@ Sean's brief, October 2026. This applies to the primary tracks (main theme, town
 - Long calm tracks are encoded at 80 kbps (LOWRATE). Hard tracks and stingers use 112 kbps.
 
 Regenerate with `python3 tools/gen_music.py --pack7 --force` (needs `ELEVENLABS_API_KEY`).
+
+## Theme variations (pack 8)
+`theme_main` measures **D minor at about 84 bpm** (`tools/motif_analyze.py`, librosa in a venv). ElevenLabs can only condition on audio from a stored song id, and none was kept for `theme_main`. So each variation prompt describes the motif explicitly: F, E, D, then a low A (scale degrees 3, 2, 1, low 5), repeated, then answered by a chromatic A, G♯, G, F♯ resolving to D over a D pedal.
+
+| Track | Use | Measured |
+|---|---|---|
+| `theme_lofi_dust`, `theme_lofi_rain`, `theme_lofi_tape` | Rustline and Harrow town pools. On the first town track of a session, there's a 60% chance (`BOOT_THEME`) one of them plays. | D minor, 83 bpm |
+| `boss_theme_wall`, `boss_theme_siege`, `boss_theme_storm` | Boss pool (intensity 4, 3 and 4). `storm` is also an elite escalation stem. | D minor or D, double or triplet readings of the same pulse |
+
+A variation is regenerated when it drifts. It passes when it has the same key, or a chroma correlation of at least 0.8 with the theme, and a tempo within 6% of 84 bpm at a half, 2/3, 1, 4/3, 1.5 or 2 multiple. The first takes of `theme_lofi_rain` (B♭ major) and `boss_theme_siege` (C minor) drifted and were regenerated.
+
+## Endings and seams
+- Calm tracks, `theme_main` and the lo-fi themes never loop in game. They keep their composed ending and get a 4.5–5.5 s fade.
+- Hard loops (`combat_`, `boss_`, `elite_`) are trimmed to their steady body, without the generated intro swell or outro fade. The tail is blended into the head over 3 s, with a static gain and no limiter, because a limiter's look-ahead shifts the seam.
+- `tools/check_music_tails.py` checks both rules. `tools/fix_music_endings.py` repairs from the shipped mp3.
+- In game, `MusicManager.tailGuard` ramps any non-looping track that is about to end to silence, so nothing ever hard-stops.

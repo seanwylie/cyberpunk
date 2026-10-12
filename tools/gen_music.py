@@ -288,6 +288,24 @@ TRACKS['stinger_ascent'] = (14, False, STING['stinger_ascent'][2])
 NEW7 = list(CORE7) + list(TOWN7) + list(DUNGEON7) + list(HI7) + list(BOSS7) + ['theme_main', 'stinger_ascent']
 FADE_END = {'theme_main'}  # full pieces with a composed ending: 5.5 s musical fade-out instead of a loop seam
 XF = 3.0
+# --- pack 8: theme_main variations (docs/MUSIC_DIRECTION.md "Theme variations"). Measured theme_main: D minor, ~84 bpm (tools/motif_analyze.py).
+MOTIF = ("Built on one recognisable melody in D minor: a slow four-note piano motif F, E, D, then a low A (scale degrees 3, 2, 1, low 5), "
+         "each note held about one beat, repeated twice, then answered by a slow chromatic descent A, G sharp, G, F sharp resolving to D, over a sustained low D pedal. "
+         "Strictly D minor, never major. Keep this exact melody, key and contour clearly audible throughout; the motif must come back every few bars.")
+THEME8_LOFI = {
+ 'theme_lofi_dust': "Lo-fi hip-hop arrangement, 84 bpm, D minor. Dusty felt piano plays the melody, warm tape saturation and gentle wow and flutter, vinyl crackle, mellow swung boom-bap beat with soft kick and brushed snare, round upright-style bass, cozy and melancholic.",
+ 'theme_lofi_rain': "Lo-fi chillhop arrangement, 84 bpm, D minor. Soft electric piano carries the melody, tape hiss, quiet rain texture, lazy laid-back drums with rimshot, warm sub bass, gentle filtered pad, reflective and calm.",
+ 'theme_lofi_tape': "Mellow lo-fi jazz-hop arrangement, 84 bpm, D minor. Detuned upright piano plays the melody, worn cassette warmth, muted kick and shaker groove, soft muted guitar chords, sleepy and nostalgic.",
+}
+THEME8_BOSS = {
+ 'boss_theme_wall': "Boss battle arrangement, 168 bpm double-time over the 84 bpm pulse, D minor. The melody is hammered out by distorted tremolo guitars and low brass-like swells, massive war drums and taiko-like percussion, walls of feedback and noise, orchestral string ostinato, relentless and overwhelming, maximum intensity, no breakdown.",
+ 'boss_theme_siege': "Boss battle arrangement, 84 bpm half-time feel, D minor. Colossal orchestral-industrial hybrid: the melody on blaring low brass and choir-like synth pads without words, pounding war drums on every beat, abrasive distorted bass, staccato strings, urgent and inevitable, maximum intensity, no breakdown.",
+ 'boss_theme_storm': "Boss battle arrangement, 168 bpm, D minor. Driving percussion ensemble and pulsing electronic bass, the melody played by a piano doubled with distorted guitars, rising alarm-like synth layers, crashing cymbals, mass panic and fury, maximum intensity, no breakdown.",
+}
+for _n, _p in THEME8_LOFI.items(): TRACKS[_n] = (120, False, _p + " " + MOTIF + " quiet to moderate dynamics. " + D7); FADE_END.add(_n)
+LOWRATE |= set(THEME8_LOFI)
+for _n, _p in THEME8_BOSS.items(): TRACKS[_n] = (80, True, _p + " " + MOTIF + " " + D7)
+NEW8 = list(THEME8_LOFI) + list(THEME8_BOSS)
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'
     if raw.exists(): return raw
@@ -350,6 +368,7 @@ def process(name, loop):
 if __name__ == '__main__':
     force = '--force' in sys.argv; names = [a for a in sys.argv[1:] if not a.startswith('--')] or list(TRACKS)
     if '--pack7' in sys.argv: names = NEW7
+    if '--pack8' in sys.argv: names = NEW8
     for n in names:
         s, loop, p = TRACKS[n]
         if (OUT/f'{n}.mp3').exists() and not force: print('skip', n); continue

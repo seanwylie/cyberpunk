@@ -33,9 +33,12 @@ export const DUNGEON7=['calm_dir_motif','calm_dir_corridor','calm_dir_vast','cal
 export const BOSS7=['boss_wall_dread','boss_wall_siege','boss_wall_storm','boss_wall_end'];
 /** Escalation stems: when elite combat intensity (engaged elites near the player) stays >= ESC_LEVEL the elite track crossfades to one of these; it never plays otherwise. */
 export const ESCALATE=['elite_escalate_a','elite_escalate_b']; export const ESC_LEVEL=3;
-export const PACK7=[...TOWN7,...DUNGEON7,...BOSS7,...ESCALATE,'theme_main'];
-Object.assign(FAMILY,{ town_dir_vigil:'noir',town_dir_pulse:'pulse',town_dir_embers:'drift',town_dir_static:'noir',town_dir_lantern:'noir',town_dir_glass:'pulse',town_dir_dust:'drift',town_dir_choir:'drift',town_dir_rain:'noir',town_dir_tick:'pulse',town_dir_hollow:'drift',town_dir_signal:'pulse',town_dir_ash:'noir',town_dir_neon:'pulse',town_dir_ascend:'drift',town_dir_watch:'industrial',theme_main:'noir',calm_dir_motif:'industrial',calm_dir_corridor:'pulse',calm_dir_vast:'drift',calm_dir_creep:'industrial' });
-export const CALM_LAZY=new Set([...TOWN7,...DUNGEON7,'theme_main',...CALM2,...CALM3,...CALM4,...CALM5,...WORLD6]);
+/** pack 8: variations on theme_main (same D minor motif, ~84 bpm). Lo-fi pieces sit in the Rustline/Harrow town pools and win the first town track of a session with BOOT_THEME odds; boss versions join the boss pool and the escalation set. */
+export const THEME_LOFI=['theme_lofi_dust','theme_lofi_rain','theme_lofi_tape']; export const BOSS_THEME=['boss_theme_wall','boss_theme_siege','boss_theme_storm']; export const BOOT_THEME=.6;
+ESCALATE.push('boss_theme_storm');
+export const PACK7=[...TOWN7,...DUNGEON7,...BOSS7,...ESCALATE,'theme_main',...THEME_LOFI,'boss_theme_wall','boss_theme_siege'];
+Object.assign(FAMILY,{ theme_lofi_dust:'noir',theme_lofi_rain:'noir',theme_lofi_tape:'noir', town_dir_vigil:'noir',town_dir_pulse:'pulse',town_dir_embers:'drift',town_dir_static:'noir',town_dir_lantern:'noir',town_dir_glass:'pulse',town_dir_dust:'drift',town_dir_choir:'drift',town_dir_rain:'noir',town_dir_tick:'pulse',town_dir_hollow:'drift',town_dir_signal:'pulse',town_dir_ash:'noir',town_dir_neon:'pulse',town_dir_ascend:'drift',town_dir_watch:'industrial',theme_main:'noir',calm_dir_motif:'industrial',calm_dir_corridor:'pulse',calm_dir_vast:'drift',calm_dir_creep:'industrial' });
+export const CALM_LAZY=new Set([...THEME_LOFI,...TOWN7,...DUNGEON7,'theme_main',...CALM2,...CALM3,...CALM4,...CALM5,...WORLD6]);
 export const LAZY=new Set([...PACK7,...WORLD6,...CALM2,...CALM3,...CALM4,...CALM5,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]);
 const T:Record<string,TrackDef>={ boss_reveal:{file:'boss_reveal',loop:false,keepPos:false}, clear:{file:'clear',loop:false,keepPos:false} };
 for(const n of STINGERS) T[n]={file:n,loop:false,keepPos:false};
@@ -44,14 +47,14 @@ for(const n of [...PACK7,...LOOPS,...WORLD6,...CALM2,...CALM3,...CALM4,...CALM5,
 export const CORE_TRACKS=['town','traversal_a','traversal_b','combat_a','combat_b','boss_reveal','boss_fight','clear'];
 /** Per-state track pools (rotation draws from these via a shuffle bag). */
 export const POOLS:Record<MState,string[]>={
-  town:['town','theme_main',...TOWN7.slice(0,8),'calm_drift','calm_rust','calm_vents','town_dusk','town_market','town_neonrain','town_rooftop','town_jukebox','town_dockside','town_dawnmarket','town_lastcall','town_scrapyard',...CALM5_TOWN],
+  town:['town','theme_main',...THEME_LOFI,...TOWN7.slice(0,8),'calm_drift','calm_rust','calm_vents','town_dusk','town_market','town_neonrain','town_rooftop','town_jukebox','town_dockside','town_dawnmarket','town_lastcall','town_scrapyard',...CALM5_TOWN],
   traversal:['traversal_a','traversal_b',...DUNGEON7,'calm_neon','calm_static','calm_drift','calm_rust','calm_vents','calm_tide','calm_ghost','calm_orbit','calm_hollow','calm_relay','calm_alley','calm_conduit','calm_afterglow','calm_stasis','calm_coldopen','calm_midshift','calm_deepcut','calm_exitroute','calm_breathing','calm_wires','calm_sodium'],
   combat:['combat_a','combat_b'],
   elite:['elite_siege','elite_hunt','boss_overclock','boss_meltdown',...ELITE2,...ELITE4],
   bossreveal:['boss_reveal'],
-  bosscombat:['boss_fight','boss_overclock','boss_meltdown','boss_hydraulic','elite_siege','elite_hunt','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall',...BOSS4,...BOSS7],
+  bosscombat:['boss_fight','boss_overclock','boss_meltdown','boss_hydraulic','elite_siege','elite_hunt','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall',...BOSS4,...BOSS7,...BOSS_THEME],
   resolution:['clear'] };
-export const TOWN_POOLS:Record<string,string[]>={ rustline:['town','theme_main',...TOWN7.slice(0,8),'calm_drift','calm_rust','calm_vents','town_dusk','town_market','town_neonrain','town_rooftop','town_jukebox','town_dockside','town_dawnmarket','town_lastcall','town_scrapyard',...CALM5_TOWN], harrow:[...TOWN7.slice(8),'harrow_forge','harrow_ember','harrow_steam','harrow_dawn','harrow_cinder','harrow_smelter','harrow_lamplight','harrow_ash','harrow_shift','harrow_whistle','harrow_chapel','harrow_mill',...CALM5_HARROW] };
+export const TOWN_POOLS:Record<string,string[]>={ rustline:['town','theme_main',...THEME_LOFI,...TOWN7.slice(0,8),'calm_drift','calm_rust','calm_vents','town_dusk','town_market','town_neonrain','town_rooftop','town_jukebox','town_dockside','town_dawnmarket','town_lastcall','town_scrapyard',...CALM5_TOWN], harrow:[...THEME_LOFI,...TOWN7.slice(8),'harrow_forge','harrow_ember','harrow_steam','harrow_dawn','harrow_cinder','harrow_smelter','harrow_lamplight','harrow_ash','harrow_shift','harrow_whistle','harrow_chapel','harrow_mill',...CALM5_HARROW] };
 for(const t of WORLD6_TOWNS) TOWN_POOLS[t]=Object.keys(W6M).map(m=>t+'_'+m);
 Object.assign(FAMILY,Object.fromEntries(WORLD6.map(n=>[n,W6M[n.slice(-1)]])));
 /** Run areas (manufacturer of the dungeon): tracks written for an area get double weight there and are excluded elsewhere; everything else in the traversal pool is shared. */
@@ -63,11 +66,11 @@ import { BOSSES } from './content/batch1_bosses';
 import { Q } from './quality';
 export const BOSS_MAP:Record<string,string>={ ...Object.fromEntries(BOSSES.map(b=>[b.id,b.track])), overseer:'boss_fight', warden:'boss_overclock', enforcer:'boss_meltdown', teague:'boss_hydraulic', brannoch:'boss_meltdown', ore9:'boss_fight', surgeon:'boss_overclock', autosurgeon:'boss_hydraulic', recovered:'boss_fight', stockmgr:'boss_meltdown', retrieval:'boss_overclock', reclaimer:'boss_hydraulic' };
 /** Relative intensity of each hard track (1 lightest .. 4 maximum); drives playlist building and phase escalation. */
-export const INTENSITY:Record<string,number>={ elite_siege:1,elite_hunt:1,boss_lineman:1,boss_pitboss:1, boss_fight:2,boss_hydraulic:2,boss_bellfounder:2,boss_cryo:2,boss_auditor:2,boss_apothecary:2,boss_clearance:2, boss_overclock:3,boss_meltdown:3,boss_resonance:3,boss_liquidator:3,boss_courier:3,boss_dispatcher:3,boss_warrantor:3,boss_rattle:3,boss_widow:3, boss_recall:4, boss_tarpit:1,boss_rivet:1,boss_ledgerman:1, boss_cinder:2,boss_vigil:2,boss_static_choir:2,boss_gearwork:2,boss_tollroad:2,boss_marrow:2, boss_hammerfall:3,boss_siren:3,boss_glitchking:3,boss_dirge:3,boss_overload:3,boss_ironchoir:3, boss_apex:4,boss_cataclysm:4,boss_endshift:4,boss_zero:4, boss_wall_dread:2,boss_wall_siege:3,boss_wall_storm:3,boss_wall_end:4 };
+export const INTENSITY:Record<string,number>={ elite_siege:1,elite_hunt:1,boss_lineman:1,boss_pitboss:1, boss_fight:2,boss_hydraulic:2,boss_bellfounder:2,boss_cryo:2,boss_auditor:2,boss_apothecary:2,boss_clearance:2, boss_overclock:3,boss_meltdown:3,boss_resonance:3,boss_liquidator:3,boss_courier:3,boss_dispatcher:3,boss_warrantor:3,boss_rattle:3,boss_widow:3, boss_recall:4, boss_tarpit:1,boss_rivet:1,boss_ledgerman:1, boss_cinder:2,boss_vigil:2,boss_static_choir:2,boss_gearwork:2,boss_tollroad:2,boss_marrow:2, boss_hammerfall:3,boss_siren:3,boss_glitchking:3,boss_dirge:3,boss_overload:3,boss_ironchoir:3, boss_apex:4,boss_cataclysm:4,boss_endshift:4,boss_zero:4, boss_wall_dread:2,boss_wall_siege:3,boss_wall_storm:3,boss_wall_end:4, boss_theme_wall:4,boss_theme_siege:3,boss_theme_storm:4 };
 /** Boss tier (1 easiest .. 4 hardest): batch-1 bosses carry it in their data; the original dungeon bosses are all starter-tier (1). */
 export const bossTier=(id:string|null):number=>{ const b=id?BOSSES.find(x=>x.id===id):null; return b?b.tier:1; };
-/** Weighted boss pool for a tier: every boss-pool track is in, tracks whose intensity is near the tier's get more slots (distance 0: 3, 1: 2, 2+: 1). */
-export function bossPool(tier:number):[string,number][]{ const tg=Math.min(4,Math.max(1,tier)); return POOLS.bosscombat.map(t=>[t,Math.abs((INTENSITY[t]||2)-tg)===0?3:Math.abs((INTENSITY[t]||2)-tg)===1?2:1] as [string,number]); }
+/** Weighted boss pool for a tier: every boss-pool track is in, tracks whose intensity is near the tier's get more slots (distance 0: 4, 1: 2, 2+: 1). */
+export function bossPool(tier:number):[string,number][]{ const tg=Math.min(4,Math.max(1,tier)); return POOLS.bosscombat.map(t=>[t,Math.abs((INTENSITY[t]||2)-tg)===0?4:Math.abs((INTENSITY[t]||2)-tg)===1?2:1] as [string,number]); }
 /** Shuffle bag: every item once per cycle (weight n = n slots per cycle), never the same item twice in a row (also across cycle refills and, with a storage key, across sessions: bag contents + last track persist in localStorage). */
 export class ShuffleBag{ private bag:string[]=[]; last:string|null=null; items:string[]; private w:Record<string,number>={};
   constructor(items:string[]|[string,number][], private rnd:()=>number=Math.random, private storeKey:string|null=null){ this.items=[]; for(const it of items){ const [n,w]=Array.isArray(it)?it:[it,1]; this.items.push(n); this.w[n]=w; } this.restore(); }
@@ -122,7 +125,9 @@ export class MusicManager {
   bagKey(s:MState){ return s==='town'?'town:'+this.townId:s==='traversal'?'trav:'+(this.area||'-'):s; }
   bagFor(s:MState):ShuffleBag{ const k=this.bagKey(s); let b=this.bags[k as MState]; if(!b){ const items=s==='traversal'?areaPool(this.area):POOLS[s]; b=this.bags[k as MState]=new ShuffleBag(items,Math.random,'wv_music_bag:'+k); } return b; }
   /** No intro lock: the first town track of every session / town entry is a random draw from the persisted shuffle bag + recent history. Queued as nextUp so boot decodes exactly it. */
-  planFirst():string{ const k=this.bagKey('town'); const nu=this.nextUp[k]; if(nu&&T[nu]&&!this.failed.has(nu)) return nu; const n=this.chooseCalm(this.bagFor('town'),x=>!!T[x]&&!this.failed.has(x)&&x!==this.cur); this.nextUp[k]=n; return n; }
+  bootThemeDone=false;
+  planFirst():string{ const k=this.bagKey('town'); const nu=this.nextUp[k]; if(nu&&T[nu]&&!this.failed.has(nu)) return nu;
+    if(!this.bootThemeDone){ this.bootThemeDone=true; const c=THEME_LOFI.filter(x=>POOLS.town.includes(x)&&!this.failed.has(x)&&x!==this.cur); if(c.length&&this.rnd()<BOOT_THEME){ const n=c[Math.floor(this.rnd()*c.length)]; this.nextUp[k]=n; return n; } } /* first town track of a session: high chance of a lo-fi take on the main theme */ const n=this.chooseCalm(this.bagFor('town'),x=>!!T[x]&&!this.failed.has(x)&&x!==this.cur); this.nextUp[k]=n; return n; }
   failed=new Set<string>(); /** set by enter() for a real town entry (boot / back from a run), not for rotation or the ended-track safety re-entry */ townEntry=false; wasTown=false;
   pick(s:MState):string{ const have=(n:string)=>!!this.buffers[n];
     if(s==='bosscombat'){ if(!this.fightNext) this.planFight(); const r=this.fightNext!; this.fightNext=null; delete this.nextUp.boss; this.sig=this.key?SIGNATURE[this.key]||null:null; this.p2done=false; this.setHard(r); return r; }
@@ -231,6 +236,6 @@ export class MusicManager {
     if(this.intensity<=1){ if(this.calmAt<0) this.calmAt=t; if(t-this.calmAt>=6&&this.escFrom&&this.buffers[this.escFrom]){ this.calmAt=-1; this.lastSwitchAt=t; this.crossfade(this.escFrom,3,'elite'); this.escFrom=null; } } else this.calmAt=-1; }
   lastEsc:string|null=null;
   /** Never hard-stop: a non-looping track within 3.5 s of its end that nothing has faded out yet is ramped to silence by its last sample (the safety re-entry in tick() then starts the next calm track). */
-  tailGuard(t:number){ for(const l of this.live){ if(l.ending||T[l.name]?.loop) continue; const b=this.buffers[l.name]; if(!b) continue; const left=b.duration-(l.offset+(t-l.startedAt)); if(left>3.5) continue; l.ending=true; const g=l.gain.gain, ct=this.ctx.currentTime; try{ g.cancelScheduledValues(ct); g.setValueAtTime(g.value,ct); g.linearRampToValueAtTime(0,ct+Math.max(.05,left-.05)); }catch{} } }
+  tailGuard(t:number){ for(const l of this.live){ if(l.ending||T[l.name]?.loop) continue; const b=this.buffers[l.name]; if(!b) continue; const age=t-l.startedAt, left=b.duration-(l.offset+age); if(left>3.5||left<=.2||age<8) continue; /* age<8: its fade-in curve is still scheduled */ l.ending=true; const g=l.gain.gain, ct=this.ctx.currentTime; try{ g.cancelScheduledValues(ct); g.setValueAtTime(g.value,ct); g.linearRampToValueAtTime(0,ct+Math.max(.05,left-.05)); }catch{} } }
   stopAll(dur=2){ this.state=null; this.crossfade(null,dur,'town'); }
 }

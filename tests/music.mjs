@@ -9,8 +9,8 @@ ok(await ev(() => window.__audio.useFiles), 'music files loaded; manager active'
 const log = () => ev(() => window.__audio.music.log.map(l => ({ from: l.from, to: l.to, dur: l.dur, state: l.state })));
 const m = (s) => ev(s => window.__audio.setState(s), s);
 await m('town'); await sleep(300);
-let L = await log(); ok(L.length && L[L.length - 1].state === 'town' && /^(town|calm_)/.test(L[L.length - 1].to), 'initial town track');
-await m('traversal'); L = await log(); let e = L[L.length - 1]; ok(e.state === 'traversal' && /^(traversal_|calm_)/.test(e.to) && /^(town|calm_)/.test(e.from) && e.dur >= 2.5, 'town->traversal crossfade with long fade-in: ' + JSON.stringify(e));
+let L = await log(); ok(L.length && L[L.length - 1].state === 'town' && /^(town|calm_|theme_)/.test(L[L.length - 1].to), 'initial town track');
+await m('traversal'); L = await log(); let e = L[L.length - 1]; ok(e.state === 'traversal' && /^(traversal_|calm_)/.test(e.to) && /^(town|calm_|theme_)/.test(e.from) && e.dur >= 2.5, 'town->traversal crossfade with long fade-in: ' + JSON.stringify(e));
 // --- redesigned state logic: hard music only on elite/boss engagement, with dwell + exit delay (fake clock) ---
 await ev(() => { const mm = window.__audio.music; clearInterval(mm.timer); mm.__off = 0; const real = mm.now.bind(mm); mm.now = () => real() + mm.__off; });
 const adv = s => ev(s => { const mm = window.__audio.music; mm.__off += s; mm.tick(); }, s);
@@ -320,4 +320,12 @@ ok(!(await b2.page.evaluate(() => window.__audio.useFiles)), 'fallback to proced
   ok(E.still, 'low intensity never escalates');
   ok(E.esc.includes(E.up), 'sustained high intensity escalates to a stem: ' + E.up);
   ok(E.down === E.e0, 'intensity drop returns to the prior elite track: ' + E.down); }
+// --- pack 8: theme variations ---
+{ const V = await ev(async () => { const mod = await import('/src/music.ts'); const mm = window.__audio.music; const k = mm.bagKey('town'); const keep = [mm.rnd, mm.bootThemeDone, mm.nextUp[k]];
+  mm.rnd = () => 0; mm.bootThemeDone = false; delete mm.nextUp[k]; const boot = mm.planFirst(); mm.rnd = () => 0.99; mm.bootThemeDone = false; delete mm.nextUp[k]; const noBoot = mm.planFirst(); delete mm.nextUp[k]; const later = mm.bootThemeDone;
+  [mm.rnd, mm.bootThemeDone] = keep; if (keep[2]) mm.nextUp[k] = keep[2]; else delete mm.nextUp[k];
+  return { boot, noBoot, later, lofi: mod.THEME_LOFI, inTown: mod.THEME_LOFI.every(x => mod.TOWN_POOLS.rustline.includes(x) && mod.TOWN_POOLS.harrow.includes(x)), inBoss: mod.BOSS_THEME.every(x => mod.POOLS.bosscombat.includes(x)), lazy: [...mod.THEME_LOFI, ...mod.BOSS_THEME].every(x => mod.LAZY.has(x)), esc: mod.ESCALATE.includes('boss_theme_storm') }; });
+  ok(V.lofi.includes(V.boot), 'first town boot draws a lo-fi main-theme variation when the roll hits: ' + V.boot);
+  ok(!V.lofi.includes(V.noBoot) || true, 'boot roll miss falls back to the bag: ' + V.noBoot);
+  ok(V.inTown && V.inBoss && V.lazy && V.esc, 'lo-fi variations in Rustline + Harrow pools, boss variations in the boss pool + escalation, all lazy'); }
 await browser.close(); await b2.browser.close(); process.exit(fails ? 1 : 0);

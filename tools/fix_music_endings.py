@@ -14,7 +14,18 @@ for n in sys.argv[1:]:
         fc = (f"[0:a]atrim={S}:{E},asetpts=PTS-STARTPTS,asplit=3[a][b][c];[a]atrim={XF}:{E-S-XF},asetpts=PTS-STARTPTS[mid];"
               f"[b]atrim={E-S-XF}:{E-S},asetpts=PTS-STARTPTS[tail];[c]atrim=0:{XF},asetpts=PTS-STARTPTS[head];"
               f"[tail][head]acrossfade=d={XF-0.01}:c1=qsin:c2=qsin[x];[mid][x]concat=n=2:v=0:a=1[o]")
-        subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(src),'-filter_complex',fc,'-map','[o]','-ac','2','-ar','44100','-b:a',B,str(f)])
+        best = None
+        for k in range(10):  # nudge the cut by up to 45 ms and keep the render whose seam step is smallest
+            e = E - k*0.005; tmp = pathlib.Path('/tmp')/f'fixtry_{n}_{k}.mp3'
+            fck = fc.replace(f'atrim={S}:{E},', f'atrim={S}:{e},').replace(f'{E-S-XF}', f'{e-S-XF}').replace(f':{E-S},', f':{e-S},')
+            subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(src),'-filter_complex',fck,'-map','[o]','-ac','2','-ar','44100','-b:a',B,str(tmp)])
+            x = subprocess.run(['ffmpeg','-v','error','-i',str(tmp),'-ac','1','-f','s16le','-'], capture_output=True).stdout
+            j = abs(int.from_bytes(x[-2:], 'little', signed=True) - int.from_bytes(x[:2], 'little', signed=True))
+            if best is None or j < best[0]:
+                if best: best[1].unlink()
+                best = (j, tmp)
+            else: tmp.unlink()
+        shutil.move(best[1], f)
     else:
         d = min(1.5, L*0.3) if n.startswith('stinger_') else 4.5
         subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(src),'-af',f'afade=t=out:st={L-d}:d={d}','-ac','2','-ar','44100','-b:a',B,str(f)])
