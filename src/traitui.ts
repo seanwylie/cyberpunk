@@ -4,6 +4,7 @@ import { TRAIT_BY_ID, FAMILY_NAME, TRAIT_CFG, describeEffect, type Family } from
 import { traitsOf, refreshOffer, chooseTrait, unlockedTier, lean } from './traitstate';
 import { traitPrior } from './traithooks';
 import { persist } from './state';
+import { rankOffer } from './traitrank';
 type UIx=any;
 const esc=(s:string)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
 export const TS={ confirm:'' as string, msg:'' };
@@ -29,6 +30,7 @@ export function fixerTraitBlock(ui:UIx):string{ const g=ui.g, s=g.save, T=traits
   return `<div class="trfix">${chips?`<div class="trrow"><b>Traits</b> ${chips}</div>`:''}${line?`<div class="mut trrecog">“${esc(line)}”</div>`:''}${tier?`<button class="btn primary" data-act="tr-open">${tier===1?'Specialize':'Specialize II'}</button>`:''}</div>`; }
 export function traitsHtml(ui:UIx):string{ const g=ui.g, s=g.save, T=traitsOf(s); const tier=unlockedTier(s);
   if(tier&&!T.offer) refreshOffer(s,traitPrior(g));
+  if(tier&&T.offer&&T.offer.src==='rules') rankOffer(s,traitPrior(g),ui.beats?.endpoint).then(r=>{ if(r==='ai'&&ui.modal==='traits') ui.render(); });
   const have=[T.l10,T.l20].filter(Boolean).map(p=>TRAIT_BY_ID[p!.id]).filter(Boolean);
   let h=`<div class="trbody">`;
   if(have.length) h+=`<div class="trhave">${have.map(t=>`<div class="trcard on"><b>${esc(t.name)}</b><small>Level ${t.tier===1?10:20} · permanent</small><ul>${t.effects.map(e=>`<li>${esc(describeEffect(e))}</li>`).join('')}</ul></div>`).join('')}</div>`;

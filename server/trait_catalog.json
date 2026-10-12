@@ -1,0 +1,342 @@
+{
+ "generatedBy": "tools/gen_catalog.mjs",
+ "traits": {
+  "netrunner": {
+   "name": "Netrunner",
+   "tier": 1,
+   "fams": [
+    "hack"
+   ],
+   "parent": [],
+   "effects": [
+    "+10% damage with hacking abilities",
+    "10% faster cooldowns on hacking abilities"
+   ],
+   "blurb": "You get into systems before you get into fights."
+  },
+  "bruiser": {
+   "name": "Bruiser",
+   "tier": 1,
+   "fams": [
+    "brute"
+   ],
+   "parent": [],
+   "effects": [
+    "+10% melee basic attack damage",
+    "+8% damage with direct combat abilities",
+    "+6% max HP"
+   ],
+   "blurb": "Close the distance. Stay there."
+  },
+  "gunslinger": {
+   "name": "Gunslinger",
+   "tier": 1,
+   "fams": [
+    "gun"
+   ],
+   "parent": [],
+   "effects": [
+    "+10% ranged basic attack damage",
+    "+8% damage with ranged abilities"
+   ],
+   "blurb": "Range is armour you never have to repair."
+  },
+  "ghost": {
+   "name": "Ghost",
+   "tier": 1,
+   "fams": [
+    "ghost"
+   ],
+   "parent": [],
+   "effects": [
+    "+20% duration on stealth & evasion effects (stuns, cloaks, summons)",
+    "15% faster dodge recovery",
+    "+4% move speed"
+   ],
+   "blurb": "Nobody remembers seeing you, which is the point."
+  },
+  "tinker": {
+   "name": "Drone Tinker",
+   "tier": 1,
+   "fams": [
+    "tech"
+   ],
+   "parent": [],
+   "effects": [
+    "+20% duration on drones & tech effects (stuns, cloaks, summons)",
+    "+8% damage with drones & tech abilities"
+   ],
+   "blurb": "Your best work fights for you."
+  },
+  "breacher": {
+   "name": "Breacher",
+   "tier": 1,
+   "fams": [
+    "hack",
+    "brute"
+   ],
+   "parent": [],
+   "effects": [
+    "7% faster cooldowns on hacking abilities",
+    "+7% melee basic attack damage",
+    "+4% max HP"
+   ],
+   "blurb": "Crack the lock, then crack the guard."
+  },
+  "overwatch": {
+   "name": "Overwatch",
+   "tier": 1,
+   "fams": [
+    "gun",
+    "tech"
+   ],
+   "parent": [],
+   "effects": [
+    "+7% ranged basic attack damage",
+    "+12% duration on drones & tech effects (stuns, cloaks, summons)"
+   ],
+   "blurb": "Turrets on the left, you on the right."
+  },
+  "phantom": {
+   "name": "Phantom Blade",
+   "tier": 1,
+   "fams": [
+    "ghost",
+    "brute"
+   ],
+   "parent": [],
+   "effects": [
+    "+7% melee basic attack damage",
+    "+12% duration on stealth & evasion effects (stuns, cloaks, summons)",
+    "8% faster dodge recovery"
+   ],
+   "blurb": "In, out, gone."
+  },
+  "glitch": {
+   "name": "Glitch",
+   "tier": 1,
+   "fams": [
+    "hack",
+    "ghost"
+   ],
+   "parent": [],
+   "effects": [
+    "+7% damage with hacking abilities",
+    "+12% duration on stealth & evasion effects (stuns, cloaks, summons)"
+   ],
+   "blurb": "The cameras see static where you stood."
+  },
+  "jackofall": {
+   "name": "Freelancer",
+   "tier": 1,
+   "fams": [
+    "hack",
+    "brute",
+    "gun",
+    "ghost",
+    "tech"
+   ],
+   "parent": [],
+   "effects": [
+    "+5% basic attack damage",
+    "+5% max HP",
+    "+3% move speed"
+   ],
+   "blurb": "No speciality is still a speciality."
+  },
+  "rootkit": {
+   "name": "Rootkit",
+   "tier": 2,
+   "fams": [
+    "hack"
+   ],
+   "parent": [
+    "netrunner",
+    "glitch",
+    "breacher"
+   ],
+   "effects": [
+    "+20% duration on hacking effects (stuns, cloaks, summons)",
+    "15% less heat from hacking abilities"
+   ],
+   "blurb": "Every system you touch stays a little bit yours."
+  },
+  "icebreaker": {
+   "name": "Icebreaker",
+   "tier": 2,
+   "fams": [
+    "hack",
+    "brute"
+   ],
+   "parent": [
+    "netrunner",
+    "breacher"
+   ],
+   "effects": [
+    "+10% damage with hacking abilities",
+    "+4% max HP"
+   ],
+   "blurb": "Overload first, ask later."
+  },
+  "juggernaut": {
+   "name": "Juggernaut",
+   "tier": 2,
+   "fams": [
+    "brute"
+   ],
+   "parent": [
+    "bruiser",
+    "breacher",
+    "phantom"
+   ],
+   "effects": [
+    "+6% max HP",
+    "15% less heat from direct combat abilities"
+   ],
+   "blurb": "Stops for nothing that hits it."
+  },
+  "berserker": {
+   "name": "Berserker",
+   "tier": 2,
+   "fams": [
+    "brute"
+   ],
+   "parent": [
+    "bruiser",
+    "phantom"
+   ],
+   "effects": [
+    "+5% melee basic attack damage",
+    "10% faster cooldowns on direct combat abilities"
+   ],
+   "blurb": "Faster, louder, closer."
+  },
+  "deadeye": {
+   "name": "Deadeye",
+   "tier": 2,
+   "fams": [
+    "gun"
+   ],
+   "parent": [
+    "gunslinger",
+    "overwatch"
+   ],
+   "effects": [
+    "+10% damage with ranged abilities",
+    "8% faster cooldowns on ranged abilities"
+   ],
+   "blurb": "One shot, one invoice."
+  },
+  "runandgun": {
+   "name": "Run and Gun",
+   "tier": 2,
+   "fams": [
+    "gun",
+    "ghost"
+   ],
+   "parent": [
+    "gunslinger",
+    "ghost"
+   ],
+   "effects": [
+    "+5% ranged basic attack damage",
+    "+4% move speed",
+    "10% faster dodge recovery"
+   ],
+   "blurb": "Never be where the return fire lands."
+  },
+  "shade": {
+   "name": "Shade",
+   "tier": 2,
+   "fams": [
+    "ghost"
+   ],
+   "parent": [
+    "ghost",
+    "phantom",
+    "glitch"
+   ],
+   "effects": [
+    "12% faster cooldowns on stealth & evasion abilities",
+    "+4% move speed"
+   ],
+   "blurb": "Longer gone, harder to find."
+  },
+  "swarmlord": {
+   "name": "Swarm Lord",
+   "tier": 2,
+   "fams": [
+    "tech"
+   ],
+   "parent": [
+    "tinker",
+    "overwatch"
+   ],
+   "effects": [
+    "+10% duration on drones & tech effects (stuns, cloaks, summons)",
+    "12% faster cooldowns on drones & tech abilities"
+   ],
+   "blurb": "More of them, for longer."
+  },
+  "fieldmech": {
+   "name": "Field Mechanic",
+   "tier": 2,
+   "fams": [
+    "tech",
+    "brute"
+   ],
+   "parent": [
+    "tinker",
+    "overwatch"
+   ],
+   "effects": [
+    "+5% max HP",
+    "15% less heat from drones & tech abilities"
+   ],
+   "blurb": "Keeps the drones and the body running."
+  },
+  "journeyman": {
+   "name": "Journeyman",
+   "tier": 2,
+   "fams": [
+    "hack",
+    "brute",
+    "gun",
+    "ghost",
+    "tech"
+   ],
+   "parent": [
+    "jackofall"
+   ],
+   "effects": [
+    "6% faster cooldowns on all abilities",
+    "+4% max HP"
+   ],
+   "blurb": "Every tool, a little sharper."
+  },
+  "adaptable": {
+   "name": "Adaptable",
+   "tier": 2,
+   "fams": [
+    "hack",
+    "brute",
+    "gun",
+    "ghost",
+    "tech"
+   ],
+   "parent": [
+    "jackofall",
+    "glitch",
+    "breacher",
+    "phantom",
+    "overwatch"
+   ],
+   "effects": [
+    "+5% basic attack damage",
+    "10% less heat from all abilities",
+    "8% faster dodge recovery"
+   ],
+   "blurb": "Whatever the job needs, again."
+  }
+ }
+}

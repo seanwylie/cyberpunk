@@ -5,6 +5,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { createLimiter, memoryStore, limitConfig } from './story_limits.mjs';
+import { createTraitRanker } from './trait_rank.mjs';
 
 export const CATALOG = JSON.parse(fs.readFileSync(new URL('./story_catalog.json', import.meta.url), 'utf8'));
 
@@ -76,6 +77,8 @@ export function promptFacts(s, recent = []) {
 /** Cache key: hash of the normalised summary (level bucketed by 5), per session so repeat-avoidance stays meaningful. */
 export function loadoutHash(s) { const { session, variant, player, ...rest } = s; return crypto.createHash('sha256').update(JSON.stringify({ ...rest, level: Math.floor(s.level / 5) })).digest('hex').slice(0, 24); }
 /** Output filter. Returns cleaned text or null. */
+/** Trait description lines: same banned-content rules as story lines (shorter, one sentence). */
+export function cleanTraitLine(t) { const s = cleanOutput(t); return s && s.length <= 160 ? s : null; }
 export function cleanOutput(t) {
   if (typeof t !== 'string') return null;
   let s = t.replace(/\s+/g, ' ').trim().replace(/^["“]+|["”]+$/g, '').trim();
@@ -108,11 +111,11 @@ export function createStoryService(opts = {}) {
   const model = () => env.OPENAI_STORY_MODEL || 'gpt-5.4-nano';
   const base = () => (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
   const dailyCap = () => { const n = parseInt(env.STORY_DAILY_CAP || '', 10); return Number.isFinite(n) && n >= 0 ? n : LIMITS.dailyCap; };
-  async function callOpenAI(facts) {
+  async function callOpenAI(facts, system = SYSTEM_PROMPT, raw = false) {
     const key = env.OPENAI_API_KEY; if (!key) return { error: 'no_key' };
     const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), opts.timeoutMs || LIMITS.timeoutMs);
     try {
-      const body = { model: model(), messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: JSON.stringify(facts) }], max_completion_tokens: maxTokens(), reasoning_effort: env.OPENAI_STORY_REASONING || 'low' };
+      const body = { model: model(), messages: [{ role: 'system', content: system }, { role: 'user', content: raw ? facts : JSON.stringify(facts) }], max_completion_tokens: maxTokens(), reasoning_effort: env.OPENAI_STORY_REASONING || 'low' };
       if (!/^(gpt-5|o\d)/.test(model())) { delete body.reasoning_effort; body.max_completion_tokens = Math.min(200, maxTokens()); body.temperature = 0.9; }
       const r = await fetchFn(base() + '/chat/completions', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) });
       if (!r.ok) return { error: 'http_' + r.status };
@@ -120,7 +123,9 @@ export function createStoryService(opts = {}) {
     } catch (e) { return { error: e?.name === 'AbortError' ? 'timeout' : 'network' }; } finally { clearTimeout(to); }
   }
   /** raw: parsed body. meta: {ip}. Returns {status, json}. json: {ok:true,text,model,cached} or {ok:false,reason}. Never includes key material. */
+  const traitRank = createTraitRanker({ limiter, clean: (s) => cleanTraitLine(s), call: async (system, user) => { const day = new Date(nowFn()).toISOString().slice(0, 10); if (daily.day !== day) { daily.day = day; daily.n = 0; } if (daily.n >= dailyCap()) return { error: 'daily_cap' }; daily.n++; return callOpenAI(user, system, true); } });
   async function handle(raw, meta = {}) {
+    if (raw && typeof raw === 'object' && raw.kind === 'trait_rank') return traitRank(raw, meta); // trait offers (server/trait_rank.mjs): same limits + budget
     const v = sanitizeSummary(raw); if (!v.ok) return { status: 400, json: { ok: false, reason: 'bad_request:' + v.why } };
     const s = v.summary, now = nowFn(), ip = String(meta.ip || 'unknown');
     const ck = s.session + ':' + s.variant + ':' + loadoutHash(s) + ':' + s.trigger + ':' + (s.contract || s.newMfr || '');
