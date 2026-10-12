@@ -41,7 +41,7 @@ const R = await ev(async () => {
 for (const p of R.per) ok(p.sig && p.anim > 10 && p.idleParts === 0, `orange ${p.id}: themed signature, gentle idle motion (${p.anim} px over 0.9 s), no idle particle spam (${p.idleParts})`);
 for (const p of R.per) ok(p.flo > 30 && p.settle < 40, `orange ${p.id}: flourish on trigger (${p.flo} px at the snap) and settles back to idle (${p.settle} px)`);
 ok(R.curve[0].k < .3 && R.curve[0].s < 0 && R.curve[2].k > .9 && R.curve[4].k === 0, 'flourish timing: anticipation (pull back) -> snap -> settle ' + JSON.stringify(R.curve.map(c => [c.k.toFixed(2), c.s.toFixed(2)])));
-ok(R.feet < 60, `no generic floor ring / pillar under the feet (${R.feet} px)`);
+ok(R.feet < 400, `only a subtle painted ground mark under the feet, no generic floor ring / pillar (${R.feet} px of 1920 in the foot band, limit 400)`); // Sean asked for a subtle rarity ground mark (two brush strokes); a full ring/pillar would fill most of the band
 for (const p of R.fxOnly) ok(p.d > 10, `orange ${p.id}: rarity FX layer alone animates gently (${p.d} px over 1.5 s)`);
 ok(R.purpAcc.every(x => x.acc), `every purple skin (${R.nPurple}) has an accessory silhouette`);
 ok(R.oe.warm > 1.5 * R.pe.warm && R.oe.e > 1.3 * R.pe.e, `orange set clearly above purple: energy ${(R.oe.e / 1e6).toFixed(1)}M vs ${(R.pe.e / 1e6).toFixed(1)}M, vivid px ${R.oe.warm} vs ${R.pe.warm}`);

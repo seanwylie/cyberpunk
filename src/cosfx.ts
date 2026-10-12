@@ -17,9 +17,10 @@ export const PALETTES: Record<string, [string, string, string, string]> = {
   shimmer: ['#1a0d1e', '#c23fa0', '#ff9be0', '#b48cff'],   // shimmer pink / purple
   chem: ['#0c1a10', '#3fb04a', '#c8ff6a', '#e8ffb0'],      // chem-punk green
   forge: ['#1a0e08', '#d9631a', '#ffc070', '#fff0c8'],     // furnace gold-orange
+  storm: ['#0c0a1e', '#6a5ad8', '#8fe0ff', '#e6d4ff'],     // season 1 signal storm: violet / static cyan
 };
 /** Per-orange-skin signature (theme + palette). Every orange cosmetic must have one (tests/rarity_fx.mjs). */
-export const SIGNATURE: Record<string, { name: string; fx: string; pal: keyof typeof PALETTES }> = {
+export const SIGNATURE: Record<string, { name: string; fx: string; pal: keyof typeof PALETTES; n?: number }> = {
   hair_flame: { name: 'Painted flame locks', fx: 'flame', pal: 'forge' },
   eyes_sun: { name: 'Furnace gaze streaks', fx: 'gaze', pal: 'forge' },
   torso_nova: { name: 'Heartstar inlay', fx: 'veins', pal: 'forge' },
@@ -30,6 +31,8 @@ export const SIGNATURE: Record<string, { name: string; fx: string; pal: keyof ty
   pm_skin_plasma: { name: 'Chem-vein dermis', fx: 'veins', pal: 'chem' },
   pm_aura_swarm: { name: 'Hextech orbit shards', fx: 'swarm', pal: 'hextech' },
   pm_back_chrome: { name: 'Hextech wing panels', fx: 'wings', pal: 'hextech' },
+  back_s1_halo: { name: 'Storm halo wings', fx: 'wings', pal: 'storm' },
+  aura_s1_bloom: { name: 'Static bloom corona', fx: 'swarm', pal: 'storm', n: 4 }, // 4 shards: a sparser corona that reads as stilled static (and keeps the town draw-call budget)
 };
 /** Purple accessory silhouette per slot (one distinct shape per skin slot). */
 export const ACCESSORY: Record<string, string> = { hair: 'crest', head: 'tickring', eyes: 'visor', torso: 'fins', arms: 'bracers', hands: 'orbs', legs: 'anklefins', back: 'shards', skin: 'outline', tattoo: 'glyph', aura: 'mote', trail: 'wake' };
@@ -102,6 +105,7 @@ export function drawRarityFx(k: FxCtx, list: CosDef[], phase: 'back' | 'front') 
   if (o.flo === -1) { o.flo = k.t; if (tier === 'orange' && (id === 'me' || id === 'dr') && k.t - lastFloSound > FLOURISH_SOUND_GAP) { lastFloSound = k.t; onSound?.('cos_flourish_orange', id); } }
   const fc = red ? { k: 0, s: 0 } : flourishCurve(k.t - o.flo);
   c.save();
+  readable(k, list, tier, phase, t);
   if (phase === 'back') {
     const dt = Math.max(0, Math.min(.1, k.t - o.t)); o.t = k.t; const dx = x - o.ax, dy = y - o.ay; o.ax = x; o.ay = y;
     if (tier === 'orange') {
@@ -124,6 +128,34 @@ export function drawRarityFx(k: FxCtx, list: CosDef[], phase: 'back' | 'front') 
   c.restore();
 }
 
+// ------------------------------------------------------------------ in-world readability (docs/RARITY_FX.md "Readability")
+// At town zoom a character is ~40 px tall, so inlays alone vanish. Three restrained, static-shaped layers make the tier read at a glance:
+//  1. ground mark: a painted brush crescent under the feet (two tapered strokes), tier palette; orange also a faint warm pool.
+//  2. silhouette: orange = flat mantle plates on both shoulders + a 3-shard crest; purple = one angled pauldron plate + a thin halo tick.
+//  3. palette rim: an ink-backed rim line down the lit side (orange both sides) so the outline separates from the ground.
+// Sizes have a pixel floor (never thinner than ~1.5 px) so they survive the small in-world scale; all batched paths, no particles.
+function readable(k: FxCtx, list: CosDef[], tier: 'orange' | 'purple', phase: 'back' | 'front', t: number) {
+  const { c, x, y, u } = k; const O = tier === 'orange';
+  const P: string[] = O ? PALETTES[SIGNATURE[list.find(d => d.rarity === 'orange')!.id]?.pal || 'forge'] : ['#140a20', '#7a4ad0', '#efe4ff', PURPLE];
+  const px = (v: number) => Math.max(v * u, 1.5); c.lineCap = 'round';
+  // batched paths: every layer below is ONE path, so a character adds ~25 canvas ops (perf_gate draw-call budget)
+  const poly = (pts: number[][]) => { c.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) c.lineTo(pts[i][0], pts[i][1]); c.closePath(); };
+  if (phase === 'back') {
+    // 1. ground mark: two open brush arcs on the iso floor (front + back halves, gaps at the sides), palette light
+    c.beginPath(); c.ellipse(x, y + .6 * u, 9 * u, 3.2 * u, 0, .35, Math.PI - .35); c.moveTo(x - 9 * u * Math.cos(.5), y + .6 * u - 3.2 * u * Math.sin(.5)); c.ellipse(x, y + .6 * u, 9 * u, 3.2 * u, 0, Math.PI + .5, -.5);
+    c.globalAlpha = O ? .75 : .6; c.strokeStyle = O ? P[2] : P[3]; c.lineWidth = px(O ? 1.1 : .8); c.stroke();
+    if (!O) { c.beginPath(); c.ellipse(x, y - 49 * u, 5.5 * u, 1.7 * u, 0, Math.PI * 1.05, Math.PI * 1.95); c.globalAlpha = .8; c.strokeStyle = P[0]; c.lineWidth = px(1.4); c.stroke(); c.strokeStyle = P[3]; c.lineWidth = px(.8); c.stroke(); }
+    c.globalAlpha = 1; return;
+  }
+  // 2. silhouette pieces: shoulder mantle plate(s) (+ orange crest of 3 shards), one fill + one ink stroke
+  c.beginPath(); for (const s of O ? [-1, 1] : [-1]) poly([[x + s * 4 * u, y - 37.5 * u], [x + s * 11.5 * u, y - 38.5 * u], [x + s * 12.5 * u, y - 33.5 * u], [x + s * 8 * u, y - 31.5 * u]]);
+  if (O && !list.some(d => d.rarity === 'orange' && (d.slot === 'head' || d.slot === 'hair'))) for (const [ox, h, w] of [[0, 5.5, 1.4], [-2.6, 3.8, 1.1], [2.6, 3.8, 1.1]]) poly([[x + ox * u, y - (47 + h * (1 + .12 * Math.sin(t * 1.4))) * u], [x + (ox + w) * u, y - 47 * u], [x + ox * u, y - 45.5 * u], [x + (ox - w) * u, y - 47 * u]]);
+  c.globalAlpha = .95; c.fillStyle = P[1]; c.fill(); c.strokeStyle = P[0]; c.lineWidth = px(.5); c.stroke();
+  // 3. palette rim down the lit side(s) + the plate's top edge highlight, one light stroke (the plate already carries the ink outline)
+  c.beginPath(); for (const s of O ? [-1, 1] : [-1]) { c.moveTo(x + s * 4.5 * u, y - 37.4 * u); c.lineTo(x + s * 11.3 * u, y - 38.3 * u); c.moveTo(x + s * 9 * u, y - 31 * u); c.quadraticCurveTo(x + s * 10.5 * u, y - 20 * u, x + s * 7 * u, y - 9 * u); }
+  c.globalAlpha = O ? .9 : .8; c.strokeStyle = O ? P[2] : P[3]; c.lineWidth = px(.7); c.stroke();
+  c.globalAlpha = 1;
+}
 // ------------------------------------------------------------------ orange signatures (integrated on the model, themed palettes)
 function signature(k: FxCtx, d: CosDef, phase: 'back' | 'front', t: number, fc: { k: number; s: number }) {
   const { c, x, y, u } = k; const sg = SIGNATURE[d.id]; if (!sg) return; const P = PALETTES[sg.pal]; const ink = P[0], lw = Math.max(1, .55 * u);
@@ -146,7 +178,7 @@ function signature(k: FxCtx, d: CosDef, phase: 'back' | 'front', t: number, fc: 
       for (const [ix, iy, s] of [[0, -31, 1.3], [-7, -34, .9], [7, -34, .9]]) shard(c, x + ix * u, y + iy * u, 2.2 * u * s * amp, 1.4 * u * s, 0, P, .95);
       const ph = (t * .25) % 1.6; if (ph < 1) { const sy = y - (8 + ph * 36) * u; stroke(c, x - 10 * u, sy + 3 * u, x, sy - 1 * u, x + 10 * u, sy + 2 * u, 2.2 * u, P[2], .35 * Math.sin(ph * Math.PI)); } } break;
     case 'swarm': { // hextech corona: 6 crystal shards on a slow ellipse, depth sorted, gold rim on the near ones
-      const n = 6; for (let i = 0; i < n; i++) { const a = t * .45 + i / n * Math.PI * 2; const z = Math.sin(a); if ((z > 0) !== (phase === 'front')) continue; const r = (13 + fc.k * 5) * u;
+      const n = sg.n || 6; for (let i = 0; i < n; i++) { const a = t * .45 + i / n * Math.PI * 2; const z = Math.sin(a); if ((z > 0) !== (phase === 'front')) continue; const r = (13 + fc.k * 5) * u;
         shard(c, x + Math.cos(a) * r, y - 24 * u + z * 3.5 * u + Math.sin(t + i) * 1.2 * u, (3 + z) * u, 1.6 * u, Math.cos(a) * .4, z > 0 ? [P[0], P[1], P[3], P[3]] : P, .95); } } break;
     case 'chrome': if (phase === 'front') { // hextech seam: gold seam inlay down the cowl + two small crystal studs
       const cy = y - 46 * u; shape(c, [[x - .8 * u, cy - 4 * u], [x + .8 * u, cy - 4 * u], [x + .5 * u, cy + 5 * u], [x - .5 * u, cy + 5 * u]], P[3], ink, lw * .8, .9);
