@@ -11,7 +11,7 @@ Headless bot harness + tuning table + regression test. All numbers below come fr
 - Test: `tests/balance.mjs` (`npm run test:balance`, ~2 min), loose bounds: par clear >= 50% per tier and 60-98% overall, tier III-IV take longer than base/I, bot never stuck, no hit > 50% of a par player's HP, boss TTK 8-360 s, starter kit cannot clear III/IV, orange clears III/IV flawlessly, five mob duels won in < 59 s with no hit > 70.
 
 ## Findings (before)
-- **Tier curve was inverted/noisy.** Par clear: tier I 63%, II 93%, III 96%, IV 100%. Tailings Pit (pitboss) and Scrap Gantry (gantrymother) were near-impossible for the tier I kit (0% / 50%, 4 deaths) while Slag Ovens and Substation were trivial. Reagent Vault (Apothecary) and Warranty Vault (Warrantor) were the tier II/III outliers (50% / 67%); tier III purple was otherwise trivial (0.2 deaths).
+- **Tier curve was inverted/noisy.** Par clear: tier I 63%, II 93%, III 96%, IV 100%. Tailings Pit (pitboss) and Scrap Gantry (gantrymother) were near-impossible for the tier I kit (0% / 50%, 4 deaths) while Slag Ovens and Substation were trivial. Reagent Vault (Formulator) and Warranty Vault (Warrantor) were the tier II/III outliers (50% / 67%); tier III purple was otherwise trivial (0.2 deaths).
 - **No one-shots.** Largest hits: Tag Carrier slam 65, Pack Mule big detonation 71 (50 with armour), Rebar Crusher slam 60, Bulwark Tread slam 49, Shift Stalker riposte 38, all well under a par player's 200-290 HP (the starter kit, ~150 HP, loses 30-45% to one).
 - **Biggest damage sources** per run: Bulwark Tread slam 48, Pack Mule detonation 19, Shift Stalker riposte 16, Rebar Crusher slam 15, Formulator cleave 13.
 - **Stalemate mobs (60 s duel timeouts):** Relay Node and Triage/Mender healers (3 healers/shielders heal each other: ward 30% of max HP per cast, mend 30%), Torpor Bloom and Purge Beacon (hex slow 3.5 s at x0.65 every 6 s keeps the player pinned), Sweeper Mk II (340 HP + shield + 57 HP lost per fight). Reclaim Walker (sniper that keeps distance) times out for every kit, including orange; partly a bot limitation (it never corners ranged mobs).
@@ -34,7 +34,7 @@ Headless bot harness + tuning table + regression test. All numbers below come fr
 | Sweeper Mk II HP, Reclaim Walker HP | x1 | x0.8, x0.85 | duel timeouts |
 | Bosses | x1 | see table in the file | par clear rate per level toward 70-90% |
 
-Boss multipliers (HP / damage): overseer 1.35/1.3, teague 1.05/1.05, surgeon 1.25/1, stockmgr 1.1/1; tier I: pitboss 0.85/0.65, gantrymother 1/0.85; tier II: apothecary 1/0.8, cryo 1.5/1.3, bellfounder 1.2/1, auditor 1.25/1.15, mirrorpt 1.1/1.05, clearance 1.25/1.25, tidewarden 1.05/1; tier III: resonance 2.2/2, liquidator 1.7/1.6, courier 2.2/2, dispatcher 2.2/2.2, warrantor 1/1.25, rattle 2.2/2, breaker 2.2/2, widow 1.8/2.2; tier IV: recall 1.1/1.1. The four original bosses are applied in `config.ts`, batch-1 bosses in `batch1_enemies.ts`, mobs in `batch2_enemies.ts`.
+Boss multipliers (HP / damage): overseer 1.35/1.3, teague 1.05/1.05, surgeon 1.25/1, stockmgr 1.1/1; tier I: pitboss 0.85/0.65, gantrymother 1/0.85; tier II: Formulator 1/0.8, cryo 1.5/1.3, bellfounder 1.2/1, auditor 1.25/1.15, mirrorpt 1.1/1.05, clearance 1.25/1.25, tidewarden 1.05/1; tier III: resonance 2.2/2, liquidator 1.7/1.6, courier 2.2/2, dispatcher 2.2/2.2, warrantor 1/1.25, rattle 2.2/2, breaker 2.2/2, widow 1.8/2.2; tier IV: recall 1.1/1.1. The four original bosses are applied in `config.ts`, batch-1 bosses in `batch1_enemies.ts`, mobs in `batch2_enemies.ts`.
 
 ## Results (before -> after)
 ### Par-kit results per level (before -> after)
@@ -96,7 +96,7 @@ Boss multipliers (HP / damage): overseer 1.35/1.3, teague 1.05/1.05, surgeon 1.2
 | shiftstalker:riposte | 15.5 | 12.6 |
 | rebarcrusher:slam | 14.7 | 10.7 |
 | mortartread:mortartread.0 | 14.1 | 15.4 |
-| apothecary:cleave | 12.6 | 7.3 |
+| Formulator:cleave | 12.6 | 7.3 |
 | surgeon:chainsweep | 12.4 | 16.1 |
 | coalheaver:slam | 12.2 | 11.6 |
 | loader:cleave | 10.7 | 10.7 |
@@ -195,7 +195,7 @@ casts per run: control 32.5, sweep 28.0, bladeburst 26.0, reposition 22.3, reviv
   tier 3: ability share 65.9%, clear 89.6%, casts/run 121.6, time 288s
   tier 4: ability share 68.1%, clear 83.3%, casts/run 214.5, time 678s
 ```
-What moved the numbers: auto damage x0.45 and heat x2.4; Sweep 34->85, Burst 30->90, Pulse 22->55, Reposition 25->50, Control now deals 45 overload damage to everything it stuns; Revive got a solo effect (it was a dead slot in the T1 par kit); cooldowns 3-5s. To keep clears in band, enemy HP is multiplied by dungeon tier (`BAL.g.tier`: T0-T2 x1.75, T3 x1.4, T4 x1.25) and several boss multipliers were retuned (Overseer, Bellfounder, Auditor, Mirror P.T., Apothecary, Clearance, Courier, Recall). The earlier seeds of this pass are kept in `tools/balance/out/abil_a*.json`.
+What moved the numbers: auto damage x0.45 and heat x2.4; Sweep 34->85, Burst 30->90, Pulse 22->55, Reposition 25->50, Control now deals 45 overload damage to everything it stuns; Revive got a solo effect (it was a dead slot in the T1 par kit); cooldowns 3-5s. To keep clears in band, enemy HP is multiplied by dungeon tier (`BAL.g.tier`: T0-T2 x1.75, T3 x1.4, T4 x1.25) and several boss multipliers were retuned (Overseer, Bellfounder, Auditor, Mirror P.T., Formulator, Clearance, Courier, Recall). The earlier seeds of this pass are kept in `tools/balance/out/abil_a*.json`.
 
 Tuning notes: the bot found that Control could turn the Overseer's pylons (boss then immune for ever); pylons and static enemies now only get stunned. Outliers left alone: Breaker Yard and Drained Reservoir swing 50-70% on 6 seeds (high variance, boss tele-chain), Recall Yard (T4) ~83%.
 
@@ -316,7 +316,7 @@ Per boss (after; tank clear column is 2 seeds):
 | cold_archive | 2 | cryo | 100% | 100% | 0.0 | 135 | cryo:riposte | 0% |
 | audit_tower | 2 | auditor | 100% | 100% | 0.0 | 125 | auditor:cleave | 0% |
 | aesthetic_ward | 2 | mirrorpt | 75% | 50% | 1.5 | 252 | mirrorpt:cleave | 0% |
-| pharmacy_vault | 2 | apothecary | 50% | 50% | 1.0 | 246 | apothecary:cleave | 0% |
+| pharmacy_vault | 2 | Formulator | 50% | 50% | 1.0 | 246 | Formulator:cleave | 0% |
 | anechoic_lab | 3 | resonance | 100% | 75% | 0.8 | 171 | resonance:resonance.1 | 0% |
 | outlet_mall | 2 | clearance | 75% | 50% | 1.0 | 189 | clearance:slam | 0% |
 | liquidation_floor | 3 | liquidator | 75% | 75% | 0.8 | 121 | liquidator:rsweep | 0% |
