@@ -26,6 +26,9 @@ export function initNet(g: Game, rend: Renderer) {
   };
   const forget = () => { try { localStorage.removeItem('wv_server'); } catch {} net?.close(); net = null; if (sess?.active) sess.exit('disconnected', true); ui.net = null; ui.url = ''; ui.render(); };
   ui = new PartyUI(g, url, connect, forget);
+  // legendary announcement (docs/LOOT_ECONOMY.md): opt-out in Settings, one line, rate-limited; party chat in a party, town chat when solo online
+  let lastAnn = 0; window.addEventListener('wv-prestige', (ev: any) => { const p = ev.detail || {}; const n = net; if (!n || n.state !== 'online' || (g.save.settings as any).announceDrops === false) return; if (Date.now() - lastAnn < 60000) return; lastAnn = Date.now();
+    n.chat((p.kind === 'seasonal' ? 'found a season exclusive: ' : 'found a legendary: ') + String(p.name || '').slice(0, 60), n.party ? 'party' : 'town'); });
   (window as any).__net = { get client() { return net; }, get session() { return sess; }, ui };
   if (url && invite) connect(url);
   return ui;

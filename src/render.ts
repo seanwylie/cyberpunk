@@ -1,5 +1,6 @@
 import { drawGearFx, topTier, flourish } from './cosfx';
 import { gearFxOf } from './gearfx';
+import { drawPrestigeBeam, isPrestigeDrop } from './dropbeam';
 import { drawWalker } from './townfolk';
 import { drawAbx } from './abx_render';
 import { Game, En, type Fx } from './sim';
@@ -186,13 +187,15 @@ export class Renderer {
     // budget: full animation for the nearest/most-valuable few; Reduced FX = static trims; far = icon only
     let fx:0|1|2=2; if(st.reducedFx) fx=1; else if(pd>9||this.lootBudget>=14&&rk<3||this.lootBudget>=22) fx=0; if(fx===2&&rk>=1) this.lootBudget++;
     if(a<-80||a>this.w+80||b<-120||b>this.h+80) return;
+    { const pk=dim?null:isPrestigeDrop(d as any,id=>ITEM_BY_ID[id]?.rarity); if(pk){ drawPrestigeBeam(this.ctx,a,b,s,t,pk,age,!!st.reducedFx,d.id*.37); this.beamsDrawn++; } }
     drawLoot(this.ctx,a,b,s,t,spec,d.id*7919,{age,reduced:st.reducedFx,fx,dim});
     if(d.marker){ const c=this.ctx; c.fillStyle='#d8d2bf'; c.beginPath(); c.moveTo(a,b-34*s); c.lineTo(a-5*s,b-42*s); c.lineTo(a+5*s,b-42*s); c.fill(); }
     const mode=st.lootLabels||'near'; if(mode==='off'||dim||age<.5) return;
     const near=pd<(rk>=3?7:3.4); const hov=Math.hypot(a-this.mouseX,(b-14*s)-this.mouseY)<22*s; if(mode==='all'||near||hov) this.lootLabels.push({x:a,y:b-(34+(rk===4?12:0))*s,spec,strong:hov||pd<2.2,rk});
   }
   /** after the world pass: pickup fly-ins, then de-overlapped labels */
-  flushLoot(){ this.drawIfaceLabels(); const g=this.g, c=this.ctx; const s=this.TW/64; const t=g.time; const px=this.sx(g.px,g.py), py=this.sy(g.px,g.py); this.lootBudget=0;
+  /** prestige beams drawn this frame (tests read lastBeams) */ beamsDrawn=0; lastBeams=0;
+  flushLoot(){ this.lastBeams=this.beamsDrawn; this.beamsDrawn=0; this.drawIfaceLabels(); const g=this.g, c=this.ctx; const s=this.TW/64; const t=g.time; const px=this.sx(g.px,g.py), py=this.sy(g.px,g.py); this.lootBudget=0;
     for(let i=g.pickFx.length-1;i>=0;i--){ const f=g.pickFx[i]; const p=(t-f.t0)/PICK_T; if(p>1.5||p<0){ g.pickFx.splice(i,1); continue; } const spec=specOf(f as any);
       drawPickup(c,this.sx(f.x,f.y),this.sy(f.x,f.y),px,py,s,p,spec,f.id,!!g.save.settings.reducedFx); }
     const L=this.lootLabels; this.lootLabels=[]; if(!L.length) return; L.sort((p,q)=>p.y-q.y||q.rk-p.rk); const placed:{x0:number;x1:number;y0:number;y1:number}[]=[]; let n=0;

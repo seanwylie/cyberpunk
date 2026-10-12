@@ -40,6 +40,7 @@ export function settingsHtml(ui:UIx):string{
     +row('Minimap','Show the minimap during runs. Press '+key('minimap')+' to toggle it anywhere.',sw('minimap',st.minimap!==false,'Minimap'),{tag:'label',id:'s-minimap'})
     +row('Graphics quality','Auto picks for your device and adapts to keep the frame rate up. High is the full desktop look; Medium and Low trade resolution and effects for speed and battery. Now: '+Q.describe()+'.',seg('quality',st.quality||'auto',[['auto','Auto'],['high','High'],['medium','Medium'],['low','Low']],'Graphics quality'))
     +row('FPS overlay','Show frame rate and render resolution (F3 on desktop).',sw('showfps',!!st.showFps,'FPS overlay'),{tag:'label',id:'s-showfps'})
+    +row('Announce legendaries','When you find an orange or season exclusive, post one short line to your party (or town chat when solo online). Never more than once a minute.',sw('announce',st.announceDrops!==false,'Announce legendaries'),{tag:'label',id:'s-announce'})
     +row('Auto-sell junk','Grey (junk) items are sold for credits the moment you pick them up, so they never fill your bag.',sw('autosell',st.autoSellGrey!==false,'Auto-sell junk'),{tag:'label',id:'s-autosell'})
     +row('Reduced incidental effects','Tones down flashes, shake and ambient particles. Combat telegraphs stay.',sw('reduced',!!st.reducedFx,'Reduced incidental effects'),{tag:'label',id:'s-reduced'});
   else if(tab==='content') c=head('Content','Optional mature content. Off by default; applies only in dungeons, never in town.')
@@ -136,7 +137,7 @@ const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','
 function apply(ui:UIx,k:string,v:any,final=true){ const g=ui.g, s=g.save, st=s.settings;
   switch(k){
     case 'gore': st.gore=v; break; case 'dmgnum': st.damageNumbers=!!v; break; case 'lootlabels': st.lootLabels=v; break; case 'lootmin': st.lootMin=v; break;
-    case 'uisize': st.uiSize=v; applyUiScale(v); break; case 'reduced': st.reducedFx=!!v; document.body.classList.toggle('reducefx',!!v); break; case 'joyfixed': st.joystickFixed=!!v; break; case 'autosell': st.autoSellGrey=!!v; break;
+    case 'uisize': st.uiSize=v; applyUiScale(v); break; case 'reduced': st.reducedFx=!!v; document.body.classList.toggle('reducefx',!!v); break; case 'joyfixed': st.joystickFixed=!!v; break; case 'autosell': st.autoSellGrey=!!v; break; case 'announce': (st as any).announceDrops=!!v; break;
     case 'music': st.music=!!v; ui.audio.setMusicOn(!!v); break;
     case 'vol': st.volume=+v; ui.audio.setVolume(st.volume); if(final) preview(ui); break;
     case 'musicvol': st.musicVol=+v; ui.audio.setMusicVolume(st.musicVol); break;
