@@ -9,4 +9,4 @@
 - **Renamed content:** old saved story lines are rewritten on load (`renameLegacy` in `src/story_beats.ts`), so retired names never show.
 
 ## Test
-`tests/ui_overflow.mjs` opens story, locker, store, vendor, bank, wardrobe, fixer, guild, travel and the HUD at 1280x720 (desktop) and 844x390 (phone, touch) with the longest item names. It fails on any text element that overflows its box horizontally or vertically and is clipped without an ellipsis/line-clamp plus a tooltip. It also checks that an old story entry mentioning "Basin Coke Ovens" renders with the new names. Screenshots: `shots/ui_overflow/<panel>_<desktop|phone>.png`.
+`tests/ui_overflow.mjs` opens story, locker, store, vendor, bank, wardrobe, fixer, guild, travel and the HUD at 1280x720 (desktop) and 844x390 (phone, touch) with the longest item names. It fails on any text element that overflows its box horizontally or vertically and is clipped without an ellipsis/line-clamp plus a tooltip. It also checks that an old story entry that mentions a retired zone name renders with the new names. Screenshots: `shots/ui_overflow/<panel>_<desktop|phone>.png`.
