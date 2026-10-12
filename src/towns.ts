@@ -1,7 +1,7 @@
 // Town registry: which towns exist, how they unlock, and which content each hosts. Pure logic (no DOM).
 import { DUNGEONS } from './content/dungeons';
 import type { Save } from './state';
-import { WORLD, WORLD_BY_ID, UNLOCKS, unlockText, type UnlockPath } from './world';
+import { WORLD, WORLD_BY_ID, STARTER_TOWNS, GATEWAY_TO } from './world';
 /** any WORLD district id (src/world.ts) */
 export type TownId = string;
 export const TOWN_IDS: TownId[] = WORLD.map(t => t.id);
@@ -11,23 +11,25 @@ export const GATED_TIER = 3;
 export const TOWN_INFO: Record<TownId, { name: string; blurb: string; unlock: string; color: string }> = {
   ...Object.fromEntries(WORLD.map(t => [t.id, { name: t.name, blurb: t.blurb, unlock: 'Always open.', color: t.color }])),
   rustline: { name: 'Rustline Market', blurb: 'Tarp stalls and a cramped plaza. Neutral ground where all three manufacturers sell through independents. Tier I and II dungeons.', unlock: 'Always open.', color: '#ffb02e' },
-  harrow: { name: 'Harrow Reach', blurb: 'The Cinderworks: a terraced foundry town built into cooled slag banks under a dead stack. Heavy Works hardware, the Line 7 Retirees\' Guild and the gates to Tier III and IV.', unlock: `Clear any Tier II dungeon or reach level ${HARROW_UNLOCK_LEVEL}.`, color: '#ff6a3a' },
+  harrow: { name: 'Harrow Reach', blurb: 'The Cinderworks: a terraced foundry town built into cooled slag banks under a dead stack. Heavy Works hardware, the Line 7 Retirees\' Guild and the gates to Tier III and IV.', unlock: 'Clear Calloway Bell Foundry (gateway from Rustline).', color: '#ff6a3a' },
 };
 export type Res = { ok: true } | { ok: false; why: string };
 export const townsOf = (s: Save) => (s.towns = s.towns || {});
 /** every town is a safe hub: any level can ride there (aspirational, see docs/WORLD.md). Harrow's old unlock flag is still tracked for story/toasts. */
-export function pathMet(s: Save, p: UnlockPath): boolean { if (p.kind === 'level') return s.level >= p.n; if (p.kind === 'contract') return (s.contracts?.done?.length || 0) >= p.n; if (p.kind === 'rep') return (s.rep?.[p.mfr] || 0) >= p.n;
-  return Object.keys(s.cleared || {}).filter(id => { const d = (DUNGEONS as any)[id]; return d && (d.tier || 1) >= (p.tier || 0) && (!p.mfr || d.mfr === p.mfr); }).length >= p.n; }
-/** per-character transit unlocks: once met they stay unlocked (stored on the save's world state) */
-export const isUnlocked = (s: Save, id: TownId) => { const u = UNLOCKS[id]; if (!WORLD_BY_ID[id]) return false; if (!u || u === 'open') return true; const w: any = ((s as any).world ??= { visited: {}, landmarks: {} }); if (w.unlocked?.[id] || w.visited?.[id]) return true; if (id === 'harrow' && townsOf(s).harrow?.unlocked) return true; if (u.some(p => pathMet(s, p))) { (w.unlocked ??= {})[id] = Date.now(); return true; } return false; };
-export const unlockHint = (id: TownId) => { const u = UNLOCKS[id]; return !u || u === 'open' ? 'Open' : 'Unlock: ' + u.map(unlockText).join(' or '); };
+/** per-character transit unlocks: starter towns are open; every other town opens when this character has cleared its gateway dungeon
+ *  (or visited / was flagged before). Legacy saves that already had Harrow keep it. Once open, a line never closes. */
+export const isUnlocked = (s: Save, id: TownId) => { if (!WORLD_BY_ID[id]) return false; if (STARTER_TOWNS.includes(id)) return true; const w: any = ((s as any).world ??= { visited: {}, landmarks: {} });
+  if (w.unlocked?.[id] || w.visited?.[id]) return true; if (id === 'harrow' && townsOf(s).harrow?.unlocked) return true; const gw = GATEWAY_TO[id]; if (gw && s.cleared?.[gw.dungeon]) { (w.unlocked ??= {})[id] = Date.now(); return true; } return false; };
+export const gatewayName = (id: TownId) => { const gw = GATEWAY_TO[id]; return gw ? ((DUNGEONS as any)[gw.dungeon]?.name || gw.dungeon) : ''; };
+export const unlockHint = (id: TownId) => { const gw = GATEWAY_TO[id]; return !gw ? 'Open' : `Clear ${gatewayName(id)} to unlock`; };
 export const currentTown = (s: Save): TownId => (s.town && WORLD_BY_ID[s.town] ? s.town : 'rustline');
 export const clearedTier2 = (s: Save) => Object.keys(s.cleared || {}).some(id => ((DUNGEONS as any)[id]?.tier || 0) >= 2);
 export const harrowConditionMet = (s: Save) => s.level >= HARROW_UNLOCK_LEVEL || clearedTier2(s);
 /** Unlock any town whose condition is now met. Returns the towns unlocked by this call. Idempotent; also backfills old saves. */
-export function refreshUnlocks(s: Save): TownId[] { const n: TownId[] = []; if (!townsOf(s).harrow?.unlocked && harrowConditionMet(s)) { townsOf(s).harrow = { unlocked: true }; } const w: any = ((s as any).world ??= { visited: {}, landmarks: {} }); for (const t of WORLD) { const had = !!w.unlocked?.[t.id] || UNLOCKS[t.id] === 'open' || !!w.visited?.[t.id]; if (!had && isUnlocked(s, t.id)) { n.push(t.id); (w.unlocked ??= {})[t.id] = Date.now(); } } return n; }
+export function refreshUnlocks(s: Save): TownId[] { const n: TownId[] = []; const w: any = ((s as any).world ??= { visited: {}, landmarks: {} }); for (const t of WORLD) { const had = !!w.unlocked?.[t.id] || STARTER_TOWNS.includes(t.id) || !!w.visited?.[t.id]; if (!had && isUnlocked(s, t.id)) { n.push(t.id); (w.unlocked ??= {})[t.id] = Date.now(); } } return n; }
 export function unlockProgress(s: Save, id: TownId): { met: boolean; lines: string[] } {
-  if (id !== 'harrow') { const u = UNLOCKS[id]; if (!u || u === 'open') return { met: true, lines: [] }; return { met: isUnlocked(s, id), lines: u.map(p => `${pathMet(s, p) ? '✓' : '○'} ${unlockText(p)}`) }; }
+  if (GATEWAY_TO[id]) { const gw = GATEWAY_TO[id]; return { met: isUnlocked(s, id), lines: [`${s.cleared?.[gw.dungeon] ? '✓' : '○'} Clear ${gatewayName(id)} (gateway from ${WORLD_BY_ID[gw.from].name})`] }; }
+  if (id !== 'harrow') return { met: true, lines: [] };
   const lv = s.level >= HARROW_UNLOCK_LEVEL, t2 = clearedTier2(s);
   return { met: lv || t2, lines: [`${t2 ? '✓' : '○'} Clear any Tier II dungeon`, `${lv ? '✓' : '○'} or reach level ${HARROW_UNLOCK_LEVEL} (you are level ${s.level})`] };
 }

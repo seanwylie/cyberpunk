@@ -14,7 +14,7 @@ ok(pure.distinct > 150, `per-light phase offsets differ (${pure.distinct} distin
 ok(pure.still === 1, 'Reduced FX pulse is static');
 // 2. real rendered frames: alpha of every additive glow draw, per draw index, stationary player
 for (const town of ['rustline', 'harrow']) for (const reduced of [false, true]) {
-  await ev(async ([town, reduced]) => { const g = window.__game; g.save.level = 30; g.checkTownUnlocks(); if (g.townId !== town) g.travel(town); window.__ui.open(null); g.save.settings.reducedFx = reduced; }, [town, reduced]);
+  await ev(async ([town, reduced]) => { const g = window.__game; g.save.level = 30; (g.save.cleared = { ...(g.save.cleared || {}), bell_foundry: 1 }, g.checkTownUnlocks()); if (g.townId !== town) g.travel(town); window.__ui.open(null); g.save.settings.reducedFx = reduced; }, [town, reduced]);
   await page.waitForFunction(t => window.__rend.town?.ready && window.__game.townId === t, town, { timeout: 30000 }); await sleep(1200);
   await ev(() => { window.__lg = { frames: [], cur: null }; const P = CanvasRenderingContext2D.prototype, od = P.drawImage; const L = window.__lg;
     P.drawImage = function (...a) { if (this.canvas.id === 'game' && this.globalCompositeOperation === 'lighter' && L.cur) L.cur.push(this.globalAlpha); return od.apply(this, a); };
@@ -41,7 +41,7 @@ for (const town of ['rustline', 'harrow']) for (const reduced of [false, true]) 
 // 4. whole-frame luminance in each town: no abrupt steps from any animated source
 const luma = async () => { const { PNG } = await import('pngjs'); const p = PNG.sync.read(await page.screenshot({ type: 'png', clip: { x: 0, y: 0, width: 640, height: 360 } })); let sum = 0; for (let i = 0; i < p.data.length; i += 4) sum += .2126 * p.data[i] + .7152 * p.data[i + 1] + .0722 * p.data[i + 2]; return sum / (p.data.length / 4); };
 for (const town of ['rustline', 'harrow']) {
-  await ev(async town => { const g = window.__game; g.save.level = 30; g.checkTownUnlocks(); if (g.townId !== town) g.travel(town); window.__ui.open(null); g.save.settings.reducedFx = false; }, town);
+  await ev(async town => { const g = window.__game; g.save.level = 30; (g.save.cleared = { ...(g.save.cleared || {}), bell_foundry: 1 }, g.checkTownUnlocks()); if (g.townId !== town) g.travel(town); window.__ui.open(null); g.save.settings.reducedFx = false; }, town);
   await page.waitForFunction(t => window.__rend.town?.ready && window.__game.townId === t, town, { timeout: 30000 }); await sleep(1200);
   const xs = [], t0 = Date.now(); while (Date.now() - t0 < 9000) { xs.push(await luma()); } let step = 0; for (let i = 1; i < xs.length; i++) step = Math.max(step, Math.abs(xs[i] - xs[i - 1]));
   ok(step < 1.5, `${town}: whole-frame mean luma max step ${step.toFixed(2)} over ${xs.length} frames (< 1.5, range ${(Math.max(...xs) - Math.min(...xs)).toFixed(2)})`); }

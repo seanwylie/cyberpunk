@@ -12,7 +12,7 @@ import { abxCast, abxTick, abxReset, abxIncoming, abxOutgoing, abxSpeedMul, abxP
 import { ABILITY_BY_ID } from './abilities/registry';
 import { ABILITY_ACQ, ABILITY_ITEMS, pickAbilityItem, pickCommonAbilityItem } from './abilities/hw';
 import { buildTownLevel, stationsOf } from './worldtowns';
-import { WORLD_BY_ID } from './world';
+import { WORLD_BY_ID, GATEWAY_BY_DUNGEON, GATEWAY_TO } from './world';
 import { visitTown, landmarkNear, outOfDepth, FACTION_MFR, FIRST_VISIT_REP } from './discovery';
 import { currentTown, refreshUnlocks, travelCheck, TOWN_INFO, townsOf, type TownId } from './towns';
 import { setTownStations, TOWN_STATIONS } from './stations';
@@ -90,8 +90,11 @@ export class Game {
   }
   townId:TownId='rustline';
   /** world discovery (src/discovery.ts): first-visit XP + faction nod, the fixer's out-of-depth line, landmark log */
-  worldArrive(){ const id=this.townId, t=WORLD_BY_ID[id]; if(!t) return; const xp=visitTown(this.save,id); if(xp){ this.addXp(xp); const m=FACTION_MFR[t.faction]; if(m) this.save.rep[m]+=FIRST_VISIT_REP; this.toast(`Discovered ${t.name}: +${xp} XP${m?' · '+t.faction+' noticed you':''}.`); persist(this.save); }
+  worldArrive(){ const id=this.townId, t=WORLD_BY_ID[id]; if(!t) return; const xp=visitTown(this.save,id); if(xp&&GATEWAY_TO[id]) this.toast(GATEWAY_TO[id].arrival); if(xp){ this.addXp(xp); const m=FACTION_MFR[t.faction]; if(m) this.save.rep[m]+=FIRST_VISIT_REP; this.toast(`Discovered ${t.name}: +${xp} XP${m?' · '+t.faction+' noticed you':''}.`); persist(this.save); }
     const line=outOfDepth(this.save.level,id); if(line) this.emit('toast','Odalys: '+line); }
+  /** epic gateway clear: opens the Reach Line to the destination for this character (each party member runs this on their own save) */
+  gatewayClear(){ const gw=GATEWAY_BY_DUNGEON[this.dd.id]; if(!gw) return; const w:any=(this.save as any).world??={visited:{},landmarks:{}}; if(w.unlocked?.[gw.to]) return; (w.unlocked??={})[gw.to]=Date.now(); w.arrival=gw.to; const t=WORLD_BY_ID[gw.to];
+    this.toast(`GATEWAY CLEARED: ${gw.title}. ${gw.arrival} The Reach Line to ${t.name} is open.`); this.emit('stinger','complete'); persist(this.save); }
   worldScan(){ const L:any=this.level; const xp=landmarkNear(this.save,this.townId,this.px,this.py,L.landmark); if(xp){ this.addXp(xp); this.toast(`Landmark logged: ${L.landmark.name} (+${xp} XP).`); persist(this.save); } }
   /** Unlock towns whose condition is newly met (clears, level ups, load). Returns the ids unlocked now. */
   checkTownUnlocks():TownId[]{ const n=refreshUnlocks(this.save); for(const id of n){ this.toast(`New destination: ${TOWN_INFO[id].name}. Take the Reach Line at the plaza tram stop.`); persist(this.save); } return n; }
@@ -770,7 +773,7 @@ export class Game {
   onBossDead(e:En){
     const inst=this.inst!; const f=inst.flags; if(!f.bossDead){ f.bossDead=true; f.completed=true; this.projs=[]; this.zones=[]; clearBossAdds(this); } this.grantClear(e); }
   /** Per-player clear rewards (clear XP, lockout, contracts, achievements). */
-  grantClear(e:En){ const inst=this.inst!; const f=inst.flags; if((inst as any)._cg) return; (inst as any)._cg=true; f.completed=true; this.save.cleared={...(this.save.cleared||{}),[this.dd.id]:Date.now()};
+  grantClear(e:En){ const inst=this.inst!; const f=inst.flags; if((inst as any)._cg) return; (inst as any)._cg=true; f.completed=true; this.save.cleared={...(this.save.cleared||{}),[this.dd.id]:Date.now()}; this.gatewayClear();
     if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Return to town any time: your pack is banked and you can start another dungeon.'); }
     for(const d of checkAchievements(this.save)) this.toast('Wardrobe unlocked: '+d.name+' ('+d.rarity+')'); this.emit('boss-dead'); this.emit('stinger','complete'); this.resPending=5; this.saveNow();
   }

@@ -5,7 +5,7 @@ const { browser, page, errors } = await launch({ query: '?splash=hold' }); const
 const ids = await ev(async () => (await import('/src/content/dungeons.ts')).DUNGEON_LIST.map(d => d.id));
 const SEEDS = +process.env.SEEDS || 3, TICKS = +process.env.TICKS || 1500;
 const run = (id) => ev(async ([id, TICKS]) => { const g = window.__game; const out = { id, viol: [], spawnBad: 0, n: 0, rescued: 0 };
-  g.enterTown(true); g.save.level = 40; g.save.instance = null; g.save.lockouts = {}; g.save.lastClearDay = null; g.save.settings.devFreeReset = true; try { g.checkTownUnlocks(); g.save.town = 'harrow'; } catch {} 
+  g.enterTown(true); g.save.level = 40; g.save.instance = null; g.save.lockouts = {}; g.save.lastClearDay = null; g.save.settings.devFreeReset = true; try { (g.save.cleared = { ...(g.save.cleared || {}), bell_foundry: 1 }, g.checkTownUnlocks()); g.save.town = 'harrow'; } catch {} 
   if (!g.startRun(id)) { out.err = 'startRun failed'; return out; } g.revealing = false; g.dbg.god = true; const L = g.level;
   const walk = (x, y, r = 0) => !g.solidAt(x, y) && (r === 0 || !g.circleHits(x, y, r));
   for (const e of g.enemies) if (!walk(e.x, e.y, .2)) out.spawnBad++; if (!walk(g.px, g.py, .2)) out.spawnBad++;

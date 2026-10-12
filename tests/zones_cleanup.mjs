@@ -5,7 +5,7 @@ const { browser, page, errors } = await launch({ query: '?splash=hold' }); const
 const nonEnv = () => ev(() => window.__game.zones.filter(z => !z.env).length);
 for (const id of ['warehouse', 'foundry']) {
   // ---- a long boss fight: sample zone counts and drawn discs ----
-  const r = await ev(async id => { const g = window.__game; g.enterTown(true); g.save.level = 40; g.save.instance = null; g.save.cleared = {}; g.save.lastClearDay = null; g.checkTownUnlocks(); g.travel('harrow'); if (!g.startRun(id)) return { err: 'startRun failed ' + id }; g.revealing = false; const L = g.level; for (let i = 0; i < 20; i++) g.update(1 / 30);
+  const r = await ev(async id => { const g = window.__game; g.enterTown(true); g.save.level = 40; g.save.instance = null; g.save.cleared = {}; g.save.lastClearDay = null; (g.save.cleared = { ...(g.save.cleared || {}), bell_foundry: 1 }, g.checkTownUnlocks()); g.travel('harrow'); if (!g.startRun(id)) return { err: 'startRun failed ' + id }; g.revealing = false; const L = g.level; for (let i = 0; i < 20; i++) g.update(1 / 30);
     const f = g.inst.flags; f.gate1 = f.lock2 = f.controller = true; g.dbg.god = true; { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; }
     let drawn = 0; const rend = window.__rend; const od = rend.drawZone.bind(rend); rend.drawZone = z => { drawn++; return od(z); };
     let maxZ = 0, maxNon = 0, maxDrawn = 0, samples = []; const T = 200;

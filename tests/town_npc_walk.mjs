@@ -37,7 +37,7 @@ function analyse(o, tag) {
   let minSep = 9; for (let i = 0; i < o.tr[0].length; i += 5) for (let a = 0; a < o.n; a++) for (let b = a + 1; b < o.n; b++) minSep = Math.min(minSep, Math.hypot(o.tr[a][i][0] - o.tr[b][i][0], o.tr[a][i][1] - o.tr[b][i][1])); ok(minSep > .3, `${tag}: walkers avoid each other (min separation ${minSep.toFixed(2)} tiles)`);
 }
 analyse(await rec(1200), 'Rustline');
-await page.evaluate(() => { const g = window.__game; g.save.level = 20; g.checkTownUnlocks(); g.travel('harrow'); });
+await page.evaluate(() => { const g = window.__game; g.save.level = 20; (g.save.cleared = { ...(g.save.cleared || {}), bell_foundry: 1 }, g.checkTownUnlocks()); g.travel('harrow'); });
 await page.waitForFunction(() => window.__game.townId === 'harrow', null, { timeout: 5000 }).catch(() => {}); await sleep(3000);
 analyse(await rec(1200), 'Harrow');
 ok(errors.length === 0, 'no console errors ' + errors.slice(0, 2).join('|'));
