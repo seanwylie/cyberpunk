@@ -3,6 +3,8 @@ import { DUNGEON_LIST } from '../../src/content/dungeons';
 import { stageMap } from '../../src/content/safestart';
 import { reachMap } from '../../src/content/mapgen';
 import { ENEMIES } from '../../src/config';
+/** intentional bypass routes: the Annex maintenance passage (cloak route) reaches the control junction around the security lock */
+export const BYPASS_OK:Record<string,string[]>={ annex:['objective'] };
 export function sweep(seeds:number[]){
   const rows:any[]=[];
   for(const d of DUNGEON_LIST) for(const seed of seeds){ const issues:string[]=[]; let L:any;
@@ -10,6 +12,8 @@ export function sweep(seeds:number[]){
     const st=stageMap(L); const w=L.w; const S=(x:number,y:number)=>st[Math.floor(y)*w+Math.floor(x)];
     const it=(id:string)=>L.interacts.find((i:any)=>i.id===id);
     const need=(lab:string,p:any,k:number)=>{ if(!p){ issues.push('missing '+lab); return; } const s=S(p.x,p.y); if(s>k) issues.push(lab+' needs stage '+k+' but is '+(s===255?'unreachable':'stage '+s)); };
+    // no objective (relay, controller, boss) is reachable with every door closed, and the controller never before the lock, unless whitelisted as an intentional route
+    { const wl=BYPASS_OK[d.id]||[]; for(const [lab,p,min] of [['relay',it('hackproc'),1],['objective',it('controller'),2],['boss',L.bossSpawn,3]] as [string,any,number][]){ if(!p) continue; const v=S(p.x,p.y); if(v<min&&!wl.includes(lab)) issues.push(lab+' reachable at stage '+v+' (needs '+min+'): door bypass'); } }
     need('spawn',L.spawn,0); need('relay',it('hackproc'),1); need('objective',it('controller'),2); need('boss',L.bossSpawn,3); if(L.checkpoints[1]) need('checkpoint2',L.checkpoints[1],2);
     // gate guards (gate1 opens when all are dead): every one must stand where the player is with all doors closed
     const gg=L.spawns.filter((s:any)=>s.type===d.gateGuard); gg.forEach((s:any)=>{ if(st[s.y*w+s.x]!==0) issues.push('gate guard g'+s.group+' at '+s.x+','+s.y+' is '+(st[s.y*w+s.x]===255?'unreachable':'behind door stage '+st[s.y*w+s.x])); });

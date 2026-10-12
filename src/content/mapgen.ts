@@ -122,7 +122,7 @@ function foundryOnce(seed:number):Level{
   for(const r of rooms) g.carve(r.x0,r.y0,r.x1,r.y1,r.zone); link(g,rooms,cors); doorsAt(g,rooms,cors,['Slag gate','Press lock','Furnace ring door']);
   const spawn={x:Y.x0+2.5,y:cors[0]+.5}; g.sx=spawn.x; g.sy=spawn.y; g.reserve(Y.x0,hf(spawn.y)-3,Y.x0+6,hf(spawn.y)+3);
   // salvage tool crib under the yard
-  const S=sideRoom(g,Y.x0+g.ri(0,4),Y.y1,g.ri(14,18),g.ri(8,10)); g.reserve(S.cx-1,Y.y1,S.cx+2,Y.y1+6);
+  const sx0=Y.x0+g.ri(0,4); const S=sideRoom(g,sx0,Y.y1,Math.min(g.ri(14,18),Y.x1-1-sx0),g.ri(8,10)); // never wider than the yard: a wider ward merged into the casting hall and bypassed the slag gate g.reserve(S.cx-1,Y.y1,S.cx+2,Y.y1+6);
   // alcoves north / south of the gantry hold the two replacement-boss conditions (side picked by seed)
   const ax=J.x0+g.ri(2,J.x1-J.x0-8); const north={x0:ax,y0:J.y0-5,x1:ax+6,y1:J.y0-1}, south={x0:J.x0+g.ri(2,J.x1-J.x0-8),y0:J.y1+1,x1:0,y1:J.y1+5}; south.x1=south.x0+6;
   g.carve(north.x0,north.y0,north.x1,north.y1,'passage'); g.carve(south.x0,south.y0,south.x1,south.y1,'passage');
@@ -174,6 +174,8 @@ function clinicOnce(seed:number):Level{
   // sterile cloak passage over the top: yard (top row) -> junction roof. Sensor strip mid-way.
   const pxv=Y.x0+g.ri(0,1)*8+2, jxv=J.x0+g.ri(3,J.x1-J.x0-4); g.carve(pxv,Y0-4,pxv+1,Y0-1,'passage'); g.carve(pxv,Y0-5,jxv+1,Y0-4,'passage'); g.carve(jxv,Y0-5,jxv+1,Y0-1,'passage'); g.carve(pxv,Y0-5,pxv+1,Y0-1,'passage');
   const mx=Math.round((pxv+jxv)/2), sens={x0:mx-4,y0:Y0-5,x1:mx+4,y1:Y0-4};
+  // the passage drops into the junction behind a shutter that is part of the Theatre lock: the cloak route still reaches the quarantine seal, but the junction (objective) is never reachable before gate1 + lock2 (docs/PROGRESSION.md)
+  { const lk=g.doors.find(d=>d.id==='lock2')!; for(const x of [jxv,jxv+1]){ lk.tiles.push([x,Y0-1]); g.solid[(Y0-1)*g.w+x]=1; } }
   // salvage recovery ward below the junction
   const S=sideRoom(g,J.x0-2,J.y1,g.ri(14,17),7,4); g.reserve(S.cx-1,J.y1,S.cx+2,J.y1+6);
   // rooms: small corner props only (never in the 3-wide openings), spilled fluids

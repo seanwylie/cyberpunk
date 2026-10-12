@@ -7,7 +7,7 @@ export interface Settings { autoSellGrey?:boolean; gore:'off'|'mild'|'bloody'; j
 export interface Carried { items:Inst[]; chips:Partial<Record<ChipId,number>>; stims:number; credits:number; }
 export interface EnemyState { id:number; type:string; x:number; y:number; hp:number; maxHp:number; alert:boolean; dead:boolean; home:{x:number;y:number}; group:number; faction:'enemy'|'ally'; ctrlT:number; stunT:number; name?:string; /** boss phase index (content batch 1) */ phase?:number; /** spawned by a boss (tether node / add): cleaned up with the boss */ bossAdd?:boolean; pylon?:boolean; /** batch-2 elite affixes (src/content/mobs.ts) */ affix?:string[]; eliteDone?:boolean; /** id of the summoner that spawned this minion */ minionOf?:number; }
 export interface Drop { id:number; x:number; y:number; kind:'item'|'chip'|'stim'|'credits'; inst?:Inst; chip?:ChipId; amount:number; marker?:boolean; born?:number; }
-export const LAYOUT_V=3;
+export const LAYOUT_V=4;
 export interface Flags { gate1:boolean; lock2:boolean; passageSeen:boolean; controller:boolean; armory:boolean; cond:null|'A'|'B'; bossKey:string|null; bossRevealed:boolean; bossSpawned:boolean; bossDead:boolean; completed:boolean; rewardsGranted:boolean; alarm:boolean; salvageForeman:boolean; }
 export interface InstanceState {
   id:string; dungeon?:string; createdAt:number; expiresAt:number; seed:number; /** layout generator version: older instances are discarded */ layoutV?:number; enemies:EnemyState[]; drops:Drop[]; carried:Carried; flags:Flags;

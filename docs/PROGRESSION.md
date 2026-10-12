@@ -21,3 +21,9 @@ When their stage has no calm-start-compliant tile, they take the best tile in th
 ## Tests
 `node tests/progression_sweep.mjs` (in `npm test`): structural sweep of every dungeon x 6 seeds, runtime nets in the browser, 3 bot run-throughs.
 `--full`: 40 seeds and a bot run of every dungeon x 2 seeds. `--node-only`: structural part only (no dev server needed).
+
+## Door bypasses
+`progression_sweep` flags any relay / objective / boss reachable before its door (relay before gate1, controller before lock2, boss before the boss door).
+Whitelist (`BYPASS_OK` in tests/progression/structure.ts): `annex: ['objective']` (maintenance cloak passage around the security lock, intentional).
+Fixed: Ward 9 Clinic's cloak passage reached the junction from the yard (skipped both gates); it now drops in behind a shutter that is part of the Theatre lock.
+Foundry's salvage ward could be wider than the yard and merge into the casting hall (relay reachable before the slag gate); its width is clamped. LAYOUT_V 3 -> 4.
