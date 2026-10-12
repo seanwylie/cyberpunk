@@ -58,7 +58,7 @@ Same run chain as every dungeon (entry, gate1, hall, lock2, control with control
 | 6 | `cryo` | Cryo-Archivist Linnea Frost | Aldane Surgical | II | `cold_archive` | 3600 | blink | lanes(n7,gap1,len13,space1.9); fan(n7,spread80,speed10) | <65%: shield 14%/14s; <30%: enrage x1.2 speed, x0.7 cooldowns | lanes every 10s. Frost lanes sweep the vault, narrowing the safe gaps. | Narrow frost lanes + ice shield, then deep-freeze enrage |
 | 7 | `auditor` | Compliance Officer Hale Thornquist | Aldane Surgical | II | `audit_tower` | 3500 | cleave, blink | spiral(n20,turns1.7,rad9,r1.3); adds(typenursebot,n2,cap6) | <50%: enrage x1.3 speed, x0.65 cooldowns | rain every 12s. Audit spiral: markers spiral out from him; step between the arms. | Outward audit spiral + blink strikes + timed enrage |
 | 8 | `mirrorpt` | The Mirror Patient | Aldane Surgical | II | `aesthetic_ward` | 3400 | blink, cleave | fan(n9,spread100,speed12); marks(n6,r1.5,spread4.4) | <66%: 2x orderly wave; <33%: 1x matron wave + enrage x1.15 speed, x0.8 cooldowns | trickle every 16s. Hall of mirrors: reflections (adds) join at 66% and 33%. | Wide mirror fans + summoned reflections at two phases |
-| 9 | `apothecary` | Apothecary Dessa Quill | Aldane Surgical | II | `pharmacy_vault` | 3700 | cleave | cross(n6,len10,r1.4); rain(n9,area7,r1.7) | <55%: 2x sentry tether | spokes every 14s. Vent cross: six gas spokes burst from her, with extra sentry dispensers at 55%. | Six-arm gas cross + dispenser tether |
+| 9 | `apothecary` | Formulator Dessa Quill | Aldane Surgical | II | `pharmacy_vault` | 3700 | cleave | cross(n6,len10,r1.4); rain(n9,area7,r1.7) | <55%: 2x sentry tether | spokes every 14s. Vent cross: six gas spokes burst from her, with extra sentry emitters at 55%. | Six-arm gas cross + emitter tether |
 | 10 | `resonance` | Resonance Engineer Obi Lindqvist | Aldane Surgical | III | `anechoic_lab` | 5000 | blink | spokes(n9,len10,sweep210); nova(n20,speed8,gap40) | <50%: enrage x1.2 speed, x0.7 cooldowns + gimmick spokes | pillarfire every 10s. Anechoic cell: wide beam sweeps and pillar echoes; pillars both shield and reflect. | 210-degree beam sweep + pillar echo novas |
 | 11 | `clearance` | Clearance Manager Bryce Tolliver | Kestrel Value | II | `outlet_mall` | 3700 | charge, slam | rain(n12,area8,r1.6); adds(typepicker,n4,cap9) | <50%: enrage x1.3 speed, x0.7 cooldowns | trickle every 9s. Sale floor: constant markdown rain and trickling shoppers. | Heavy markdown rain + endless add trickle |
 | 12 | `liquidator` | Liquidator Prime | Kestrel Value | III | `liquidation_floor` | 5200 | slam, rsweep | marks(n8,r1.5,spread5); ring(n10,gaps2,rad5,r1.5) | <70%: shield 10%/10s; <40%: shield 12%/10s + enrage x1.15 speed, x0.8 cooldowns | rain every 13s. Receivership floor: stacked mark barrages and two shield cycles. | Eight-mark barrage + twin shield cycles |
@@ -81,7 +81,7 @@ Same run chain as every dungeon (entry, gate1, hall, lock2, control with control
 - **Cryo-Archivist Linnea Frost** (Aldane Surgical): Aldane keeps its oldest case files frozen. Frost keeps the files, and everything that tries to read them.
 - **Compliance Officer Hale Thornquist** (Aldane Surgical): Aldane compliance liaison for Aldane Terrace. Every conversation is an audit; his final audit is yours.
 - **The Mirror Patient** (Aldane Surgical): Elective-procedure ward 3 never discharged her. Every revision left another reflection.
-- **Apothecary Dessa Quill** (Aldane Surgical): Quill dispensed the Ward 9 sedatives. The vault filled with her mistakes a long time ago.
+- **Formulator Dessa Quill** (Aldane Surgical): Quill mixed the Ward 9 nerve gases. The vault filled with her mistakes a long time ago.
 - **Resonance Engineer Obi Lindqvist** (Aldane Surgical): Built the quietest room in the Basin, then lost the habit of leaving it. Sound is his weapon now.
 - **Clearance Manager Bryce Tolliver** (Kestrel Value): Everything must go. He has been on the final day of the sale for nine years.
 - **Liquidator Prime** (Kestrel Value): A Kestrel receivership routine that never closed an account. It values everything at salvage.
@@ -104,7 +104,7 @@ Same run chain as every dungeon (entry, gate1, hall, lock2, control with control
 - Cryo-Archivist Linnea Frost: "Closed to the public." / "Deep freeze."
 - Compliance Officer Hale Thornquist: "Finding: non-compliant."
 - The Mirror Patient: "Look. Look at me." / "Look closer."
-- Apothecary Dessa Quill: "Take one every four hours."
+- Formulator Dessa Quill: "Hold still. This will sting."
 - Resonance Engineer Obi Lindqvist: "Silence."
 - Clearance Manager Bryce Tolliver: "Final markdown!"
 - Liquidator Prime: "Appraising." / "Assets frozen."
@@ -128,8 +128,8 @@ Same run chain as every dungeon (entry, gate1, hall, lock2, control with control
 | 5 | `bell_foundry` | Calloway Bell Foundry | `bellfounder` | HI | II | 20-32 | plates, warm light | colonnade / rings / pillars / rings | Bronze melt (ring x8) | Great bell mechanism | slagcannon / quenchpriest | slaghauler, ladlecrew, cinderhound | foundry |
 | 6 | `cold_archive` | Aldane Cold Archive | `cryo` | PS | II | 20-32 | tiles, pale light | maze / zigzag / maze / open | Frost vent (scatter x6) | Stack index terminal | sentry / matron | orderly, nursebot, gurneyrunner | clinic |
 | 7 | `audit_tower` | Aldane Audit Tower | `auditor` | PS | II | 20-32 | grid, pale light | pillars / cross / colonnade / cross | Audit laser (lanes x3) | Findings ledger | sentry / anesthetist | orderly, nursebot, gurneyrunner | cold_archive |
-| 8 | `aesthetic_ward` | Ward 3 Aesthetics | `mirrorpt` | PS | II | 20-32 | tiles, pale light | rings / maze / islands / zigzag | Spilled sedative (scatter x6) | Revision schedule board | sentry / matron | nursebot, orderly, gurneyrunner | clinic |
-| 9 | `pharmacy_vault` | Quill Pharmacy Vault | `apothecary` | PS | II | 20-32 | hex, pale light | maze / islands / cross / pillars | Gas leak (scatter x8) | Dispensary controller | sentry / anesthetist | orderly, nursebot, gurneyrunner | aesthetic_ward |
+| 8 | `aesthetic_ward` | Ward 3 Aesthetics | `mirrorpt` | PS | II | 20-32 | tiles, pale light | rings / maze / islands / zigzag | Spilled anaesthetic (scatter x6) | Revision schedule board | sentry / matron | nursebot, orderly, gurneyrunner | clinic |
+| 9 | `pharmacy_vault` | Quill Reagent Vault | `apothecary` | PS | II | 20-32 | hex, pale light | maze / islands / cross / pillars | Gas leak (scatter x8) | Reagent controller | sentry / anesthetist | orderly, nursebot, gurneyrunner | aesthetic_ward |
 | 10 | `anechoic_lab` | Lindqvist Anechoic Lab | `resonance` | PS | III | 28-42 | foam, cool light | pillars / diag / colonnade / rings | Resonance field (ring x7) | Calibration rig | sentry / anesthetist | nursebot, orderly, gurneyrunner | audit_tower |
 | 11 | `outlet_mall` | Kestrel Outlet Mall | `clearance` | MM | II | 20-32 | tiles, warm light | islands / colonnade / islands / rings | Sale spill (scatter x6) | Doorbuster register | camgun / shiftlead | picker, scanner, loader, forkbot | scrap_gantry |
 | 12 | `liquidation_floor` | Kestrel Liquidation Floor | `liquidator` | MM | III | 28-42 | stripes, red light | zigzag / islands / zigzag / pit | Tagged pallet fire (scatter x7) | Receivership ledger | camgun / hobbs | loader, picker, forkbot, scanner | outlet_mall |
@@ -154,7 +154,7 @@ Same run chain as every dungeon (entry, gate1, hall, lock2, control with control
 | `cold_archive` | Frozen records vaults, rime-covered stacks and cold lanes. Frost keeps the files. | 2.3 | 690 | cloakdur, gridlink | PS |
 | `audit_tower` | A glass-and-ceramic compliance tower of open-plan floors. Thornquist audits everything. | 2.3 | 690 | gridlink, fineedge | PS |
 | `aesthetic_ward` | Elective-revision suites lined with mirrors. Every room has the same woman in it. | 2.3 | 680 | cloakdur, sustain | PS |
-| `pharmacy_vault` | A sealed dispensary vault of cabinets and gas lines. Dessa Quill still fills prescriptions. | 2.4 | 700 | sustain, quench | PS |
+| `pharmacy_vault` | A sealed reagent vault of cabinets and gas lines. Dessa Quill is still mixing. | 2.4 | 700 | sustain, quench | PS |
 | `anechoic_lab` | Foam-wedge chambers built to swallow sound. The corridors hum. Obi Lindqvist hears everything. | 3.3 | 1000 | gridlink, overdrive | PS |
 | `outlet_mall` | A dead mall with the lights still on. Faded markdown banners, shuttered storefronts, a central atrium sale. | 2 | 640 | ablative, speed | MM |
 | `liquidation_floor` | A receivership floor of tagged pallets and red-ticket stacks. Everything is priced to move; so are you. | 3.2 | 980 | fineedge, quench | MM |

@@ -44,7 +44,7 @@ Generated with `tools/gen_music.py` (same pipeline: `music_v1`, instrumental, 75
 | cryo (II, Aldane) | boss_cryo | icy electro 150, crystalline arp, cracking-ice hats |
 | auditor (II, Aldane) | boss_auditor | bureaucratic industrial 156, stamp/typewriter clicks, ticking clock |
 | mirrorpt (II, Aldane) | boss_fight (existing) | DnB 172 |
-| apothecary (II, Aldane) | boss_apothecary | toxic DnB 170, warbling sickly bass, gas hiss |
+| apothecary (Formulator, II, Aldane) | boss_apothecary | toxic DnB 170, warbling sickly bass, gas hiss |
 | clearance (II, Kestrel) | boss_clearance | corrupted retail-muzak jingle over hard techno 160, sale sirens |
 | tidewarden (II, Rustline) | boss_hydraulic (existing) | breakcore + piston/hydraulic hits |
 | resonance (III, Aldane) | boss_resonance | standing-wave sub, resonant sweeps, sudden dropouts, 168 |

@@ -45,7 +45,7 @@ Each level declares a primary and an alternate macro archetype (`ARCH_OF`); the 
 | `zig` | staircase / Z (E-S-E) with large perpendicular offsets and dogleg corridors | Tailings Pit, Breaker Yard |
 | `uturn` | U shape (E-S-W): control room below the lock, boss back under the entry | Cold Archive, Anechoic Lab, Drained Reservoir |
 | `hub` | oversized processing hub with 3 spokes (2 dead-end or loop wings + entry), control room off a short corridor | Substation 12, Aesthetic Ward, Outlet Mall |
-| `vault` | line with a large boss vault; the control room has two loop wings (rooms joined by two corridors), the hall has a third | Bell Foundry, Pharmacy Vault, Warranty Vault |
+| `vault` | line with a large boss vault; the control room has two loop wings (rooms joined by two corridors), the hall has a third | Bell Foundry, Reagent Vault, Warranty Vault |
 | `floors` | wide flat storeys stacked top to bottom, doors alternate between the left and right ends (switchback, multi-floor feel with chokepoints) | Audit Tower, Parcel Tower, Radio Mast |
 
 Per run seed the generator also varies: room sizes (+-2 on the spec dims), corridor lengths and offsets, straight or dogleg corridors, wing count and loops, which of the 8 rotations/mirrors of the square is applied (`symRect`), the manufacturer cover theme (HI heavy machinery + conveyors, PS partition stubs + cabinets, MM shelving blocks + pallets), hazard placement (along the room's long axis, so it follows the rotation), where the relay and controller sit (near the exit, tucked in a far corner, or mid-room), and the boss arena shape (`ring`, `dais`, `hall`, `lanes`, `octagon`, `cross4`, `split`, `islands`, picked from the spec's boss-room shape).

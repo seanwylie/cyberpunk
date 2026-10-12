@@ -189,7 +189,7 @@ function clinicOnce(seed:number):Level{
   g.put('controller','Implant fabricator core (objective)','controller',J.x1-3,J.cy+g.ri(-5,5),5,['junction']);
   g.put('cond_A','Theatre scheduling terminal (hack)','terminal',P.x0+g.ri(8,22),Y0+g.ri(2,gh-3),3,['proc']);
   g.put('cond_B','Quarantine ward seal (cloak weave)','armory',mx+.5+g.ri(-2,2),Y0-4,3,['passage']);
-  g.put('cratechip','Pharmacy chip cache (bonus)','crate',S.x1-2,S.y1-1,5,['salvage'],1.5);
+  g.put('cratechip','Supply chip cache (bonus)','crate',S.x1-2,S.y1-1,5,['salvage'],1.5);
   // guards sit in the intake wards nearest the gate, packs fill rooms
   g.single('sentry',90,Y.x1-1,Y0+2,5,['yard']); g.single('sentry',91,Y.x1-1,Y0+gh-3,5,['yard']);
   packs(g,[[['yard'],7,'orderly',7],[['yard'],3,'nursebot',7],[['yard'],2,'gurneyrunner',7],[['proc'],4,'orderly'],[['proc'],4,'orderly'],[['proc'],4,'nursebot'],[['proc'],3,'gurneyrunner'],[['proc'],3,'nursebot'],[['junction'],5,'nursebot'],[['junction'],5,'orderly'],[['salvage'],5,'orderly'],[['salvage'],2,'gurneyrunner']]);

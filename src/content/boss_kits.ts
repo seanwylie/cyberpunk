@@ -61,7 +61,7 @@ export const KITS:Record<string,Kit>={
   cryo:{pal:'ice',title:'Deep Freeze',mechs:[M('grid',13,{first:6}),M('shield',34,{at:.75}),M('tiles',14)]},
   auditor:{pal:'blue',title:'Audit Trail',mechs:[M('tiles',13,{first:7}),M('strike',13)]},
   mirrorpt:{pal:'orchid',title:'Hall of Mirrors',mechs:[M('strike',16,{first:9}),M('gaze',19,{first:14})]},
-  apothecary:{pal:'magenta',title:'Dispensary',mechs:[M('bombs',14,{first:8}),M('overload',24,{first:14})]},
+  apothecary:{pal:'magenta',title:'Reagent Store',mechs:[M('bombs',14,{first:8}),M('overload',24,{first:14})]},
   resonance:{pal:'white',title:'Anechoic Cell',mechs:[M('beam',13,{first:7}),M('safe',26,{first:14}),M('shockring',15)]},
   clearance:{pal:'coral',title:'Final Markdown',mechs:[M('conveyor',14,{first:6}),M('ricochet',12),M('tiles',15)]},
   liquidator:{pal:'bronze',title:'Liquidation',mechs:[M('bombs',18,{first:10}),M('grid',20,{first:16})]},
