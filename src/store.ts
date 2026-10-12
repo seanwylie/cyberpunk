@@ -6,12 +6,15 @@ import { persist, Save } from './state';
 import { COS_BY_ID, COSMETICS, cosOf, grantCos, ownsCos } from './content/appearance';
 import { BANK_TABS_MAX, bankCapacity, bankOf, bankUsed, lockerFree } from './bank';
 import { STARTING } from './config';
+import { LINES, SEASON, LINE_BY_ID } from './content/skinlines';
+import { sellable, featured, rotation, featuredPrice, STARTER, PASS_SKU, passOf, checkCollections, includesOf, lineSkins, priceOf, tierOf } from './monet';
+import { isRetired, RETIRED, setClock, now } from './retire';
 import { funnel, funnelText, events, exportJson, track, resetAnalytics, addSink, httpSink, fmtUsd } from './analytics';
 
-export type SkuKind = 'skin' | 'bundle' | 'storage_locker' | 'storage_bank';
+export type SkuKind = 'skin' | 'bundle' | 'storage_locker' | 'storage_bank' | 'line' | 'line_bundle' | 'starter' | 'pass';
 export interface Sku { id: string; kind: SkuKind; name: string; desc: string; cents: number; items?: string[]; tier?: number; /** store spotlight slot */ featured?: boolean; }
 export interface Receipt { id: string; sku: string; cents: number; ts: number; orderId: string; granted: string[]; }
-export interface StoreState { v: 1; receipts: Record<string, Receipt>; counters: { locker: number; bank: number }; spentCents: number; orderN: number; }
+export interface StoreState { v: 1; receipts: Record<string, Receipt>; counters: { locker: number; bank: number; starter?: number }; spentCents: number; orderN: number; }
 
 /** Escalating tiers, capped. Locker: +lockerPerPurchase slots each (feeds Save.purchases.lockerBlocks, which every locker-capacity calc already reads). Bank: +1 tab (60 slots) each. */
 export const LOCKER_TIER_CENTS = [99, 199, 299, 499, 799];
@@ -28,9 +31,15 @@ const BUNDLES: Sku[] = [
   { id: 'bundle_signal', kind: 'bundle', name: 'Signal Bundle', desc: 'Cobalt anodize skin and flare crest.', cents: 449, items: ['pm_skin_cobalt', 'pm_hair_signal'] } ];
 const LOCKER: Sku[] = LOCKER_TIER_CENTS.map((c, i) => ({ id: 'locker_slots_' + (i + 1), kind: 'storage_locker' as const, name: `Locker +${LOCKER_SLOTS_PER_TIER} slots`, desc: `Permanent extra locker space (tier ${i + 1} of ${LOCKER_TIER_CENTS.length}).`, cents: c, tier: i + 1 }));
 const BANK: Sku[] = BANK_TIER_CENTS.map((c, i) => ({ id: 'bank_tab_' + (i + 1), kind: 'storage_bank' as const, name: 'Bank +1 tab (60 slots)', desc: `Opens one more bank tab (tier ${i + 1} of ${BANK_TIER_CENTS.length}).`, cents: c, tier: i + 1 }));
-export const CATALOG: Sku[] = [...SKINS, ...BUNDLES, ...LOCKER, ...BANK];
+/** Premium line skins, chromas, emotes, recalls, weapon skins, pets (src/content/skinlines.ts). id = 'line_' + cosmetic id. */
+const LINE_SKUS: Sku[] = COSMETICS.filter(d => d.src.k === 'shop' || d.src.k === 'chroma').map(d => ({ id: 'line_' + d.id, kind: 'line' as const, name: d.name, desc: d.desc, cents: (d.src as any).cents, items: [d.id, ...includesOf(d.id)] }));
+/** Whole line at ~25% off the separate total (top skin + epics, not chromas). Only while every piece is sellable. */
+const LINE_BUNDLES: Sku[] = LINES.map(L => { const it = lineSkins(L.id); const tot = it.reduce((a, d) => a + priceOf(d), 0); return { id: 'linebundle_' + L.id, kind: 'line_bundle' as const, name: L.name + ' Collection', desc: 'Every ' + L.name + ' skin. Completes the line and unlocks its collection reward.', cents: Math.round(tot * 0.75 / 100) * 100 - 1, items: it.flatMap(d => [d.id, ...includesOf(d.id)]) }; }).filter(b => b.items!.length >= 2);
+const STARTER_SKU: Sku = { id: STARTER.id, kind: 'starter', name: STARTER.name, desc: STARTER.desc, cents: STARTER.cents, items: STARTER.items };
+const PASS: Sku = { id: PASS_SKU, kind: 'pass', name: SEASON.name + ' Premium Pass', desc: 'Unlocks the premium track: ' + SEASON.levels + ' levels, earned by playing. Cosmetics only.', cents: SEASON.premiumCents };
+export const CATALOG: Sku[] = [...SKINS, ...BUNDLES, ...LOCKER, ...BANK, ...LINE_SKUS, ...LINE_BUNDLES, STARTER_SKU, PASS];
 /** Earn-only legendaries: never sold, never in a SKU (tests/store_premium.mjs). */
-export const EARN_ONLY = COSMETICS.filter(d => d.rarity === 'orange' && d.src.k !== 'premium').map(d => d.id);
+export const EARN_ONLY = COSMETICS.filter(d => d.rarity === 'orange' && !['premium','shop','chroma','pass','collection','starter','exclusive','bundled'].includes(d.src.k)).map(d => d.id);
 /** Limited slot: one premium legendary/epic skin rotates each week (deterministic from the week number, same for everyone). */
 export const WEEK_MS = 7 * 864e5;
 export function limitedSku(now = Date.now()): { sku: Sku; endsAt: number } { const L = CATALOG.filter(k => k.kind === 'skin' && ['orange', 'purple'].includes(COS_BY_ID[k.items![0]].rarity)); const w = Math.floor(now / WEEK_MS); return { sku: L[w % L.length], endsAt: (w + 1) * WEEK_MS }; }
@@ -45,12 +54,21 @@ export function storeOf(s: Save): StoreState {
 export type Avail = { ok: true } | { ok: false; why: string; owned?: boolean; later?: boolean };
 export function skuAvail(s: Save, id: string): Avail {
   const k = SKU_BY_ID[id]; if (!k) return { ok: false, why: 'Unknown item' }; const st = storeOf(s);
+  if (k.kind === 'line') { const d = COS_BY_ID[k.items![0]]; const a = sellable(d, s); if (!a.ok) return { ok: false, why: a.why, owned: a.why === 'Owned', later: a.why === 'Retired' };
+    const t = tierOf(d); if ((t === 'legendary' || t === 'ultimate') && !(d.src as any).window && featured()?.id !== d.id && !rotation().some(r => r.id === d.id)) return { ok: false, why: 'Returns in a future rotation', later: true }; return { ok: true }; }
+  if (k.kind === 'line_bundle') { if (k.items!.some(i => isRetired(i))) return { ok: false, why: 'Retired', later: true }; const left = k.items!.filter(i => !ownsCos(s, i)); return left.length ? { ok: true } : { ok: false, why: 'Owned', owned: true }; }
+  if (k.kind === 'starter') return (st.counters.starter || 0) > 0 ? { ok: false, why: 'Already claimed', owned: true } : { ok: true };
+  if (k.kind === 'pass') return passOf(s).premium ? { ok: false, why: 'Owned', owned: true } : { ok: true };
   if (k.kind === 'skin' || k.kind === 'bundle') { const left = k.items!.filter(i => !ownsCos(s, i)); return left.length ? { ok: true } : { ok: false, why: 'Owned', owned: true }; }
   if (k.kind === 'storage_locker') { const n = st.counters.locker; if (n >= LOCKER_TIER_CENTS.length) return { ok: false, why: 'Maxed out', owned: true }; if (k.tier! <= n) return { ok: false, why: 'Owned', owned: true }; if (k.tier! > n + 1) return { ok: false, why: 'Buy the earlier tier first', later: true }; return { ok: true }; }
   const n = st.counters.bank, b = bankOf(s); if (n >= BANK_TIER_CENTS.length || b.tabs >= BANK_TABS_MAX) return { ok: false, why: 'Maxed out', owned: true }; if (k.tier! <= n) return { ok: false, why: 'Owned', owned: true }; if (k.tier! > n + 1) return { ok: false, why: 'Buy the earlier tier first', later: true }; return { ok: true };
 }
 /** Next purchasable SKU of a storage line, or null when capped. */
 export const nextStorageSku = (s: Save, line: 'locker' | 'bank'): Sku | null => { const n = storeOf(s).counters[line]; const id = (line === 'locker' ? 'locker_slots_' : 'bank_tab_') + (n + 1); return SKU_BY_ID[id] && skuAvail(s, id).ok ? SKU_BY_ID[id] : null; };
+
+/** Current price: the featured hero skin carries the weekly discount. Every other price is the list price. */
+export function priceFor(id: string): number { const k = SKU_BY_ID[id]; if (!k) return 0; if (k.kind === 'line' && featured()?.id === k.items![0]) return featuredPrice(COS_BY_ID[k.items![0]]); return k.cents; }
+export const lineSku = (cosId: string) => SKU_BY_ID['line_' + cosId];
 
 // ---------------------------------------------------------------- payment provider seam
 export interface Order { orderId: string; sku: string; cents: number; currency: string; }
@@ -94,8 +112,9 @@ export function startPurchase(s: Save, skuId: string): Start {
   const a = skuAvail(s, skuId); if (!a.ok) return { ok: false, why: a.why };
   const live = activeOrder(); if (live) return { ok: false, why: 'Finish or cancel the current purchase first.' };
   const st = storeOf(s); const orderId = 'ord_' + (++st.orderN) + '_' + Date.now().toString(36);
-  const o: LiveOrder = { orderId, sku: skuId, cents: k.cents, currency: CURRENCY, status: 'started' }; orders.set(orderId, o);
-  track('purchase_start', skuId, { cents: k.cents, orderId, simulated: true }); return { ok: true, order: { orderId, sku: skuId, cents: k.cents, currency: CURRENCY } };
+  const cents = priceFor(skuId);
+  const o: LiveOrder = { orderId, sku: skuId, cents, currency: CURRENCY, status: 'started' }; orders.set(orderId, o);
+  track('purchase_start', skuId, { cents, orderId, simulated: true, first: !Object.keys(st.receipts).length }); return { ok: true, order: { orderId, sku: skuId, cents, currency: CURRENCY } };
 }
 export interface PurchaseResult { status: 'success' | 'failed' | 'cancelled'; why: string; receiptId?: string; granted?: string[]; duplicate?: boolean; }
 /** User pressed Confirm: run the provider, then fulfil on success. */
@@ -121,9 +140,12 @@ export function fulfil(s: Save, skuId: string, receiptId: string, cents: number,
   if (st.receipts[receiptId]) { track('purchase_duplicate_receipt', skuId, { receiptId }); return { duplicate: true, granted: [] }; }
   if (!k) return { duplicate: false, granted: [] };
   const granted: string[] = [];
-  if (k.kind === 'skin' || k.kind === 'bundle') { for (const id of k.items!) if (grantCos(s, id)) granted.push(id); }
+  if (k.kind === 'skin' || k.kind === 'bundle' || k.kind === 'line' || k.kind === 'line_bundle') { for (const id of k.items!) if (grantCos(s, id)) granted.push(id); }
+  else if (k.kind === 'starter') { if (!(st.counters.starter || 0)) { st.counters.starter = 1; for (const id of k.items!) if (grantCos(s, id)) granted.push(id); if (st.counters.locker < LOCKER_TIER_CENTS.length) { st.counters.locker++; s.purchases.lockerBlocks++; granted.push('locker+' + LOCKER_SLOTS_PER_TIER); } } }
+  else if (k.kind === 'pass') { const p = passOf(s); if (!p.premium) { p.premium = true; granted.push(PASS_SKU); } }
   else if (k.kind === 'storage_locker') { if (st.counters.locker < LOCKER_TIER_CENTS.length && k.tier === st.counters.locker + 1) { st.counters.locker++; s.purchases.lockerBlocks++; granted.push('locker+' + LOCKER_SLOTS_PER_TIER); } }
   else { const b = bankOf(s); if (st.counters.bank < BANK_TIER_CENTS.length && k.tier === st.counters.bank + 1 && b.tabs < BANK_TABS_MAX) { st.counters.bank++; b.tabs++; granted.push('bank_tab'); } }
+  for (const r of checkCollections(s)) granted.push(r);
   st.receipts[receiptId] = { id: receiptId, sku: skuId, cents, ts: Date.now(), orderId, granted }; st.spentCents += cents;
   track('purchase_success', skuId, { cents, receiptId, orderId, simulated: true });
   for (const g of granted) track('entitlement_granted', skuId, { grant: g, receiptId });
@@ -148,5 +170,5 @@ export function storagePromptHtml(g: any, where: 'locker' | 'bank'): string {
 }
 
 // ---------------------------------------------------------------- dev console (window.wvStore)
-export const devApi = { funnel, funnelText: () => funnelText(), events, export: exportJson, config: configureMock, catalog: () => CATALOG, reset: () => { resetAnalytics(); try { localStorage.removeItem('wv_analytics'); } catch { /* ignore */ } }, addHttpSink: (url: string) => addSink(httpSink(url)) };
+export const devApi = { funnel, funnelText: () => funnelText(), events, export: exportJson, config: configureMock, catalog: () => CATALOG, clock: (t: string | number | null) => { setClock(t); return new Date(now()).toISOString(); }, retired: () => ({ ...RETIRED }), reset: () => { resetAnalytics(); try { localStorage.removeItem('wv_analytics'); } catch { /* ignore */ } }, addHttpSink: (url: string) => addSink(httpSink(url)) };
 if (typeof window !== 'undefined') (window as any).wvStore = devApi;

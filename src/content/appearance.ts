@@ -4,11 +4,13 @@
 // (late-boss drops), orange is extremely rare (event rolls / marathon achievements only, lowest drop weight by far).
 import type { Rarity } from '../config';
 import type { Variant } from '../bodyvariants';
+import { PM_ROWS, type PmSrc, type SkinTier } from './skinlines';
+import { isRetired, now as rnow } from '../retire';
 
-export type CosSlot = 'hair'|'head'|'eyes'|'torso'|'arms'|'hands'|'legs'|'back'|'skin'|'tattoo'|'aura'|'trail';
-export const COS_SLOTS: CosSlot[] = ['hair','head','eyes','torso','arms','hands','legs','back','skin','tattoo','aura','trail'];
-export const COS_SLOT_LABEL: Record<CosSlot,string> = { hair:'Hair', head:'Headgear', eyes:'Eyes', torso:'Torso', arms:'Arms', hands:'Hands', legs:'Legs', back:'Back', skin:'Skin & body mods', tattoo:'Tattoos & marks', aura:'Aura', trail:'Trail' };
-export const COS_SLOT_ICON: Record<CosSlot,string> = { hair:'HR', head:'HD', eyes:'EY', torso:'TR', arms:'AR', hands:'HN', legs:'LG', back:'BK', skin:'SK', tattoo:'TT', aura:'AU', trail:'TL' };
+export type CosSlot = 'hair'|'head'|'eyes'|'torso'|'arms'|'hands'|'legs'|'back'|'skin'|'tattoo'|'aura'|'trail'|'emote'|'recall'|'weapon'|'pet';
+export const COS_SLOTS: CosSlot[] = ['hair','head','eyes','torso','arms','hands','legs','back','skin','tattoo','aura','trail','emote','recall','weapon','pet'];
+export const COS_SLOT_LABEL: Record<CosSlot,string> = { hair:'Hair', head:'Headgear', eyes:'Eyes', torso:'Torso', arms:'Arms', hands:'Hands', legs:'Legs', back:'Back', skin:'Skin & body mods', tattoo:'Tattoos & marks', aura:'Aura', trail:'Trail', emote:'Emote', recall:'Recall animation', weapon:'Weapon skin', pet:'Pet drone' };
+export const COS_SLOT_ICON: Record<CosSlot,string> = { hair:'HR', head:'HD', eyes:'EY', torso:'TR', arms:'AR', hands:'HN', legs:'LG', back:'BK', skin:'SK', tattoo:'TT', aura:'AU', trail:'TL', emote:'EM', recall:'RC', weapon:'WP', pet:'PT' };
 /** Which prebaked body layers a slot's `variant` override (real art) replaces. */
 export const COS_BODY_LAYERS: Partial<Record<CosSlot,string[]>> = { torso:['torso'], arms:['armL','armR'], hands:['handL','handR'], legs:['legL','legR','footL','footR'] };
 
@@ -22,13 +24,15 @@ export type CosSource =
   | { k:'boss' }                          // any boss kill
   | { k:'bossId'; boss:string }           // that boss only
   | { k:'ach'; key:string }               // achievement
-  | { k:'event'; key:string };            // rare event roll (very low weight)
+  | { k:'event'; key:string }             // rare event roll (very low weight)
+  | PmSrc;                                // premium lines / pass / collections / exclusives (src/content/skinlines.ts)
 
 export interface CosDef {
   id:string; name:string; slot:CosSlot; rarity:Rarity; theme:CosTheme;
   /** procedural style key interpreted by src/cosmetics.ts */ style:string; c:string; c2?:string;
   desc:string; lore:string; src:CosSource;
   /** real art: swap that body part to a manufacturer's prebaked layer set (appearance only, no hardware) */ variant?:Variant;
+  /** premium full-body sprite set (all layers) e.g. 'hextech' or 'surgical@gold' (chroma). Skin slot only. */ body?:string; line?:string; tier?:SkinTier;
 }
 
 type Row=[id:string,name:string,slot:CosSlot,rar:Rarity,theme:CosTheme,style:string,c:string,c2:string,desc:string,lore:string,src:string];
@@ -171,7 +175,7 @@ const R:Row[]=[
 
 function parseSrc(s:string):CosSource{ if(s.startsWith('v:')) return {k:'vendor',price:+s.slice(2)}; if(s.startsWith('p:')) return {k:'premium',cents:+s.slice(2)}; if(s==='d') return {k:'drop'}; if(s==='e') return {k:'elite'}; if(s==='b') return {k:'boss'}; if(s.startsWith('b:')) return {k:'bossId',boss:s.slice(2)}; if(s.startsWith('a:')) return {k:'ach',key:s.slice(2)}; return {k:'event',key:s.slice(3)}; }
 const VAR:Record<string,Variant>={ torso_mm:'market',torso_hi:'heavy',torso_ps:'surgical', arms_mm:'market',arms_hi:'heavy',arms_ps:'surgical', hands_hi:'heavy',hands_ps:'surgical', legs_mm:'market',legs_hi:'heavy',legs_ps:'surgical' };
-export const COSMETICS:CosDef[]=R.map(r=>({ id:r[0],name:r[1],slot:r[2],rarity:r[3],theme:r[4],style:r[5],c:r[6],c2:r[7]||undefined,desc:r[8],lore:r[9],src:parseSrc(r[10]),variant:VAR[r[0]] }));
+export const COSMETICS:CosDef[]=[...R.map(r=>({ id:r[0],name:r[1],slot:r[2],rarity:r[3],theme:r[4],style:r[5],c:r[6],c2:r[7]||undefined,desc:r[8],lore:r[9],src:parseSrc(r[10]),variant:VAR[r[0]] })), ...PM_ROWS.map(r=>({ id:r.id,name:r.name,slot:r.slot as CosSlot,rarity:r.rarity,theme:'EV' as CosTheme,style:r.style,c:r.c,c2:r.c2,desc:r.desc,lore:r.lore,src:r.src,body:r.body,line:r.line,tier:r.tier }))];
 export const COS_BY_ID:Record<string,CosDef>=Object.fromEntries(COSMETICS.map(c=>[c.id,c]));
 
 /** ---- Rarity policy (see docs/APPEARANCE_ITEMS.md section 2) ---- */
@@ -191,7 +195,7 @@ export function cosOf(s:{cosmetics?:CosState}):CosState{ if(!s.cosmetics) s.cosm
 export const ownsCos=(s:{cosmetics?:CosState},id:string)=>!!cosOf(s).owned[id];
 /** Equipped cosmetic defs (unknown / unowned ids are ignored). */
 export function equippedCos(s:{cosmetics?:CosState}):CosDef[]{ const c=cosOf(s); const o:CosDef[]=[]; for(const sl of COS_SLOTS){ const id=c.equipped[sl]; const d=id?COS_BY_ID[id]:undefined; if(d&&d.slot===sl&&c.owned[id!]) o.push(d); } return o; }
-export function grantCos(s:{cosmetics?:CosState},id:string):boolean{ const c=cosOf(s); if(!COS_BY_ID[id]||c.owned[id]) return false; c.owned[id]=Date.now(); return true; }
+export function grantCos(s:{cosmetics?:CosState},id:string):boolean{ const c=cosOf(s); if(!COS_BY_ID[id]||c.owned[id]) return false; if(isRetired(id)) return false; /* retired forever: never granted again (src/retire.ts) */ c.owned[id]=rnow(); return true; }
 export function equipCos(s:{cosmetics?:CosState},id:string|null,slot?:CosSlot):boolean{ const c=cosOf(s); if(id===null){ if(slot) delete c.equipped[slot]; return true; } const d=COS_BY_ID[id]; if(!d||!c.owned[id]) return false; c.equipped[d.slot]=id; return true; }
 export function buyCos(s:{cosmetics?:CosState;credits:number},id:string):{ok:boolean;why:string}{ const d=COS_BY_ID[id]; if(!d) return {ok:false,why:'Unknown item'}; if(d.src.k!=='vendor') return {ok:false,why:'Not sold here'}; if(ownsCos(s,id)) return {ok:false,why:'Already owned'}; if(s.credits<d.src.price) return {ok:false,why:'Need '+d.src.price+'c'}; s.credits-=d.src.price; grantCos(s,id); return {ok:true,why:'Bought '+d.name}; }
 

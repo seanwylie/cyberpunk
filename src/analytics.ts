@@ -2,6 +2,7 @@
 // Wire a real backend by adding a sink: addSink(httpSink('https://example/ingest')). See docs/STORE_SIM.md.
 export type AEventName = 'store_open' | 'sku_view' | 'purchase_start' | 'purchase_confirm' | 'purchase_success' | 'purchase_fail' | 'purchase_cancel'
   | 'entitlement_granted' | 'storage_full_prompt' | 'wardrobe_locked_item_click' | 'purchase_duplicate_receipt'
+  | 'shop_tab' | 'featured_view' | 'rotation_view' | 'line_view' | 'starter_view' | 'pass_view' | 'pass_level' | 'pass_claim' | 'collection_complete' | 'exclusive_earned' | 'exclusive_view' | 'showcase_set' | 'inspect_open' | 'emote_play' | 'recall_play' | 'retired_blocked'
   | 'dr_preview' | 'dr_rotate' | 'dr_buy_intent' | 'dr_apply' | 'dr_revert' | 'dr_outfit_save' | 'dr_outfit_load';
 export interface AEvent { n: number; t: number; name: AEventName; sku?: string; data?: Record<string, any>; }
 export interface AnalyticsSink { name: string; write(e: AEvent): void; }
