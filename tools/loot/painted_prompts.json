@@ -1,0 +1,442 @@
+{
+ "sig_oven_heart": [
+  "orange",
+  "a riveted cast-iron chest cuirass from a coke-oven foundry, a banked ember furnace grate glowing softly in the sternum, soot-blackened oxide-red plates, heat-scarred brass rivets",
+  "Oven-Tender boss: coke ovens, ember, forty-year-old furnace"
+ ],
+ "sig_pit_drill": [
+  "orange",
+  "a heavy cybernetic left arm ending in a tailings auger drill bit worn to a mirror edge, oxide-red mining plating, mud-caked gears, hydraulic pistons",
+  "Pit Boss of the tailings pit"
+ ],
+ "sig_crane_legs": [
+  "orange",
+  "a long counterweighted cybernetic leg built like a gantry crane, olive-green lattice girder shin, hanging counterweight block, hook-claw foot, cable pulleys",
+  "Gantry-Mother boss of the scrap gantry"
+ ],
+ "ab_hi_armR_chain_reaction": [
+  "orange",
+  "a brutal oxide-red cybernetic right arm with stacked cylindrical charge cells along the forearm, linked by a copper chain of capacitors, one cell faintly glowing",
+  "chain reaction explosions"
+ ],
+ "ab_hi_torso_foundry_meltdown": [
+  "orange",
+  "a thick foundry-forged armored chest plate with a molten crucible core visible through cracked oxide-red plating, slag drips frozen at the edges",
+  "foundry meltdown"
+ ],
+ "ab_mm_brain_legion_protocol": [
+  "orange",
+  "an olive-green cranial neural core implant shaped like a helmet-cap, ringed with small drone-command antennae and a row of tiny legion insignia lights",
+  "commanding a legion of drones"
+ ],
+ "ab_mm_torso_second_wind": [
+  "orange",
+  "an olive-green military chest rig with an embedded bellows-like lung pump and twin defibrillator paddles, canvas straps",
+  "second wind, revival"
+ ],
+ "ab_ps_face_blackout_protocol": [
+  "orange",
+  "a sleek slate-blue cybernetic visor faceplate with a single dark band across the eyes, signal-jamming fins at the temples, faint amber glow in the slit",
+  "blackout, signal jamming"
+ ],
+ "ab_ps_face_orbital_strike": [
+  "orange",
+  "a slate-blue targeting visor faceplate with a rotating crosshair lens over one eye and a small satellite uplink dish at the temple",
+  "orbital strike targeting"
+ ],
+ "idkfa_face": [
+  "orange",
+  "a seamless polished ceramic white-and-slate faceplate, no visible seams, elegant minimal targeting lens",
+  "apex prototype"
+ ],
+ "idkfa_foot_l": [
+  "orange",
+  "a sleek slate-blue cybernetic left foot with shock-damping pistons in the heel and a phase emitter at the toe",
+  "apex prototype, blink step"
+ ],
+ "idkfa_foot_r": [
+  "orange",
+  "a sleek slate-blue cybernetic right foot with layered damping springs and a soft amber phase-shift coil",
+  "apex prototype, phase slip"
+ ],
+ "idkfa_hand_l": [
+  "orange",
+  "a slender slate-blue cybernetic left hand whose fingers end in fine surgical micro-scalpels, precise and elegant",
+  "apex prototype, surgeon"
+ ],
+ "idkfa_hand_r": [
+  "orange",
+  "a slate-blue cybernetic right hand with an arc-caster coil in the palm and copper electrode fingertips, a thin arc of amber electricity between two fingers",
+  "apex prototype, chain arc"
+ ],
+ "idkfa_leg_l": [
+  "orange",
+  "a long elegant slate-blue cybernetic strider leg with a reverse knee joint and sprinter blade foot",
+  "apex prototype, lunge"
+ ],
+ "s1_bloom_veil": [
+  "orange",
+  "a flowing woven cybernetic torso veil of fine slate-blue mesh with violet static flowers blooming across it, shoulder clasps",
+  "Season 1 signal storm, violet static bloom"
+ ],
+ "s1_prism_lancer": [
+  "orange",
+  "an oxide-red cybernetic right arm ending in a long crystalline prism lance blade that splits light into a soft spectrum",
+  "Season 1, prism"
+ ],
+ "s1_quiet_halo": [
+  "orange",
+  "an olive-green and brass face mask with a thin halo ring floating just behind it, serene, monastic",
+  "Season 1, quiet halo"
+ ],
+ "ab_hi_armL_firestorm_pillar": [
+  "purple",
+  "a oxide-red cybernetic left arm called Firestorm Pillar Arm (L), themed on firestorm pillar",
+  ""
+ ],
+ "ab_hi_armR_siege_bot": [
+  "purple",
+  "a oxide-red cybernetic right arm called Siege Bot Arm (R), themed on siege bot",
+  ""
+ ],
+ "ab_hi_brain_overclock_core": [
+  "purple",
+  "a oxide-red cranial neural core implant called Overclock Core Core, themed on overclock core",
+  ""
+ ],
+ "ab_hi_legR_seismic_stomp": [
+  "purple",
+  "a oxide-red cybernetic right leg called Seismic Stomp Leg (R), themed on seismic stomp",
+  ""
+ ],
+ "ab_hi_torso_stoneskin": [
+  "purple",
+  "a oxide-red armored chest plate called Stoneskin Torso, themed on stoneskin",
+  ""
+ ],
+ "ab_ps_brain_gravity_well": [
+  "purple",
+  "a slate-blue cranial neural core implant called Gravity Well Duo Core, themed on gravity well and overwatch array",
+  ""
+ ],
+ "ab_ps_brain_neural_hijack": [
+  "purple",
+  "a slate-blue cranial neural core implant called Neural Hijack Core, themed on neural hijack",
+  ""
+ ],
+ "ab_ps_face_headshot_protocol": [
+  "purple",
+  "a slate-blue visor faceplate called Headshot Protocol Duo Visor, themed on headshot protocol and mirage step",
+  ""
+ ],
+ "hi_gantry_leg_l": [
+  "purple",
+  "a oxide-red cybernetic left leg called Gantry Leg (L)",
+  ""
+ ],
+ "hi_gantry_leg_r": [
+  "purple",
+  "a oxide-red cybernetic right leg called Gantry Leg (R)",
+  ""
+ ],
+ "hi_shard_arm_p": [
+  "purple",
+  "a oxide-red cybernetic right arm called Foundry Shard Battery (R)",
+  ""
+ ],
+ "hi_slug_cannon": [
+  "purple",
+  "a oxide-red cybernetic right hand called Foundry Slug Cannon",
+  ""
+ ],
+ "pool_p_hand": [
+  "purple",
+  "a oxide-red cybernetic right hand called Rotor Hand (R)",
+  ""
+ ],
+ "pool_p_torso": [
+  "purple",
+  "a slate-blue armored chest plate called Lattice Torso",
+  ""
+ ],
+ "ps_arc_caster": [
+  "purple",
+  "a slate-blue cybernetic right hand called Chain-Arc Caster",
+  ""
+ ],
+ "ps_ceramic_leg_l": [
+  "purple",
+  "a slate-blue cybernetic left leg called Ceramic Strider (L), themed on reposition",
+  ""
+ ],
+ "ps_ceramic_leg_r": [
+  "purple",
+  "a slate-blue cybernetic right leg called Ceramic Strider (R)",
+  ""
+ ],
+ "ps_fan_arm": [
+  "purple",
+  "a slate-blue cybernetic left arm called Fan-Blade Arm (L), themed on bladeburst",
+  ""
+ ],
+ "ps_needle_rifle_p": [
+  "purple",
+  "a slate-blue cybernetic right hand called Needle Burst Rifle (Theatre)",
+  ""
+ ],
+ "ps_nerve_brain": [
+  "purple",
+  "a slate-blue cranial neural core implant called Nerve-Lace Cortex, themed on control",
+  ""
+ ],
+ "ab_hi_armL_leech_blades": [
+  "blue",
+  "a oxide-red cybernetic left arm called Leech Blades Arm (L), themed on leech blades",
+  ""
+ ],
+ "ab_hi_armL_thermite_lob": [
+  "blue",
+  "a oxide-red cybernetic left arm called Thermite Lob Arm (L), themed on thermite lob and concussion wave",
+  ""
+ ],
+ "ab_hi_armR_slag_cannon": [
+  "blue",
+  "a oxide-red cybernetic right arm called Slag Cannon Arm (R), themed on slag cannon",
+  ""
+ ],
+ "ab_hi_brain_repulsor_drone": [
+  "blue",
+  "a oxide-red cranial neural core implant called Repulsor Drone Core, themed on repulsor drone",
+  ""
+ ],
+ "ab_hi_torso_reactive_armour": [
+  "blue",
+  "a oxide-red armored chest plate called Reactive Armour Torso, themed on reactive armour and warcry horn",
+  ""
+ ],
+ "ab_hi_torso_thermal_siphon": [
+  "blue",
+  "a oxide-red armored chest plate called Thermal Siphon Torso, themed on thermal siphon",
+  ""
+ ],
+ "ab_mm_armL_scrap_swarm": [
+  "blue",
+  "a olive-green cybernetic left arm called Scrap Swarm Arm (L), themed on scrap swarm",
+  ""
+ ],
+ "ab_mm_armR_cascade_arc": [
+  "blue",
+  "a olive-green cybernetic right arm called Cascade Arc Arm (R), themed on cascade arc and magnet pull",
+  ""
+ ],
+ "ab_mm_armR_grapple_hook": [
+  "blue",
+  "a olive-green cybernetic right arm called Grapple Hook Arm (R), themed on grapple hook",
+  ""
+ ],
+ "ab_mm_brain_sentry_drone": [
+  "blue",
+  "a olive-green cranial neural core implant called Sentry Drone Core, themed on sentry drone",
+  ""
+ ],
+ "ab_mm_torso_rally_beacon": [
+  "blue",
+  "a olive-green armored chest plate called Rally Beacon Torso, themed on rally beacon and adrenal surge",
+  ""
+ ],
+ "ab_ps_brain_virus_upload": [
+  "blue",
+  "a slate-blue cranial neural core implant called Virus Upload Core, themed on virus upload and cold loop",
+  ""
+ ],
+ "ab_ps_face_ambush_mark": [
+  "blue",
+  "a slate-blue visor faceplate called Ambush Mark Visor, themed on ambush mark",
+  ""
+ ],
+ "ab_ps_handL_scalpel_flurry": [
+  "blue",
+  "a slate-blue cybernetic left hand called Scalpel Flurry Hand (L), themed on scalpel flurry and coup de grace",
+  ""
+ ],
+ "ab_ps_handR_overcharge_shot": [
+  "blue",
+  "a slate-blue cybernetic right hand called Overcharge Shot Hand (R), themed on overcharge shot",
+  ""
+ ],
+ "ab_ps_legL_reaper_lunge": [
+  "blue",
+  "a slate-blue cybernetic left leg called Reaper Lunge Leg (L), themed on reaper lunge",
+  ""
+ ],
+ "ab_ps_legR_phase_slip": [
+  "blue",
+  "a slate-blue cybernetic right leg called Phase Slip Leg (R), themed on phase slip",
+  ""
+ ],
+ "ab_ps_torso_phase_barrier": [
+  "blue",
+  "a slate-blue armored chest plate called Phase Barrier Torso, themed on phase barrier",
+  ""
+ ],
+ "hi_anvil_foot": [
+  "blue",
+  "a oxide-red cybernetic right foot called Anvil Foot (R)",
+  ""
+ ],
+ "hi_crucible_torso": [
+  "blue",
+  "a oxide-red armored chest plate called Crucible Exchange Chassis, themed on brace and forcedcool",
+  ""
+ ],
+ "hi_cutting_head": [
+  "blue",
+  "a oxide-red cybernetic right hand called HB-12 Cutting Head",
+  ""
+ ],
+ "hi_ladle_hand": [
+  "blue",
+  "a oxide-red cybernetic right hand called Ladle-Saw Hand",
+  ""
+ ],
+ "hi_press_arm": [
+  "blue",
+  "a oxide-red cybernetic left arm called Press-Ram Arm (L), themed on sweep",
+  ""
+ ],
+ "hi_ripper_arm": [
+  "blue",
+  "a oxide-red cybernetic right arm called HB-40 Ripper Arm, themed on sweep",
+  ""
+ ],
+ "hi_shard_arm": [
+  "blue",
+  "a oxide-red cybernetic right arm called Shard Thrower Arm (R)",
+  ""
+ ],
+ "hi_torso_cool": [
+  "blue",
+  "a oxide-red armored chest plate called Thermal Exchange Chassis, themed on brace and forcedcool",
+  ""
+ ],
+ "mm_autopistol_b": [
+  "blue",
+  "a olive-green cybernetic right hand called Kestrel Pocket Auto II",
+  ""
+ ],
+ "mm_barcode_brain": [
+  "blue",
+  "a olive-green cranial neural core implant called Kestrel Inventory Brain, themed on control",
+  ""
+ ],
+ "mm_cutter_hand": [
+  "blue",
+  "a olive-green cybernetic right hand called Kestrel Box-Cutter Hand",
+  ""
+ ],
+ "mm_returns_torso": [
+  "blue",
+  "a olive-green armored chest plate called Kestrel Returns Rack, themed on revive and defib",
+  ""
+ ],
+ "pool_b_arm": [
+  "blue",
+  "a oxide-red cybernetic left arm called Piston Arm (L)",
+  ""
+ ],
+ "pool_b_foot": [
+  "blue",
+  "a slate-blue cybernetic left foot called Damped Foot (L)",
+  ""
+ ],
+ "ps_anesthesia_face": [
+  "blue",
+  "a slate-blue visor faceplate called Anesthesia Mask",
+  ""
+ ],
+ "ps_blade_arm": [
+  "blue",
+  "a slate-blue cybernetic right arm called Fan-Blade Arm, themed on bladeburst",
+  ""
+ ],
+ "ps_blade_hand_r": [
+  "blue",
+  "a slate-blue cybernetic right hand called Scalpel Hand (R)",
+  ""
+ ],
+ "ps_brain": [
+  "blue",
+  "a slate-blue cranial neural core implant called Cortex Link Mk2, themed on control",
+  ""
+ ],
+ "ps_legs_l": [
+  "blue",
+  "a slate-blue cybernetic left leg called Strider Leg (L), themed on reposition",
+  ""
+ ],
+ "ps_needle_rifle": [
+  "blue",
+  "a slate-blue cybernetic right hand called Needle Burst Rifle",
+  ""
+ ],
+ "ps_scalpel_hand_l2": [
+  "blue",
+  "a slate-blue cybernetic left hand called Micro-Scalpel Hand (L)",
+  ""
+ ],
+ "ps_theatre_torso": [
+  "blue",
+  "a slate-blue armored chest plate called Theatre Veil Torso, themed on cloak",
+  ""
+ ],
+ "ps_veil_torso": [
+  "blue",
+  "a slate-blue armored chest plate called Veil Torso, themed on cloak",
+  ""
+ ],
+ "pool_o_legs": [
+  "orange",
+  "a massive oxide-red bastion cybernetic right leg, thick fortress-like armor plates over the thigh and shin, broad stabilizer foot",
+  "bastion, immovable"
+ ],
+ "sig_anvil_arm": [
+  "orange",
+  "a huge oxide-red cybernetic right arm ending in a blacksmith-anvil ram fist, foundry-hot seams that never cool, heavy rivets",
+  "Ladle-Tyrant boss of the foundry, molten ladles"
+ ],
+ "sig_governor_core": [
+  "orange",
+  "an oxide-red and brass cranial core implant shaped like an industrial steam governor with spinning flyball weights and heat vents",
+  "ORE-9 smelter AI boss that governs heat then turns on its owners"
+ ],
+ "sig_audit_core": [
+  "orange",
+  "a slate-blue cranial neural implant with a stamped audit seal, ledger-like data ridges and a single watchful lens",
+  "Neural Warden boss, corporate auditor of minds"
+ ],
+ "sig_autosurgeon_rig": [
+  "orange",
+  "a slate-blue cybernetic left arm made of a twin surgical saw rig torn from an operating-theatre ceiling, articulated gantry joints and two circular bone saws",
+  "GEMINI Autosurgeon boss of the operating theatre"
+ ],
+ "sig_lazarus_rack": [
+  "orange",
+  "an olive-green refurbished chest rig with a defibrillator rack of charge cells along the spine, resale tags and repaired stitching",
+  "returned, refurbished, resold; revival"
+ ],
+ "sig_r0_lifter": [
+  "orange",
+  "an olive-green warehouse-robot cybernetic right leg with forklift tine heel, hydraulic lift ram and caution-striped knee",
+  "Retrieval Unit R-0 warehouse boss, lifts what the shelves cannot"
+ ],
+ "sig_reclaimer_ripper": [
+  "orange",
+  "an oxide-red cybernetic right arm with a serrated reclamation ripper blade folding out of the forearm, repo-crew stencils",
+  "Reclamation Enforcer boss, repossession"
+ ],
+ "sig_recovered_veil": [
+  "orange",
+  "a pale slate-blue hospital-gown-like woven torso veil of cold optical fibre, faint patient wristband tag, eerie and empty",
+  "Patient Eleven boss, a weave that remembers no person"
+ ]
+}

@@ -18,7 +18,7 @@ function applyVariant(src:HTMLCanvasElement,v:number,seed:number):HTMLCanvasElem
   else { c.fillStyle='rgba(0,0,0,.2)'; c.fillRect(0,0,W,H); c.strokeStyle='rgba(8,8,8,.5)'; c.lineWidth=1.1*k; for(let i=0;i<5;i++){ const x=R()*W,y=R()*H; c.beginPath(); c.moveTo(x,y); c.lineTo(x+(R()-.5)*18*k,y+(R()-.5)*14*k); c.stroke(); } c.fillStyle='rgba(140,76,36,.35)'; for(let i=0;i<4;i++){ c.beginPath(); c.ellipse(R()*W,R()*H,3*k,2*k,R()*3,0,7); c.fill(); } }
   c.globalCompositeOperation='source-over'; return cv; }
 export function specOf(d:DropLike):LootSpec {
-  if(d.kind==='item'){ const it=ITEM_BY_ID[d.inst!.def]; const sig=!!(it as any).authoredException; return { id:it.id, kind:'item', slot:it.slot, mfr:it.mfr, rar:it.rarity, name:it.name, sig, weapon:it.weapon, amount:1, key:`i|${it.slot}|${it.mfr}|${it.rarity}|${it.weapon||''}|${sig?1:0}${it.rarity==='orange'?'|'+it.id:'|v'+lootVariant(it.id)}` }; }
+  if(d.kind==='item'){ const it=ITEM_BY_ID[d.inst!.def]; const sig=!!(it as any).authoredException; return { id:it.id, kind:'item', slot:it.slot, mfr:it.mfr, rar:it.rarity, name:it.name, sig, weapon:it.weapon, amount:1, key:`i|${it.slot}|${it.mfr}|${it.rarity}|${it.weapon||''}|${sig?1:0}${it.rarity==='orange'?'|'+it.id:(RARITY_RANK[it.rarity]>=2?'|'+it.id:'')+'|v'+lootVariant(it.id)}` }; }
   if(d.kind==='chip'){ const c=(CHIPS as any)[d.chip!]; return { kind:'chip', rar:c.rarity, name:c.name, sig:false, amount:1, key:`c|${c.rarity}` }; }
   if(d.kind==='stim') return { kind:'stim', rar:'green', name:'Nano-patch', sig:false, amount:1, key:'s|green' };
   const n=d.amount>=60?3:d.amount>=15?2:1; return { kind:'credits', rar:'grey', name:d.amount+' credits', sig:false, amount:n, key:'$|'+n };
@@ -112,7 +112,7 @@ interface AtlasMan { files:Record<string,{src:string;cell:number;w:number;h:numb
 let MAN:AtlasMan|null=null; const AIMG:Record<string,HTMLImageElement>={}; let atlasState:'idle'|'loading'|'ready'|'failed'=!(typeof document!=='undefined')?'failed':'idle';
 const frames=new Map<string,HTMLCanvasElement>();
 /** orange atlas cells are 128px but drawn at 1.2x the 96px procedural scale; they sit on the ground with their platform bottom at `by` */
-const ORANGE_S=.9, ORANGE_BY=.86;
+const ORANGE_S=.9, ORANGE_BY=.86, PAINT_S=.82;
 export const atlasStatus=()=>atlasState;
 export function useAtlas(on:boolean){ forceProcedural=!on; frames.clear(); icons.clear(); sheens.clear(); }
 let forceProcedural=typeof location!=='undefined'&&/[?&]nolootatlas/.test(location.search);
@@ -125,8 +125,9 @@ export function ensureAtlas():Promise<void>{
   }).catch(()=>{ atlasState='failed'; });
 }
 /** atlas sprite for a spec (+ mirror flag) or null -> procedural fallback */
-export function atlasRef(s:LootSpec):{name:string;mirror:boolean;orange:boolean}|null{
+export function atlasRef(s:LootSpec):{name:string;mirror:boolean;orange:boolean;painted?:boolean}|null{
   if(!MAN||forceProcedural) return null; const has=(n:string)=>!!MAN!.sprites[n];
+  if(s.kind==='item'&&s.id&&has('p_'+s.id)) return { name:'p_'+s.id, mirror:false, orange:s.rar==='orange', painted:true }; // bespoke painted icon (tools/loot/gen_painted.py, docs/LOOT_ART.md)
   let name='', mirror=false; const orange=s.rar==='orange';
   if(s.kind==='credits') name='credits_'+Math.min(3,Math.max(1,s.amount));
   else if(s.kind==='stim') name='patch';
@@ -134,22 +135,26 @@ export function atlasRef(s:LootSpec):{name:string;mirror:boolean;orange:boolean}
   else { const b=(s.slot||'').replace(/[LR]$/,''); mirror=/L$/.test(s.slot||''); const sn=s.id?'sig_'+s.id.replace(/^sig_/,''):''; name=orange&&sn&&has(sn)?sn:orange?`orange_${b}_${s.mfr}`:`base_${b}_${s.mfr}`; }
   if(!has(name)) return null; return { name, mirror, orange: name.startsWith('orange_')||name.startsWith('sig_') };
 }
+/** small painted-icon <span> (CSS sprite from the painted atlas) for tooltips / banners; '' until the atlas manifest is loaded or if the item has no painted art */
+export function paintedIconHtml(id:string|undefined,px=48):string{
+  if(atlasState==='idle') void ensureAtlas(); if(!id||!MAN||forceProcedural) return ''; const sp=MAN.sprites['p_'+id]; if(!sp) return ''; const f=MAN.files[sp.file]; const k=px/f.cell;
+  return `<span class="picon" style="display:inline-block;width:${px}px;height:${px}px;vertical-align:middle;background:url(${new URL('./loot/'+f.src,document.baseURI).href}) ${-0*k}px ${-sp.row*f.cell*k}px/${f.w*k}px ${f.h*k}px no-repeat"></span>`; }
 export const isAtlas=(s:LootSpec)=>!!atlasRef(s);
 function atlasFrame(s:LootSpec,i:number):HTMLCanvasElement|null{
   const ref=atlasRef(s); if(!ref) return null; const sp=MAN!.sprites[ref.name]; const f=MAN!.files[sp.file]; const img=AIMG[sp.file]; const n=sp.n; const fi=((i%n)+n)%n;
   const k=s.key+'#'+fi; let cv=frames.get(k); if(cv) return cv;
   const c0=f.cell; cv=mk(c0,c0); const c=cv.getContext('2d')!; const raw=mk(c0,c0); const rc=raw.getContext('2d')!;
   if(ref.mirror){ rc.translate(c0,0); rc.scale(-1,1); } rc.drawImage(img,fi*c0,sp.row*c0,c0,c0,0,0,c0,c0); rc.setTransform(1,0,0,1,0,0);
-  if(!ref.orange&&s.kind==='item'){ const vv=variantOfKey(s.key); if(vv){ const vr=applyVariant(raw,vv,hx(s.key)); rc.clearRect(0,0,c0,c0); rc.drawImage(vr,0,0); } }
+  if(!ref.orange&&!ref.painted&&s.kind==='item'){ const vv=variantOfKey(s.key); if(vv){ const vr=applyVariant(raw,vv,hx(s.key)); rc.clearRect(0,0,c0,c0); rc.drawImage(vr,0,0); } }
   const col=RARITY_COLOR[s.rar], rk=RARITY_RANK[s.rar], u=c0/96;
   // rarity trim stays code-drawn: band across the lower third (not on orange: its 3D trim is part of the model), tinted outline
-  if(!ref.orange&&(rk>=1&&s.kind!=='chip'||rk>=2)){ rc.globalCompositeOperation='source-atop'; rc.fillStyle=col;
+  if(!ref.orange&&!ref.painted&&(rk>=1&&s.kind!=='chip'||rk>=2)){ rc.globalCompositeOperation='source-atop'; rc.fillStyle=col;
     if(rk===1){ rc.globalAlpha=.8; rc.fillRect(0,64*u,c0,2.2*u); } else { rc.globalAlpha=.6; rc.fillRect(0,62*u,c0,2.6*u); if(rk>=3) rc.fillRect(0,67*u,c0,1.4*u); }
     rc.globalAlpha=1; rc.globalCompositeOperation='source-over'; }
   const t=mk(c0,c0), tc=t.getContext('2d')!; const oc=rk===0?'#1d1f1e':col; const w=(rk>=3?1.8:rk>=1?1.5:1.1)*u*(ref.orange?.8:1);
   for(let q=0;q<8;q++){ const a=q/8*6.283; tc.drawImage(raw,Math.cos(a)*w,Math.sin(a)*w); } tc.globalCompositeOperation='source-in'; tc.fillStyle=oc; tc.fillRect(0,0,c0,c0);
   c.globalAlpha=ref.orange?.55:.9; c.drawImage(t,0,0); c.globalAlpha=1; c.drawImage(raw,0,0);
-  (cv as any).__s=ref.orange?ORANGE_S:1; (cv as any).__atlas=true; (cv as any).__orange=ref.orange; (cv as any).__n=n; frames.set(k,cv); return cv;
+  (cv as any).__s=ref.painted?PAINT_S:ref.orange?ORANGE_S:1; (cv as any).__atlas=true; (cv as any).__painted=!!ref.painted; (cv as any).__orange=ref.orange&&!ref.painted; (cv as any).__n=n; frames.set(k,cv); return cv;
 }
 /** animated frame for a drop: purple+ spin/animate, blue slow turntable, grey/green static (facing varies by seed), Reduced FX / far = still */
 export function iconAt(s:LootSpec,t:number,seed:number,fx:0|1|2):HTMLCanvasElement{
@@ -226,7 +231,7 @@ function raritySparkles(c:C,gx:number,cy:number,s:number,t:number,spec:LootSpec,
 export interface DrawOpts { age:number; reduced:boolean; fx:0|1|2; dim?:boolean; }
 /** fx: 0 = icon + shadow only (far/over-budget), 1 = static trims (Reduced FX), 2 = full animation */
 export function drawLoot(c:C,a:number,b:number,s:number,t:number,spec:LootSpec,seed:number,o:DrawOpts){
-  const rk=RARITY_RANK[spec.rar], col=RARITY_COLOR[spec.rar]; const k=s*(o.dim?.34:.5)*(spec.kind==='credits'?.9:1)*(1+rk*.07); const ic=iconAt(spec,t,seed,o.fx); const at=!!(ic as any).__atlas, ao=at&&!!(ic as any).__orange;
+  const rk=RARITY_RANK[spec.rar], col=RARITY_COLOR[spec.rar]; const k=s*(o.dim?.34:.5)*(spec.kind==='credits'?.9:1)*(1+rk*.07); const ic=iconAt(spec,t,seed,o.fx); const at=!!(ic as any).__atlas, ao=at&&!!(ic as any).__orange, ap=!!(ic as any).__painted;
   const tt=toss(o.age,seed,s); const settled=tt.done; const full=o.fx===2;
   const hoverBase=ao?0:rk===4?(11+(full?2.2*Math.sin(t*1.5+seed):0))*s:rk===3&&full?(2+1.6*Math.sin(t*1.1+seed))*s:0; const hv=hoverBase*sm((o.age-TOSS_T)/.5);
   const gx=a+tt.dx, gy=b+tt.dy; const lift=tt.z+hv; const cy=ao?gy-30*s-tt.z:gy-14*s*(o.dim?.7:1)-lift;
@@ -251,7 +256,7 @@ export function drawLoot(c:C,a:number,b:number,s:number,t:number,spec:LootSpec,s
   if(rk===4){ // warm controlled light, then back housing
     if(full){ const g=c.createRadialGradient(gx,cy,0,gx,cy,34*s); g.addColorStop(0,'rgba(220,150,80,.22)'); g.addColorStop(1,'rgba(220,150,80,0)'); c.save(); c.globalCompositeOperation='lighter'; c.globalAlpha=.7+.3*Math.sin(t*1.7+seed); c.fillStyle=g; c.fillRect(gx-34*s,cy-34*s,68*s,68*s); c.restore(); }
     // kinetic gears on ground ring
-    if(!ao){ const gr=full?t:0; gear(c,gx-20*s,gy+1*s,4.6*s,gr*1.4+seed,8,'#7a6648','#251d14'); gear(c,gx+20*s,gy+1*s,4.6*s,-gr*1.4+.2,8,'#7a6648','#251d14'); if(spec.sig) gear(c,gx,gy+8*s,3.6*s,gr*2.2,6,'#8a7355','#251d14');
+    if(!ao&&!ap){ const gr=full?t:0; gear(c,gx-20*s,gy+1*s,4.6*s,gr*1.4+seed,8,'#7a6648','#251d14'); gear(c,gx+20*s,gy+1*s,4.6*s,-gr*1.4+.2,8,'#7a6648','#251d14'); if(spec.sig) gear(c,gx,gy+8*s,3.6*s,gr*2.2,6,'#8a7355','#251d14');
     housing(false); } }
   const gs=rk===3&&at&&gimSprite(c,gx,cy,k,full?t:0,seed,false); if(rk===3&&!gs) gim(false);
   // the item itself
@@ -260,7 +265,7 @@ export function drawLoot(c:C,a:number,b:number,s:number,t:number,spec:LootSpec,s
   if(full||o.fx===1){ const cyc=rk===0?4.5:rk>=3?2.6:3.4; const u=((t+seed*.13)%cyc)/cyc; const sw=rk>=3?.5:rk===0?.22:.3; if(u<.4&&full&&!at){ const fr=sheenFrames(spec); c.globalAlpha=sw*Math.sin(u/.4*Math.PI); c.drawImage(fr[Math.min(SHEEN_N-1,(u/.4*SHEEN_N)|0)],gx-48*k,cy-50*k,CELL*k,CELL*k); c.globalAlpha=1; }
     if(rk>=1&&rk<=2&&full){ const u2=((t*.7+seed*.21)%3)/3; if(u2<.18){ const hh=hx(spec.key); glint(c,gx+((hh%7)-3)*3*s,cy-6*s-(hh%5)*2*s,3.4*s*Math.sin(u2/.18*Math.PI),1); } } }
   if(rk===3){ if(gs) gimSprite(c,gx,cy,k,full?t:0,seed,true); else gim(true); }
-  if(rk===4){ if(!ao) housing(true);
+  if(rk===4){ if(!ao&&!ap) housing(true);
     if(full){ // heat shimmer: faint warm wavy lines rising above
       c.strokeStyle='rgba(224,160,96,.5)'; c.lineWidth=1*s; for(let i=0;i<3;i++){ const ph2=(t*.5+i*.33+seed*.1)%1; c.globalAlpha=.32*(1-ph2)*Math.min(1,ph2*5); c.beginPath(); for(let y=0;y<=12;y++){ const yy=cy-14*s-ph2*26*s-y*1.2*s; const xx=gx+(i-1)*7*s+Math.sin(y*.9+t*5+i)*1.6*s; y?c.lineTo(xx,yy):c.moveTo(xx,yy); } c.stroke(); } c.globalAlpha=1; } }
   raritySparkles(c,gx,cy,s,t,spec,seed,o.fx);

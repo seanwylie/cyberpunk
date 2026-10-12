@@ -18,7 +18,7 @@ ok(r.bad.length === 0, 'atlas frames are non-empty ' + r.bad.join(','));
 r = await ev(() => { const M = window.__M, C = window.__C; const out = []; const orange = C.ITEMS ? C.ITEMS.filter(i => i.rarity === 'orange') : []; const all = Object.values(C.ITEM_BY_ID).filter(i => i.rarity === 'orange');
   for (const it of all) { const sp = M.specOf({ id: 1, kind: 'item', inst: { def: it.id }, amount: 1 }); const sig = M.atlasRef(sp); out.push([it.id, sig && sig.name, sig && sig.orange]); } return out; });
 ok(r.length >= 9 && r.every(x => x[1] && x[2]), 'every orange item (' + r.length + ') has an orange atlas model: ' + r.map(x => x[1]).join(','));
-ok(r.filter(x => x[1].startsWith('sig_')).length >= 9, 'all 9 signature items map to their own sig_ model');
+ok(r.filter(x => /^(sig_|p_)/.test(x[1])).length >= 9, 'all signature items map to their own bespoke (sig_ 3D or p_ painted) art');
 r = await ev(() => { const M = window.__M; const diff = (a, b) => { const x = a.getContext('2d').getImageData(0, 0, a.width, a.height).data, y = b.getContext('2d').getImageData(0, 0, b.width, b.height).data; let n = 0; for (let i = 0; i < x.length; i += 4) if (Math.abs(x[i] - y[i]) + Math.abs(x[i + 1] - y[i + 1]) > 40) n++; return n; };
   const sp = rar => ({ kind: 'item', slot: 'armR', mfr: 'HI', rar, name: 'x', sig: false, amount: 1, key: 'an|' + rar });
   const L = { kind: 'item', slot: 'armL', mfr: 'HI', rar: 'grey', name: 'x', sig: false, amount: 1, key: 'an|L' };
