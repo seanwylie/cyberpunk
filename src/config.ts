@@ -117,7 +117,7 @@ export const WEAPONS: Record<WeaponKind,WeaponDef> = {
 };
 
 export type ItemKind = 'hardware';
-export interface ItemDef { id:string; name:string; slot:Slot; mfr:Mfr; rarity:Rarity; lvl:number; stats:Partial<Stats>; abilities?:AbilityId[]; weapon?:WeaponKind; caps?:('force'|'hack'|'cloak'|'defib')[]; authoredException?:boolean; blurb?:string; }
+export interface ItemDef { id:string; name:string; slot:Slot; mfr:Mfr; rarity:Rarity; lvl:number; stats:Partial<Stats>; abilities?:AbilityId[]; weapon?:WeaponKind; caps?:('force'|'hack'|'cloak'|'defib'|'speech')[]; /** humanity cost override (docs/HUMANITY.md); default from rarity x invasiveness */ hum?:number; authoredException?:boolean; blurb?:string; }
 const H = (id:string,name:string,slot:Slot,mfr:Mfr,rarity:Rarity,lvl:number,stats:Partial<Stats>,x:Partial<ItemDef>={}):ItemDef=>({id,name,slot,mfr,rarity,lvl,stats,...x});
 export const ITEMS: ItemDef[] = [
   // --- Stock baseline hardware (grey), one per slot: "baseline hardware, not empty slots" ---
@@ -138,7 +138,7 @@ export const ITEMS: ItemDef[] = [
   H('ps_legs_l','AS Strider Leg (L)','legL','PS','blue',10,{move:.1},{abilities:['reposition']}),
   H('ps_legs_r','AS Strider Leg (R)','legR','PS','green',8,{move:.08}),
   H('ps_brain','AS Cortex Link Mk2','brain','PS','blue',10,{cooling:.1},{abilities:['control'],caps:['hack'],blurb:'Hacking brain: terminal access and enemy control.'}),
-  H('ps_face','AS Seamless Faceplate','face','PS','green',8,{armor:1,pickup:.2}),
+  H('ps_face','AS Seamless Faceplate','face','PS','green',8,{armor:1,pickup:.2},{caps:['speech'],blurb:'Reads as skin. People keep talking to you.'}),
   // --- Mass market (neural control + refurbished tools) ---
   H('mm_slug_hand','Kestrel Slug Driver','handR','MM','green',8,{dmg:.04},{weapon:'slug',blurb:'Heavy ranged tool: must stand still to fire.'}),
   H('mm_arm_l','Kestrel Refab Emitter Arm','armL','MM','green',8,{cooling:.05},{abilities:['pulse']}),
