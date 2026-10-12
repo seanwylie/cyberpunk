@@ -1,4 +1,4 @@
-// Station title pill and interact prompt share ONE trigger: the title is drawn iff the player is inside the station's interact radius (same check as the F prompt, small hysteresis). Both towns. Contact sheet in shots/stations/.
+// Station title pill (bright/ready state) and interact prompt share ONE trigger: the pill is in its ready state iff the player is inside the station's interact radius (same check as the F prompt, small hysteresis). Both towns. Contact sheet in shots/stations/.
 import { launch, sleep } from './lib.mjs'; import fs from 'fs'; import { execSync } from 'child_process';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const out = process.env.SHOTS || 'shots/stations'; fs.mkdirSync(out, { recursive: true });
@@ -20,9 +20,9 @@ for (const town of ['rustline', 'harrow']) {
     const pos = await ev(([st, dx]) => { const g = window.__game; for (let a = 0; a < 16; a++) { const ang = a * Math.PI / 8; const x = st.x + Math.cos(ang) * dx, y = st.y + Math.sin(ang) * dx; if (!g.solidAt(x, y) && g.los(x, y, st.x, st.y)) { g.px = x; g.py = y; break; } } g.prompt = null; for (let i = 0; i < 4; i++) g.update(.016); return { d: Math.hypot(g.px - st.x, g.py - st.y) }; }, [st, dx]);
     if (Math.abs(pos.d - dx) > .3 && dx > 0) continue; // no clear spot at that distance
     await ev(() => { window.__texts.length = 0; window.__signDraws = {}; }); await sleep(500);
-    const r = await ev(([st, name]) => { const g = window.__game; const inside = Math.hypot(g.px - st.x, g.py - st.y) < st.r; return { sign: window.__signDraws['sign_' + st.key] || 0, dbg: window.__texts.slice(0, 6).join('|') + ' want ' + name, shown: window.__texts.includes(name), prompt: g.prompt?.id === st.id, inside }; }, [st, st.name]);
+    const r = await ev(([st, name]) => { const g = window.__game; const inside = Math.hypot(g.px - st.x, g.py - st.y) < st.r; return { sign: window.__signDraws['sign_' + st.key] || 0, dbg: window.__texts.slice(0, 6).join('|') + ' want ' + name, shown: (window.__rend.lblRects || []).some(q => q.id === st.id && q.ready), prompt: g.prompt?.id === st.id, inside }; }, [st, st.name]);
     ok(r.shown === r.prompt && r.prompt === r.inside, `${town}/${st.key} ${lab} (d=${pos.d.toFixed(1)}, r=${st.r}): title ${r.shown} [${r.dbg}], prompt ${r.prompt}, inside ${r.inside}`);
-    ok(!(r.shown && r.sign > 0), `${town}/${st.key} ${lab}: exactly one label (title ${r.shown}, world sign draws ${r.sign})`);
+    ok(r.sign === 0, `${town}/${st.key} ${lab}: the world sign sprite is never drawn (${r.sign} draws); the single pill is the only label`);
     if (lab === 'far' || lab === 'edge_in') { await sleep(400); await page.screenshot({ path: `${out}/${town}_${st.key}_${lab}.png` }); names.push(`${town}_${st.key}_${lab}`); }
   }
 }

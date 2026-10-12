@@ -9,14 +9,14 @@ export interface Station {
 export const TOWN_W = 60, TOWN_H = 44, TOWN_CX = 30, TOWN_CY = 22;
 export const SPAWN = { x: 30.5, y: 22.5 }, RETURN_SPAWN = { x: 49.5, y: 22.5 };
 export const RUSTLINE_STATIONS: Station[] = [
-  { key: 'jobs', id: 'fixer', opens: 'fixer', name: 'Job Board', short: 'JOBS', verb: 'browse contracts', color: '#ffb02e', rgb: '255,176,46', icon: 'jobs', x: 15, y: 13.2, lx: 11, ly: 8, sx: 13, sy: 9, kind: 'npc', ambient: 'screens' },
-  { key: 'implants', id: 'vendor', opens: 'vendor', name: 'Implant Parts', short: 'IMPLANTS', verb: 'buy augments', color: '#38d8ff', rgb: '56,216,255', icon: 'implants', x: 41.5, y: 12.2, lx: 38, ly: 7, sx: 41, sy: 9, kind: 'vendor', ambient: 'sparks' },
-  { key: 'gate', id: 'annex', opens: 'annex', name: 'Dungeon Gate', short: 'GATE', verb: 'enter a dungeon', color: '#ff4455', rgb: '255,68,85', icon: 'gate', x: 52.5, y: 22.5, lx: 54, ly: 21, sx: 52, sy: 19, kind: 'gate', ambient: 'beacon' },
+  { key: 'jobs', id: 'fixer', opens: 'fixer', name: 'Job Board', short: 'JOBS', verb: 'browse contracts', color: '#ffb02e', rgb: '255,176,46', icon: 'jobs', x: 14, y: 11, lx: 11, ly: 8, sx: 13, sy: 9, kind: 'npc', ambient: 'screens' },
+  { key: 'implants', id: 'vendor', opens: 'vendor', name: 'Implant Parts', short: 'IMPLANTS', verb: 'buy augments', color: '#38d8ff', rgb: '56,216,255', icon: 'implants', x: 42.5, y: 11.5, lx: 38, ly: 7, sx: 41, sy: 9, kind: 'vendor', ambient: 'sparks' },
+  { key: 'gate', id: 'annex', opens: 'annex', name: 'Dungeon Gate', short: 'GATE', verb: 'enter a dungeon', color: '#ff4455', rgb: '255,68,85', icon: 'gate', x: 57, y: 22, lx: 54, ly: 21, sx: 52, sy: 19, kind: 'gate', ambient: 'beacon' },
   { key: 'repair', id: 'repair', opens: 'vendor', name: 'Repair Bay', short: 'REPAIR', verb: 'fix damaged gear', color: '#a58bff', rgb: '165,139,255', icon: 'repair', x: 45, y: 32.6, lx: 44, ly: 34, sx: 42, sy: 33, kind: 'vendor', ambient: 'weld' },
-  { key: 'locker', id: 'locker', opens: 'locker', name: 'Locker', short: 'LOCKER', verb: 'swap gear and chips', color: '#46e08a', rgb: '70,224,138', icon: 'locker', x: 30, y: 35.2, lx: 28, ly: 37, sx: 27, sy: 35, kind: 'locker', ambient: 'scan' },
-  { key: 'store', id: 'store', opens: 'store', name: 'Outfitter', short: 'STORE', verb: 'shop (simulated)', color: '#ff5cc8', rgb: '255,92,200', icon: 'store', x: 12.5, y: 30.6, lx: 9, ly: 32, sx: 9, sy: 30, kind: 'terminal', ambient: 'neon' },
+  { key: 'locker', id: 'locker', opens: 'locker', name: 'Locker', short: 'LOCKER', verb: 'swap gear and chips', color: '#46e08a', rgb: '70,224,138', icon: 'locker', x: 30, y: 39.5, lx: 28, ly: 37, sx: 27, sy: 35, kind: 'locker', ambient: 'scan' },
+  { key: 'store', id: 'store', opens: 'store', name: 'Outfitter', short: 'STORE', verb: 'shop (simulated)', color: '#ff5cc8', rgb: '255,92,200', icon: 'store', x: 13, y: 33.5, lx: 9, ly: 32, sx: 9, sy: 30, kind: 'terminal', ambient: 'neon' },
   { key: 'bank', id: 'bank', opens: 'bank', name: 'Bank', short: 'BANK', verb: 'store gear and credits', color: '#f2ecc4', rgb: '242,236,196', icon: 'bank', x: 30, y: 8.6, lx: 28, ly: 4, sx: 25, sy: 7, kind: 'terminal', ambient: 'vault' },
-  { key: 'transit', id: 'transit', opens: 'travel', name: 'Reach Line', short: 'TRANSIT', verb: 'travel to other towns', color: '#a0e632', rgb: '160,230,50', icon: 'transit', x: 32.5, y: 20.2, lx: 32, ly: 16, sx: 35, sy: 19, kind: 'terminal', ambient: 'beacon' },
+  { key: 'transit', id: 'transit', opens: 'travel', name: 'Reach Line', short: 'TRANSIT', verb: 'travel to other towns', color: '#a0e632', rgb: '160,230,50', icon: 'transit', x: 34, y: 19.5, lx: 32, ly: 16, sx: 35, sy: 19, kind: 'terminal', ambient: 'beacon' },
 ];
 /** Active town's stations. Mutated IN PLACE by setTownStations() so every consumer (minimap, markers, prompts) follows the current town. */
 export const STATIONS: Station[] = [...RUSTLINE_STATIONS];
@@ -26,14 +26,14 @@ export function setTownStations(list: Station[]) { if (STATIONS.length === list.
 export const HARROW_W = 76, HARROW_H = 54, HARROW_CX = 38, HARROW_CY = 27;
 export const HARROW_SPAWN = { x: 18.5, y: 27.5 }, HARROW_RETURN_SPAWN = { x: 59.5, y: 27.5 };
 export const HARROW_STATIONS: Station[] = [
-  { key: 'h_transit', id: 'h_transit', opens: 'travel', name: 'Reach Line', short: 'TRANSIT', verb: 'ride back to Rustline', color: '#a0e632', rgb: '160,230,50', icon: 'transit', x: 13.5, y: 27.5, lx: 8, ly: 21, sx: 6, sy: 25, kind: 'terminal', ambient: 'beacon' },
-  { key: 'h_jobs', id: 'h_jobs', opens: 'fixer', name: 'Job Board', short: 'JOBS', verb: 'foundry contracts', color: '#ffb02e', rgb: '255,176,46', icon: 'jobs', x: 22, y: 12, lx: 18, ly: 6.5, sx: 20, sy: 9, kind: 'npc', ambient: 'screens' },
-  { key: 'h_bank', id: 'h_bank', opens: 'bank', name: 'Bank', short: 'BANK', verb: 'Reach branch', color: '#f2ecc4', rgb: '242,236,196', icon: 'bank', x: 38, y: 9, lx: 36, ly: 4.5, sx: 33, sy: 7.5, kind: 'terminal', ambient: 'vault' },
-  { key: 'h_parts', id: 'h_parts', opens: 'vendor', name: 'Heavy Works Parts', short: 'PARTS', verb: 'tier hardware', color: '#38d8ff', rgb: '56,216,255', icon: 'implants', x: 54.5, y: 12, lx: 50, ly: 6, sx: 53, sy: 9.5, kind: 'vendor', ambient: 'sparks' },
-  { key: 'h_gate', id: 'annex', opens: 'annex', name: 'Dungeon Gate', short: 'GATE', verb: 'tier I to IV dungeons', color: '#ff4455', rgb: '255,68,85', icon: 'gate', x: 64, y: 27.5, lx: 66, ly: 26, sx: 64, sy: 23.5, kind: 'gate', ambient: 'beacon' },
+  { key: 'h_transit', id: 'h_transit', opens: 'travel', name: 'Reach Line', short: 'TRANSIT', verb: 'ride back to Rustline', color: '#a0e632', rgb: '160,230,50', icon: 'transit', x: 12.5, y: 24, lx: 8, ly: 21, sx: 6, sy: 25, kind: 'terminal', ambient: 'beacon' },
+  { key: 'h_jobs', id: 'h_jobs', opens: 'fixer', name: 'Job Board', short: 'JOBS', verb: 'foundry contracts', color: '#ffb02e', rgb: '255,176,46', icon: 'jobs', x: 21.5, y: 10, lx: 18, ly: 6.5, sx: 20, sy: 9, kind: 'npc', ambient: 'screens' },
+  { key: 'h_bank', id: 'h_bank', opens: 'bank', name: 'Bank', short: 'BANK', verb: 'Reach branch', color: '#f2ecc4', rgb: '242,236,196', icon: 'bank', x: 40.5, y: 8.5, lx: 36, ly: 4.5, sx: 33, sy: 7.5, kind: 'terminal', ambient: 'vault' },
+  { key: 'h_parts', id: 'h_parts', opens: 'vendor', name: 'Heavy Works Parts', short: 'PARTS', verb: 'tier hardware', color: '#38d8ff', rgb: '56,216,255', icon: 'implants', x: 55.5, y: 10.5, lx: 50, ly: 6, sx: 53, sy: 9.5, kind: 'vendor', ambient: 'sparks' },
+  { key: 'h_gate', id: 'annex', opens: 'annex', name: 'Dungeon Gate', short: 'GATE', verb: 'tier I to IV dungeons', color: '#ff4455', rgb: '255,68,85', icon: 'gate', x: 69, y: 27, lx: 66, ly: 26, sx: 64, sy: 23.5, kind: 'gate', ambient: 'beacon' },
   { key: 'h_repair', id: 'h_repair', opens: 'vendor', name: 'Forge Repair', short: 'FORGE', verb: 'repair and reforge', color: '#a58bff', rgb: '165,139,255', icon: 'repair', x: 55, y: 42, lx: 54, ly: 44, sx: 51, sy: 41, kind: 'vendor', ambient: 'weld' },
-  { key: 'h_locker', id: 'h_locker', opens: 'locker', name: 'Locker', short: 'LOCKER', verb: 'swap gear and chips', color: '#46e08a', rgb: '70,224,138', icon: 'locker', x: 38, y: 46, lx: 36, ly: 48, sx: 33, sy: 45, kind: 'locker', ambient: 'scan' },
-  { key: 'h_guild', id: 'h_guild', opens: 'guild', name: 'Guild Counter', short: 'GUILD', verb: 'reclaimed chips', color: '#ff5cc8', rgb: '255,92,200', icon: 'guild', x: 21.5, y: 42, lx: 17, ly: 43.5, sx: 20, sy: 40, kind: 'vendor', ambient: 'neon' },
+  { key: 'h_locker', id: 'h_locker', opens: 'locker', name: 'Locker', short: 'LOCKER', verb: 'swap gear and chips', color: '#46e08a', rgb: '70,224,138', icon: 'locker', x: 38, y: 47.5, lx: 36, ly: 48, sx: 33, sy: 45, kind: 'locker', ambient: 'scan' },
+  { key: 'h_guild', id: 'h_guild', opens: 'guild', name: 'Guild Counter', short: 'GUILD', verb: 'reclaimed chips', color: '#ff5cc8', rgb: '255,92,200', icon: 'guild', x: 21.5, y: 46.5, lx: 17, ly: 43.5, sx: 20, sy: 40, kind: 'vendor', ambient: 'neon' },
 ];
 export const TOWN_STATIONS: Record<string, Station[]> = { rustline: RUSTLINE_STATIONS, harrow: HARROW_STATIONS };
 export const stationPrompt = (s: Station) => `${s.name}: ${s.verb}`;
