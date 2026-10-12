@@ -4,8 +4,9 @@
 import { ITEMS, CHIPS, CHIP_FITS, SLOT_SOCKETS, HARD_CONFLICTS, ABILITIES, type Slot } from './config';
 import { ABILITY_BY_ID, describe } from './abilities/registry';
 import { TRAITS, describeEffect } from './traits';
+import { humanityCost } from './altplay';
 
-export interface SnapItem { n:string; s:string; m:string; r:string; l:number; st:Record<string,number>; ab:string[]; w?:string }
+export interface SnapItem { n:string; s:string; m:string; r:string; l:number; st:Record<string,number>; ab:string[]; w?:string; /** humanity cost (docs/HUMANITY.md); absent in older catalogs */ h?:number }
 export interface SnapChip { n:string; st:Record<string,number>; f:string[] }
 export interface SnapAb { n:string; cd:number|null; e:string; g:string[]; u:string[] }
 export interface SnapTrait { n:string; t:number; e:string[]; p:string[] }
@@ -13,7 +14,7 @@ export interface Snap { /** traits (docs/TRAITS.md); absent in catalogs older th
 const sortObj=<T>(o:Record<string,T>)=>Object.fromEntries(Object.keys(o).sort().map(k=>[k,o[k]]));
 const num=(o:any)=>sortObj(Object.fromEntries(Object.entries(o||{}).map(([k,v])=>[k,Math.round((v as number)*1e4)/1e4]))) as Record<string,number>;
 export function snapshot():Snap{
-  const items:Record<string,SnapItem>={}; for(const d of ITEMS){ items[d.id]={ n:d.name, s:d.slot, m:d.mfr, r:d.rarity, l:d.lvl, st:num(d.stats), ab:[...(d.abilities||[])], ...(d.weapon?{w:d.weapon}:{}) }; }
+  const items:Record<string,SnapItem>={}; for(const d of ITEMS){ items[d.id]={ n:d.name, s:d.slot, m:d.mfr, r:d.rarity, l:d.lvl, st:num(d.stats), ab:[...(d.abilities||[])], ...(d.weapon?{w:d.weapon}:{}), h:humanityCost(d) }; }
   const chips:Record<string,SnapChip>={}; for(const [id,c] of Object.entries(CHIPS)) chips[id]={ n:c.name, st:num(c.stats), f:[...(CHIP_FITS[id as keyof typeof CHIP_FITS]||[])] };
   const abilities:Record<string,SnapAb>={}; for(const id of new Set([...Object.keys(ABILITIES),...Object.keys(ABILITY_BY_ID)])){ const d=ABILITY_BY_ID[id], a=(ABILITIES as any)[id]; abilities[id]={ n:d?.name||a?.name||id, cd:d?.cd??a?.cd??null, e:d?describe(d):(a?.desc||''), g:[...(d?.gives||[])], u:[...(d?.uses||[])] }; }
   const traits:Record<string,SnapTrait>={}; for(const tr of TRAITS) traits[tr.id]={ n:tr.name, t:tr.tier, e:tr.effects.map(describeEffect), p:[...(tr.parent||[])].sort() };
@@ -21,7 +22,7 @@ export function snapshot():Snap{
 }
 const GROUP:Record<string,string>={ handL:'hand',handR:'hand',armL:'arm',armR:'arm',legL:'leg',legR:'leg',footL:'foot',footR:'foot',torso:'torso',face:'face',brain:'brain' };
 export interface BuildSlots { [slot:string]:{ d:string; c:string[] } }
-export type ChangeKind='trait'|'trait_removed'|'trait_renamed'|'removed'|'renamed'|'stats'|'abilities'|'ability'|'chip_removed'|'chip_renamed'|'chip_stats'|'chip_fit'|'sockets'|'conflict'|'combo';
+export type ChangeKind='humanity'|'trait'|'trait_removed'|'trait_renamed'|'removed'|'renamed'|'stats'|'abilities'|'ability'|'chip_removed'|'chip_renamed'|'chip_stats'|'chip_fit'|'sockets'|'conflict'|'combo';
 export interface Change { kind:ChangeKind; slot?:string; id:string; text:string; incompatible:boolean }
 const fmt=(o:Record<string,number>)=>Object.entries(o).map(([k,v])=>`${k} ${v>0?'+':''}${v}`).join(', ')||'none';
 /** What changed for THIS build between the catalog it was made with (old) and the current one (cur). Incompatible = the build cannot be shown as it was. */
@@ -37,6 +38,7 @@ export function diffBuild(old:Snap, cur:Snap, slots:BuildSlots, traits:string[]=
     if(!n){ add({kind:'removed',slot:sl,id:v.d,text:`${o?.n||v.d} no longer exists`,incompatible:true}); }
     else if(o){ if(o.n!==n.n) add({kind:'renamed',slot:sl,id:v.d,text:`${o.n} is now called ${n.n}`,incompatible:false});
       if(JSON.stringify(o.st)!==JSON.stringify(n.st)) add({kind:'stats',slot:sl,id:v.d,text:`${n.n} stats: ${fmt(o.st)} → ${fmt(n.st)}`,incompatible:false});
+      if((o.h??null)!==(n.h??null)) add({kind:'humanity',slot:sl,id:v.d,text:o.h===undefined?`${n.n} now costs ${n.h} Humanity (new stat)`:`${n.n} Humanity cost: ${o.h} → ${n.h}`,incompatible:false});
       if(JSON.stringify(o.ab)!==JSON.stringify(n.ab)) add({kind:'abilities',slot:sl,id:v.d,text:`${n.n} abilities: ${o.ab.map(a=>old.abilities[a]?.n||a).join(', ')||'none'} → ${n.ab.map(a=>cur.abilities[a]?.n||a).join(', ')||'none'}`,incompatible:false});
       for(const a of o.ab){ if(abSeen.has(a)) continue; abSeen.add(a); const oa=old.abilities[a], na=cur.abilities[a]; if(oa&&na&&(oa.cd!==na.cd||oa.e!==na.e)) add({kind:'ability',slot:sl,id:a,text:`${na.n}: ${oa.cd!==na.cd?`cooldown ${oa.cd}s → ${na.cd}s`:''}${oa.cd!==na.cd&&oa.e!==na.e?'; ':''}${oa.e!==na.e?`effect "${oa.e}" → "${na.e}"`:''}`,incompatible:false}); } }
     const cap=cur.sockets[sl]??0; if(v.c.length>cap) add({kind:'sockets',slot:sl,id:v.d,text:`${sl} now has ${cap} sockets, the build used ${v.c.length}`,incompatible:true});

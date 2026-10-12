@@ -7,7 +7,7 @@ const CHECK = process.argv.includes('--check');
 const vs = await createServer({ configFile: false, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
 const L = (m) => vs.ssrLoadModule(m);
 const C = await L('/src/config.ts'), D = await L('/src/content/dungeons.ts'), HW = await L('/src/abilities/hw.ts'), REG = await L('/src/abilities/registry.ts');
-const TR = await L('/src/traits.ts'); const IDK = await L('/src/content/idkfa.ts'), SNAP = await L('/src/catalog_snap.ts');
+const TR = await L('/src/traits.ts'); const ALT = await L('/src/altplay.ts'); const IDK = await L('/src/content/idkfa.ts'), SNAP = await L('/src/catalog_snap.ts');
 // catalog version = content hash of the compact snapshot a build depends on (items, chips, abilities, sockets, conflicts)
 const snap = SNAP.snapshot(); const snapJson = JSON.stringify(snap); const CATALOG_VERSION = crypto.createHash('sha256').update(snapJson).digest('hex').slice(0, 12);
 const VFX = await L('/src/abilities/vfxprofile.ts'), SFX = await L('/src/abilities/sfxprofile.ts'), V = await L('/src/vendor.ts');
@@ -50,7 +50,7 @@ const chips = Object.fromEntries(Object.keys(C.CHIPS).sort().map(id => { const c
 const conflicts = C.HARD_CONFLICTS;
 const augments = [...C.ITEMS].sort((a, b) => a.slot.localeCompare(b.slot) || a.id.localeCompare(b.id)).map(it => {
   const sockets = C.SLOT_SOCKETS[it.slot]; const fitChips = Object.keys(chips).filter(c => C.chipFits(c, it.slot));
-  return { id: it.id, name: it.name, slot: it.slot, slotLabel: C.SLOT_LABEL[it.slot], group: C.SLOT_GROUP[it.slot], maker: it.mfr, makerName: C.MFR[it.mfr].name, rarity: it.rarity, level: it.lvl,
+  return { id: it.id, name: it.name, slot: it.slot, slotLabel: C.SLOT_LABEL[it.slot], group: C.SLOT_GROUP[it.slot], maker: it.mfr, makerName: C.MFR[it.mfr].name, rarity: it.rarity, level: it.lvl, humanity: ALT.humanityCost(it),
     stats: it.stats, statRolls: 'fixed (no random rolls)', weapon: it.weapon ? { kind: it.weapon, ...C.WEAPONS[it.weapon], rarityMul: C.WEAPON_RARITY_MUL[it.rarity] } : null, caps: it.caps || [],
     abilities: (it.abilities || []).map(a => ({ id: a, name: abilities[a]?.name, effect: abilities[a]?.effect, cooldown: abilities[a]?.cooldown, vfx: abilities[a]?.vfx?.elem || null, sfx: abilities[a]?.sfx?.family || null })),
     sockets, chips: fitChips.map(c => ({ id: c, name: chips[c].name, stats: chips[c].stats, abilityMods: chips[c].abilityMods, affects: (it.abilities || []).filter(a => abilities[a]?.chipsAffecting.includes(c)) })),
@@ -80,8 +80,8 @@ md += `## Data gaps\n\n` + Object.entries(gaps).map(([k, v]) => `- **${k}** (${v
 md += `## Rules\n\n- Stats are fixed per augment (no random rolls). Weapons scale by rarity: ${Object.entries(C.WEAPON_RARITY_MUL).map(([k, v]) => k + ' x' + v).join(', ')}.\n- Maker sets: ${augments[0] ? augments.find(a => !a.id.startsWith('stock_')).makerSet : ''}.\n- Hard conflicts: ${conflicts.map(c => `\`${c.a}\` + \`${c.b}\` (${c.reason})`).join('; ') || 'none'}.\n\n`;
 md += `## Traits\n\nPermanent character specializations (docs/TRAITS.md). Level 20 traits require the listed level 10 trait.\n\n| Trait | Level | Families | Effects | Builds on |\n|---|---|---|---|---|\n` + TR.TRAITS.map(t => `| ${t.name} | ${t.tier === 1 ? 10 : 20} | ${t.fams.join(', ')} | ${t.effects.map(TR.describeEffect).join('<br>')} | ${(t.parent || []).map(p => TR.TRAIT_BY_ID[p].name).join(', ') || '-'} |`).join('\n') + '\n\n';
 md += `## Chips\n\n| Chip | Rarity | Fits | Stats | Ability mods |\n|---|---|---|---|---|\n` + Object.values(chips).map(c => `| ${c.name} | ${c.rarity} | ${c.fits.join(', ')} | ${fmtStats(c.stats)} | ${fmtStats(c.abilityMods)} |`).join('\n') + '\n\n';
-for (const sl of C.SLOTS) { const list = augments.filter(a => a.slot === sl); md += `## ${C.SLOT_LABEL[sl]} (${list.length}, ${C.SLOT_SOCKETS[sl]} sockets)\n\n| Augment | Maker | Rarity | Lv | Stats | Abilities | Sources |\n|---|---|---|---|---|---|---|\n`;
-  md += list.map(a => `| ${a.name.replace(/\|/g, '/')} | ${a.maker} | ${a.rarity} | ${a.level} | ${fmtStats(a.stats)}${a.weapon ? '; weapon ' + a.weapon.kind : ''} | ${a.abilities.map(x => `${x.name} (cd ${x.cooldown}s)`).join('<br>') || '-'} | ${a.sources.slice(0, 4).map(fmtSrc).join('<br>')}${a.sources.length > 4 ? '<br>+' + (a.sources.length - 4) + ' more' : ''} |`).join('\n') + '\n\n'; }
+for (const sl of C.SLOTS) { const list = augments.filter(a => a.slot === sl); md += `## ${C.SLOT_LABEL[sl]} (${list.length}, ${C.SLOT_SOCKETS[sl]} sockets)\n\n| Augment | Maker | Rarity | Lv | Hum | Stats | Abilities | Sources |\n|---|---|---|---|---|---|---|---|\n`;
+  md += list.map(a => `| ${a.name.replace(/\|/g, '/')} | ${a.maker} | ${a.rarity} | ${a.level} | ${a.humanity} | ${fmtStats(a.stats)}${a.weapon ? '; weapon ' + a.weapon.kind : ''} | ${a.abilities.map(x => `${x.name} (cd ${x.cooldown}s)`).join('<br>') || '-'} | ${a.sources.slice(0, 4).map(fmtSrc).join('<br>')}${a.sources.length > 4 ? '<br>+' + (a.sources.length - 4) + ' more' : ''} |`).join('\n') + '\n\n'; }
 md += `## Abilities\n\n| Ability | Role | Rarity | CD | Effect | VFX / SFX | Chips that change it | Combos into |\n|---|---|---|---|---|---|---|---|\n` + Object.values(abilities).map(a => `| ${a.name} | ${a.role || a.type || '-'} | ${a.rarity || '-'} | ${a.cooldown ?? '-'} | ${(a.effect || '').replace(/\|/g, '/')} | ${a.vfx ? a.vfx.elem : '-'} / ${a.sfx ? a.sfx.family : '-'} | ${a.chipsAffecting.join(', ') || '-'} | ${a.combosInto.slice(0, 6).join(', ') || '-'} |`).join('\n') + '\n';
 
 // ---- html (static, self-contained, reads the embedded JSON)

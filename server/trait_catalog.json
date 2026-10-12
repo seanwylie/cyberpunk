@@ -134,7 +134,9 @@
     "brute",
     "gun",
     "ghost",
-    "tech"
+    "tech",
+    "social",
+    "chrome"
    ],
    "parent": [],
    "effects": [
@@ -143,6 +145,60 @@
     "+3% move speed"
    ],
    "blurb": "No speciality is still a speciality."
+  },
+  "face": {
+   "name": "Face",
+   "tier": 1,
+   "fams": [
+    "social"
+   ],
+   "parent": [],
+   "effects": [
+    "+1 speech tier",
+    "+10% speech success"
+   ],
+   "blurb": "Doors open when you ask nicely."
+  },
+  "conartist": {
+   "name": "Con Artist",
+   "tier": 1,
+   "fams": [
+    "hack",
+    "social"
+   ],
+   "parent": [],
+   "effects": [
+    "+8% speech success",
+    "6% faster cooldowns on hacking abilities"
+   ],
+   "blurb": "Spoof the badge, then sell the story."
+  },
+  "chromed": {
+   "name": "Full Chrome",
+   "tier": 1,
+   "fams": [
+    "chrome"
+   ],
+   "parent": [],
+   "effects": [
+    "+6% max HP",
+    "+6% melee basic attack damage"
+   ],
+   "blurb": "Less of you, more of it."
+  },
+  "heavy": {
+   "name": "Heavy",
+   "tier": 1,
+   "fams": [
+    "chrome",
+    "social"
+   ],
+   "parent": [],
+   "effects": [
+    "+6% speech success",
+    "+5% max HP"
+   ],
+   "blurb": "Nobody argues with a wall of chrome."
   },
   "rootkit": {
    "name": "Rootkit",
@@ -337,6 +393,91 @@
     "8% faster dodge recovery"
    ],
    "blurb": "Whatever the job needs, again."
+  },
+  "silvertongue": {
+   "name": "Silver Tongue",
+   "tier": 2,
+   "fams": [
+    "social"
+   ],
+   "parent": [
+    "face",
+    "conartist",
+    "heavy"
+   ],
+   "effects": [
+    "+10% speech success",
+    "+3% move speed"
+   ],
+   "blurb": "Every no is a maybe."
+  },
+  "kingpin": {
+   "name": "Kingpin",
+   "tier": 2,
+   "fams": [
+    "social",
+    "chrome"
+   ],
+   "parent": [
+    "face",
+    "heavy"
+   ],
+   "effects": [
+    "+1 speech tier",
+    "+4% max HP"
+   ],
+   "blurb": "Your reputation walks in first."
+  },
+  "grifter": {
+   "name": "Grifter",
+   "tier": 2,
+   "fams": [
+    "hack",
+    "social"
+   ],
+   "parent": [
+    "conartist",
+    "glitch"
+   ],
+   "effects": [
+    "+1 speech tier",
+    "+10% duration on hacking effects (stuns, cloaks, summons)"
+   ],
+   "blurb": "The mark thanks you after."
+  },
+  "cyberpsycho": {
+   "name": "Cyberpsycho",
+   "tier": 2,
+   "fams": [
+    "chrome",
+    "brute"
+   ],
+   "parent": [
+    "chromed",
+    "heavy",
+    "bruiser"
+   ],
+   "effects": [
+    "+8% melee basic attack damage",
+    "+4% max HP"
+   ],
+   "blurb": "Something else is driving now."
+  },
+  "ironclad": {
+   "name": "Ironclad",
+   "tier": 2,
+   "fams": [
+    "chrome"
+   ],
+   "parent": [
+    "chromed",
+    "breacher"
+   ],
+   "effects": [
+    "+6% max HP",
+    "8% faster dodge recovery"
+   ],
+   "blurb": "Plates where the doubts were."
   }
  }
 }

@@ -1,6 +1,6 @@
 {
  "version": 1,
- "catalogVersion": "6df1f8dd08fa",
+ "catalogVersion": "c9469e751951",
  "generatedBy": "tools/gen_catalog.mjs",
  "stats": {
   "augments": 166,
@@ -276,7 +276,9 @@
     "brute",
     "gun",
     "ghost",
-    "tech"
+    "tech",
+    "social",
+    "chrome"
    ],
    "effects": [
     {
@@ -293,6 +295,93 @@
      "t": "moveSpd",
      "v": 0.03,
      "text": "+3% move speed"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "face",
+   "name": "Face",
+   "level": 10,
+   "families": [
+    "social"
+   ],
+   "effects": [
+    {
+     "t": "speechTier",
+     "v": 1,
+     "text": "+1 speech tier"
+    },
+    {
+     "t": "speechOdds",
+     "v": 0.1,
+     "text": "+10% speech success"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "conartist",
+   "name": "Con Artist",
+   "level": 10,
+   "families": [
+    "hack",
+    "social"
+   ],
+   "effects": [
+    {
+     "t": "speechOdds",
+     "v": 0.08,
+     "text": "+8% speech success"
+    },
+    {
+     "t": "famCdr",
+     "f": "hack",
+     "v": 0.06,
+     "text": "6% faster cooldowns on hacking abilities"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "chromed",
+   "name": "Full Chrome",
+   "level": 10,
+   "families": [
+    "chrome"
+   ],
+   "effects": [
+    {
+     "t": "maxHp",
+     "v": 0.06,
+     "text": "+6% max HP"
+    },
+    {
+     "t": "meleeDmg",
+     "v": 0.06,
+     "text": "+6% melee basic attack damage"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "heavy",
+   "name": "Heavy",
+   "level": 10,
+   "families": [
+    "chrome",
+    "social"
+   ],
+   "effects": [
+    {
+     "t": "speechOdds",
+     "v": 0.06,
+     "text": "+6% speech success"
+    },
+    {
+     "t": "maxHp",
+     "v": 0.05,
+     "text": "+5% max HP"
     }
    ],
    "buildsOn": []
@@ -597,6 +686,132 @@
     "phantom",
     "overwatch"
    ]
+  },
+  {
+   "id": "silvertongue",
+   "name": "Silver Tongue",
+   "level": 20,
+   "families": [
+    "social"
+   ],
+   "effects": [
+    {
+     "t": "speechOdds",
+     "v": 0.1,
+     "text": "+10% speech success"
+    },
+    {
+     "t": "moveSpd",
+     "v": 0.03,
+     "text": "+3% move speed"
+    }
+   ],
+   "buildsOn": [
+    "face",
+    "conartist",
+    "heavy"
+   ]
+  },
+  {
+   "id": "kingpin",
+   "name": "Kingpin",
+   "level": 20,
+   "families": [
+    "social",
+    "chrome"
+   ],
+   "effects": [
+    {
+     "t": "speechTier",
+     "v": 1,
+     "text": "+1 speech tier"
+    },
+    {
+     "t": "maxHp",
+     "v": 0.04,
+     "text": "+4% max HP"
+    }
+   ],
+   "buildsOn": [
+    "face",
+    "heavy"
+   ]
+  },
+  {
+   "id": "grifter",
+   "name": "Grifter",
+   "level": 20,
+   "families": [
+    "hack",
+    "social"
+   ],
+   "effects": [
+    {
+     "t": "speechTier",
+     "v": 1,
+     "text": "+1 speech tier"
+    },
+    {
+     "t": "famDur",
+     "f": "hack",
+     "v": 0.1,
+     "text": "+10% duration on hacking effects (stuns, cloaks, summons)"
+    }
+   ],
+   "buildsOn": [
+    "conartist",
+    "glitch"
+   ]
+  },
+  {
+   "id": "cyberpsycho",
+   "name": "Cyberpsycho",
+   "level": 20,
+   "families": [
+    "chrome",
+    "brute"
+   ],
+   "effects": [
+    {
+     "t": "meleeDmg",
+     "v": 0.08,
+     "text": "+8% melee basic attack damage"
+    },
+    {
+     "t": "maxHp",
+     "v": 0.04,
+     "text": "+4% max HP"
+    }
+   ],
+   "buildsOn": [
+    "chromed",
+    "heavy",
+    "bruiser"
+   ]
+  },
+  {
+   "id": "ironclad",
+   "name": "Ironclad",
+   "level": 20,
+   "families": [
+    "chrome"
+   ],
+   "effects": [
+    {
+     "t": "maxHp",
+     "v": 0.06,
+     "text": "+6% max HP"
+    },
+    {
+     "t": "dodgeCd",
+     "v": 0.08,
+     "text": "8% faster dodge recovery"
+    }
+   ],
+   "buildsOn": [
+    "chromed",
+    "breacher"
+   ]
   }
  ],
  "augments": [
@@ -610,6 +825,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "purple",
    "level": 22,
+   "humanity": 6,
    "stats": {
     "dmg": 0.09,
     "armor": 1.5,
@@ -742,6 +958,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 12,
+   "humanity": 2,
    "stats": {
     "dmg": 0.03,
     "armor": 0.5,
@@ -892,6 +1109,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 16,
+   "humanity": 3,
    "stats": {
     "dmg": 0.05,
     "armor": 0.9,
@@ -1024,6 +1242,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "grey",
    "level": 6,
+   "humanity": 1,
    "stats": {
     "dmg": 0.02,
     "armor": 0.25,
@@ -1161,6 +1380,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 11,
+   "humanity": 2,
    "stats": {
     "dmg": 0.03,
     "armor": 0.5,
@@ -1293,6 +1513,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 16,
+   "humanity": 3,
    "stats": {
     "dmg": 0.05,
     "armor": 0.9,
@@ -1443,6 +1664,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 11,
+   "humanity": 2,
    "stats": {
     "dmg": 0.03,
     "regen": 0.08,
@@ -1579,6 +1801,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 7,
+   "humanity": 1,
    "stats": {
     "dmg": 0.02,
     "regen": 0.04,
@@ -1710,6 +1933,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 6,
+   "humanity": 1,
    "stats": {
     "dmg": 0.02,
     "regen": 0.04,
@@ -1845,6 +2069,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "blue",
    "level": 14,
+   "humanity": 3,
    "stats": {
     "dmg": 0.05,
     "regen": 0.14,
@@ -1981,6 +2206,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 12,
+   "humanity": 2,
    "stats": {
     "dmg": 0.04,
     "cooling": 0.03
@@ -2116,6 +2342,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 22,
+   "humanity": 4,
    "stats": {
     "dmg": 0.1,
     "armor": 3
@@ -2484,6 +2711,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 8,
+   "humanity": 2,
    "stats": {
     "cooling": 0.05
    },
@@ -2614,6 +2842,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 11,
+   "humanity": 2,
    "stats": {
     "dmg": 0.06,
     "maxHp": 10
@@ -2733,6 +2962,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "purple",
    "level": 28,
+   "humanity": 6,
    "stats": {
     "dmg": 0.14,
     "atkSpeed": 0.08
@@ -3117,6 +3347,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 32,
+   "humanity": 11,
    "stats": {
     "dmg": 0.2,
     "atkSpeed": 0.15
@@ -3234,6 +3465,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 0,
    "stats": {
     "maxHp": 2
    },
@@ -3329,6 +3561,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "orange",
    "level": 28,
+   "humanity": 10,
    "stats": {
     "dmg": 0.15,
     "armor": 2.5,
@@ -3454,6 +3687,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "purple",
    "level": 20,
+   "humanity": 6,
    "stats": {
     "dmg": 0.09,
     "armor": 1.5,
@@ -3586,6 +3820,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 16,
+   "humanity": 3,
    "stats": {
     "dmg": 0.05,
     "armor": 0.9,
@@ -3724,6 +3959,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "blue",
    "level": 17,
+   "humanity": 3,
    "stats": {
     "dmg": 0.05,
     "regen": 0.14,
@@ -3872,6 +4108,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "blue",
    "level": 14,
+   "humanity": 3,
    "stats": {
     "dmg": 0.05,
     "regen": 0.14,
@@ -4008,6 +4245,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 11,
+   "humanity": 2,
    "stats": {
     "dmg": 0.03,
     "regen": 0.08,
@@ -4158,6 +4396,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 9,
+   "humanity": 1,
    "stats": {
     "dmg": 0.02,
     "regen": 0.04,
@@ -4289,6 +4528,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 9,
+   "humanity": 1,
    "stats": {
     "dmg": 0.02,
     "regen": 0.04,
@@ -4436,6 +4676,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 11,
+   "humanity": 2,
    "stats": {
     "dmg": 0.04,
     "cooling": 0.03
@@ -4578,6 +4819,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 10,
+   "humanity": 4,
    "stats": {
     "dmg": 0.08,
     "armor": 2
@@ -4713,6 +4955,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 16,
+   "humanity": 3,
    "stats": {
     "dmg": 0.04,
     "armor": 2
@@ -5077,6 +5320,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "purple",
    "level": 26,
+   "humanity": 7,
    "stats": {
     "dmg": 0.1,
     "armor": 3
@@ -5439,6 +5683,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 6,
+   "humanity": 1,
    "stats": {
     "maxHp": 6
    },
@@ -5545,6 +5790,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 9,
+   "humanity": 1,
    "stats": {
     "maxHp": 8,
     "dmg": 0.03
@@ -5772,6 +6018,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 10,
+   "humanity": 3,
    "stats": {
     "dmg": 0.06
    },
@@ -5899,6 +6146,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "orange",
    "level": 28,
+   "humanity": 12,
    "stats": {
     "dmg": 0.28,
     "armor": 6
@@ -6027,6 +6275,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "orange",
    "level": 12,
+   "humanity": 12,
    "stats": {
     "dmg": 0.2,
     "armor": 4
@@ -6151,6 +6400,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 0,
    "stats": {
     "maxHp": 2
    },
@@ -6246,6 +6496,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "purple",
    "level": 21,
+   "humanity": 9,
    "stats": {
     "cooling": 0.15,
     "dmg": 0.03,
@@ -6354,6 +6605,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 14,
+   "humanity": 4,
    "stats": {
     "cooling": 0.09,
     "dmg": 0.02,
@@ -6470,6 +6722,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 12,
+   "humanity": 2,
    "stats": {
     "cooling": 0.05,
     "dmg": 0.01,
@@ -6586,6 +6839,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 10,
+   "humanity": 2,
    "stats": {
     "cooling": 0.05,
     "dmg": 0.01,
@@ -6702,6 +6956,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 6,
+   "humanity": 1,
    "stats": {
     "cooling": 0.03,
     "dmg": 0.01,
@@ -6813,6 +7068,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "orange",
    "level": 28,
+   "humanity": 15,
    "stats": {
     "cooling": 0.25,
     "dmg": 0.05,
@@ -6913,6 +7169,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "blue",
    "level": 15,
+   "humanity": 4,
    "stats": {
     "cooling": 0.09,
     "dmg": 0.02,
@@ -7029,6 +7286,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 11,
+   "humanity": 3,
    "stats": {
     "cooling": 0.05,
     "dmg": 0.01,
@@ -7155,6 +7413,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 9,
+   "humanity": 2,
    "stats": {
     "cooling": 0.08,
     "dmg": 0.02
@@ -7265,6 +7524,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "purple",
    "level": 23,
+   "humanity": 9,
    "stats": {
     "cooling": 0.24,
     "dmg": 0.06
@@ -7387,6 +7647,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "purple",
    "level": 21,
+   "humanity": 9,
    "stats": {
     "cooling": 0.24,
     "dmg": 0.06
@@ -7497,6 +7758,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 11,
+   "humanity": 2,
    "stats": {
     "cooling": 0.08,
     "dmg": 0.02
@@ -7607,6 +7869,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 15,
+   "humanity": 4,
    "stats": {
     "cooling": 0.14,
     "dmg": 0.04
@@ -7736,6 +7999,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "blue",
    "level": 16,
+   "humanity": 5,
    "stats": {
     "cooling": 0.1
    },
@@ -8104,6 +8368,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 10,
+   "humanity": 5,
    "stats": {
     "cooling": 0.1
    },
@@ -8212,6 +8477,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "purple",
    "level": 30,
+   "humanity": 10,
    "stats": {
     "cooling": 0.25,
     "dmg": 0.08
@@ -8577,6 +8843,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 12,
+   "humanity": 16,
    "stats": {
     "cooling": 0.3,
     "dmg": 0.1,
@@ -8676,6 +8943,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "orange",
    "level": 28,
+   "humanity": 16,
    "stats": {
     "cooling": 0.4,
     "dmg": 0.1,
@@ -8775,6 +9043,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 0,
    "stats": {
     "maxHp": 2
    },
@@ -8849,6 +9118,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 11,
+   "humanity": 2,
    "stats": {
     "armor": 0.3,
     "dmg": 0.02,
@@ -8957,6 +9227,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 12,
+   "humanity": 2,
    "stats": {
     "armor": 0.3,
     "dmg": 0.02,
@@ -9075,6 +9346,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 15,
+   "humanity": 3,
    "stats": {
     "armor": 0.54,
     "dmg": 0.05,
@@ -9184,6 +9456,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 29,
+   "humanity": 12,
    "stats": {
     "armor": 1.5,
     "dmg": 0.13,
@@ -9277,6 +9550,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "purple",
    "level": 21,
+   "humanity": 8,
    "stats": {
     "armor": 0.9,
     "dmg": 0.08,
@@ -9390,6 +9664,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 27,
+   "humanity": 12,
    "stats": {
     "armor": 1.5,
     "dmg": 0.13,
@@ -9486,6 +9761,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 11,
+   "humanity": 2,
    "stats": {
     "armor": 0.3,
     "dmg": 0.03,
@@ -9591,6 +9867,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 18,
+   "humanity": 1,
    "stats": {
     "armor": 2,
     "maxHp": 10
@@ -9781,6 +10058,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 30,
+   "humanity": 13,
    "stats": {
     "armor": 4,
     "pickup": 0.8,
@@ -9881,6 +10159,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 10,
+   "humanity": 1,
    "stats": {
     "pickup": 0.5
    },
@@ -10082,6 +10361,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 7,
+   "humanity": 1,
    "stats": {
     "pickup": 0.3
    },
@@ -10175,6 +10455,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 24,
+   "humanity": 3,
    "stats": {
     "armor": 2,
     "pickup": 0.3,
@@ -10498,13 +10779,16 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 8,
+   "humanity": 0,
    "stats": {
     "armor": 1,
     "pickup": 0.2
    },
    "statRolls": "fixed (no random rolls)",
    "weapon": null,
-   "caps": [],
+   "caps": [
+    "speech"
+   ],
    "abilities": [],
    "sockets": 2,
    "chips": [
@@ -10568,7 +10852,7 @@
      ]
     }
    ],
-   "blurb": ""
+   "blurb": "Reads as skin. People keep talking to you."
   },
   {
    "id": "stock_face",
@@ -10580,6 +10864,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 0,
    "stats": {
     "maxHp": 2
    },
@@ -10650,6 +10935,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 9,
+   "humanity": 1,
    "stats": {
     "move": 0.02,
     "armor": 0.3,
@@ -10750,6 +11036,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 30,
+   "humanity": 5,
    "stats": {
     "move": 0.12,
     "armor": 3,
@@ -10828,6 +11115,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 11,
+   "humanity": 1,
    "stats": {
     "move": 0.06,
     "armor": 1
@@ -10914,6 +11202,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 22,
+   "humanity": 1,
    "stats": {
     "move": 0.06
    },
@@ -11107,6 +11396,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 0,
    "stats": {
     "maxHp": 2
    },
@@ -11169,6 +11459,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 11,
+   "humanity": 1,
    "stats": {
     "move": 0.02,
     "armor": 0.3,
@@ -11269,6 +11560,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 7,
+   "humanity": 1,
    "stats": {
     "move": 0.01,
     "armor": 0.15,
@@ -11368,6 +11660,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 21,
+   "humanity": 1,
    "stats": {
     "armor": 2,
     "maxHp": 12
@@ -11658,6 +11951,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 30,
+   "humanity": 5,
    "stats": {
     "move": 0.12,
     "armor": 3,
@@ -11736,6 +12030,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 0,
    "stats": {
     "maxHp": 2
    },
@@ -11798,6 +12093,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 12,
+   "humanity": 1,
    "stats": {
     "dmg": 0.03,
     "armor": 0.5,
@@ -11934,6 +12230,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "grey",
    "level": 7,
+   "humanity": 1,
    "stats": {
     "dmg": 0.02,
     "armor": 0.25,
@@ -12071,6 +12368,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 9,
+   "humanity": 1,
    "stats": {
     "dmg": 0.02,
     "regen": 0.04,
@@ -12206,6 +12504,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 16,
+   "humanity": 3,
    "stats": {
     "dmg": 0.07,
     "cooling": 0.05
@@ -12360,6 +12659,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 11,
+   "humanity": 1,
    "stats": {
     "dmg": 0.04,
     "cooling": 0.03
@@ -12495,6 +12795,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 8,
+   "humanity": 1,
    "stats": {
     "armor": 2,
     "maxHp": 8
@@ -12602,6 +12903,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 30,
+   "humanity": 9,
    "stats": {
     "atkSpeed": 0.15,
     "dmg": 0.12
@@ -12735,6 +13037,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 9,
+   "humanity": 1,
    "stats": {
     "armor": 1,
     "maxHp": 4
@@ -12962,6 +13265,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 8,
+   "humanity": 1,
    "stats": {
     "atkSpeed": 0.05,
     "dmg": 0.03
@@ -13084,6 +13388,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 24,
+   "humanity": 2,
    "stats": {
     "atkSpeed": 0.1,
     "dmg": 0.05
@@ -13431,6 +13736,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 0,
    "stats": {
     "maxHp": 2
    },
@@ -13526,6 +13832,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 8,
+   "humanity": 1,
    "stats": {
     "dmg": 0.02,
     "regen": 0.04,
@@ -13673,6 +13980,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 11,
+   "humanity": 1,
    "stats": {
     "dmg": 0.03,
     "regen": 0.08,
@@ -13811,6 +14119,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 10,
+   "humanity": 1,
    "stats": {
     "dmg": 0.04,
     "cooling": 0.03
@@ -13953,6 +14262,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 14,
+   "humanity": 2,
    "stats": {
     "dmg": 0.07,
     "cooling": 0.05
@@ -14090,6 +14400,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 10,
+   "humanity": 3,
    "stats": {
     "atkSpeed": 0.05
    },
@@ -14216,6 +14527,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 20,
+   "humanity": 3,
    "stats": {
     "dmg": 0.1,
     "atkSpeed": 0.04
@@ -14547,6 +14859,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "purple",
    "level": 24,
+   "humanity": 6,
    "stats": {
     "dmg": 0.08,
     "armor": 2
@@ -14798,6 +15111,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 30,
+   "humanity": 9,
    "stats": {
     "dmg": 0.2,
     "cooling": 0.2,
@@ -14907,6 +15221,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 6,
+   "humanity": 2,
    "stats": {
     "atkSpeed": 0.03
    },
@@ -15157,6 +15472,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "blue",
    "level": 14,
+   "humanity": 3,
    "stats": {
     "atkSpeed": 0.05,
     "dmg": 0.03
@@ -15548,6 +15864,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "blue",
    "level": 14,
+   "humanity": 3,
    "stats": {
     "atkSpeed": 0.06,
     "dmg": 0.04
@@ -15935,6 +16252,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 12,
+   "humanity": 2,
    "stats": {
     "dmg": 0.05
    },
@@ -16292,6 +16610,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 12,
+   "humanity": 2,
    "stats": {
     "dmg": 0.02
    },
@@ -16693,6 +17012,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 8,
+   "humanity": 2,
    "stats": {
     "dmg": 0.04
    },
@@ -16825,6 +17145,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "purple",
    "level": 14,
+   "humanity": 6,
    "stats": {
     "dmg": 0.12,
     "atkSpeed": 0.1
@@ -16960,6 +17281,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "purple",
    "level": 22,
+   "humanity": 6,
    "stats": {
     "dmg": 0.06,
     "cooling": 0.1
@@ -17346,6 +17668,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 10,
+   "humanity": 3,
    "stats": {
     "atkSpeed": 0.1
    },
@@ -17475,6 +17798,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 14,
+   "humanity": 3,
    "stats": {
     "atkSpeed": 0.04
    },
@@ -17862,6 +18186,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "purple",
    "level": 26,
+   "humanity": 6,
    "stats": {
     "atkSpeed": 0.08,
     "dmg": 0.06
@@ -18131,6 +18456,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 1,
    "stats": {
     "maxHp": 2
    },
@@ -18238,6 +18564,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "grey",
    "level": 8,
+   "humanity": 1,
    "stats": {
     "maxHp": 5,
     "move": 0.01,
@@ -18362,6 +18689,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 10,
+   "humanity": 1,
    "stats": {
     "maxHp": 8,
     "move": 0.01,
@@ -18487,6 +18815,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 12,
+   "humanity": 1,
    "stats": {
     "maxHp": 5,
     "move": 0.01,
@@ -18613,6 +18942,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 9,
+   "humanity": 1,
    "stats": {
     "maxHp": 5,
     "move": 0.01,
@@ -18743,6 +19073,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 16,
+   "humanity": 2,
    "stats": {
     "maxHp": 9,
     "move": 0.02,
@@ -18869,6 +19200,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "purple",
    "level": 26,
+   "humanity": 5,
    "stats": {
     "maxHp": 36,
     "armor": 3,
@@ -19319,6 +19651,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 8,
+   "humanity": 1,
    "stats": {
     "maxHp": 14,
     "armor": 1
@@ -19431,6 +19764,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 30,
+   "humanity": 9,
    "stats": {
     "move": 0.2,
     "maxHp": 45,
@@ -19543,6 +19877,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 10,
+   "humanity": 1,
    "stats": {
     "maxHp": 12,
     "move": 0.03
@@ -19763,6 +20098,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 4,
+   "humanity": 0,
    "stats": {
     "maxHp": 6
    },
@@ -19874,6 +20210,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "purple",
    "level": 28,
+   "humanity": 5,
    "stats": {
     "move": 0.14,
     "maxHp": 20
@@ -20371,6 +20708,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 10,
+   "humanity": 2,
    "stats": {
     "move": 0.1
    },
@@ -20491,6 +20829,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 0,
    "stats": {
     "maxHp": 2
    },
@@ -20579,6 +20918,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 10,
+   "humanity": 1,
    "stats": {
     "maxHp": 8,
     "move": 0.01,
@@ -20700,6 +21040,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "purple",
    "level": 21,
+   "humanity": 5,
    "stats": {
     "maxHp": 24,
     "move": 0.04,
@@ -20817,6 +21158,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 6,
+   "humanity": 1,
    "stats": {
     "maxHp": 3,
     "move": 0.01,
@@ -20942,6 +21284,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 10,
+   "humanity": 1,
    "stats": {
     "maxHp": 5,
     "move": 0.01,
@@ -21068,6 +21411,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 15,
+   "humanity": 2,
    "stats": {
     "maxHp": 9,
     "move": 0.02,
@@ -21194,6 +21538,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "purple",
    "level": 26,
+   "humanity": 5,
    "stats": {
     "maxHp": 36,
     "armor": 3,
@@ -21644,6 +21989,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 8,
+   "humanity": 1,
    "stats": {
     "maxHp": 14,
     "armor": 1
@@ -21756,6 +22102,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 10,
+   "humanity": 1,
    "stats": {
     "maxHp": 12,
     "move": 0.03
@@ -21976,6 +22323,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "orange",
    "level": 20,
+   "humanity": 8,
    "stats": {
     "maxHp": 40,
     "armor": 5
@@ -22086,6 +22434,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "purple",
    "level": 28,
+   "humanity": 5,
    "stats": {
     "move": 0.14,
     "maxHp": 20
@@ -22574,6 +22923,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 8,
+   "humanity": 1,
    "stats": {
     "move": 0.08
    },
@@ -22673,6 +23023,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "orange",
    "level": 24,
+   "humanity": 9,
    "stats": {
     "maxHp": 50,
     "armor": 5,
@@ -22776,6 +23127,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 0,
    "stats": {
     "maxHp": 2
    },
@@ -22864,6 +23216,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 10,
+   "humanity": 2,
    "stats": {
     "maxHp": 11,
     "armor": 0.9
@@ -23000,6 +23353,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "grey",
    "level": 7,
+   "humanity": 1,
    "stats": {
     "maxHp": 6,
     "armor": 0.45
@@ -23135,6 +23489,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "orange",
    "level": 27,
+   "humanity": 13,
    "stats": {
     "maxHp": 55,
     "armor": 4.5
@@ -23255,6 +23610,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 15,
+   "humanity": 4,
    "stats": {
     "maxHp": 19,
     "armor": 1.62
@@ -23401,6 +23757,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "purple",
    "level": 20,
+   "humanity": 8,
    "stats": {
     "maxHp": 33,
     "armor": 2.7
@@ -23533,6 +23890,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 15,
+   "humanity": 3,
    "stats": {
     "maxHp": 19,
     "armor": 1.62
@@ -23665,6 +24023,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 7,
+   "humanity": 1,
    "stats": {
     "maxHp": 4,
     "armor": 0.2,
@@ -23798,6 +24157,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "blue",
    "level": 17,
+   "humanity": 4,
    "stats": {
     "maxHp": 14,
     "armor": 0.72,
@@ -23945,6 +24305,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "orange",
    "level": 27,
+   "humanity": 13,
    "stats": {
     "maxHp": 40,
     "armor": 2,
@@ -24069,6 +24430,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 9,
+   "humanity": 2,
    "stats": {
     "maxHp": 8,
     "armor": 0.4,
@@ -24207,6 +24569,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 13,
+   "humanity": 2,
    "stats": {
     "maxHp": 8,
     "armor": 0.4,
@@ -24351,6 +24714,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 9,
+   "humanity": 1,
    "stats": {
     "maxHp": 4,
     "armor": 0.2,
@@ -24496,6 +24860,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 10,
+   "humanity": 2,
    "stats": {
     "maxHp": 8,
     "armor": 0.4,
@@ -24630,6 +24995,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 11,
+   "humanity": 2,
    "stats": {
     "maxHp": 8,
     "armor": 0.4,
@@ -24780,6 +25146,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 16,
+   "humanity": 3,
    "stats": {
     "maxHp": 14,
     "armor": 0.72,
@@ -24918,6 +25285,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 10,
+   "humanity": 2,
    "stats": {
     "maxHp": 8,
     "armor": 0.4,
@@ -25054,6 +25422,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 22,
+   "humanity": 4,
    "stats": {
     "maxHp": 30,
     "cooling": 0.3,
@@ -25425,6 +25794,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 18,
+   "humanity": 1,
    "stats": {
     "maxHp": 34,
     "armor": 2
@@ -25641,6 +26011,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "blue",
    "level": 10,
+   "humanity": 4,
    "stats": {
     "cooling": 0.25,
     "maxHp": 20,
@@ -25782,6 +26153,7 @@
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
    "level": 6,
+   "humanity": 1,
    "stats": {
     "maxHp": 24,
     "armor": 1
@@ -25902,6 +26274,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 8,
+   "humanity": 0,
    "stats": {
     "maxHp": 16
    },
@@ -26129,6 +26502,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "blue",
    "level": 15,
+   "humanity": 5,
    "stats": {
     "maxHp": 26,
     "regen": 0.5
@@ -26528,6 +26902,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
    "level": 8,
+   "humanity": 3,
    "stats": {
     "maxHp": 12,
     "regen": 0.3
@@ -26670,6 +27045,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 3,
+   "humanity": 0,
    "stats": {
     "maxHp": 12
    },
@@ -26789,6 +27165,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "purple",
    "level": 15,
+   "humanity": 7,
    "stats": {
     "maxHp": 30,
     "cooling": 0.2,
@@ -26921,6 +27298,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "green",
    "level": 22,
+   "humanity": 1,
    "stats": {
     "maxHp": 20,
     "cooling": 0.1
@@ -27149,6 +27527,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 24,
+   "humanity": 4,
    "stats": {
     "cooling": 0.2,
     "maxHp": 16
@@ -27549,6 +27928,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "blue",
    "level": 10,
+   "humanity": 4,
    "stats": {
     "cooling": 0.1,
     "maxHp": 8
@@ -27689,6 +28069,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "orange",
    "level": 14,
+   "humanity": 15,
    "stats": {
     "maxHp": 40,
     "regen": 1.2
@@ -27817,6 +28198,7 @@
    "makerName": "Aldane Surgical",
    "rarity": "orange",
    "level": 32,
+   "humanity": 15,
    "stats": {
     "cooling": 0.3,
     "maxHp": 30,
@@ -27943,6 +28325,7 @@
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
    "level": 1,
+   "humanity": 0,
    "stats": {
     "maxHp": 10
    },
