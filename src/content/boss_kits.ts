@@ -61,7 +61,7 @@ export const KITS:Record<string,Kit>={
   cryo:{pal:'ice',title:'Deep Freeze',mechs:[M('grid',13,{first:6}),M('shield',34,{at:.75}),M('tiles',14)]},
   auditor:{pal:'blue',title:'Audit Trail',mechs:[M('tiles',12,{first:6}),M('strike',12),M('shield',36,{at:.6})]},
   mirrorpt:{pal:'orchid',title:'Hall of Mirrors',mechs:[M('strike',11,{first:6}),M('gaze',13),M('buffers',34,{at:.7})]},
-  apothecary:{pal:'magenta',title:'Dispensary',mechs:[M('bombs',12,{first:6}),M('overload',22,{first:12}),M('pylons',30,{first:16,at:.7})]},
+  apothecary:{pal:'magenta',title:'Dispensary',mechs:[M('bombs',14,{first:8}),M('overload',24,{first:14})]},
   resonance:{pal:'white',title:'Anechoic Cell',mechs:[M('beam',12,{first:6}),M('safe',19,{first:10}),M('shockring',13)]},
   clearance:{pal:'coral',title:'Final Markdown',mechs:[M('conveyor',14,{first:6}),M('ricochet',12),M('tiles',15)]},
   liquidator:{pal:'bronze',title:'Liquidation',mechs:[M('bombs',12,{first:6}),M('shield',30,{at:.8}),M('grid',16)]},
@@ -130,7 +130,7 @@ const MECHS:Record<MechId,(c:C)=>number|null>={
   tiles(c){ const k=4+Math.min(3,c.ph*1.5|0), ar=c.ar, T=tgt(c), CS=2.4; const cells:{x:number;y:number}[]=[]; for(let tries=0;tries<200&&cells.length<k;tries++){ const gx=Math.round((T.x+(c.rng()-.5)*14-ar.x0)/CS), gy=Math.round((T.y+(c.rng()-.5)*14-ar.y0)/CS); const x=ar.x0+gx*CS, y=ar.y0+gy*CS; if(!c.free(x,y)) continue; if(cells.some(q=>Math.abs(q.x-x)<CS-.1&&Math.abs(q.y-y)<CS-.1)) continue; cells.push({x,y}); }
     const show=.5*cells.length+.5; cells.forEach((q,i)=>{ const w=show+.7+i*(.42-.04*c.ph); c.add({shape:'tile',x:q.x,y:q.y,r:CS/2-.05,num:i+1,dir:show,windup:w,life:w+.4,dps:c.dmg(.09),burst:true,label:i?undefined:'SEQUENCE',onFire:(s:any)=>s.emit('sfx','bk:tile:fire')}); });
     sfx(c,'tell'); return show+.7+cells.length*.4+.4; },
-  bombs(c){ const n=4+Math.min(2,c.ph), T=tgt(c), pts:{x:number;y:number}[]=[{x:T.x,y:T.y}]; for(let tries=0;tries<120&&pts.length<n;tries++){ const p=pts[pts.length-1], a=c.rng()*TAU, d=3+c.rng()*1.2; const x=p.x+Math.cos(a)*d, y=p.y+Math.sin(a)*d; if(!c.free(x,y)||pts.some(q=>Math.hypot(q.x-x,q.y-y)<2.9)) continue; pts.push({x,y}); }
+  bombs(c){ const n=3+Math.min(2,c.ph), T=tgt(c), pts:{x:number;y:number}[]=[{x:T.x,y:T.y}]; for(let tries=0;tries<120&&pts.length<n;tries++){ const p=pts[pts.length-1], a=c.rng()*TAU, d=3+c.rng()*1.2; const x=p.x+Math.cos(a)*d, y=p.y+Math.sin(a)*d; if(!c.free(x,y)||pts.some(q=>Math.hypot(q.x-x,q.y-y)<2.9)) continue; pts.push({x,y}); }
     const w0=wind(c,2.4)+.2; pts.forEach((p,i)=>{ const w=w0+i*.5; c.add({shape:'disc',style:'bomb',x:p.x,y:p.y,r:1.7,windup:w,life:w+.4,dps:c.dmg(.1),burst:true,link:pts[i+1]||null,num:i,label:i?undefined:'CHAIN BOMBS',onFire:(s:any)=>s.emit('sfx','bk:bomb:fire')}); });
     sfx(c,'tell'); return w0+n*.5+.4; },
   strike(c){ const w=wind(c,1.15), T=tgt(c); const e=c.e; let L:{x:number;y:number}|null=null; for(let tries=0;tries<70&&!L;tries++){ const a=c.rng()*TAU, d=3+c.rng()*1.2; const x=T.x+Math.cos(a)*d, y=T.y+Math.sin(a)*d; if(c.free(x,y)&&(tries>40||!sim_blocked(c.sim,e.x,e.y,x,y))) L={x,y}; } if(!L) return null;
@@ -140,11 +140,11 @@ const MECHS:Record<MechId,(c:C)=>number|null>={
     c.add({shape:'line',style:'lunge',x:sx,y:sy,a:ang,len,w:1.5,windup:w,life:w+.3,dps:c.dmg(.1),burst:true,onFire:(s:any)=>{ s.emit('sfx','bk:strike:fire'); if(e.dead) return; for(let k=1;k<=4;k++){ const d=len*k/5; c.add({shape:'ghost',style:'ghost',x:sx+Math.cos(ang)*d,y:sy+Math.sin(ang)*d,r:1,windup:0,life:.6,dps:0}); } if(!s.circleHits(L!.x,L!.y,ENEMIES[e.type].radius*.8)){ e.x=L!.x; e.y=L!.y; } }});
     c.add({shape:'cone',style:'slash',x:L.x,y:L.y,a:Math.atan2(T.y-L.y,T.x-L.x),len:4.2,arc:1.7,track:'aim',freeze:.3,windup:w+.6,life:w+.85,dps:c.dmg(.12),burst:true});
     sfx(c,'tell'); return w+.9; },
-  overload(c){ const ar=c.ar, w=wind(c,1.7), dur=5, n=2+(c.ph>=2?1:0), r=2.7-.2*c.ph; const pts:{x:number;y:number;r:number}[]=[]; const T=tgt(c);
+  overload(c){ const ar=c.ar, w=wind(c,1.7), dur=4, n=2+(c.ph>=2?1:0), r=3.3-.2*c.ph; const pts:{x:number;y:number;r:number}[]=[]; const T=tgt(c);
     for(let tries=0;tries<80&&pts.length<n;tries++){ const [tx,ty]=ar.tiles[Math.floor(c.rng()*ar.tiles.length)]; const x=tx+.5,y=ty+.5; if(!c.free(x,y)) continue; if(pts.length===0&&Math.hypot(x-T.x,y-T.y)>10) continue; if(pts.some(q=>Math.hypot(q.x-x,q.y-y)<6)) continue; pts.push({x,y,r}); }
     if(!pts.length) pts.push({x:T.x,y:T.y,r});
-    c.add({shape:'safe',style:'coolant',x:ar.cx,y:ar.cy,r:ar.maxR+2.5,safe:pts,windup:w,life:w+dur,dps:0,heat:24+3*c.ph,heatOnly:true,label:'HEAT OVERLOAD: STAND IN COOLANT',onFire:fireSfx(c)}); sfx(c,'tell'); return w+dur; },
-  buffers(c){ if(c.sim.enemies.some((o:any)=>o.kitBuf&&!o.dead)) return null; const T=String(c.km.p?.type||'sentry'); if(!ENEMIES[T]) return null; let made=0; for(let i=0;i<2+(c.ph>=2?1:0);i++){ const t=freeTile(c.sim,c.ar,5,c.e); if(!t) continue; const o=c.sim.spawnEnemy(T,t.x,t.y); o.alert=true; o.bossAdd=true; o.kitBuf=true; o.maxHp=o.hp=Math.round(o.maxHp*2.2); made++; c.sim.fx.push({kind:'ring',x:t.x,y:t.y,r:1.6,t:0,life:.6,c:PALS[c.pal].a}); }
+    c.add({shape:'safe',style:'coolant',x:ar.cx,y:ar.cy,r:ar.maxR+2.5,safe:pts,windup:w,life:w+dur,dps:0,heat:18+3*c.ph,heatOnly:true,label:'HEAT OVERLOAD: STAND IN COOLANT',onFire:fireSfx(c)}); sfx(c,'tell'); return w+dur; },
+  buffers(c){ if(c.sim.enemies.some((o:any)=>o.kitBuf&&!o.dead)||c.rt.kit.bufDone===c.ph) return null; c.rt.kit.bufDone=c.ph; const T=String(c.km.p?.type||'sentry'); if(!ENEMIES[T]) return null; let made=0; for(let i=0;i<2+(c.ph>=2?1:0);i++){ const t=freeTile(c.sim,c.ar,5,c.e); if(!t) continue; const o=c.sim.spawnEnemy(T,t.x,t.y); o.alert=true; o.bossAdd=true; o.kitBuf=true; o.kitBorn=c.rt.kit.t; o.maxHp=o.hp=Math.round(o.maxHp*1.5); made++; c.sim.fx.push({kind:'ring',x:t.x,y:t.y,r:1.6,t:0,life:.6,c:PALS[c.pal].a}); }
     if(made){ c.sim.toast('Buff nodes online: destroy them to expose '+ENEMIES[c.e.type].name); sfx(c,'fire'); return 6; } return null; },
   shockring(c){ const n=1+Math.min(2,c.ph), w=wind(c,1.25), R=Math.min(10,c.ar.maxR+1), g=5.2; let gap=c.rng()*TAU; for(let i=0;i<n;i++){ const ww=w+i*1.1; const ax=gap+(i?Math.PI+(c.rng()-.5):0); c.add({shape:'ring',style:'toll',x:c.e.x,y:c.e.y,r:1.6,r0:.5,R,gapA:ax,gapW:1.35,grow:g,windup:ww,life:ww+(R-1.6)/g+.15,dps:c.dmg(.1),burst:true,label:i?undefined:'SHOCKWAVE: FIND THE GAP',onFire:i?undefined:fireSfx(c)}); }
     sfx(c,'tell'); return w+(R-1.6)/g+(n-1)*1.1; },
@@ -169,6 +169,7 @@ export function kitTick(sim:any,e:any,dt:number){
   if(k.bufPrev>0&&bufs===0){ rt.vuln=Math.max(rt.vuln||0,3.5); sim.toast('Buff nodes down: '+ENEMIES[e.type].name+' is exposed!'); sim.emit('sfx','bk:break'); } k.bufPrev=bufs;
   // pylon snipes: every live tether pylon locks a crosshair line onto you (>= 1.3 s tell, tracking freezes .45 s before it fires)
   const pyl=sim.enemies.filter((o:any)=>o.pylon&&!o.dead&&o.bossAdd);
+  for(const o of sim.enemies) if(o.kitBuf&&!o.dead&&o.kitBorn!==undefined&&k.t-o.kitBorn>PYLON_LIFE){ o.dead=true; o.hp=0; sim.fx.push({kind:'ring',x:o.x,y:o.y,r:1.8,t:0,life:.5,c:PALS[kit.pal].a}); }
   for(const o of pyl) if(o.kitBorn!==undefined&&k.t-o.kitBorn>PYLON_LIFE){ o.dead=true; o.hp=0; sim.fx.push({kind:'ring',x:o.x,y:o.y,r:1.8,t:0,life:.5,c:PALS[kit.pal].a}); }
   if(pyl.length){ k.snipeT-=dt; if(k.snipeT<=0){ k.snipeT=11/(1+.15*ph); const o=pyl[Math.floor(((k.n+k.t*7)|0)%pyl.length)]; if(sim.zones.filter((q:any)=>q.kit).length<22){ const a=Math.atan2(sim.py-o.y,sim.px-o.x); sim.zones.push({t:0,heat:0,kit:'pylons',pal:kit.pal,shape:'line',style:'snipe',x:o.x,y:o.y,a,len:14,R:15,w:.8,track:'ray',freeze:.45,windup:1.4,life:1.9,r:1,dps:.07*sim.maxHp*(rt.hardDmg||1),burst:true,label:'SNIPE',onFire:(s:any)=>s.emit('sfx','bk:pylon:fire')}); sim.emit('sfx','bk:pylon:tell'); } } }
   // shield hex ends with the shield

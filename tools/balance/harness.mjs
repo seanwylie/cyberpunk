@@ -74,7 +74,7 @@ export async function runJob(job) {
       let fx = 0, fy = 0, flee = false;
       // shaped boss telegraphs (lines, cones, gapped rings, tiles, safe circles): a skilled player reads the shape, so the bot samples nearby points and walks to one that is outside every shape about to fire; for safe-zone mechanics it walks into (and holds) the nearest safe circle
       { const look = (z, dt) => { const c = Object.assign({}, z); const live = Math.max(0, Math.min(dt, z.t + dt - z.windup)); if (z.spin) c.a = (z.a || 0) + z.spin * live; if (z.grow) { c.r = z.r + z.grow * live; if (z.r0 !== undefined) c.r0 = z.r0 + z.grow * live; } if (z.vx || z.vy) { c.x = z.x + z.vx * live; c.y = z.y + z.vy * live; } return c; };
-        const sz = g.zones.find(z => !z.env && z.shape === 'safe' && z.t < z.life && ((z.dps > 0 && z.t > z.windup - 2.6) || (z.heatOnly && z.t > z.windup - 1 && g.heat > 62)));
+        const sz = g.zones.find(z => !z.env && z.shape === 'safe' && z.t < z.life && ((z.dps > 0 && z.t > z.windup - 2.6) || (z.heatOnly && z.t > z.windup - 1 && g.heat > 78)));
         if (sz && !g.revealing) { let best = null, bd = 1e9; for (const h of sz.safe) { const d = dist(g.px, g.py, h.x, h.y); if (d < bd) { bd = d; best = h; } } if (best) { if (bd > best.r * .45) mv(best.x - g.px, best.y - g.py); else g.setMove(0, 0); return 'safe'; } }
         const dz = g.zones.filter(z => !z.env && z.shape && z.shape !== 'ghost' && z.shape !== 'safe' && z.dps > 0 && z.t < z.life && z.t > z.windup - .75);
         if (dz.length) { const bad = (x, y) => dz.some(z => ZS.zoneInside(look(z, 0), x, y, .3) || ZS.zoneInside(look(z, .25), x, y, .3)); const rem = z => z.t < z.windup;
