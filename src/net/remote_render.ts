@@ -22,7 +22,7 @@ export class RemoteDrawer {
     c.save(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(a, b, 13 * s, 6 * s, 0, 0, 7); c.fill();
     const o = this.animFor(p); let drew = false;
     if (o) { const dt = Math.min(.1, (now - o.t) / 1000); o.t = now; if (p.atk) o.atk = .5; else o.atk = Math.max(0, o.atk - dt); try { if (p.look?.body) o.a.setBody(p.look.body); } catch {} o.a.update(this.fake(p, o) as any, dt);
-      const cos = ((p.look?.cos || []) as string[]).map(id => COS_BY_ID[id]).filter(Boolean) as CosDef[]; const ck: CosCtx = { c, x: a, y: b, u: s, t: now / 1000, moving: !!p.moving, face: p.face };
+      const cos = ((p.look?.cos || []) as string[]).map(id => COS_BY_ID[id]).filter(Boolean) as CosDef[]; const ck: CosCtx = { c, x: a, y: b, u: s, t: now / 1000, moving: !!p.moving, face: p.face, id: 'net:' + p.id };
       try { if (cos.length) drawCosmetics(ck, cos, 'back'); } catch {} drew = o.a.draw(c, a, b, s); try { if (drew && cos.length) drawCosmetics(ck, cos, 'front'); } catch {} }
     if (!drew) { c.translate(a, b); c.fillStyle = TINTS[(p.id.charCodeAt(1) || 0) % TINTS.length]; c.beginPath(); c.arc(0, -22 * s, 9 * s, 0, 7); c.fill(); c.fillRect(-6 * s, -14 * s, 12 * s, 14 * s); }
     c.restore();

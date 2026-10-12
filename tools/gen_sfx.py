@@ -27,6 +27,8 @@ F = {
  'hack':    {'windup': ('data uplink, rising digital glitch chirps', .5), 'cast': ('hacking intrusion, digital glitch burst and data modem sweep', .7), 'impact': ('digital glitch zap, short corrupted bitcrush blip', .4)},
  'blast':   {'windup': ('explosive charge arming, rapid escalating beeps', .6), 'cast': ('orbital strike impact, huge explosion boom with debris', 1.3), 'impact': ('grenade explosion, crack and low boom', .8)},
  'summon':  {'windup': ('machinery assembling, clanks and ratchets', .6), 'cast': ('heavy robot drop-in landing, metal slam and servo boot-up', .9), 'impact': ('turret firing a burst of small energy shots', .5), 'travel': ('automated turret ticking and swivelling, loopable', .7)},
+ # cosmetic rarity sounds (src/cosfx.ts): legendary (orange) equip + idle flourish, epic (purple) equip
+ 'cos':     {'equip_orange': ('legendary item equip, huge rising plasma swell into a bright crystalline shimmer burst and deep sub boom, epic and triumphant', 1.6), 'flourish_orange': ('soft magical plasma shimmer flourish, airy sparkle sweep with a warm hum, subtle', 1.0), 'equip_purple': ('epic item equip, rising glassy shimmer and a resonant chime with a soft whoosh', 1.0)},
 }
 want = [a for a in sys.argv[1:] if not a.startswith('--')]; force = '--force' in sys.argv; jobs = [(f, l, p, d) for f, ls in F.items() for l, (p, d) in ls.items() if not want or f'{f}_{l}' in want or f in want]
 for f, l, p, d in jobs:
