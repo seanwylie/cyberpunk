@@ -10,6 +10,8 @@ export async function launch(opts = {}) {
   // hermetic story proxy: the dev middleware rate-limits (429) when many suites share one IP, and Chrome logs any 4xx as a console error. The client already falls back to authored beats on ok:false.
   if (!opts.realStory) await page.route('**/api/story-beat', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: false }) }));
   // the first-run tutorial is off for every other test (it is covered by tests/tutorial.mjs); pass tutorial:true to leave it on
+  // the calm-start grace (dormant enemies, unhurtable player) is off for every other test; pass grace:true to leave it on (tests/calm_start.mjs)
+  if (!opts.grace) await page.addInitScript(() => { try { localStorage.setItem('wv_nograce', '1'); } catch {} });
   if (!opts.tutorial) await page.addInitScript(() => { try { localStorage.setItem('wv_notut', '1'); } catch {} });
   if (opts.init) await page.addInitScript(opts.init);
   await page.goto(URL + (opts.query || ''), { waitUntil: 'load' }); await page.waitForFunction(() => window.__game);

@@ -38,13 +38,14 @@ export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:
 export interface Zone extends ZX { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }
 export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'|'ability'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; s?:number; pop?:number; }
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
-export interface Rt { hardDmg?:number; taunt?:number; rcA?:number; rcM?:number; rcT?:number; // enemy transient runtime fields
+export interface Rt { wake?:number; hardDmg?:number; taunt?:number; rcA?:number; rcM?:number; rcT?:number; // enemy transient runtime fields
   /** content batch 1 boss mechanics (src/content/mechanics.ts) */ spdMul?:number; cdMul?:number; shield?:any; gim?:any; gimT?:number; q?:any[]; pylPrev?:number; tl?:number;
   st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; hack:number; abHitAt:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; fkT?:number; fkN?:number; flankSide?:number; flanker?:boolean; wpT?:number; wp?:{x:number;y:number}|null; sx?:number; sy?:number; sT?:number; unstick?:number; side?:number; dashed:boolean; strafe:number; chained?:boolean;
 }
 export type En = EnemyState & { _rt:Rt };
 
 const dist=(ax:number,ay:number,bx:number,by:number)=>Math.hypot(ax-bx,ay-by);
+/** calm start tuning (docs/SAFE_START.md) */ export const GRACE={ seconds:5, moveR:8, reentryR:12, staggerUntil:180, wakeBase:.25, wakeStep:.3, wakeMax:1.5 };
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
 const angDiff=(a:number,b:number)=>{ let d=a-b; while(d>Math.PI)d-=Math.PI*2; while(d<-Math.PI)d+=Math.PI*2; return d; };
 export const ISO = { toWorld(sx:number,sy:number,tw:number){ const a=sx/(tw/2), b=sy/(tw/4); return { x:(a+b)/2, y:(b-a)/2 }; }, vec(dx:number,dy:number){ const a=dx, b=dy*2; const x=(a+b)/2, y=(b-a)/2; const l=Math.hypot(x,y)||1; return { x:x/l, y:y/l }; } };
@@ -61,7 +62,9 @@ export class Game {
   abCd:number[]=[0,0,0]; cast:{ idx:number; t:number; aim:AimState; ab:AbilityDef }|null=null; aim:AimState|null=null; target:number|null=null; lungeT=0; lungeDx=0; lungeDy=0; lungeHit:Set<number>=new Set();
   slideT=0; slideFx=0; slideFy=0; channel:{ kind:'town'|'hack'; t:number; dur:number; cb:()=>void; hard?:boolean }|null=null; townFails=0;
   inputMove={x:0,y:0}; build!:BuildResult; moving=false; prompt:Interact|null=null; musicState='traversal'; combatHold=0; eliteEng=0; toastQ:string[]=[];
-  dbg={god:false,oneShot:false,noHitStop:false};
+  dbg:{god:boolean;oneShot:boolean;noHitStop:boolean;noGrace?:boolean}={god:false,oneShot:false,noHitStop:false};
+  /** calm start (docs/SAFE_START.md): while set, enemies are dormant and the player cannot be hurt. Ends on time, first attack/ability/dodge, or moving GRACE.moveR tiles. `ext`: ended by an owner (party world) instead of this Game. */
+  grace:{t:number;x:0|number;y:number;acted:boolean;ext:boolean}|null=null;
   flow:Int16Array|null=null; flows:(Int16Array|null)[]=[null,null,null]; clr:(Uint8Array|null)[]=[null,null,null]; clrLevel:Level|null=null; q:Int32Array|null=null; frame=0; flowT=0; kills=0; saveT=0; sensorFlag=false; lastRoute='';
   constructor(save:Save, emit:Emit){ this.save=save; this.emit=emit; this.level=buildTown(); this.migrateInstance(); this.recompute(); this.enterTown(true); }
 
@@ -123,7 +126,9 @@ export class Game {
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.braceT=0; this.defibCd=0; this.abCd=[0,0,0]; this.dodgeCd=0;
     this.musicSet('traversal'); this.emit('mode','run'); this.emit('sfx','abwarm:'+this.build.abilities.filter(Boolean).join(',')); this.saveNow();
     if(this.save.story && !this.save.story) {}
+    if(!fresh){ /* re-entry: nothing that wandered near the entry stays there; everything is dormant again */ for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||ENEMIES[e.type]?.boss) continue; e.alert=false; if(dist(e.x,e.y,this.px,this.py)<GRACE.reentryR&&e.home&&dist(e.home.x,e.home.y,this.px,this.py)>=GRACE.reentryR){ e.x=e.home.x; e.y=e.home.y; } } }
     this.toast(fresh?this.dd.intro:'Re-entered existing instance. Surviving enemies and loot remain.');
+    this.autoGrace(); this.introBeat(fresh);
   }
   /** global enemy HP multiplier by dungeon tier (ability power pass: autos are weaker, enemy HP is retuned here) */ hpMul(){ return BAL.g.tier[(this.dd as any)?.tier||0]??BAL.g.hp; }
   wrap(e:EnemyState):En{ const x=e as En; x._rt={ st:'idle',t:0,atk:'',acd:{},ang:0,tx:0,ty:0,lost:0,vuln:0,hack:0,abHitAt:-99,reveal:0,bornT:0,fire:0,shots:[],hit:0,dashed:false,strafe:Math.random()<.5?1:-1 }; return x; }
@@ -199,7 +204,7 @@ export class Game {
   cancelAim(){ this.aim=null; }
   /** Tap / click without dragging: aim at the current target or nearest enemy, else along facing, so a plain press still casts. */
   quickAim(a:AimState){ if(a.hasDir) return; const t=this.pickTarget(); if(t){ a.wx=t.x; a.wy=t.y; } else { a.wx=this.px+Math.cos(this.face)*3; a.wy=this.py+Math.sin(this.face)*3; } a.hasDir=true; }
-  releaseAim(){ const a=this.aim; this.aim=null; if(!a||this.downed||this.mode!=='run') return; const id=this.build.abilities[a.idx]; if(!id) return; const def=ABILITIES[id]; if(def.aim!=='self') this.quickAim(a);
+  releaseAim(){ const a=this.aim; this.aim=null; if(!a||this.downed||this.mode!=='run') return; if(this.grace) this.grace.acted=true; const id=this.build.abilities[a.idx]; if(!id) return; const def=ABILITIES[id]; if(def.aim!=='self') this.quickAim(a);
     const v=this.validateAim(def,a); if(!v.valid){ this.emit('sfx','cancel'); this.toast('Cancelled: '+v.why); return; }
     if(this.overheated){ this.toast('Overheated: abilities offline'); this.emit('sfx','deny'); return; }
     if(this.ventLock>0){ this.toast('Venting...'); this.emit('sfx','deny'); return; }
@@ -220,7 +225,7 @@ export class Game {
   clearTarget(){ this.target=null; }
   dodge(){
     if(this.downed||this.channel&&this.channel.kind==='hack'&&false) return;
-    this.aim=null; const hadCast=!!this.cast; this.cast=null; if(this.channel&&this.channel.kind==='hack') this.channel=null; this.emit('dodgecancel'); // always cancels aiming/execution, even on cooldown
+    if(this.grace) this.grace.acted=true; this.aim=null; const hadCast=!!this.cast; this.cast=null; if(this.channel&&this.channel.kind==='hack') this.channel=null; this.emit('dodgecancel'); // always cancels aiming/execution, even on cooldown
     if(this.dodgeCd>0){ if(hadCast) this.toast('Cast cancelled'); return; }
     let dx=this.inputMove.x, dy=this.inputMove.y; if(Math.hypot(dx,dy)<.1){ dx=Math.cos(this.face); dy=Math.sin(this.face); }
     if(Math.hypot(this.inputMove.x,this.inputMove.y)>=.1){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); dx=v.x; dy=v.y; } /* input is screen-space; convert to world */ const l=Math.hypot(dx,dy)||1; this.dodgeDx=dx/l; this.dodgeDy=dy/l; this.dodgeT=COMBAT.dodge.time; this.iframes=Math.max(this.iframes,COMBAT.dodge.iframes); this.dodgeCd=COMBAT.dodge.cd; this.emit('sfx','dodge'); this.fx.push({kind:'dust',x:this.px,y:this.py,t:0,life:.4});
@@ -258,6 +263,7 @@ export class Game {
     if(this.hitStop>0){ this.hitStop-=dtRaw; this.updateFx(dtRaw*.25); return; }
     const dt=Math.min(dtRaw,.05); this.time+=dt;
     if(this.mode==='run'&&this.inst){ this.inst.elapsed+=dt; const rem=this.inst.expiresAt-this.now(); if(rem<=0){ this.expireInstance(); this.enterTown(); return; } if(!this.inst.warned&&rem<INSTANCE_WARN_MINUTES*60000){ this.inst.warned=true; this.toast('Instance expires in under '+INSTANCE_WARN_MINUTES+' minutes. Retrieve loot.'); } }
+    if(this.grace&&this.mode==='run') this.tickGrace(dt); else if(this.grace) this.grace=null;
     this.updatePlayer(dt); abxTick(this,dt); this.codexT-=dt; if(this.codexT<=0){ this.codexT=1; this.codexScan(); }
     if(this.mode==='run'){ if((this.sanT-=dt)<=0){ this.sanT=1; this.sanitizeGround(); } if((this.resT-=dt)<=0){ this.resT=.5; this.rescueStranded(); } this.updateEnemies(dt); this.updateProjs(dt); this.updateZones(dt); this.autoPickup(); this.updateRun(dt); this.updateMusic(dt); this.abilityHints(dt); this.saveT+=dt; if(this.saveT>4){ this.saveT=0; this.saveNow(); } }
     this.updatePrompt(); this.updateFx(dt);
@@ -305,7 +311,7 @@ export class Game {
     const w=this.build.weapon; const t=this.pickTarget(); if(!t) return;
     const d=dist(this.px,this.py,t.x,t.y)-ENEMIES[t.type].radius; if(d>w.range) return;
     if(w.stationary&&this.moving) return; if(this.atkCd>0) return; if(this.aim) return;
-    const st=this.stat(); const rate=w.rate*st.atkSpeed*(this.overheated?.5:1); this.atkCd=1/rate;
+    const st=this.stat(); const rate=w.rate*st.atkSpeed*(this.overheated?.5:1); this.atkCd=1/rate; if(this.grace) this.grace.acted=true;
     this.face=Math.atan2(t.y-this.py,t.x-this.px);
     let dmg=w.dmg*AB.autoDmgMul*this.build.weaponMul*st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1); if(w.kind==='ripper') dmg*=1+(st.atkSpeed-1)*.6;
     let tag='auto'; if(this.cloakT>0){ dmg*=AB.cloakAuto; this.cloakT=0; tag='cloak'; this.popup(this.px,this.py,'AMBUSH x'+AB.cloakAuto,'#e8c46a'); this.vfx('cloak.ambush',this.px,this.py,{a:this.face}); }
@@ -389,7 +395,7 @@ export class Game {
 
   // ---------- damage ----------
   hurtEnemy(e:En,dmg:number,sx:number,sy:number,knock=0){
-    if(e.dead||e._rt.reveal>0) return; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; dmg=abxOutgoing(this,e,dmg); const rt=e._rt, tag=this.curTag;
+    if(e.dead||e._rt.reveal>0) return; if(this.grace&&e.faction==='enemy') this.grace.acted=true; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; dmg=abxOutgoing(this,e,dmg); const rt=e._rt, tag=this.curTag;
     if(rt.hack>0) dmg*=AB.hackMul;
     const hadShield=!!(rt.shield&&rt.shield.hp>0);
     if(hadShield&&dmg>0){ if(tag==='pulse') dmg=Math.max(dmg*AB.pulseShield,(rt.shield.max||rt.shield.hp)*AB.pulseShieldFrac); else if(tag==='auto') dmg*=AB.shieldAuto; else dmg*=AB.shieldAbility; }
@@ -407,9 +413,17 @@ export class Game {
     if(e.hp<=0){ this.killEnemy(e); if(tag!=='auto'){ for(let k=0;k<3;k++) this.abCd[k]=Math.max(0,this.abCd[k]-AB.killCdRefund); this.kick=Math.max(this.kick,.35); if(!this.save.settings.reducedFx&&!this.dbg.noHitStop&&this.time-this.lastStop>.4){ this.hitStop=.05; this.lastStop=this.time; } } }
     else { this.alertGroup(e); if(broke&&!this.save.settings.reducedFx&&!this.dbg.noHitStop&&this.time-this.lastStop>.4){ this.hitStop=.06; this.lastStop=this.time; } }
   }
-  alertGroup(e:En){ for(const o of this.enemies){ if(!o.dead&&o.faction==='enemy'&&!o.alert&&((o.group!=null&&o.group===e.group&&dist(o.x,o.y,e.x,e.y)<16)||(dist(o.x,o.y,e.x,e.y)<HARD.packAggroR&&this.los(o.x,o.y,e.x,e.y)))) o.alert=true; } }
+  /** calm intro beat: dungeon title + objective card (UI fades them in), camera/fade settle, calm music (traversal state) */ introBeat(fresh:boolean){ const o=this.objective(); this.emit('intro',{ name:this.dd.name, zone:(this.dd.zoneLabels as any)[this.zoneAt(this.px,this.py)]||'', objective:o?o.text:'', fresh, grace:!!this.grace }); }
+  /** begin the calm-start grace period (no-op when disabled: bots, headless tests, dbg.noGrace). */
+  beginGrace(dur=GRACE.seconds,ext=false){ if(this.dbg.noGrace||(globalThis as any).__WV_NOGRACE) return false; this.grace={t:dur,x:this.px,y:this.py,acted:false,ext}; for(const e of this.enemies){ if(e.faction==='enemy'&&!ENEMIES[e.type]?.boss){ e.alert=false; e._rt.wake=0; } } this.emit('grace',dur); return true; }
+  endGrace(why:string){ if(!this.grace) return; this.grace=null; this.emit('grace-end',why); }
+  /** browser games get the grace automatically (tests opt out through localStorage wv_nograce; node sims opt in explicitly) */
+  autoGrace(dur=GRACE.seconds){ if(typeof window==='undefined') return; try{ if(localStorage.getItem('wv_nograce')==='1') return; }catch{} this.beginGrace(dur); }
+  private tickGrace(dt:number){ const g=this.grace; if(!g||g.ext) return; g.t-=dt; if(g.acted) this.endGrace('action'); else if(dist(this.px,this.py,g.x,g.y)>GRACE.moveR) this.endGrace('moved'); else if(g.t<=0) this.endGrace('time'); }
+  alertGroup(e:En){ const stag=!!this.inst&&this.inst.elapsed<GRACE.staggerUntil; let k=0; const cand:En[]=[]; for(const o of this.enemies){ if(!o.dead&&o.faction==='enemy'&&!o.alert&&!((o._rt.wake||0)>0)&&((o.group!=null&&o.group===e.group&&dist(o.x,o.y,e.x,e.y)<16)||(dist(o.x,o.y,e.x,e.y)<HARD.packAggroR&&this.los(o.x,o.y,e.x,e.y)))) cand.push(o); }
+    cand.sort((a,b)=>dist(a.x,a.y,e.x,e.y)-dist(b.x,b.y,e.x,e.y)); for(const o of cand){ if(stag&&!ENEMIES[o.type]?.boss){ k++; o._rt.wake=Math.min(GRACE.wakeMax,GRACE.wakeBase+GRACE.wakeStep*k); o._rt.hit=Math.max(o._rt.hit||0,.16); /* tell: white flash when it notices */ } else o.alert=true; } }
   hurtPlayer(dmg:number,sx:number,sy:number){
-    if(this.downed||this.iframes>0||this.revealing||this.mode!=='run'||this.dbg.god) return;
+    if(this.downed||this.iframes>0||this.revealing||this.mode!=='run'||this.dbg.god||this.grace) return;
     const st=this.stat(); dmg=abxIncoming(this,dmg,sx,sy); if(dmg<=.01) return; dmg=Math.max(1,dmg-st.armor); if(this.overheated) dmg*=HEAT.overheat.takenMul; let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
     if(this.channel&&!this.channel.hard){ this.townInterrupt('Town return interrupted by damage',true); this.channel=null; }
     this.fx.push({kind:'blood',x:this.px,y:this.py,t:0,life:.6,c:'#7a2f26'});
@@ -564,7 +578,8 @@ export class Game {
     else { if(!player&&!this.enemies.some(a=>a.faction==='ally'&&!a.dead)) return; tx=this.px; ty=this.py; let bd=dist(e.x,e.y,tx,ty); if(!player) bd=1e9; for(const a of this.enemies){ if(a.faction==='ally'&&!a.dead){ const d=dist(e.x,e.y,a.x,a.y); if(d<bd-1&&d<8){ bd=d; tx=a.x; ty=a.y; tgtIsPlayer=false; } } } }
     rt.taunt=0; if(e.faction==='enemy'&&e.alert&&!def.boss){ let bd=1e9, bx=0, by=0; for(const dc of ((this.abx as any)?.deps||[])){ if(dc.kind!=='decoy'||dc.t>=dc.life) continue; const dd=dist(e.x,e.y,dc.x,dc.y); if(dd<dc.r+1&&dd<bd){ bd=dd; bx=dc.x; by=dc.y; } } if(bd<1e9){ tx=bx; ty=by; tgtIsPlayer=false; rt.taunt=1; } } /* taunt: alerted non-boss enemies within the decoy's radius go for it */
     const d=dist(e.x,e.y,tx,ty); const cloaked=tgtIsPlayer&&this.cloakT>0;
-    if(!e.alert){ const rad=def.aggro*(cloaked?.18:1); if(e.faction==='enemy'&&tgtIsPlayer&&d<rad&&this.los(e.x,e.y,tx,ty)){ e.alert=true; this.alertGroup(e); this.emit('sfx','alert'); } else return; }
+    if((rt.wake||0)>0){ rt.wake=rt.wake!-dt; if(rt.wake>0) return; rt.wake=0; e.alert=true; rt.hit=Math.max(rt.hit||0,.12); this.emit('sfx','alert'); }
+    if(!e.alert){ if(this.grace&&e.faction==='enemy'&&!def.boss) return; const rad=def.aggro*(cloaked?.18:1); if(e.faction==='enemy'&&tgtIsPlayer&&d<rad&&this.los(e.x,e.y,tx,ty)){ e.alert=true; this.alertGroup(e); this.emit('sfx','alert'); } else return; }
     if(cloaked&&d>1.7&&rt.st!=='tele'&&rt.st!=='dash'){ rt.lost+=dt; if(rt.lost>1.5){ e.alert=false; rt.lost=0; rt.st='idle'; } return; }
     const speed=def.speed*(this.zoneSlow(e)?.7:1)*(rt.spdMul||1)*abxSpeedMul(this,e);
     const ang=Math.atan2(ty-e.y,tx-e.x);

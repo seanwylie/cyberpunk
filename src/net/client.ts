@@ -24,10 +24,10 @@ export class InstanceClient {
   level: Level; px: number; py: number; face = 0; hp = 100; maxHp = 100; down = false; moving = false; atk = false;
   players = new Interp<PlayerView & { id: string }>(INTERP_DELAY + .05); roster = new Map<string, RosterEntry>();
   flags: Record<string, any> = {}; killed = new Set<number>(); nSpawns = 0; you: { down: boolean; hp: number; maxHp: number } | null = null; snaps = 0; lastN = 0;
-  stats = { stateSent: 0, dmgSent: 0, claims: 0, flagsSent: 0 }; private known = new Map<string, any>(); private lastX = 0; private lastY = 0; private lastSent = 0; private lastKey = ''; private dmgAcc = new Map<number, number>(); private dmgAt = 0;
+  graceMs = 5000; stats = { stateSent: 0, dmgSent: 0, claims: 0, flagsSent: 0 }; private known = new Map<string, any>(); private lastX = 0; private lastY = 0; private lastSent = 0; private lastKey = ''; private dmgAcc = new Map<number, number>(); private dmgAt = 0;
   constructor(public net: NetClient, public dungeon: string, public seed: number, public myId: string, public hpMul: number, public dmgMul: number, init?: any) {
     this.level = dungeonOf(dungeon).build(seed); this.px = this.lastX = this.level.spawn.x; this.py = this.lastY = this.level.spawn.y;
-    if (init) { for (const r of init.roster || []) this.roster.set(r.id, r); this.flags = { ...(init.flags || {}) }; for (const k of init.killed || []) this.killed.add(k); this.nSpawns = init.nSpawns || 0; }
+    if (init) { for (const r of init.roster || []) this.roster.set(r.id, r); this.flags = { ...(init.flags || {}) }; for (const k of init.killed || []) this.killed.add(k); this.nSpawns = init.nSpawns || 0; if (typeof init.graceMs === 'number') this.graceMs = Math.max(0, Math.min(8000, init.graceMs)); }
   }
   /** instant local movement with the shared movement function (headless bots/tests; the real game moves itself and calls setState) */
   move(mx: number, my: number, dt: number, spd = COMBAT.playerSpeed) { if (this.down) { mx = 0; my = 0; } const p = { x: this.px, y: this.py }; stepPlayer(this.level, p, mx, my, dt, spd); this.px = p.x; this.py = p.y; this.moving = Math.hypot(mx, my) > .05; if (this.moving) this.face = Math.atan2(my, mx); this.report(); }

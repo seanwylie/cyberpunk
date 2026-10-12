@@ -27,7 +27,7 @@ const SFX_OUT = /^(ab_|dodge|hurt|cooled|overheat|combo|windup|heal|coin|pickup|
 
 export type Act = { k: 'cast'; i: number; wx: number; wy: number } | { k: 'dodge' } | { k: 'vent' } | { k: 'stim' } | { k: 'use' } | { k: 'dlg'; i: number };
 export interface PartyMember { id: string; name: string; lvl: number; look?: Look; profile?: Profile }
-export interface PartyOpts { dmgMul?: number; seed?: number; dev?: boolean }
+export interface PartyOpts { grace?: boolean | number; dmgMul?: number; seed?: number; dev?: boolean }
 export interface GotEntry { kind: string; item?: string; chip?: string; amount: number; mfr?: string; k?: string; key?: string; id?: string; abAcq?: { total: number; dry: number } }
 
 /** one party member: a real Game plus the network bookkeeping around it */
@@ -55,7 +55,12 @@ export class PartyWorld {
     });
     this.ai.enemies = this.enemies; this.total = this.enemies.length + 1;
     members.forEach((m, i) => this.addPlayer(m, i));
+    if (opts.grace) this.startGrace(typeof opts.grace === 'number' ? opts.grace : 5);
   }
+  /** calm start for the whole party: one shared timer started with the world (seed/start event); any member's first action or moving away ends it for everyone */
+  graceT = 0; private graceAt = { x: 0, y: 0 };
+  startGrace(dur = 5) { this.graceT = dur; this.graceAt = { x: this.level.spawn.x, y: this.level.spawn.y }; for (const g of [this.ai, ...[...this.hosts.values()].map(h => h.g)]) { g.grace = { t: dur, x: this.graceAt.x, y: this.graceAt.y, acted: false, ext: true }; } for (const e of this.enemies) { e.alert = false; } this.evq.push({ e: 'grace', t: dur }); }
+  endGrace(why: string) { if (!this.ai.grace) return; this.graceT = 0; this.ai.grace = null; for (const h of this.hosts.values()) h.g.grace = null; this.evq.push({ e: 'grace_end', why }); }
   get players() { return this.hosts; } get bossSpawned() { return !!this.flags.bossSpawned; } get bossDead() { return !!this.flags.bossDead; }
   private withRand<T>(r: () => number, fn: () => T): T { const o = Math.random; Math.random = r; try { return fn(); } finally { Math.random = o; } }
 
@@ -167,6 +172,7 @@ export class PartyWorld {
   // ---------------- step ----------------
   step() {
     const dt = TICK_DT; this.tick++; this.time += dt; const ai = this.ai;
+    if (this.graceT > 0) { this.graceT -= dt; let why = ''; for (const h of this.hosts.values()) { if (h.g.grace?.acted) why = 'action'; else if (Math.hypot(h.g.px - this.graceAt.x, h.g.py - this.graceAt.y) > 8) why = why || 'moved'; } if (!why && this.graceT <= 0) why = 'time'; if (why) this.endGrace(why); }
     for (const h of this.hosts.values()) {
       const g = h.g; let inp = h.q.shift() || null; if (inp) { h.lastSeq = inp.seq; h.applied++; h.held = inp; h.heldTicks = 0; } else if (h.held && h.heldTicks < 3) { inp = h.held; h.heldTicks++; } else inp = null;
       // screen-space input for the real movement code: invert ISO.vec so world direction (mx,my) comes out unchanged

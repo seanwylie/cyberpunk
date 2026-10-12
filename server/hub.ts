@@ -56,7 +56,7 @@ export function startHub(o: HubOpts = {}) {
 
   // ---------- instances
   const rosterOf = (r: Room) => [...r.players.values()].map(x => ({ id: x.id, name: x.name, lvl: x.lvl, look: x.look }));
-  const startMsg = (r: Room, id: string, resume = false) => ({ t: 'instance_start', proto: PROTO, dungeon: r.dungeon, seed: r.seed, you: id, hpMul: r.hpMul, dmgMul: r.dmgMul, stateHz: STATE_HZ, players: [...r.players.keys()], roster: rosterOf(r), nSpawns: r.homes.length, flags: r.flags, killed: [...r.killed], resume });
+  const startMsg = (r: Room, id: string, resume = false) => ({ t: 'instance_start', proto: PROTO, dungeon: r.dungeon, seed: r.seed, you: id, hpMul: r.hpMul, dmgMul: r.dmgMul, stateHz: STATE_HZ, players: [...r.players.keys()], roster: rosterOf(r), nSpawns: r.homes.length, flags: r.flags, killed: [...r.killed], resume, graceMs: 5000 });
   const toRoom = (r: Room, m: any, except?: string) => { const s = JSON.stringify(m); for (const x of r.party.members) if (x.id !== except && r.players.has(x.id) && x.ws && x.ws.readyState === WebSocket.OPEN) x.ws.send(s); };
   function startInstance(p: Party, dungeon: string) {
     const seed = (Math.random() * 1e9) | 0; const lv = dungeonOf(dungeon).build(seed); // layout is only used for bounds + enemy home points (claim sanity); no enemies are simulated here

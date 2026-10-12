@@ -12,6 +12,7 @@ import { genBatch1 } from './mapgen_batch1';
 import { symLevel, symOfSeed } from './mapgen_arch';
 import { LEVELS } from './batch1_levels';
 import type { LevelSpec } from './batch1_levels';
+import { safeEntry } from './safestart';
 export type { Hazard };
 import type { LootEntry, ChipId, Mfr } from '../config';
 
@@ -118,3 +119,6 @@ for(const id of ['annex','foundry','clinic','warehouse']){ const d=DUNGEONS[id];
 export function unlockReason(save:{cleared?:Record<string,number>;lockouts?:Record<string,string>;lastClearDay?:string|null},id:string,bypass=false):string|null{
   const d=DUNGEONS[id]; if(!d||!d.unlock||bypass) return null; const done=(k:string)=>!!save.cleared?.[k]||(k==='annex'?!!save.lastClearDay:!!save.lockouts?.[k]);
   const need=d.unlock.filter(k=>!done(k)); if(!need.length) return null; return 'Locked: clear '+need.map(k=>DUNGEONS[k]?.name||k).join(' and ')+' first.'; }
+
+// CALM START: every dungeon build gets the safe entry zone + ramped first packs (src/content/safestart.ts, docs/SAFE_START.md). Runs last so it sees the final (rotated) level.
+for(const id of Object.keys(DUNGEONS)){ const d=DUNGEONS[id]; const b=d.build; d.build=(s?:number)=>{ const L=b(s); return safeEntry(L,(L as any).seed??(s??1)); }; }
