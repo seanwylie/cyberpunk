@@ -35,7 +35,8 @@
     "shots:world": "node tests/world_shots.mjs",
     "test:ui-overflow": "node tests/ui_overflow.mjs",
     "test:dressing-room": "node tests/dressing_room.mjs",
-    "test:worldperf": "node tests/world_perf.mjs"
+    "test:worldperf": "node tests/world_perf.mjs",
+    "test:rarity-fx": "node tests/rarity_fx.mjs"
   },
   "devDependencies": {
     "@types/ws": "^8.18.2",
