@@ -19,7 +19,7 @@
     "test:mapvary": "node tests/mapvary.mjs && node tests/mapvary2.mjs",
     "test:drops": "node tests/drops.mjs && node tests/loot_reach.mjs && node tests/ring_geometry.mjs",
     "test:prod": "node tests/prod.mjs",
-    "test:music": "node tests/music.mjs",
+    "test:music": "node tests/town_music.mjs && node tests/music.mjs",
     "test:mobs2": "node tests/mobs2.mjs",
     "test:sprites": "node tests/sprites.mjs",
     "test:sprites:real": "node tests/sprites_real.mjs",

@@ -23,7 +23,7 @@ export const CALM_LAZY=new Set([...CALM2,...CALM3,...CALM4]);
 export const LAZY=new Set([...CALM2,...CALM3,...CALM4,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]);
 const T:Record<string,TrackDef>={ boss_reveal:{file:'boss_reveal',loop:false,keepPos:false}, clear:{file:'clear',loop:false,keepPos:false} };
 for(const n of STINGERS) T[n]={file:n,loop:false,keepPos:false};
-for(const n of [...LOOPS,...CALM2,...CALM3,...CALM4,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]) T[n]={file:n,loop:true,keepPos:true};
+for(const n of [...LOOPS,...CALM2,...CALM3,...CALM4,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]) T[n]={file:n,loop:/^(combat_|boss_|elite_)/.test(n),keepPos:/^(combat_|boss_|elite_)/.test(n)}; // calm tracks never loop: rotation crossfades out before the end (a lone track is never repeated)
 /** Tracks that must load for file music to activate; the rest load best-effort and are dropped from pools when missing. */
 export const CORE_TRACKS=['town','traversal_a','traversal_b','combat_a','combat_b','boss_reveal','boss_fight','clear'];
 /** Per-state track pools (rotation draws from these via a shuffle bag). */
@@ -80,7 +80,8 @@ export class MusicManager {
   isReady(){ return this.ready; }
   private getTrack:((d:TrackDef)=>Promise<void>)|null=null; private asked=new Set<string>();
   /** constrained devices skip the preload of variety tracks (decoded PCM is ~10x the mp3); fetch just the track that is about to be needed */
-  ensure(file:string){ const d=Object.values(T).find(x=>x.file===file); if(!d||this.buffers[file]||this.asked.has(file)||!this.getTrack) return; if(typeof document!=='undefined'&&document.hidden&&!this.pend) return; /* no background decoding while the tab is hidden */ this.asked.add(file); this.getTrack(d).then(()=>this.trim()).catch(()=>this.asked.delete(file)); }
+  askedAt:Record<string,number>={};
+  ensure(file:string){ const d=Object.values(T).find(x=>x.file===file); if(!d||this.buffers[file]||!this.getTrack) return; if(this.asked.has(file)){ if(performance.now()-(this.askedAt[file]||0)<8000) return; } /* a request that has not landed after 8 s is retried (stalled fetch) */ this.askedAt[file]=performance.now(); if(typeof document!=='undefined'&&document.hidden&&!this.pend) return; /* no background decoding while the tab is hidden */ this.asked.add(file); this.getTrack(d).then(()=>this.trim()).catch(()=>this.asked.delete(file)); }
   async load(){ if(this.loading||this.ready) return; this.loading=true;
     try{ const get=async(d:TrackDef)=>{ const r=await fetch(this.base+d.file+'.mp3'); if(!r.ok) throw new Error(d.file+' '+r.status); const ab=await r.arrayBuffer(); this.buffers[d.file]=await this.ctx.decodeAudioData(ab); };
       this.getTrack=get;
@@ -102,7 +103,8 @@ export class MusicManager {
   /** Shuffle-bag key per state (persisted in localStorage, so rotation order survives reloads/sessions). */
   bagKey(s:MState){ return s==='town'?'town:'+this.townId:s==='traversal'?'trav:'+(this.area||'-'):s; }
   bagFor(s:MState):ShuffleBag{ const k=this.bagKey(s); let b=this.bags[k as MState]; if(!b){ const items=s==='traversal'?areaPool(this.area):POOLS[s]; b=this.bags[k as MState]=new ShuffleBag(items,Math.random,'wv_music_bag:'+k); } return b; }
-  pick(s:MState):string{ const have=(n:string)=>!!this.buffers[n];
+  introDone=false; /** the intro/title track ('town') plays once per session as the first town track, then town rotates through the other tracks */
+  pick(s:MState):string{ const have=(n:string)=>!!this.buffers[n]&&!(n==='town'&&this.introDone&&s==='town');
     if(s==='bosscombat'){ if(!this.fightNext) this.planFight(); const r=this.fightNext!; this.fightNext=null; delete this.nextUp.boss; this.sig=this.key?SIGNATURE[this.key]||null:null; this.p2done=false; this.setHard(r); return r; }
     const pool=POOLS[s]; if(pool.length===1) return pool[0];
     if(s==='elite'){ const nu=this.nextUp.elite; if(nu&&have(nu)&&nu!==this.lastHard){ delete this.nextUp.elite; this.setHard(nu); return nu; } const bg=this.bagFor(s); const r=bg.next(this.fresh(bg.items,x=>have(x)&&x!==this.lastHard)); this.setHard(r); return r; } // hard entry is never gated: only decoded tracks are picked (lazy ones are prefetched in the background during runs)
@@ -151,7 +153,7 @@ export class MusicManager {
       const lo=Math.min(...pool.map(x=>INTENSITY[x]||2)); const g=pool.filter(x=>(INTENSITY[x]||2)===lo); nx=g[Math.floor(Math.random()*g.length)]; }
     if(!this.buffers[nx]){ this.ensure(nx); this.phasePend={name:nx}; return; } this.doPhase(nx); }
   private doPhase(nx:string){ const t=this.now(); this.phasePend=null; this.lastSwitchAt=t; this.counts.phase++; this.counts.hard++; this.counts.total++; this.crossfade(nx,2,'bosscombat'); if(this.sig&&nx===this.sig.p2) this.p2done=true; if(this.fightBag) this.fightBag.last=nx; this.setHard(nx); }
-  tick(){ if(!this.ready) return; const t=this.now(); this.flushPending(t); this.applyPhase(); if(this.phasePend){ if(this.state!=='bosscombat') this.phasePend=null; else if(this.buffers[this.phasePend.name]&&this.phasePend.name!==this.cur) this.doPhase(this.phasePend.name); else this.ensure(this.phasePend.name); }
+  tick(){ if(!this.ready) return; const t=this.now(); this.flushPending(t); if((this.state==='town'||this.state==='traversal')&&this.want===this.state&&!this.pend&&this.leaveSince<0&&!this.live.some(l=>!l.ending)){ const st=this.state; this.state=null; this.enter(st); return; } // safety: a calm track ended with nothing queued -> start the next one this.applyPhase(); if(this.phasePend){ if(this.state!=='bosscombat') this.phasePend=null; else if(this.buffers[this.phasePend.name]&&this.phasePend.name!==this.cur) this.doPhase(this.phasePend.name); else this.ensure(this.phasePend.name); }
     if(this.state==='bosscombat'&&this.sig?.p2&&!this.p2done) this.ensure(this.sig.p2); let tgt=this.want;
     const hard=(s:MState|null)=>s==='elite'||s==='bosscombat'||s==='combat';
     if(hard(this.state)&&tgt==='traversal'){ // (town return is explicit and not held) hold hard music: min dwell + sustained calm (exit delay) before fading back to calm
@@ -162,9 +164,10 @@ export class MusicManager {
     this.enter(tgt); }
   /** Calm states rotate to the next pool track after ROTATE_LOOPS full loops; the fade starts so it lands on the loop boundary. */
   private maybeRotate(t:number){ const hard=this.state==='elite'||this.state==='bosscombat'; if(!hard&&this.state!=='town'&&this.state!=='traversal') return; if(this.state==='bosscombat'&&this.sig) return; // signature fights never rotate
-    if(hard? t-this.lastSwitchAt<this.HARD_ROTATE : t-this.lastSwitchAt<this.calmDwell) return; if(!hard&&(this.want!==this.state||this.leaveSince>=0)) return; const l=this.live.find(x=>!x.ending); if(!l) return; const b=this.buffers[l.name]; if(!b) return;
+    const l=this.live.find(x=>!x.ending); if(!l) return; const b=this.buffers[l.name]; if(!b) return; const tail=!hard&&(l.offset+(t-l.startedAt))>b.duration-(this.CALM_FADE+2); // calm track nearly over: rotate now so it never ends or loops
+    if(hard? t-this.lastSwitchAt<this.HARD_ROTATE : (!tail&&t-this.lastSwitchAt<this.calmDwell)) return; if(!hard&&(this.want!==this.state||this.leaveSince>=0)) return;
     if(hard){ const played=l.offset+(t-l.startedAt); if(played<b.duration-this.ROTATE_FADE) return; } // hard fights rotate (rarely) at a loop boundary; calm tracks crossfade mid-track after their jittered dwell
-    if(!hard){ const k=this.bagKey(this.state!); if(!this.nextUp[k]) this.prefetch(this.state!); if(!this.buffers[this.nextUp[k]]) return; }
+    if(!hard){ const k=this.bagKey(this.state!); if(!this.nextUp[k]) this.prefetch(this.state!); if(!this.buffers[this.nextUp[k]]&&!tail&&t-this.lastSwitchAt<this.calmDwell+15) return; }
     let n:string; if(this.state==='bosscombat'){ const bag=this.fightBag??=this.bossBag(bossTier(this.key)); let nu=this.nextUp.boss; if(!nu||nu===l.name) nu=this.nextUp.boss=bag.next(x=>x!==l.name); this.ensure(nu); if(!this.buffers[nu]) return; delete this.nextUp.boss; n=nu; this.setHard(n); } else n=this.pick(this.state!);
     if(n===l.name) return; this.lastSwitchAt=t; this.counts.total++; if(hard) this.counts.hard++; else this.counts.calm++; this.crossfade(n,hard?this.ROTATE_FADE:this.CALM_FADE,this.state!); }
   pend:{name:string;dur:number;s:MState;at:number}|null=null;
@@ -179,7 +182,7 @@ export class MusicManager {
     if(name&&!this.buffers[name]){ this.pend={name,dur,s,at:t}; this.ensure(name); return; } // track not decoded yet: fade in once ready
     const out=this.live.filter(l=>!l.ending);
     for(const l of out){ l.ending=true; this.savePos(l,t); const g=l.gain.gain; g.cancelScheduledValues(t); const v=g.value; try{ g.setValueAtTime(v,t); }catch{} this.curve(g,v,0,t,dur); l.src.stop(t+dur+.05); setTimeout(()=>{ this.live=this.live.filter(x=>x!==l); this.evict(l.name); },(dur+.2)*1000); }
-    this.log.push({t,from:this.cur,to:name,dur,state:s}); this.cur=name; if(!name) return; this.usedAt[name]=performance.now();
+    this.log.push({t,from:this.cur,to:name,dur,state:s}); if(this.cur==='town'&&s==='town'&&name!=='town') this.introDone=true; this.cur=name; if(!name) return; this.usedAt[name]=performance.now();
     const d=T[name], buf=this.buffers[name]; const src=this.ctx.createBufferSource(); src.buffer=buf; src.loop=d.loop; const gain=this.ctx.createGain(); gain.gain.value=0; src.connect(gain); gain.connect(this.out);
     let off=d.keepPos?(this.pos[name]||0):0; if(off>=buf.duration-1) off=0; src.start(t,off); this.curve(gain.gain,0,1,t,inDur);
     if(!d.loop){ const rem=buf.duration-off, fd=Math.min(1.5,Math.max(.2,(rem-inDur)/2)); if(rem-fd>inDur) this.curve(gain.gain,1,0,t+rem-fd,fd); } // one-shots (reveal, clear) fade out before their natural end: never a hard cut

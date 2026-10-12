@@ -236,3 +236,12 @@ Every start/stop/switch in `MusicManager.crossfade()` uses sin/cos (equal-power)
 **Loading delays:** if the next track is not decoded yet, the old track is left playing untouched (no early fade-out, no silence gap); the full crossfade starts the moment the new buffer is ready. Tab hide/resume only drops idle (non-playing) buffers and never touches live gains.
 
 **Tests (`npm run test:music`, "gain-ramp audit")** wrap `AudioParam` automation and assert, across town entry, town rotation, town->run, elite start/end, reveal->fight, phase change, kill->resolution->run, abandon->town, a still-loading target and a one-shot natural end: every start has a fade-in >= 1.4 s, no ramp sample step > 0.12, no raw gain jumps, every stop happens after its fade-out finishes (>= 1.4 s), kill fade-out >= 3 s, loading keeps the old track un-ramped until ready.
+
+### Town never loops one track (regression fix)
+Calm tracks (town, hub, traversal, Harrow, area sets) were created with `loop=true`; if the next track was not yet decoded when the dwell elapsed, rotation silently waited and the current track looped (the intro `town` track in particular). Now:
+- Calm tracks are `loop=false`, start at offset 0, and carry the 1.5 s tail fade; hard (combat/elite/boss) tracks still loop.
+- `maybeRotate` forces a rotation when a calm track is within `CALM_FADE+2` s of its end, and after dwell+15 s picks any decoded track if the queued one is still loading (never waits forever).
+- Safety net in `tick()`: if a calm track ended with nothing queued, the next one is entered with a fade-in.
+- The intro/title track (`town`) plays once per session, then is removed from the town rotation.
+- Cadence is now ~62-140 s (track lengths are 71-146 s; the dwell is capped by track length).
+- `tests/town_music.mjs` (run first by `npm run test:music`): 30 simulated minutes in town for Rustline and Harrow Reach: >= 10 distinct tracks, no immediate repeat or repeat within 5, intro at most once, cadence 55-165 s, `loop === false` on every started source, one active track at the end.
