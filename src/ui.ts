@@ -14,6 +14,7 @@ import { Inst, capacityUsed, lockerItems, mkInst, persist, wipe, todayStr, newSa
 import { RSTYLE, drawMarker } from './rarity';
 import { journalOf, unreadCount, releaseStoryCard, SPEAKER, plainName, type JournalEntry, type StoryBeats } from './story_beats';
 import { mechTip } from './content/story_hints';
+import { VENDOR_BUY, VENDOR_BUY_HARROW } from './vendor';
 import type { MechId } from './content/boss_kits';
 import { makeProvider, runStoryStep, newStory, MockProvider, record } from './story';
 import { DUNGEON_LIST, DUNGEONS, dungeonOf, inBand, unlockReason } from './content/dungeons';
@@ -448,7 +449,7 @@ export class UI {
   // ----- Vendor -----
   shopSlot:Slot='armR'; chipSel:ChipId|null=null; chipShowAll=false; stTab='all'; pickUid='';
   /** hardware for sale: grey/green/blue only (purple/orange are loot-only). */
-  static BUY:Record<string,number>={ grey:15, green:60, blue:300 }; static BUY_HARROW:Record<string,number>={ grey:15, green:60, blue:300, purple:1600 }; BUY(){ return this.g.save.town==='harrow'?UI.BUY_HARROW:UI.BUY; }
+  static BUY:Record<string,number>=VENDOR_BUY; static BUY_HARROW:Record<string,number>=VENDOR_BUY_HARROW; BUY(){ return this.g.save.town==='harrow'?UI.BUY_HARROW:UI.BUY; }
   shopList(sl:Slot){ return ITEMS.filter(d=>d.slot===sl&&!d.id.startsWith('stock_')&&this.BUY()[d.rarity]!==undefined).sort((a,b)=>a.lvl-b.lvl||this.BUY()[a.rarity]-this.BUY()[b.rarity]||a.name.localeCompare(b.name)); }
   shop():string{ const s=this.g.save; const sl=this.shopSlot; const inst=installedLayout(s); const cur=inst[sl]?ITEM_BY_ID[inst[sl]!.def]:null; const cap=s.lockerCap+s.purchases.lockerBlocks*STARTING.lockerPerPurchase; const full=capacityUsed(s)>=cap;
     const SH:Record<Slot,string>={face:'FACE',brain:'BRAIN',torso:'TORSO',handL:'L HAND',handR:'R HAND',armL:'L ARM',armR:'R ARM',legL:'L LEG',legR:'R LEG',footL:'L FOOT',footR:'R FOOT'};
