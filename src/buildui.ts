@@ -1,3 +1,5 @@
+import { humanityCost } from './altplay';
+import { humGauge } from './altui';
 // Build inspector (locker -> "Build"): equipped augments, chips, abilities, totals, active synergies; export as code / link / JSON / text,
 // and a read-only preview of a shared build code (?build=). A code from another catalog version shows a "What changed" notice (never silent).
 import { SLOTS, ITEM_BY_ID, CHIPS, SLOT_LABEL, MFR, RARITY_COLOR, type Slot } from './config';
@@ -24,7 +26,7 @@ export function buildHtml(ui:UIx):string{ const g=ui.g, s=g.save, st=bd(ui); con
   const tile=(sl:Slot)=>{ const v=b.slots[sl]; const d=v&&ITEM_BY_ID[v.d]; if(!v) return `<div class="slot tile st bdt empty" data-tip="${esc(SLOT_LABEL[sl]+': empty')}" aria-label="${esc(SLOT_LABEL[sl])} empty"><span class="bdsl">${esc(SLOT_LABEL[sl])}</span></div>`;
     if(!d) return `<div class="slot tile st bdt missing" data-tip="${esc('<b>'+esc(v.d)+'</b><br>Not in this catalog version')}" aria-label="${esc(SLOT_LABEL[sl])}: unknown augment"><span class="bdsl">?</span></div>`;
     const chips=v.c.map(c=>esc((CHIPS as any)[c]?.name||c)); const stl=Object.entries(d.stats).map(([k,x])=>`${k} ${(x as number)>0?'+':''}${x}`).join(' · ');
-    const tip='<b style="color:'+RARITY_COLOR[d.rarity]+'">'+esc(d.name)+'</b><br>'+esc(SLOT_LABEL[sl])+' · '+d.rarity+' · '+esc(MFR[d.mfr].name)+' · Lv '+d.lvl+(stl?'<br>'+esc(stl):'')+(d.abilities?.length?'<br>Abilities: '+d.abilities.map(a=>esc(abName(a))).join(', '):'')+(chips.length?'<br>Chips: '+chips.join(', '):'');
+    const tip='<b style="color:'+RARITY_COLOR[d.rarity]+'">'+esc(d.name)+'</b><br>'+esc(SLOT_LABEL[sl])+' · '+d.rarity+' · '+esc(MFR[d.mfr].name)+' · Lv '+d.lvl+(stl?'<br>'+esc(stl):'')+(d.abilities?.length?'<br>Abilities: '+d.abilities.map(a=>esc(abName(a))).join(', '):'')+'<br>Humanity cost '+humanityCost(d)+(chips.length?'<br>Chips: '+chips.join(', '):'');
     return `<div class="slot tile st bdt" data-def="${d.id}" data-slot="${sl}" tabindex="0" data-tip="${esc(tip)}" aria-label="${esc(SLOT_LABEL[sl]+': '+d.name+(chips.length?', '+chips.length+' chips':''))}"><span class="ticon"></span>${v.c.length?`<span class="bdchips" aria-hidden="true">${v.c.length}</span>`:''}</div>`; };
   const abs=r.abilities.map(a=>{ const d=ABILITY_BY_ID[a]; return `<span class="bdab" tabindex="0" data-tip="${esc('<b>'+esc(abName(a))+'</b>'+(d?'<br>'+esc(describe(d))+'<br>cd '+d.cd+'s':''))}">${esc(abName(a))}</span>`; }).join('');
   const syn=synergiesOf(r.granted); const notes=[...syn.map(x=>'Combo: '+x), ...(r.mix.mfrs.length>1?[`Mixed makers: −${Math.round(r.mix.coolingPenalty*100)}% cooling`]:r.mix.mfrs.length===1?[`Single maker set (${MFR[r.mix.mfrs[0]].name}): no mixing penalty`]:[]), ...r.conflicts.map((c:string)=>'Conflict: '+c)];
@@ -35,7 +37,7 @@ export function buildHtml(ui:UIx):string{ const g=ui.g, s=g.save, st=bd(ui); con
   else if(preview&&b.game!==ui.buildId) notice=`<div class="bdnotice" role="status">Made with game ${esc(b.game)}; same catalog, so augments behave the same.</div>`;
   return `<div class="col bdcol">${preview?`<div class="bdmode"><b>Shared build</b> · read-only preview, nothing is granted <button class="btn mini" data-act="bd-mine">Back to my build</button></div>`:''}
     ${b.cheat?'<div class="bdnotice warn bdcheat" role="status"><b>IDKFA cheat build</b>: made with dev cheat gear, not a real loadout.</div>':''}<div class="mut bdver">Level ${b.lvl} · game ${esc(b.game)} · catalog ${esc(b.cat)}</div>${notice}${b.traits?.length?`<div class="bdtraits"><b>Traits</b> ${b.traits.map(t=>{ const d=TRAIT_BY_ID[t]; return `<span class="trchip" tabindex="0" data-tip="${esc(d?'<b>'+esc(d.name)+'</b><br>'+d.effects.map(e=>esc(describeEffect(e))).join('<br>'):esc(t)+' (unknown trait)')}">${esc(d?d.short:t)}</span>`; }).join(' ')}</div>`:''}
-    <div class="bdgrid">${SLOTS.map(tile).join('')}</div>
+    <div class="bdgrid">${SLOTS.map(tile).join('')}</div>${preview?'':humGauge(s)}
     <h3 class="sh">Abilities</h3><div class="bdabs">${abs||'<span class="mut">none</span>'}</div>
     <h3 class="sh">Totals</h3><div class="bdtot" data-tip="${esc(totals+'<br>Weapon: '+esc(r.weaponName))}">${esc(totals)}</div>
     <h3 class="sh">Synergies</h3><div class="bdsyn">${notes.length?notes.map(n=>`<span class="bdnote">${esc(n)}</span>`).join(''):'<span class="mut">none active</span>'}</div>

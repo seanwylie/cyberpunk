@@ -702,3 +702,14 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 @keyframes rfspin{ to{ --rfa:360deg; } } @keyframes rfsweep{ 0%{ background-position:150% 0; } 100%{ background-position:-100% 0; } }
 body.reducefx .tile.r-orange,body.reducefx .tile.r-orange::after,body.reducefx .tile.r-purple::after{ animation:none!important; }
 @media (prefers-reduced-motion:reduce){ .tile.r-orange,.tile.r-orange::after,.tile.r-purple::after{ animation:none!important; } }
+/* alt gameplay (docs/ALT_GAMEPLAY.md): restrained, painterly: warm parchment-gold on deep ink, no neon spam */
+.humg{display:flex;align-items:center;gap:6px;font-size:11px;margin:6px 0;color:#d9c9a3}
+.humg i{flex:1;height:6px;border-radius:3px;background:#1d1a24;box-shadow:inset 0 0 0 1px #3a3346;overflow:hidden}
+.humg u{display:block;height:100%;background:linear-gradient(90deg,#7b8fa6,#e7c88a)}
+.humg.hb-chrome u,.humg.hb-psycho u{background:linear-gradient(90deg,#8a2f3c,#a9b4c2)}
+.humg b{min-width:22px;text-align:right}
+#altmini{position:fixed;left:50%;bottom:22%;transform:translateX(-50%);width:min(340px,80vw);padding:10px 14px;border-radius:10px;background:rgba(18,15,24,.92);border:1px solid #6b5a3a;color:#e9dcc0;z-index:60;text-align:center;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+#altmini .amtrack{position:relative;height:12px;margin:8px 0;border-radius:6px;background:#241f2e}
+#altmini .amzone{position:absolute;top:0;bottom:0;border-radius:6px;background:linear-gradient(180deg,#e7c88a,#b98f4c)}
+#altmini .amcur{position:absolute;top:-4px;width:3px;height:20px;margin-left:-1px;background:#f4efe4;border-radius:2px}
+#interact .alticon{margin-right:4px;color:#e7c88a}
