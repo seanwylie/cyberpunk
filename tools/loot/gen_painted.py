@@ -6,13 +6,13 @@ ONLY=[a[7:].split(',') for a in sys.argv if a.startswith('--only=')]; ONLY=ONLY[
 RAR=[a[6:] for a in sys.argv if a.startswith('--rar=')]; RAR=RAR[0] if RAR else None
 P=json.load(open(os.path.join(os.path.dirname(__file__),'painted_prompts.json')))
 STYLE={'orange':"Elaborate legendary composition: the piece shown heroic three-quarter view, strong readable silhouette, a restrained warm amber-orange rim light and a soft ember glow from its core, a few hand-painted sparks, no neon.",
-       'purple':"Simpler composition than a legendary: the piece alone in clean three-quarter view, strong silhouette, a subtle cool violet rim light, minimal glow, no sparks, no neon.",
+       'purple':"Simpler composition than a legendary: the piece alone in clean three-quarter view, strong silhouette, a strong saturated violet-purple rim light along its whole edge and one or two glowing violet accent inlays or lenses, soft violet underglow, no sparks, no neon. Purple must clearly dominate the accent lighting.",
        'blue':"Plain utilitarian composition: the piece alone, simple shapes, strong silhouette, flat even lighting with only a faint cool blue edge, no glow, no sparks."}
 def gen(k):
     r,subj,ident=P[k]; out=f'{RAW}/{k}.png'
     if os.path.exists(out): return k,'cached'
     prompt=(f"Hand-painted game item icon in the style of League of Legends splash art and the Arcane series: painterly brush strokes, gritty dieselpunk-cyberpunk industrial realism, muted palette. "
-            f"Subject: {subj}. {('Identity: '+ident+'. ') if ident else ''}{STYLE[r]} Single isolated object centered, filling 80% of the frame, transparent background, no text, no frame, no character, no people.")
+            f"Subject: {subj}. {('Identity: '+ident+'. ') if ident else ''}{STYLE[r]} Single isolated object centered, filling 80% of the frame, transparent background, no text, no letters, no logos, no frame, no character, no people.")
     body=json.dumps({'model':'gpt-image-1','prompt':prompt,'size':'1024x1024','quality':'medium','background':'transparent','n':1}).encode()
     req=urllib.request.Request('https://api.openai.com/v1/images/generations',body,{'Authorization':'Bearer '+os.environ['OPENAI_API_KEY'],'Content-Type':'application/json'})
     for a in range(3):

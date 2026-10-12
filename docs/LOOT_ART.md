@@ -17,6 +17,6 @@ Code: `src/lootart.ts` (all drawing), hooks in `src/render.ts` (`drawDrop`, `flu
 
 ## Painted icons (blue / purple / orange)
 Every blue, purple and orange item has a bespoke hand-painted icon (LoL / Arcane style) that overrides the 3D/procedural art in locker tiles, tooltips, the prestige drop banner and world drops.
-- Prompts: `tools/loot/painted_prompts.json` (`id: [rarity, subject, boss identity]`). Tier ladder: blue = plain, flat light, no glow; purple = simpler composition, cool rim, no sparks; orange = heroic composition, restrained ember glow.
+- Prompts: `tools/loot/painted_prompts.json` (`id: [rarity, subject, boss identity]`). Tier ladder: blue = plain, flat light, no glow; purple = simpler composition, strong violet rim + violet accent inlay, no sparks; orange = heroic composition, restrained ember glow.
 - Generate: `python tools/loot/gen_painted.py RAW [--rar=orange|--only=id,id]` (needs `OPENAI_API_KEY`; cached per id). Pack: `python tools/loot/pack_painted.py RAW` (run after `pack_loot.py`; writes `public/loot/painted.webp`, 128px cells, sprites `p_<id>`). Contact sheet: `python tools/loot/painted_sheet.py RAW orange out.png`.
 - New blue+ items need a prompt entry + a regen; items without one fall back to the 3D atlas.
