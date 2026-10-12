@@ -17,7 +17,7 @@ export function inspectHtml(p: InspectTarget): string {
   const row = (e: { id: string; at: number }) => { const d = COS_BY_ID[e.id]; const b = badgeOf(e.id); const prov = e.at ? provenance(e.id, e.at) : 'Equipped'; const n = ownersOf(e.id);
     return `<li class="xi-row" data-id="${e.id}"><span class="xi-name cap" style="color:${(RARITY_COLOR as any)[d.rarity] || '#ddd'}" data-tip="${esc(d.name + ': ' + d.desc)}">${esc(d.name)}</span>`
       + (b ? ` <span class="xbadge xb-${b.toLowerCase()}" data-tip="${esc(b === 'Founder' ? 'Launch-window item. Retired for good after its window.' : b === 'Retired' ? 'No longer obtainable. It will never return.' : b === 'Limited' ? 'Dated release: retired when its window closes.' : 'Earn-only exclusive')}">${b}</span>` : '')
-      + `<div class="xi-prov mut" data-tip="${esc(prov + ' · 1 of ' + n + ' owners (SIMULATED count)')}">${esc(prov)}</div></li>`; };
+      + `<div class="xi-prov mut" data-tip="${esc(prov + ' · 1 of ' + n + ' owners (SIMULATED count)')}">${esc(prov)}</div><div class="xi-prov mut" data-owners>1 of ${n.toLocaleString('en-US')} owners</div></li>`; };
   return `<div class="xi-head"><b class="cap">${esc(p.name)}</b>${p.lvl ? ` <span class="mut">Lv ${p.lvl}</span>` : ''}<button class="btn xi-x" data-act="xi-close" aria-label="Close" data-tip="Close">✕</button></div>`
     + (sc ? `<div class="xi-show" data-tip="Showcase: the exclusive this player pinned">◆ <span class="cap">${esc(COS_BY_ID[sc].name)}</span></div>` : '')
     + (ex.length ? `<ul class="xi-list">${ex.slice(0, 8).map(row).join('')}</ul>` : '<div class="mut">No exclusives yet.</div>');

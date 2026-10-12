@@ -15,13 +15,13 @@ const TINTS = ['#e8c46a', '#7fd6c2', '#e58f7b', '#9fb8ff', '#c9a3ff'];
 export class RemoteDrawer {
   private an = new Map<string, { a: PlayerAnimator; t: number; hp: number; atk: number }>(); private plates: { x0: number; y0: number; x1: number; y1: number }[] = []; private frameT = -1;
   /** device-pixel hit boxes of players drawn this frame (inspect card) and first-seen times (hub arrival flair) */
-  private hits: { p: RemoteP; x0: number; y0: number; x1: number; y1: number }[] = []; private seen = new Map<string, number>();
+  private hits: { p: RemoteP; x0: number; y0: number; x1: number; y1: number }[] = []; private seen = new Map<string, number>(); /** last flair alpha per player (tests) */ flair = new Map<string, number>();
   constructor(private r: Renderer) {}
   hitTest(x: number, y: number): RemoteP | null { for (let i = this.hits.length - 1; i >= 0; i--) { const h = this.hits[i]; if (x >= h.x0 && x <= h.x1 && y >= h.y0 && y <= h.y1) return h.p; } return null; }
   /** exclusives this player advertises (equipped or owned) and the badge to flash on arrival */
   static exInfo(p: RemoteP): { n: number; badge: string } { const l = p.look || {}; const ids = [...(l.ex || []).map((e: any) => e[0]), ...(l.cos || [])].filter((id: string) => isExclusive(id)); const sc = l.sc && isExclusive(l.sc) ? l.sc : ids[0]; return { n: new Set(ids).size, badge: sc ? badgeOf(sc) || 'Exclusive' : '' }; }
   private animFor(p: RemoteP) { let o = this.an.get(p.id); const base = this.r.anim; if (!o && base) { o = { a: new PlayerAnimator(base.loaded), t: performance.now(), hp: p.hp ?? 100, atk: 0 }; this.an.set(p.id, o); } return o; }
-  forget(id: string) { this.an.delete(id); this.seen.delete(id); }
+  forget(id: string) { this.an.delete(id); this.seen.delete(id); this.seen.delete('ex:' + id); this.flair.delete(id); }
   /** the animator wants a Game-like state; synthesise it from the networked view */
   private fake(p: RemoteP, o: { atk: number }) { const m = !!p.moving; const wx = Math.cos(p.face), wy = Math.sin(p.face); return { hp: p.hp ?? 100, downed: !!p.down, moving: m, dodgeT: 0, cast: null, atkCd: o.atk, face: p.face, inputMove: { x: wx - wy, y: (wx + wy) / 2 }, dodgeDx: 0, dodgeDy: 0, abCd: [0, 0, 0] }; }
   draw(p: RemoteP, me: { x: number; y: number }, alwaysPlate: boolean) {
@@ -40,7 +40,7 @@ export class RemoteDrawer {
   }
   private plate(p: RemoteP, a: number, b: number, s: number, dist: number, always: boolean) {
     if (!always && dist > PLATE_RANGE) return; const c = this.r.ctx; const alpha = always ? 1 : Math.max(0, Math.min(1, (PLATE_RANGE - dist) / 2.5)); if (alpha <= .02) return;
-    const xi = RemoteDrawer.exInfo(p); const fl = xi.n ? flairAlpha(this.seen.get(p.id) ?? -99, performance.now() / 1000) : 0; (p as any)._flair = fl;
+    const xi = RemoteDrawer.exInfo(p); if (xi.n && !this.seen.has('ex:' + p.id)) this.seen.set('ex:' + p.id, performance.now() / 1000); const fl = xi.n ? flairAlpha(this.seen.get('ex:' + p.id) ?? -99, performance.now() / 1000) : 0; this.flair.set(p.id, fl);
     const txt = (xi.n ? '◆ ' : '') + p.name + (p.down ? '  (downed)' : ''); c.save(); c.globalAlpha = alpha; c.font = `600 ${cpx(12)}px "Roboto Condensed", sans-serif`; const w = c.measureText(txt).width + 12, h = cpx(12) + 6; const x0 = a - w / 2, y0 = b - 74 * s - h;
     const box = { x0, y0, x1: x0 + w, y1: y0 + h + (p.maxHp ? 5 : 0) }; if (this.plates.some(q => box.x0 < q.x1 && box.x1 > q.x0 && box.y0 < q.y1 && box.y1 > q.y0)) { c.restore(); return; } // one label rules: skip overlapping plates
     this.plates.push(box); c.fillStyle = 'rgba(14,15,17,.78)'; c.strokeStyle = p.down ? '#e5604a' : fl > 0 ? `rgba(255,214,130,${.55 + .45 * fl})` : 'rgba(232,196,106,.55)'; c.lineWidth = 1 + fl * 1.5; if (fl > 0) { c.shadowColor = 'rgba(255,200,110,.8)'; c.shadowBlur = 10 * fl; } c.beginPath(); c.roundRect(x0, y0, w, h, 4); c.fill(); c.stroke(); c.shadowBlur = 0;
