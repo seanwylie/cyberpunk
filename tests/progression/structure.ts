@@ -19,6 +19,8 @@ export function sweep(seeds:number[]){
     const gg=L.spawns.filter((s:any)=>s.type===d.gateGuard); gg.forEach((s:any)=>{ if(st[s.y*w+s.x]!==0) issues.push('gate guard g'+s.group+' at '+s.x+','+s.y+' is '+(st[s.y*w+s.x]===255?'unreachable':'behind door stage '+st[s.y*w+s.x])); });
     // lock elite (lock2 opens on its death; hack is optional hardware, so the combat route must work)
     const le=L.spawns.filter((s:any)=>s.type===d.lockElite); if(!le.length&&!d.conds?.length&&d.id!=='annex') issues.push('no lock elite (lock2 only openable by hack)'); le.forEach((s:any)=>{ if(st[s.y*w+s.x]>1) issues.push('lock elite at '+s.x+','+s.y+' is '+(st[s.y*w+s.x]===255?'unreachable':'stage '+st[s.y*w+s.x])); });
+    // hacking disabled (docs/ALT_GAMEPLAY.md): every door on the critical path has a non-hack opener. gate1 = gate guards, lock2 = lock elite (or the stall watchdog), boss = controller (no requirement).
+    if(!le.some((s:any)=>st[s.y*w+s.x]<=1)) issues.push('hack off: lock2 has no reachable lock elite (hard block)'); if(!gg.length) issues.push('hack off: gate1 has no gate guards'); if(!it('controller')) issues.push('hack off: no controller');
     // every mob is reachable (some stage) for its own body size, so a clear never counts an unkillable mob
     const rm=[0,1,2].map(c=>reachMap({...L,solid:openAll(L)},L.spawn,c)); let unreach=0; for(const s of L.spawns){ const r=ENEMIES[s.type]?.radius??.4; const c=r>.75?2:r>.45?1:0; if(!rm[c][s.y*w+s.x]&&!rm[0][s.y*w+s.x]) unreach++; } if(unreach) issues.push(unreach+' mob(s) on unreachable tiles');
     // simulated clear: with guards dead the gate tiles open and connect stage 0 to stage 1, etc. (stageMap already opens doors in run order; check each door actually joins)
