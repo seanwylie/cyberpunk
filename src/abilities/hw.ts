@@ -17,8 +17,8 @@ export const ABILITY_ACQ = {
   /** relative weight of each ability rarity in a converted roll */
   weights:{
     ordinary:{ grey:44, green:42, blue:12, purple:2, orange:0 },
-    elite:{ grey:8, green:26, blue:52, purple:13, orange:1 },
-    boss:{ grey:0, green:12, blue:46, purple:32, orange:10 } } as Record<'ordinary'|'elite'|'boss',Record<Rar,number>>,
+    elite:{ grey:8, green:26, blue:53, purple:13, orange:0 },
+    boss:{ grey:0, green:12, blue:56, purple:32, orange:0 } } /* orange: only the prestige roll (src/loot_eco.ts, docs/LOOT_ECONOMY.md) */ as Record<'ordinary'|'elite'|'boss',Record<Rar,number>>,
   /** extra weight for abilities not yet discovered (variety first) */
   newBoost:3,
   /** purple/orange gates: manufacturer reputation rank needed, and orange only from bosses */

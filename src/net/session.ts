@@ -106,9 +106,9 @@ export class NetSession {
   private onFlag(m: any) { if (!this.active) return; const f = this.g.inst!.flags as any; if (m.k === 'bossSpawned') return; f[m.k] = m.v; this.flagSeen[m.k] = m.v; if (DOOR_FLAGS.has(m.k)) { try { this.g.applyDoors(); } catch { } this.g.toast('A teammate opened the way.'); } }
   /** server-confirmed kill (first claim won): the enemy dies on every client, and each participant rolls their own rewards */
   private onEkill(m: any) {
-    if (!this.active || !this.origKill) return; const g = this.g, id = m.id as number; let e = this.claimed.get(id), part = !!e; this.claimed.delete(id);
+    if (!this.active || !this.origKill) return; const g = this.g, id = m.id as number; let e = this.claimed.get(id), part = !!e; const mine = part; this.claimed.delete(id);
     if (!e) { e = this.findEnemy(id); if (!e) { if (id === 0) { const f = g.inst!.flags as any; f.bossDead = true; f.completed = true; g.toast('Your party defeated the boss.'); } return; } part = this.hurtBy.has(id) || Math.hypot(e.x - g.px, e.y - g.py) <= PARTICIPATE_R || (id === 0 && g.zoneAt(g.px, g.py) === 'boss'); this.applying = true; try { g.killEnemy(e); } finally { this.applying = false; } }
-    if (part) { this.origKill(e); if (id === 0) this.pendingClear = e; } else if (id === 0) this.pendingClear = null;
+    if (part) { g.partyN = Math.max(1, (this.net as any).party?.members?.length || 1); g.contributed = mine || this.hurtBy.has(id) || (id === 0 && g.zoneAt(g.px, g.py) === 'boss'); this.origKill(e); g.partyN = 1; g.contributed = true; if (id === 0) this.pendingClear = e; } else if (id === 0) this.pendingClear = null;
     this.hurtBy.delete(id);
   }
   /** per-player clear rewards (XP + contract events), granted once, only to participants; no daily lockout is consumed by party runs */

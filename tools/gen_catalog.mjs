@@ -7,7 +7,7 @@ const CHECK = process.argv.includes('--check');
 const vs = await createServer({ configFile: false, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
 const L = (m) => vs.ssrLoadModule(m);
 const C = await L('/src/config.ts'), D = await L('/src/content/dungeons.ts'), HW = await L('/src/abilities/hw.ts'), REG = await L('/src/abilities/registry.ts');
-const TR = await L('/src/traits.ts'); const ALT = await L('/src/altplay.ts'); const IDK = await L('/src/content/idkfa.ts'), SNAP = await L('/src/catalog_snap.ts');
+const TR = await L('/src/traits.ts'); const ALT = await L('/src/altplay.ts'); const ECO = await L('/src/loot_eco.ts'), SEA = await L('/src/seasons.ts'); const IDK = await L('/src/content/idkfa.ts'), SNAP = await L('/src/catalog_snap.ts');
 // catalog version = content hash of the compact snapshot a build depends on (items, chips, abilities, sockets, conflicts)
 const snap = SNAP.snapshot(); const snapJson = JSON.stringify(snap); const CATALOG_VERSION = crypto.createHash('sha256').update(snapJson).digest('hex').slice(0, 12);
 const VFX = await L('/src/abilities/vfxprofile.ts'), SFX = await L('/src/abilities/sfxprofile.ts'), V = await L('/src/vendor.ts');
@@ -18,11 +18,13 @@ const bossName = (id) => C.ENEMIES[id]?.name || id;
 const src = {}; const addSrc = (id, s) => { (src[id] = src[id] || []).push(s); };
 for (const id of D.DUNGEON_IDS) { const d = D.DUNGEONS[id]; const bosses = [...new Set([d.boss || d.defaultBoss, ...(d.conds || []).map(c => c.boss)].filter(Boolean))];
   for (const tier of ['ordinary', 'elite', 'boss']) { const pool = d.loot ? d.loot[tier] : C.LOOT[tier].pool; const tot = pool.reduce((a, e) => a + e.w, 0);
-    for (const e of pool) if (e.item) addSrc(e.item, { kind: 'drop', dungeon: id, dungeonName: d.name, dungeonTier: d.tier || 0, levels: [d.minLevel, d.maxLevel], tier, share: r2(e.w / tot), ...(tier === 'boss' ? { bosses: bosses.map(bossName) } : {}) }); }
-  const sig = id === 'annex' ? C.LOOT.signature : d.signature; for (const [b, s] of Object.entries(sig || {})) addSrc(s.item, { kind: 'signature', dungeon: id, dungeonName: d.name, boss: bossName(b), chance: s.chance }); }
+    for (const e of pool) if (e.item && C.ITEM_BY_ID[e.item]?.rarity !== 'orange' /* oranges never come from the tables: prestige roll only (docs/LOOT_ECONOMY.md) */) addSrc(e.item, { kind: 'drop', dungeon: id, dungeonName: d.name, dungeonTier: d.tier || 0, levels: [d.minLevel, d.maxLevel], tier, share: r2(e.w / tot), ...(tier === 'boss' ? { bosses: bosses.map(bossName) } : {}) }); }
+  const sig = id === 'annex' ? C.LOOT.signature : d.signature; for (const [b, s] of Object.entries(sig || {})) addSrc(s.item, { kind: 'signature', dungeon: id, dungeonName: d.name, bossId: b, boss: bossName(b), via: 'prestige', share: ECO.LOOT_ECO.sigShare }); }
 const ACQ = HW.ABILITY_ACQ;
-for (const it of HW.ABILITY_ITEMS) { const tiers = ['ordinary', 'elite', 'boss'].filter(t => (ACQ.weights[t][it.rarity] || 0) > 0 && !(it.rarity === 'orange' && ACQ.orangeBossOnly && t !== 'boss'));
+for (const it of HW.ABILITY_ITEMS) { if (it.rarity === 'orange') continue; const tiers = ['ordinary', 'elite', 'boss'].filter(t => (ACQ.weights[t][it.rarity] || 0) > 0 && !(it.rarity === 'orange' && ACQ.orangeBossOnly && t !== 'boss'));
   addSrc(it.id, { kind: 'ability_drop', tiers, minLevel: it.lvl, repRank: ACQ.rankGate[it.rarity], note: 'any dungeon whose level cap >= ' + it.lvl }); }
+{ const sigIds = new Set(C.ITEMS.filter(x => x.id.startsWith('sig_')).map(x => x.id)); for (const id of ECO.generalOranges(sigIds)) addSrc(id, { kind: 'prestige', minLevel: C.ITEM_BY_ID[id].lvl, note: 'legendary roll: any boss (elites rarely) in a dungeon whose level cap >= ' + C.ITEM_BY_ID[id].lvl }); }
+for (const se of SEA.SEASONS) for (const id of se.gear) addSrc(id, { kind: 'seasonal', season: se.id, seasonName: se.name, start: se.start, end: se.end, note: 'season-exclusive legendary roll; retired permanently at season end' });
 for (const it of IDK.IDKFA_ITEMS) addSrc(it.id, { kind: 'dev_cheat', note: 'IDKFA dev set only (src/content/idkfa.ts), never drops' });
 for (const it of C.ITEMS) { if (it.id.startsWith('stock_')) { addSrc(it.id, { kind: 'starting_gear' }); continue; }
   const towns = [['rustline', V.VENDOR_BUY], ['harrow', V.VENDOR_BUY_HARROW]].filter(([, b]) => b[it.rarity] !== undefined).map(([t, b]) => ({ town: t, price: b[it.rarity] }));
@@ -72,7 +74,7 @@ const json = JSON.stringify({ version: 1, catalogVersion: CATALOG_VERSION, gener
 
 // ---- markdown
 const fmtStats = (s) => Object.entries(s || {}).map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${r2(v)}`).join(', ') || 'none';
-const fmtSrc = (s) => s.kind === 'drop' ? `${s.dungeonName} ${s.tier}${s.bosses ? ' (' + s.bosses.join(' / ') + ')' : ''} ${Math.round(s.share * 100)}%` : s.kind === 'signature' ? `${s.boss} signature ${Math.round(s.chance * 100)}%` : s.kind === 'ability_drop' ? `ability drop (${s.tiers.join('/')}, Lv ${s.minLevel}+${s.repRank ? ', rep rank ' + s.repRank : ''})` : s.kind === 'store' ? `store ${s.towns.map(t => t.town + ' ' + t.price + 'c').join(', ')}` : s.kind === 'dev_cheat' ? 'dev cheat only' : 'starting gear';
+const fmtSrc = (s) => s.kind === 'drop' ? `${s.dungeonName} ${s.tier}${s.bosses ? ' (' + s.bosses.join(' / ') + ')' : ''} ${Math.round(s.share * 100)}%` : s.kind === 'signature' ? `${s.boss} signature (legendary roll, ${Math.round(s.share * 100)}% target)` : s.kind === 'prestige' ? `legendary roll (bosses, Lv ${s.minLevel}+)` : s.kind === 'seasonal' ? `${s.seasonName} exclusive (until ${s.end.slice(0, 10)})` : s.kind === 'ability_drop' ? `ability drop (${s.tiers.join('/')}, Lv ${s.minLevel}+${s.repRank ? ', rep rank ' + s.repRank : ''})` : s.kind === 'store' ? `store ${s.towns.map(t => t.town + ' ' + t.price + 'c').join(', ')}` : s.kind === 'dev_cheat' ? 'dev cheat only' : 'starting gear';
 let md = `# Augment catalog\n\nGenerated by \`tools/gen_catalog.mjs\` from game data. Do not edit by hand: run \`npm run catalog\`. Machine-readable: [catalog/augments.json](catalog/augments.json), browsable: [catalog/index.html](catalog/index.html).\n\n`;
 md += `Catalog version \`${CATALOG_VERSION}\` (content hash; every version's snapshot is kept in \`public/catalog/v/\`).\n\n`;
 md += `**${stats.augments} augments** (${stats.abilityAugments} with abilities), **${stats.abilities} abilities**, **${stats.chips} chips**, ${stats.dungeons} dungeons.\n\n`;

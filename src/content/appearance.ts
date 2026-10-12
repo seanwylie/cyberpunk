@@ -116,6 +116,7 @@ const R:Row[]=[
 ['back_banner','Reclaim Banner','back','blue','HI','banner','#a8483a','#d8d4c4','A short banner of the Reclaim crews.','Reclaim is not theft; it is theft with a form.','d'],
 ['back_spine','Exposed Ceramic Spine','back','purple','PS','spine','#ecebe4','#a0a098','A bare ceramic spine rising along the back.','Auto-surgeon showpiece.','b:surgeon'],
 ['back_disc','Warrant Disc','back','purple','EV','disc','#d8b050','#7a5a20','A large brass disc behind the shoulders.','Stamped void. Void is not the same as empty.','b:liquidator'],
+['back_s1_halo','Storm Halo Wings','back','orange','EV','wings','#8fe0ff','#b47bff','Two folded wings of stilled static.','Season 1 exclusive. Retired when the storm clears.','ev:season_s1'],
 ['back_wings','Cinder Wings','back','orange','EV','wings','#ff7a30','#ffd060','Two wings of drifting embers.','The Basin tells of a mechanic who flew out.','ev:mythic'],
 // ---- SKIN ----
 ['skin_tan','Weathered Tan','skin','grey','ST','tint','#b08a60','','Sun-hardened skin tone.','Haze burns slow.','v:80'],
@@ -146,6 +147,7 @@ const R:Row[]=[
 ['aura_static','Static Halo','aura','blue','MM','static','#c0d0ff','','A crackle of blue static.','Kestrel wiring is never grounded.','e'],
 ['aura_foundry','Foundry Glow','aura','purple','HI','glow','#ff7a2a','','A deep orange glow from below.','From the Bell Foundry cast pit.','b:bellfounder'],
 ['aura_audit','Audit Ring','aura','purple','PS','ring','#d0e0ff','','A thin ring of light that sweeps the ground.','Scans at all times.','b:auditor'],
+['aura_s1_bloom','Static Bloom Corona','aura','orange','EV','nova','#7fe8ff','#c46bff','A slow corona of violet static, painted in soft light.','Season 1 exclusive. Only runners who were out in the signal storm wear it.','ev:season_s1'],
 ['aura_nova','Heartstar Corona','aura','orange','EV','nova','#ffd24a','#ff5a1a','A pulsing white-gold corona.','Seen from three districts away.','ev:mythic'],
 // ---- TRAILS ----
 ['trail_dust','Dust Wake','trail','grey','ST','dust','#8a8070','','A puff of dust where you ran.','Grit marks your path.','d'],
@@ -204,7 +206,7 @@ export function rollCosmetic(s:{cosmetics?:CosState}, tier:'ordinary'|'elite'|'b
   const c=cosOf(s); const take=(d:CosDef)=>{ if(c.owned[d.id]) return { dupeCredits:COS_DUPE_CREDITS[d.rarity] }; c.owned[d.id]=Date.now(); return { def:d }; };
   if(tier==='boss'){
     if(bossId){ const spec=COSMETICS.filter(d=>d.src.k==='bossId'&&d.src.boss===bossId&&!c.owned[d.id]); if(spec.length&&rnd()<COS_ROLL_CHANCE.bossSpecific*(1+.1*dungeonTier)) return take(spec[Math.floor(rnd()*spec.length)]); }
-    const ev=COSMETICS.filter(d=>d.src.k==='event'&&!c.owned[d.id]); if(ev.length&&rnd()<COS_ROLL_CHANCE.eventMythic*(1+.25*dungeonTier)) return take(ev[Math.floor(rnd()*ev.length)]);
+    const ev=COSMETICS.filter(d=>d.src.k==='event'&&!(d.src as any).key?.startsWith('season_')&&!c.owned[d.id]); /* season exclusives only via src/loot_eco.ts */ if(ev.length&&rnd()<COS_ROLL_CHANCE.eventMythic*(1+.25*dungeonTier)) return take(ev[Math.floor(rnd()*ev.length)]);
   }
   if(rnd()>=COS_ROLL_CHANCE[tier]) return null;
   const W=COS_RARITY_W[tier]; const ok=(d:CosDef)=>d.src.k==='drop'||(d.src.k==='elite'&&tier!=='ordinary')||(d.src.k==='boss'&&tier==='boss');

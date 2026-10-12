@@ -1,6 +1,7 @@
 import { EXTRA_CHIPS, EXTRA_ITEMS, EXTRA_CONFLICTS } from './content/items';
 import { WEAPON_ITEMS } from './content/weapons';
 import { IDKFA_ITEMS } from './content/idkfa';
+import { SEASONAL_ITEMS } from './content/seasonal_items';
 import { EXTRA_ENEMIES, EXTRA_ENEMY_DMG } from './content/enemies';
 import { BATCH1_ENEMIES } from './content/batch1_enemies';
 import { BATCH2_ENEMIES } from './content/batch2_enemies';
@@ -157,7 +158,7 @@ export const ITEMS: ItemDef[] = [
   H('pool_p_torso','AS Lattice Torso','torso','PS','purple',15,{maxHp:30,cooling:.2,dmg:.05}),
   H('pool_o_legs','HB Bastion Legs','legR','HI','orange',20,{maxHp:40,armor:5}),
 ];
-ITEMS.push(...EXTRA_ITEMS, ...WEAPON_ITEMS, ...IDKFA_ITEMS, ...ABILITY_ITEMS);
+ITEMS.push(...EXTRA_ITEMS, ...WEAPON_ITEMS, ...IDKFA_ITEMS, ...ABILITY_ITEMS, ...SEASONAL_ITEMS);
 // register the data-driven abilities next to the legacy ones (aim shapes map onto the existing aim types so aiming/validation code is shared)
 const AIM_OF:Record<string,AimType>={ self:'self', toggle:'self', cone:'direction', line:'direction', ground:'ground', lockon:'target' };
 for(const a of ABILITY_DATA){ (ABILITIES as any)[a.id]={ id:a.id, type:a.type, name:a.name, aim:AIM_OF[a.shape], heat:a.heat, cd:a.cd, windup:a.windup, range:a.range, desc:describeAbility(a), ext:true, rarity:a.rarity }; (ABILITY_TYPE as any)[a.id]=a.type; }

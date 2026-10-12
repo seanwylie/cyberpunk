@@ -41,6 +41,9 @@ import { playRecall } from './pmfx';
 import { equippedCos as eqCos, COS_BY_ID as COS_PM } from './content/appearance';
 import type { Effect } from './traits';
 import { record, newStory, EventKind } from './story';
+import { rollPrestige, ecoOf, log as ecoLog } from './loot_eco';
+import { grantCos, COS_BY_ID as COSDEF } from './content/appearance';
+import { SEASON_BY_ID } from './seasons';
 
 export const TOWN_KEY=key('town');
 export type Emit = (type:string, payload?:any)=>void;
@@ -722,9 +725,21 @@ export class Game {
     const cr=T.credits.map(c=>c*this.dd.creditMul*cm) as [number,number]; if(Math.random()<pile) this.addDrop(e.x,e.y,{kind:'credits',amount:Math.round(cr[0]+Math.random()*(cr[1]-cr[0]))});
     const affixOnly=tier==='elite'&&!def.elite, guar=def.boss?DROP.bossGuaranteed:def.elite?DROP.eliteGuaranteed:0, extra=def.boss?DROP.bossExtra:tier==='elite'?DROP.eliteExtra:0;
     for(let i=0;i<rolls;i++){ const ch=ord?T.chance*Math.min(1,sc):i<guar?1:affixOnly&&i===0?HARD.affixChance:Math.min(1,extra*(sc/DROP_RATE_SCALE)); if(Math.random()>ch) continue; let pl=pool; if(def.boss&&i===1&&Math.random()<HARD.bossSecondNonItem){ const alt=pool.filter(x=>!x.item); if(alt.length) pl=alt; } this.dropEntry(this.abConvert(this.pickEntry(pl),tier),e.x,e.y); }
-    const sig=def.boss?(this.dd.id==='annex'?LOOT.signature[e.type]:this.dd.signature?.[e.type]):null; if(sig&&Math.random()<sig.chance) this.dropEntry({item:sig.item,w:1},e.x,e.y);
+    this.rollPrestigeDrop(e,tier); /* oranges + season exclusives: one hidden prestige roll (signature items are its target-farm pool), never the tables above */
     this.rollCosmeticDrop(tier,def.boss?e.type:null);
   }
+  /** Party context set by the party host / net session before grantKill: party size and whether this player really took part (damage dealt, or inside the boss room). */
+  partyN=1; contributed=true;
+  /** Prestige drop (docs/LOOT_ECONOMY.md): orange or season-exclusive via src/loot_eco.ts, with pity, target farming, dupe shards and party scaling. */
+  rollPrestigeDrop(e:En,tier:'ordinary'|'elite'|'boss'){ const def=ENEMIES[e.type]; const s=this.save; const sigT=def.boss?(this.dd.id==='annex'?LOOT.signature:this.dd.signature):null; const sg=sigT?.[e.type];
+    const a=rollPrestige(s,{ tier, dungeonTier:this.dd.tier||0, gateway:!!GATEWAY_BY_DUNGEON[this.dd.id], hard:!!(this.inst?.flags as any)?.hard, party:this.partyN, contributed:this.contributed, level:s.level, tierCap:this.dd.tierCap, bossSig:sg?[sg.item]:[], where:this.dd.name, boss:def.boss?def.name:undefined });
+    if(!a) return; const eco=ecoOf(s); let name='';
+    if(a.item){ const inst=mkInst(s,a.item); if(a.season) (inst as any).prov={ season:a.season, at:Date.now() }; const d=this.addDrop(e.x,e.y,{kind:'item',inst,amount:1}); d.prestige=a.kind==='seasonal'?'seasonal':'orange'; name=ITEM_BY_ID[a.item].name; }
+    else if(a.cos){ grantCos(s,a.cos); name=COSDEF[a.cos].name; this.toast('Wardrobe: '+SEASON_BY_ID[a.season!].short+' exclusive '+name+'. Equip it in the locker Wardrobe.'); this.emit('cosmeticFound',a.cos); }
+    else { this.toast('Duplicate legendary broken down: +1 Prism Shard ('+eco.shards+'). Rebuild a found orange at '+6+' in the Loot log.'); this.emit('sfx','loot_purple'); persist(s); return; }
+    this.emit('sfx','loot_orange'); this.emit('stinger','rare');
+    const first=a.kind==='orange'&&eco.awards===1&&eco.firstOrange&&!(s as any).lootEco.firstLine; if(first){ (s as any).lootEco.firstLine=Date.now(); this.toast('Odalys: "That glow is the real thing. Most runners never see one. Do not sell it, do not lose it."'); }
+    this.emit('prestigeDrop',{ kind:a.kind, name, item:a.item, cos:a.cos, season:a.season, where:this.dd.name, boss:def.boss?def.name:null, first:!!first }); persist(s); }
   /** Cosmetic (appearance-only) drop: goes straight to the wardrobe, never a ground pile, so DROP_RATE_SCALE volume is untouched. */
   rollCosmeticDrop(tier:'ordinary'|'elite'|'boss',bossId:string|null){ const r=rollCosmetic(this.save,tier,bossId,this.dd.tier||0); if(!r) return;
     if(r.def){ this.toast('Wardrobe: new '+r.def.rarity+' '+COS_SLOT_LABEL[r.def.slot].toLowerCase()+' found: '+r.def.name+'. Equip it in the locker Wardrobe.'); this.emit('cosmeticFound',r.def.id); }
@@ -761,7 +776,7 @@ export class Game {
     return {x:ox,y:oy}; }
   /** Existing ground loot that ended up inside a wall/prop edge (older saves, knockback tosses) is moved to the nearest reachable spot. Returns how many moved. */
   fixStuckDrops():number{ const inst=this.inst; if(!inst) return 0; let n=0; for(const d of inst.drops){ if(this.solidAt(d.x,d.y)||this.circleHits(d.x,d.y,LOOT_CLEAR*.9)){ const p=this.lootSpot(d.x,d.y); d.x=p.x; d.y=p.y; n++; } } return n; }
-  addDrop(x:number,y:number,d:Partial<Drop>&{kind:Drop['kind']}){ const inst=this.inst!; const sp=this.lootSpot(x,y); const px=sp.x, py=sp.y; const dr:Drop={ id:inst.nextId++, x:px, y:py, kind:d.kind, inst:d.inst, chip:d.chip, amount:d.amount||1, born:this.time }; inst.drops.push(dr); const rar=this.dropRarity(dr); if(RARITY_RANK[rar]>=3) this.emit('sfx','loot_'+rar); return dr; }
+  addDrop(x:number,y:number,d:Partial<Drop>&{kind:Drop['kind']}){ const inst=this.inst!; const sp=this.lootSpot(x,y); const px=sp.x, py=sp.y; const dr:Drop={ id:inst.nextId++, x:px, y:py, kind:d.kind, inst:d.inst, chip:d.chip, amount:d.amount||1, born:this.time }; inst.drops.push(dr); const rar=this.dropRarity(dr); if(RARITY_RANK[rar]>=3) this.emit('sfx','loot_'+rar); if(rar==='purple'&&dr.kind==='item') ecoLog(ecoOf(this.save),{t:Date.now(),kind:'purple',id:dr.inst!.def,name:ITEM_BY_ID[dr.inst!.def].name,where:this.dd.name}); return dr; }
   dropRarity(d:Drop):Rarity{ if(d.kind==='item') return ITEM_BY_ID[d.inst!.def].rarity; if(d.kind==='chip') return CHIPS[d.chip!].rarity; if(d.kind==='stim') return 'green'; return 'grey'; }
   carriedCount(){ const c=this.inst!.carried; return c.items.length+Object.values(c.chips).filter(v=>v&&v>0).length+(c.stims>0?1:0); }
   autoPickup(){

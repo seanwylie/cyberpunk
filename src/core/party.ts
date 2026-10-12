@@ -113,6 +113,7 @@ export class PartyWorld {
     else if (t === 'sfx' && SFX_OUT.test(String(p)) && h.priv.length < 12) h.priv.push({ e: 'sfx', n: String(p) });
     else if (t === 'down') { this.evq.push({ e: 'down', id: h.id }); }
     else if (t === 'revived') { this.evq.push({ e: 'revive', id: h.id }); }
+    else if (t === 'prestigeDrop') { this.evq.push({ e: 'prestige', id: h.id, name: h.name, item: String(p?.name || '').slice(0, 60), kind: p?.kind }); }
     else if (t === 'cosmeticFound') h.got.push({ kind: 'cos', id: String(p), amount: 1 });
     else if (t === 'filtered' && h.priv.length < 12) h.priv.push({ e: 'toast', s: 'Loot filtered: ' + String(p) });
   }
@@ -163,7 +164,7 @@ export class PartyWorld {
     // 2. participation: dealt damage to it, or was alive within PARTICIPATE_R tiles (boss: or inside the boss zone)
     const part: PHost[] = []; for (const h of this.hosts.values()) { const g = h.g; const near = !g.downed && (Math.hypot(g.px - e.x, g.py - e.y) <= PARTICIPATE_R || (!!def.boss && g.zoneAt(g.px, g.py) === 'boss')); if (by.has(h.id) || near) part.push(h); }
     // 3. each participant gets THEIR OWN xp / rep / contracts / loot / cosmetic / ability rolls on their own save + rng stream
-    for (const h of part) { this.stats.lootRolls++; h.lootRolls++; this.run(h, () => { Game.prototype.grantKill.call(h.g, e); if (def.boss && h !== killer) h.g.onBossDead(e); }); }
+    for (const h of part) { this.stats.lootRolls++; h.lootRolls++; h.g.partyN = this.hosts.size; h.g.contributed = by.has(h.id) || (!!def.boss && h.g.zoneAt(h.g.px, h.g.py) === 'boss'); /* prestige roll: scaled by party size, no credit for proximity alone (docs/LOOT_ECONOMY.md) */ this.run(h, () => { Game.prototype.grantKill.call(h.g, e); if (def.boss && h !== killer) h.g.onBossDead(e); }); }
     // contract credit rides on contractEvent: forwarded to each client (its own save advances) by collect()
   }
   private teamRevive(by: PHost) { for (const h of this.hosts.values()) if (h !== by && h.g.downed && Math.hypot(h.g.px - by.g.px, h.g.py - by.g.py) <= 4.5) this.revive(h, by, .3); }

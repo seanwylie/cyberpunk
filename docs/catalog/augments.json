@@ -1,19 +1,19 @@
 {
  "version": 1,
- "catalogVersion": "c9469e751951",
+ "catalogVersion": "86b051c4b6a0",
  "generatedBy": "tools/gen_catalog.mjs",
  "stats": {
-  "augments": 166,
-  "abilityAugments": 107,
+  "augments": 169,
+  "abilityAugments": 110,
   "abilities": 78,
   "chips": 17,
   "dungeons": 32,
   "bySlot": {
-   "face": 14,
+   "face": 15,
    "brain": 19,
    "armL": 17,
-   "torso": 31,
-   "armR": 18,
+   "torso": 32,
+   "armR": 19,
    "handL": 11,
    "legL": 13,
    "handR": 20,
@@ -26,7 +26,7 @@
    "green": 55,
    "blue": 41,
    "purple": 20,
-   "orange": 21
+   "orange": 24
   },
   "gaps": {
    "augmentNoSource": 0,
@@ -3665,8 +3665,10 @@
      "kind": "signature",
      "dungeon": "clinic",
      "dungeonName": "Aldane Ward 9 Clinic",
+     "bossId": "autosurgeon",
      "boss": "Theatre Autosurgeon GEMINI",
-     "chance": 0.1
+     "via": "prestige",
+     "share": 0.75
     }
    ],
    "blurb": "Twin saw-rig cut from the theatre ceiling."
@@ -3882,13 +3884,9 @@
    ],
    "sources": [
     {
-     "kind": "ability_drop",
-     "tiers": [
-      "boss"
-     ],
+     "kind": "prestige",
      "minLevel": 28,
-     "repRank": 2,
-     "note": "any dungeon whose level cap >= 28"
+     "note": "legendary roll: any boss (elites rarely) in a dungeon whose level cap >= 28"
     }
    ],
    "blurb": "Chain Reaction: Everything nearby is a fuse."
@@ -6581,6 +6579,127 @@
    "blurb": "Flush ceramic shell with a blade-ended assembly."
   },
   {
+   "id": "s1_prism_lancer",
+   "name": "Prism Lancer Arm",
+   "slot": "armR",
+   "slotLabel": "Right arm",
+   "group": "arm",
+   "maker": "HI",
+   "makerName": "Harrow-Brandt Heavy Works",
+   "rarity": "orange",
+   "level": 24,
+   "humanity": 12,
+   "stats": {
+    "dmg": 0.22,
+    "armor": 4
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [
+    "force"
+   ],
+   "abilities": [
+    {
+     "id": "bladeburst",
+     "name": "Blade Burst",
+     "effect": "Lunge in a line with invulnerability, cutting for 126 damage through everything (burst damage on elites and chargers).",
+     "cooldown": 2.4,
+     "vfx": "kinetic",
+     "sfx": "blade"
+    },
+    {
+     "id": "sweep",
+     "name": "Powered Sweep",
+     "effect": "Wide ripper arc: 119 damage to everything in front, shoves and staggers 0.7s. Clears packs, swarms and summoned adds.",
+     "cooldown": 1.8,
+     "vfx": "kinetic",
+     "sfx": "blade"
+    }
+   ],
+   "sockets": 3,
+   "chips": [
+    {
+     "id": "bladepat",
+     "name": "Blade Pattern",
+     "stats": {},
+     "abilityMods": {
+      "len": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "cutwide",
+     "name": "Wide-Cut Pattern",
+     "stats": {},
+     "abilityMods": {
+      "arc": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "fineedge",
+     "name": "Fine-Edge Chip",
+     "stats": {
+      "atkSpeed": 0.1,
+      "dmg": 0.04
+     },
+     "abilityMods": {
+      "cdr": 0.02,
+      "dmg": 0.02
+     },
+     "affects": []
+    },
+    {
+     "id": "overdrive",
+     "name": "Overdrive Chip",
+     "stats": {
+      "dmg": 0.22,
+      "cooling": -0.1
+     },
+     "abilityMods": {
+      "dmg": 0.12
+     },
+     "affects": []
+    },
+    {
+     "id": "power",
+     "name": "Power Chip",
+     "stats": {
+      "dmg": 0.12
+     },
+     "abilityMods": {
+      "dmg": 0.06
+     },
+     "affects": []
+    },
+    {
+     "id": "speed",
+     "name": "Speed Chip",
+     "stats": {
+      "atkSpeed": 0.15
+     },
+     "abilityMods": {
+      "cdr": 0.03
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "seasonal",
+     "season": "s1",
+     "seasonName": "Season 1: Static Bloom",
+     "start": "2026-10-01T00:00:00Z",
+     "end": "2027-01-05T00:00:00Z",
+     "note": "season-exclusive legendary roll; retired permanently at season end"
+    }
+   ],
+   "blurb": "Season 1. Splits the storm into a lance of cold light."
+  },
+  {
    "id": "sig_anvil_arm",
    "name": "Brannoch Anvil-Arm",
    "slot": "armR",
@@ -6703,8 +6822,10 @@
      "kind": "signature",
      "dungeon": "foundry",
      "dungeonName": "Harrow-Brandt Foundry Line 7",
+     "bossId": "brannoch",
      "boss": "Ladle-Tyrant Brannoch",
-     "chance": 0.1
+     "via": "prestige",
+     "share": 0.75
     }
    ],
    "blurb": "Ladle-Tyrant signature. A foundry ram that never cools."
@@ -6828,8 +6949,10 @@
      "kind": "signature",
      "dungeon": "annex",
      "dungeonName": "Reclamation Annex",
+     "bossId": "enforcer",
      "boss": "Reclamation Enforcer",
-     "chance": 0.12
+     "via": "prestige",
+     "share": 0.75
     }
    ],
    "blurb": "Reclamation Enforcer signature. Sweep and lunge."
@@ -7592,13 +7715,9 @@
    "synergies": [],
    "sources": [
     {
-     "kind": "ability_drop",
-     "tiers": [
-      "boss"
-     ],
+     "kind": "prestige",
      "minLevel": 28,
-     "repRank": 2,
-     "note": "any dungeon whose level cap >= 28"
+     "note": "legendary roll: any boss (elites rarely) in a dungeon whose level cap >= 28"
     }
    ],
    "blurb": "Legion Protocol: The whole catalogue, deployed."
@@ -9533,8 +9652,10 @@
      "kind": "signature",
      "dungeon": "annex",
      "dungeonName": "Reclamation Annex",
+     "bossId": "warden",
      "boss": "Neural Warden",
-     "chance": 0.12
+     "via": "prestige",
+     "share": 0.75
     }
    ],
    "blurb": "Neural Warden signature. Control + pulse in one brain."
@@ -9633,8 +9754,10 @@
      "kind": "signature",
      "dungeon": "foundry",
      "dungeonName": "Harrow-Brandt Foundry Line 7",
+     "bossId": "ore9",
      "boss": "Governor ORE-9",
-     "chance": 0.1
+     "via": "prestige",
+     "share": 0.75
     }
    ],
    "blurb": "ORE-9 signature. Governs heat, then turns on its owners."
@@ -10135,13 +10258,9 @@
    "synergies": [],
    "sources": [
     {
-     "kind": "ability_drop",
-     "tiers": [
-      "boss"
-     ],
+     "kind": "prestige",
      "minLevel": 29,
-     "repRank": 2,
-     "note": "any dungeon whose level cap >= 29"
+     "note": "legendary roll: any boss (elites rarely) in a dungeon whose level cap >= 29"
     }
    ],
    "blurb": "Blackout Protocol: Every light in the district, off."
@@ -10346,13 +10465,9 @@
    ],
    "sources": [
     {
-     "kind": "ability_drop",
-     "tiers": [
-      "boss"
-     ],
+     "kind": "prestige",
      "minLevel": 27,
-     "repRank": 2,
-     "note": "any dungeon whose level cap >= 27"
+     "note": "legendary roll: any boss (elites rarely) in a dungeon whose level cap >= 27"
     }
    ],
    "blurb": "Orbital Strike: The Warden never gave back the satellite."
@@ -11627,6 +11742,101 @@
     }
    ],
    "blurb": "Reads as skin. People keep talking to you."
+  },
+  {
+   "id": "s1_quiet_halo",
+   "name": "Quiet Halo",
+   "slot": "face",
+   "slotLabel": "Face",
+   "group": "face",
+   "maker": "MM",
+   "makerName": "Kestrel Value Systems",
+   "rarity": "orange",
+   "level": 24,
+   "humanity": 13,
+   "stats": {
+    "armor": 3,
+    "maxHp": 24,
+    "cooling": 0.15
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [],
+   "abilities": [
+    {
+     "id": "brace",
+     "name": "Bracing",
+     "effect": "Lock the frame for 3.5s: 75% less damage, 150% of what you take is reflected to the attacker, and a hit from a charging enemy stuns it 2s. Shoves adjacent enemies.",
+     "cooldown": 4.2,
+     "vfx": "barrier",
+     "sfx": "shield"
+    },
+    {
+     "id": "reposition",
+     "name": "Reposition",
+     "effect": "Dash-strike to an open point: 70 damage along the path, 0.32s invulnerable. Cast INTO a telegraph for a PERFECT EVADE: cooldown drops to 1.5s, -12 heat, abilities +30% for 3s.",
+     "cooldown": 2.4,
+     "vfx": "blink",
+     "sfx": "blink"
+    }
+   ],
+   "sockets": 2,
+   "chips": [
+    {
+     "id": "cloakdur",
+     "name": "Cloak Duration",
+     "stats": {},
+     "abilityMods": {
+      "cloak": 2
+     },
+     "affects": []
+    },
+    {
+     "id": "ctrldur",
+     "name": "Control Uptime",
+     "stats": {},
+     "abilityMods": {
+      "cc": 0.2,
+      "dur": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "gridlink",
+     "name": "Grid-Link Chip",
+     "stats": {
+      "cooling": 0.1
+     },
+     "abilityMods": {
+      "cc": 0.1,
+      "dur": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "magnet",
+     "name": "Magnet Chip",
+     "stats": {
+      "pickup": 0.7
+     },
+     "abilityMods": {},
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "seasonal",
+     "season": "s1",
+     "seasonName": "Season 1: Static Bloom",
+     "start": "2026-10-01T00:00:00Z",
+     "end": "2027-01-05T00:00:00Z",
+     "note": "season-exclusive legendary roll; retired permanently at season end"
+    }
+   ],
+   "blurb": "Season 1. A ring of stilled static. The noise stops when you wear it."
   },
   {
    "id": "stock_face",
@@ -24606,28 +24816,9 @@
    "synergies": [],
    "sources": [
     {
-     "kind": "drop",
-     "dungeon": "annex",
-     "dungeonName": "Reclamation Annex",
-     "dungeonTier": 0,
-     "levels": [
-      10,
-      20
-     ],
-     "tier": "ordinary",
-     "share": 0.001
-    },
-    {
-     "kind": "drop",
-     "dungeon": "annex",
-     "dungeonName": "Reclamation Annex",
-     "dungeonTier": 0,
-     "levels": [
-      10,
-      20
-     ],
-     "tier": "elite",
-     "share": 0.003
+     "kind": "prestige",
+     "minLevel": 20,
+     "note": "legendary roll: any boss (elites rarely) in a dungeon whose level cap >= 20"
     }
    ],
    "blurb": ""
@@ -25475,8 +25666,10 @@
      "kind": "signature",
      "dungeon": "warehouse",
      "dungeonName": "Kestrel Distribution Hub 9",
+     "bossId": "retrieval",
      "boss": "Retrieval Unit R-0",
-     "chance": 0.1
+     "via": "prestige",
+     "share": 0.75
     }
    ],
    "blurb": "Retrieval Unit R-0 signature. Built to lift what the shelves cannot."
@@ -25953,13 +26146,9 @@
    "synergies": [],
    "sources": [
     {
-     "kind": "ability_drop",
-     "tiers": [
-      "boss"
-     ],
+     "kind": "prestige",
      "minLevel": 27,
-     "repRank": 2,
-     "note": "any dungeon whose level cap >= 27"
+     "note": "legendary roll: any boss (elites rarely) in a dungeon whose level cap >= 27"
     }
    ],
    "blurb": "Foundry Meltdown: It is not an explosion. It is a shift change."
@@ -26773,13 +26962,9 @@
    "synergies": [],
    "sources": [
     {
-     "kind": "ability_drop",
-     "tiers": [
-      "boss"
-     ],
+     "kind": "prestige",
      "minLevel": 27,
-     "repRank": 2,
-     "note": "any dungeon whose level cap >= 27"
+     "note": "legendary roll: any boss (elites rarely) in a dungeon whose level cap >= 27"
     }
    ],
    "blurb": "Second Wind: Kestrel's one-time-use clause, used."
@@ -30814,6 +30999,129 @@
    "blurb": "Sensor-dampening cloak weave."
   },
   {
+   "id": "s1_bloom_veil",
+   "name": "Static Bloom Veil",
+   "slot": "torso",
+   "slotLabel": "Torso",
+   "group": "torso",
+   "maker": "PS",
+   "makerName": "Aldane Surgical",
+   "rarity": "orange",
+   "level": 24,
+   "humanity": 15,
+   "stats": {
+    "maxHp": 36,
+    "cooling": 0.25,
+    "regen": 0.5
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [
+    "cloak"
+   ],
+   "abilities": [
+    {
+     "id": "cloak",
+     "name": "Cloak",
+     "effect": "Enemies lose you for 5s. Your next hit (auto 3x, ability 2.5x) is an AMBUSH crit and breaks cloak.",
+     "cooldown": 4.8,
+     "vfx": "shadow",
+     "sfx": "stealth"
+    },
+    {
+     "id": "pulse",
+     "name": "Disruption Pulse",
+     "effect": "Ground burst: 77 damage and 1.8s stun. SHIELD-BREAK: deals 4x to shields, so one pulse strips most shields and staggers (+50% damage).",
+     "cooldown": 3,
+     "vfx": "holo",
+     "sfx": "hack"
+    }
+   ],
+   "sockets": 8,
+   "chips": [
+    {
+     "id": "ablative",
+     "name": "Ablative Chip",
+     "stats": {
+      "armor": 2,
+      "maxHp": 10
+     },
+     "abilityMods": {
+      "shield": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "cloakdur",
+     "name": "Cloak Duration",
+     "stats": {},
+     "abilityMods": {
+      "cloak": 2
+     },
+     "affects": []
+    },
+    {
+     "id": "coolant",
+     "name": "Coolant Chip",
+     "stats": {
+      "cooling": 0.2
+     },
+     "abilityMods": {
+      "heat": 0.04
+     },
+     "affects": []
+    },
+    {
+     "id": "plating",
+     "name": "Plating Chip",
+     "stats": {
+      "armor": 3
+     },
+     "abilityMods": {
+      "shield": 0.08
+     },
+     "affects": []
+    },
+    {
+     "id": "quench",
+     "name": "Quench Coil",
+     "stats": {
+      "cooling": 0.35
+     },
+     "abilityMods": {
+      "heat": 0.07
+     },
+     "affects": []
+    },
+    {
+     "id": "sustain",
+     "name": "Sustain Chip",
+     "stats": {
+      "regen": 0.8,
+      "maxHp": 6
+     },
+     "abilityMods": {
+      "heal": 0.1
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "seasonal",
+     "season": "s1",
+     "seasonName": "Season 1: Static Bloom",
+     "start": "2026-10-01T00:00:00Z",
+     "end": "2027-01-05T00:00:00Z",
+     "note": "season-exclusive legendary roll; retired permanently at season end"
+    }
+   ],
+   "blurb": "Season 1. A weave that drinks the signal storm and blooms in violet static."
+  },
+  {
    "id": "sig_lazarus_rack",
    "name": "Lazarus Rack",
    "slot": "torso",
@@ -30936,8 +31244,10 @@
      "kind": "signature",
      "dungeon": "warehouse",
      "dungeonName": "Kestrel Distribution Hub 9",
+     "bossId": "reclaimer",
      "boss": "Returns Reclaimer LAZARUS-LITE",
-     "chance": 0.08
+     "via": "prestige",
+     "share": 0.75
     }
    ],
    "blurb": "Authored Easter egg: an orange item outside the high-level band. Returned, refurbished, resold."
@@ -31063,8 +31373,10 @@
      "kind": "signature",
      "dungeon": "clinic",
      "dungeonName": "Aldane Ward 9 Clinic",
+     "bossId": "recovered",
      "boss": "The Recovered (Patient Eleven)",
-     "chance": 0.1
+     "via": "prestige",
+     "share": 0.75
     }
    ],
    "blurb": "Patient Eleven. Nothing in this weave remembers a person."
@@ -31436,6 +31748,7 @@
    "grantedBy": [
     "ps_blade_arm",
     "ps_fan_arm",
+    "s1_prism_lancer",
     "sig_autosurgeon_rig",
     "sig_reclaimer_ripper"
    ],
@@ -31519,6 +31832,7 @@
    "grantedBy": [
     "hi_crucible_torso",
     "hi_torso_cool",
+    "s1_quiet_halo",
     "sig_anvil_arm",
     "sig_lazarus_rack"
    ],
@@ -31701,6 +32015,7 @@
    "grantedBy": [
     "ps_theatre_torso",
     "ps_veil_torso",
+    "s1_bloom_veil",
     "sig_recovered_veil"
    ],
    "combosInto": []
@@ -33286,6 +33601,7 @@
    "chipsAffecting": [],
    "grantedBy": [
     "mm_arm_l",
+    "s1_bloom_veil",
     "sig_audit_core",
     "sig_autosurgeon_rig"
    ],
@@ -33462,6 +33778,7 @@
     "idkfa_leg_l",
     "ps_ceramic_leg_l",
     "ps_legs_l",
+    "s1_quiet_halo",
     "sig_r0_lifter",
     "sig_recovered_veil"
    ],
@@ -34551,6 +34868,7 @@
    "grantedBy": [
     "hi_press_arm",
     "hi_ripper_arm",
+    "s1_prism_lancer",
     "sig_anvil_arm",
     "sig_reclaimer_ripper"
    ],
