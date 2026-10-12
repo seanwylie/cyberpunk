@@ -115,7 +115,7 @@ ok(C.pendWait && C.pendStart, 'boss track not yet decoded: waits, then fades in 
   ok(Sx.retry >= 1 && Sx.flags, 'sim: boss reset after death emits musicretry (' + JSON.stringify(Sx) + ')'); }
 // --- rotation logic + asset existence (variety pack) ---
 import fs from 'fs';
-const M = await ev(async () => { const m = await import('/src/music.ts'); return { pools: { ...m.POOLS, harrow: m.TOWN_POOLS.harrow, areas: Object.values(m.AREA_TRACKS).flat() }, boss: m.BOSS_MAP, sig: [...m.SIG_TRACKS, ...m.STINGERS], core: m.CORE_TRACKS }; });
+const M = await ev(async () => { const m = await import('/src/music.ts'); return { pools: { ...m.POOLS, towns: Object.values(m.TOWN_POOLS).flat(), esc: m.ESCALATE, areas: Object.values(m.AREA_TRACKS).flat() }, boss: m.BOSS_MAP, sig: [...m.SIG_TRACKS, ...m.STINGERS], core: m.CORE_TRACKS }; });
 const files = new Set(fs.readdirSync('public/audio/music').map(f => f.replace(/\.mp3$/, '')));
 const used = [...new Set([...Object.values(M.pools).flat(), ...Object.values(M.boss), ...M.core, ...M.sig])];
 ok(used.every(n => files.has(n)), 'every pooled track has an mp3: missing ' + used.filter(n => !files.has(n)).join());
@@ -311,4 +311,13 @@ ok(!errors.length, 'no page errors ' + errors.join('|'));
 const b2 = await launch({ query: '' }); await b2.page.route('**/audio/music/*', r => r.abort());
 await b2.page.reload(); await b2.page.waitForFunction(() => window.__game); await b2.page.evaluate(() => window.__audio.resume()); await sleep(1500);
 ok(!(await b2.page.evaluate(() => window.__audio.useFiles)), 'fallback to procedural when files missing');
+// --- pack 7 escalation: intensity >= ESC_LEVEL in elite combat crossfades to a stem; calming returns to the prior track ---
+{ const E = await ev(async () => { const mod = await import('/src/music.ts'); const mm = window.__audio.music; const off = s => { mm.__off += s; mm.tick(); };
+  await Promise.all(mod.ESCALATE.map(n => new Promise(r => { mm.ensure(n); const f = () => mm.buffers[n] ? r() : setTimeout(f, 100); f(); })));
+  mm.setState('traversal'); off(60); mm.setState('elite'); off(2); const e0 = mm.cur; mm.setIntensity(1); off(5); const still = mm.cur === e0;
+  mm.setIntensity(4); off(1); off(1); off(1); off(1); const up = mm.cur; mm.setIntensity(0); off(1); off(4); off(4); const down = mm.cur; mm.setIntensity(0); mm.setState('traversal');
+  return { e0, still, up, down, esc: mod.ESCALATE }; });
+  ok(E.still, 'low intensity never escalates');
+  ok(E.esc.includes(E.up), 'sustained high intensity escalates to a stem: ' + E.up);
+  ok(E.down === E.e0, 'intensity drop returns to the prior elite track: ' + E.down); }
 await browser.close(); await b2.browser.close(); process.exit(fails ? 1 : 0);

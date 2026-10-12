@@ -30,7 +30,7 @@ Sean's brief, October 2026. This applies to the primary tracks (main theme, town
 - Describe instruments, tempo, key, structure and mood only.
 - **Never** name films, scores, composers, bands or songs, and never ask to sound like any existing work.
 - Always include: instrumental, no vocals or lyrics, seamless loop for loops.
-- No drug references (see `tests/no_drug_refs.mjs`).
+- Keep prompts clean of banned content (see `tests/no_drug_refs.mjs`).
 - Long calm tracks are encoded at 80 kbps (LOWRATE). Hard tracks and stingers use 112 kbps.
 
 Regenerate with `python3 tools/gen_music.py --pack7 --force` (needs `ELEVENLABS_API_KEY`).
