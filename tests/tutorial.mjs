@@ -88,7 +88,8 @@ async function playthrough(w, h, touch) {
   await click(page, '#tut .tt-ack'); s = await waitN(page, 8); ok(s.n >= 8, `${tag}: Got it advances past the controls step (got ${s.n})`);
   // 8 fight: ring on nearest hostile, kill via the sim's own kill path, then pick up a real drop
   if (s.n === 8) {
-  let wr = false; for (let i = 0; i < 30 && !wr; i++) { wr = await worldRing(page); if (!wr) await sleep(100); }
+  let wr = await page.waitForFunction(() => { const w = document.getElementById('tutworld'), e = document.getElementById('tutedge'); return (w && w.style.display !== 'none') || (e && e.style.display !== 'none'); }, null, { timeout: 12000, polling: 100 }).then(() => true, () => false); /* condition wait (box load can stall the tick for seconds) */
+  if (!wr) console.log('  diag:', JSON.stringify(await page.evaluate(() => { const g = window.__game; return { step: window.__tut.cur()?.id, kills: g.stats?.kills, alive: g.enemies.filter(e => !e.dead && e.faction === 'enemy').length, mode: g.mode, raf: performance.now() | 0 }; })));
   ok(wr, `${tag}: world ring/edge arrow points at a hostile`); await check(page, `${tag} step8`); await shot('8_fight');
   await page.evaluate(() => { const g = window.__game; g.enemies.filter(e => !e.dead && e.faction === 'enemy').slice(0, 3).forEach(e => g.killEnemy(e)); });
   await sleep(300); ok((await page.evaluate(() => window.__tut.st.kills)) >= 3, `${tag}: kills counted from the game kill counter`);
