@@ -1,17 +1,19 @@
 // Story card -> story panel: click opens a centered modal, card is held until the panel closes, X dismisses without opening, Esc closes, log navigation,
 // regenerate (rate-limited), copy, parts open the locker, never mid-run, unread dot, focus trap, viewports + font audit. Writes shots/story/*.png
 import { launch, sleep } from './lib.mjs'; import fs from 'fs';
+const CAT = JSON.parse(fs.readFileSync(new URL('../server/story_catalog.json', import.meta.url), 'utf8'));
+const sameL1 = t => typeof t === 'string' && /^That Ripper Arm looks heavy and ready for the .+\. Bring it back in one piece next time\.$/.test(t);
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 fs.mkdirSync('shots/story', { recursive: true });
 const L1 = 'That Ripper Arm looks heavy and ready for work. Bring it back in one piece next time.';
 const VPS = [[1280, 720, 'desktop', false], [844, 390, 'phone-land', true], [360, 740, 'phone', true]];
 for (const [w, h, tag, touch] of VPS) {
   const { browser, page, errors } = await launch({ viewport: { width: w, height: h }, touch });
-  let hits = 0, bodies = []; let n = 0; await page.route('**/api/story-beat', r => { hits++; bodies.push(JSON.parse(r.request().postData())); n++; r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, text: n === 1 ? L1 : `Line number ${n}: the Siege Bot Arm still hums. Keep it clean out there.`, model: 'mock' }) }); });
+  let hits = 0, bodies = []; let n = 0; await page.route('**/api/story-beat', r => { hits++; const b = JSON.parse(r.request().postData()); bodies.push(b); n++; const kw = b.hint ? CAT.mechs[b.hint.mech].keyword : 'arm'; r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, text: n === 1 ? L1.replace('ready for work', 'ready for the ' + kw) : `Line number ${n}: mind the ${kw} next job. Keep it clean out there.`, model: 'mock' }) }); });
   await page.evaluate(() => document.getElementById('splash')?.remove());
   await page.evaluate(async () => { const C = await import('/src/config.ts'), St = await import('/src/state.ts'); const g = window.__game, s = g.save; for (const id of ['hi_ripper_arm', 'hi_clamp']) { const d = C.ITEMS.find(i => i.id === id) || C.ITEMS.find(i => i.mfr === 'HI' && !i.id.startsWith('stock_')); const it = St.mkInst(s, d.id); s.items.push(it); s.installed[d.slot] = it.uid; } g.recompute(); g.mode = 'town'; });
   const fire = (run) => page.evaluate(r => window.__beats.fire({ run: r, dungeon: 'annex', result: 'Boss defeated' }).then(e => e && e.text), run);
-  const t1 = await fire('a'); ok(t1 === L1, `${tag}: first beat written (AI line)`);
+  const t1 = await fire('a'); ok(sameL1(t1), `${tag}: first beat written (AI line)`);
   await sleep(300);
   ok(await page.evaluate(() => document.querySelectorAll('.storycard').length) === 1 && await page.evaluate(() => document.getElementById('btn-story').classList.contains('unread')), `${tag}: card shown and unread dot on the HUD Story button`);
   // hover pauses the fade (mouse only)
@@ -43,7 +45,7 @@ for (const [w, h, tag, touch] of VPS) {
   ok(P.pos === '2 of 2', `${tag}: position 2 of 2`);
   await page.evaluate(() => document.querySelector('[data-act=storyprev]').click()); await sleep(150);
   const prev = await page.evaluate(() => ({ t: document.getElementById('stext').textContent, pos: document.querySelector('.stpos').textContent, nextOn: !document.querySelector('[data-act=storynext]').disabled, prevOff: document.querySelector('[data-act=storyprev]').disabled }));
-  ok(prev.t === L1 && prev.pos === '1 of 2' && prev.nextOn && prev.prevOff, `${tag}: Previous shows the older line, Next enabled, Previous disabled at the start`);
+  ok(sameL1(prev.t) && prev.pos === '1 of 2' && prev.nextOn && prev.prevOff, `${tag}: Previous shows the older line, Next enabled, Previous disabled at the start`);
   await page.keyboard.press('ArrowRight'); await sleep(100); ok(await page.evaluate(() => document.querySelector('.stpos').textContent) === '2 of 2', `${tag}: arrow keys browse the log`);
   // focus trap
   let escaped = false; for (let i = 0; i < 14; i++) { await page.keyboard.press('Tab'); if (!await page.evaluate(() => document.getElementById('modal').contains(document.activeElement))) escaped = true; } ok(!escaped, `${tag}: Tab cycles inside the panel (focus trap)`);
@@ -53,7 +55,7 @@ for (const [w, h, tag, touch] of VPS) {
   const after = await page.evaluate(() => ({ t: document.getElementById('stext').textContent, msg: document.getElementById('storymsg2').textContent }));
   ok(hits === h0 + 1 && bodies[bodies.length - 1].variant >= 1 && after.t !== before && /New line/.test(after.msg), `${tag}: Regenerate calls the same endpoint with a new variant and replaces the line`);
   await page.evaluate(() => document.querySelector('[data-act=storyregen]').click()); await sleep(400);
-  ok(hits === h0 + 1 && await page.evaluate(() => { const b = document.querySelector('[data-act=storyregen]'); return b.disabled && /Regenerate \(\d+ s\)/.test(b.textContent); }), `${tag}: second Regenerate within the 60 s cooldown is blocked (button shows the countdown, no request)`);
+  ok(hits === h0 + 1 && await page.evaluate(() => { const b = document.querySelector('[data-act=storyregen]'); return b.disabled && /Rewrite again in \d+ s/.test(b.dataset.tip) && parseFloat(b.querySelector('.rgring').style.strokeDasharray) > 0; }), `${tag}: second rewrite within the 60 s cooldown is blocked (cooldown ring + tooltip, no request)`);
   // copy
   await page.evaluate(() => { window.__copied = null; Object.defineProperty(navigator, 'clipboard', { value: { writeText: async t => { window.__copied = t; } }, configurable: true }); Object.defineProperty(navigator, 'share', { value: undefined, configurable: true }); });
   await page.evaluate(() => document.querySelector('[data-act=storycopy]').click()); await sleep(300);

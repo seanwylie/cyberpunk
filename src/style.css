@@ -623,3 +623,13 @@ body:not(.intown) #btn-story{ display:none; }
 .setic{ display:flex; flex-wrap:wrap; justify-content:center; gap:2px; } .setic .cosw{ width:38%; }
 @media (max-width:760px){ .drstage{ flex:0 0 200px; } }
 @media (max-height:500px){ .drstage{ flex:0 0 180px; } .drstage #wdprev{ max-height:150px; aspect-ratio:auto; } .wdgrid{ max-height:34vh; } .drrot .btn{ min-width:34px; } }
+
+/* story panel v3: icon-only part tiles, ghost rewrite button with cooldown ring, highlighted hint keyword */
+.sronly{ position:absolute!important; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+.stparts{ grid-template-columns:repeat(auto-fill,minmax(64px,76px)); } .stparts .tile.stp{ min-height:0; }
+.btn.ghost.iconbtn.regen{ position:relative; width:36px; height:36px; min-width:36px; padding:0; background:transparent; border-color:transparent; opacity:.75; display:inline-flex; align-items:center; justify-content:center; }
+.btn.ghost.iconbtn.regen:hover:not([disabled]),.btn.ghost.iconbtn.regen:focus-visible{ opacity:1; border-color:rgba(255,255,255,.25); }
+.btn.ghost.iconbtn.regen[disabled]{ opacity:.55; cursor:default; } .btn.ghost.iconbtn.regen.capped .rgi{ opacity:.4; }
+.regen svg{ position:absolute; inset:2px; width:32px; height:32px; transform:rotate(-90deg); } .regen .rgtrack{ fill:none; stroke:rgba(255,255,255,.08); stroke-width:2; } .regen .rgring{ fill:none; stroke:var(--accent,#ffae2b); stroke-width:2; stroke-linecap:round; transition:stroke-dasharray .4s linear; }
+.regen .rgi{ font-size:18px; line-height:1; }
+mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1px dashed currentColor; cursor:help; padding:0 1px; }

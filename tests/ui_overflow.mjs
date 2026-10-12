@@ -24,6 +24,8 @@ for (const [w, h, tag, touch] of VPS) {
     if (r.skip || r.err) { console.log(`skip ${tag} ${p} ${r.err || ''}`); continue; }
     await page.screenshot({ path: `shots/ui_overflow/${p}_${tag}.png` });
     ok(r.n === 0, `${tag} ${p}: no clipped text ${r.n ? JSON.stringify(r.bad) : ''}`);
+    if (p === 'story') { const t = await page.evaluate(() => [...document.querySelectorAll('.stparts .tile.stp')].map(b => ({ txt: b.textContent.replace(/[◆◇●○•\s]/g, ''), tip: b.dataset.tip || '', w: b.getBoundingClientRect().width }))); ok(t.length > 0 && t.every(x => x.txt === '' && /<b /.test(x.tip) && x.w >= 44), `${tag} story: part tiles are icon-only (no names), >=44px, full name/mods/stats in the tooltip`);
+      ok(await page.evaluate(() => { const b = document.getElementById('storyregen'); return b && b.classList.contains('ghost') && b.textContent.trim() === '↻' && !!b.dataset.tip; }), `${tag} story: rewrite is a ghost ↻ icon button with a tooltip`); }
     if (p === 'story') ok(!/Coke|Pharmacy|Apothecary/.test(r.txt) && /Slag Ovens/.test(r.txt), `${tag} story: old saved entry shows the renamed zones (no Coke/Pharmacy/Apothecary)`);
     await page.evaluate(() => window.__ui.close()); await sleep(150); }
   // HUD ability bar / labels

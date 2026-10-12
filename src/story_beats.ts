@@ -5,9 +5,12 @@
 import { ITEM_BY_ID, type Mfr, type Rarity } from './config';
 import type { Save } from './state';
 import { persist } from './state';
+import { SLOTS } from './config';
+import { computeBuild, installedLayout, type Layout } from './build';
+import { buildHint, cannedHint, MECH_HINT, type Hint } from './content/story_hints';
 
 export type BeatTrigger = 'return_town'|'contract_done'|'new_mfr_set';
-export interface JournalEntry { t:number; trigger:BeatTrigger; town:string; text:string; src:'ai'|'authored'; model?:string; /** plain part names the line is about */ parts?:string[]; /** item ids of those parts */ partDefs?:string[]; /** dungeon id, run result text, player level */ dungeon?:string; result?:string; level?:number; /** false until the player opens the story panel */ read?:boolean }
+export interface JournalEntry { t:number; trigger:BeatTrigger; town:string; text:string; src:'ai'|'authored'; model?:string; /** plain part names the line is about */ parts?:string[]; /** item ids of those parts */ partDefs?:string[]; /** dungeon id, run result text, player level */ dungeon?:string; result?:string; level?:number; /** false until the player opens the story panel */ read?:boolean; /** the actionable hint in this line (keyword highlighted in the panel) */ hint?:{ mech:string; keyword:string; dungeon?:string } }
 export interface BeatMeta { seenMfr:Mfr[]; count:number }
 export interface BeatReq { trigger?:BeatTrigger; /** how the run ended, shown in the story panel */ result?:string; /** dungeon id of the run that just ended */ dungeon?:string; /** run id: at most one beat per run */ run?:string; force?:boolean }
 export const BEAT = { perSession:5, journalMax:40, maxChars:220, maxSentences:2, timeoutMs:12_000, cardMs:14_000, waitMs:90_000 };
@@ -33,9 +36,12 @@ export function featuredParts(s:Save):{def:string;name:string;mfr:Mfr}[]{
   out.sort((a,b)=>b.r-a.r); const seen=new Set<string>(); return out.filter(o=>!seen.has(o.name)&&!!seen.add(o.name)).slice(0,2).map(({def,name,mfr})=>({def,name,mfr}));
 }
 /** Request body: catalog ids and enums ONLY, just the featured parts (the server resolves names and makers and rejects unknown ids). */
-export function loadoutSummary(s:Save, req:BeatReq, variant=0){
+/** The actionable hint for this save (next job's boss mechanic + counter, gear gap vs stock, reward lead). Never throws. */
+export function hintFor(s:Save, req:BeatReq={}, variant=0):Hint|null{ try{ const st=computeBuild(installedLayout(s),s.level,s.rep).stats; const L:Layout={}; for(const sl of SLOTS) L[sl]={uid:'b'+sl,def:'stock_'+sl,chips:[]} as any; const base=computeBuild(L,s.level,s.rep).stats; return buildHint(s,st,base,{last:req.dungeon,result:req.result,variant}); }catch{ return null; } }
+export const hintTag=(h:Hint|null)=>h?{mech:h.mech,keyword:MECH_HINT[h.mech].keyword,dungeon:h.dungeon}:undefined;
+export function loadoutSummary(s:Save, req:BeatReq, variant=0, hint:Hint|null=hintFor(s,req,variant)){
   const out:any={ trigger:'return_town', town:s.town==='harrow'?'harrow':'rustline', level:Math.max(1,Math.min(99,s.level|0)), session:SESSION_ID, player:PLAYER_ID, installed:featuredParts(s).map(p=>p.def), chips:[], abilities:[], cosmetics:[], rep:{HI:s.rep.HI|0,PS:s.rep.PS|0,MM:s.rep.MM|0}, variant };
-  if(req.dungeon) out.dungeon=req.dungeon; return out;
+  if(req.dungeon) out.dungeon=req.dungeon; if(hint){ const h:any={dungeon:hint.dungeon,mech:hint.mech,gap:hint.gap,fail:hint.fail}; if(hint.reward) h.reward=hint.reward; out.hint=h; } return out;
 }
 
 /** Clean authored lines, one or two plain sentences, same voice and format as the AI line. {part} = the featured part. */
@@ -49,9 +55,9 @@ export function authoredBeat(s:Save, idx=journalOf(s).length):{text:string;parts
   return { text:pool[idx%pool.length].replace('{part}',part), parts:p.map(x=>x.name) };
 }
 /** Accept an AI line only if it is short, plain and at most two sentences; otherwise the caller uses the canned line. */
-export function acceptLine(t:unknown):string|null{
+export function acceptLine(t:unknown, keyword?:string):string|null{
   if(typeof t!=='string') return null; const s=t.replace(/\s+/g,' ').trim(); if(s.length<20||s.length>BEAT.maxChars) return null;
-  if(s.split(/(?<=[.!?])\s+/).filter(Boolean).length>BEAT.maxSentences) return null; return s;
+  if(s.split(/(?<=[.!?])\s+/).filter(Boolean).length>BEAT.maxSentences) return null; if(keyword&&!s.toLowerCase().includes(keyword)) return null; return s;
 }
 
 export const unreadCount=(s:Save)=>journalOf(s).filter(e=>e.read===false).length;
@@ -73,29 +79,30 @@ export class StoryBeats {
     const s=this.save(); const now=this.now(); if(this.busy) return {ok:false,why:'busy'};
     const st=this.regenState(); if(st.capped) return {ok:false,capped:true,why:'No more rewrites today.'}; if(st.wait>0) return {ok:false,retryAfter:st.wait,why:`Please wait ${st.wait} s before another rewrite.`};
     this.busy=true; this.regenN++; this.cooldownUntil=now+REGEN.minGapMs;
+    const hint=hintFor(s,{dungeon:e.dungeon,result:e.result},this.regenN); const kw=hint?MECH_HINT[hint.mech].keyword:undefined;
     try { let text:string|null=null, src:'ai'|'authored'='authored', model:string|undefined;
       if(s.settings.storyAi!==false){ try { const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),BEAT.timeoutMs);
-        const r=await this.fetcher(this.endpoint,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(loadoutSummary(s,{dungeon:e.dungeon},1+(this.regenN%20)))}).finally(()=>clearTimeout(to));
+        const r=await this.fetcher(this.endpoint,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(loadoutSummary(s,{dungeon:e.dungeon,result:e.result},1+(this.regenN%20),hint))}).finally(()=>clearTimeout(to));
         const j=await r.json().catch(()=>null);
         if(j&&!j.ok&&(j.reason==='rate_limited'||j.reason==='daily_cap')){ const ra=Math.max(1,Number(j.retryAfter)||60);
           if(j.reason==='daily_cap'){ this.cappedUntil=this.now()+ra*1000; return {ok:false,capped:true,retryAfter:ra,why:'No more rewrites today.'}; }
           this.cooldownUntil=this.now()+ra*1000; return {ok:false,retryAfter:ra,why:`Please wait ${ra} s before another rewrite.`}; }
-        const a=r.ok&&j&&j.ok?acceptLine(j.text):null; if(a&&a!==e.text){ text=a; src='ai'; model=j.model; } } catch{} }
-      if(!text){ const pool=journalOf(s).length+this.regenN+1; text=authoredBeat(s,pool).text; if(text===e.text) text=authoredBeat(s,pool+1).text; }
-      e.text=text; e.src=src; e.model=model; persist(s); if(this.regenN>=REGEN.perDay) this.cappedUntil=Math.max(this.cappedUntil,now+3600_000); return {ok:true};
+        const a=r.ok&&j&&j.ok?acceptLine(j.text,kw):null; if(a&&a!==e.text){ text=a; src='ai'; model=j.model; } } catch{} }
+      if(!text){ const pool=journalOf(s).length+this.regenN+1; text=hint?cannedHint(hint,pool):authoredBeat(s,pool).text; if(text===e.text) text=hint?cannedHint(hint,pool+1):authoredBeat(s,pool+1).text; }
+      e.text=text; e.src=src; e.model=model; e.hint=hintTag(hint); persist(s); if(this.regenN>=REGEN.perDay) this.cappedUntil=Math.max(this.cappedUntil,now+3600_000); return {ok:true};
     } finally { this.busy=false; } }
   /** Called once when a run ends (back in town). Returns the entry if one was written (async, never throws). */
   async fire(req:BeatReq={}):Promise<JournalEntry|null>{
     const s=this.save(); if(this.busy) return null;
-    const run=req.run||('r'+(++this.runN)); if(!req.force){ if(run===this.lastRun||this.fired>=BEAT.perSession) return null; if(!featuredParts(s).length) return null; }
-    this.busy=true; this.fired++; this.lastRun=run;
+    const run=req.run||('r'+(++this.runN)); if(!req.force){ if(run===this.lastRun||this.fired>=BEAT.perSession) return null; if(!featuredParts(s).length&&!hintFor(s,req)) return null; }
+    this.busy=true; this.fired++; this.lastRun=run; const hint=hintFor(s,req); const kw=hint?MECH_HINT[hint.mech].keyword:undefined;
     try {
       let text:string|null=null, src:'ai'|'authored'='authored', model:string|undefined;
       if(s.settings.storyAi!==false){ try { const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(),BEAT.timeoutMs);
-        const r=await this.fetcher(this.endpoint,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(loadoutSummary(s,req))}).finally(()=>clearTimeout(to));
-        const j=r.ok?await r.json():null; const a=j&&j.ok?acceptLine(j.text):null; if(a){ text=a; src='ai'; model=j.model; } } catch{} }
-      const canned=authoredBeat(s); if(!text) text=canned.text;
-      const e:JournalEntry={ t:this.now(), trigger:'return_town', town:s.town==='harrow'?'harrow':'rustline', text, src, model, parts:canned.parts, partDefs:featuredParts(s).map(p=>p.def), dungeon:req.dungeon, result:req.result, level:s.level, read:false };
+        const r=await this.fetcher(this.endpoint,{method:'POST',signal:ctl.signal,headers:{'Content-Type':'application/json'},body:JSON.stringify(loadoutSummary(s,req,0,hint))}).finally(()=>clearTimeout(to));
+        const j=r.ok?await r.json():null; const a=j&&j.ok?acceptLine(j.text,kw):null; if(a){ text=a; src='ai'; model=j.model; } } catch{} }
+      const canned=authoredBeat(s); if(!text) text=hint?cannedHint(hint,metaOf(s).count):canned.text;
+      const e:JournalEntry={ t:this.now(), trigger:'return_town', town:s.town==='harrow'?'harrow':'rustline', text, src, model, parts:canned.parts, partDefs:featuredParts(s).map(p=>p.def), dungeon:req.dungeon, result:req.result, level:s.level, read:false, hint:hintTag(hint) };
       const jr=journalOf(s); jr.push(e); while(jr.length>BEAT.journalMax) jr.shift(); metaOf(s).count++; persist(s); this.onEntry?.(e); return e;
     } finally { this.busy=false; }
   }

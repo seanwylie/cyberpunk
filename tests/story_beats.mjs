@@ -91,21 +91,22 @@ ok(!/sk-[A-Za-z0-9]{20}/.test(fs.readFileSync('.env.example', 'utf8')), '.env.ex
 
 // ---- browser ----
 const { browser, page, errors } = await launch();
-let proxyHits = 0; await page.route('**/api/story-beat', route => { proxyHits++; page.__last = JSON.parse(route.request().postData()); route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, text: GOOD, model: 'mock' }) }); });
+let proxyHits = 0; const kwOf = b => b.hint ? CATALOG.mechs[b.hint.mech].keyword : ''; const GOODK = b => b.hint ? `That arm is ready. Watch the ${kwOf(b)} next job.` : GOOD;
+await page.route('**/api/story-beat', route => { proxyHits++; page.__last = JSON.parse(route.request().postData()); route.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, text: GOODK(page.__last), model: 'mock' }) }); });
 const ids = await page.evaluate(async () => { const C = await import('/src/config.ts'), A = await import('/src/content/appearance.ts'), N = await import('/src/content/npcs.ts'), D = await import('/src/content/dungeons.ts'); return { items: C.ITEMS.map(i => i.id), chips: Object.keys(C.CHIPS), abilities: Object.keys(C.ABILITIES), cos: A.COSMETICS.map(c => c.id), contracts: Object.keys(N.CONTRACT_BY_ID), dungeons: D.DUNGEON_IDS }; });
 const miss = (a, t) => a.filter(x => !(x in t)); ok(!miss(ids.items, CATALOG.items).length && !miss(ids.chips, CATALOG.chips).length && !miss(ids.abilities, CATALOG.abilities).length && !miss(ids.cos, CATALOG.cosmetics).length && !miss(ids.contracts, CATALOG.contracts).length && !miss(ids.dungeons, CATALOG.dungeons).length, 'catalog covers every item/chip/ability/cosmetic/contract/dungeon id in game data (regenerate with tools/gen_story_ids.mjs if this fails)');
 ok(await page.evaluate(() => window.__game.save.settings.storyAi === true), 'Story AI setting defaults to on');
 const out = await page.evaluate(async () => {
   const g = window.__game, B = window.__beats; const o = {};
-  o.none = await B.fire({ run: 'r0' }); // only Standard Issue worn -> no beat
+  const n0 = await B.fire({ run: 'r0' }); o.none = n0 && { text: n0.text, hint: n0.hint }; B.fired = 0; // only Standard Issue worn -> still a useful hint line (next boss mechanic)
   const pick = Object.values(g.save.items).length; const { ITEMS } = await import('/src/config.ts'); const { mkInst } = await import('/src/state.ts');
   for (const id of ['hi_ripper_arm', 'ps_scalpel_visor']) { const d = ITEMS.find(i => i.id === id) || ITEMS.find(i => i.mfr === (id.startsWith('hi') ? 'HI' : 'PS') && !i.id.startsWith('stock_')); const it = mkInst(g.save, d.id); g.save.items.push(it); g.save.installed[d.slot] = it.uid; }
   const e = await B.fire({ run: 'r1', dungeon: 'annex' }); o.e = e && { src: e.src, text: e.text, parts: e.parts };
   o.same = await B.fire({ run: 'r1' }); // at most one per run
   o.e2 = !!(await B.fire({ run: 'r2' })); o.e3 = !!(await B.fire({ run: 'r3' })); o.e4 = !!(await B.fire({ run: 'r4' })); o.e5 = !!(await B.fire({ run: 'r5' })); o.e6 = !!(await B.fire({ run: 'r6' }));
-  o.save = JSON.parse(localStorage.getItem('arpg-proto-save-v1')).journal.length; return o; });
-ok(out.none === null, 'browser: no beat when only Standard Issue is worn');
-ok(out.e && out.e.src === 'ai' && out.e.text === GOOD && out.e.parts.length >= 1 && out.e.parts.length <= 2 && out.e.parts.every(x => !/^[A-Z]{2,3}\b/.test(x)), 'browser: one AI line about 1-2 plain-named parts added to the log');
+  o.save = JSON.parse(localStorage.getItem('arpg-proto-save-v1')).journal.length - 1; return o; });
+ok(out.none && out.none.hint && out.none.text.toLowerCase().includes(out.none.hint.keyword), 'browser: even in Standard Issue the beat carries a next-boss hint');
+ok(out.e && out.e.src === 'ai' && /Watch the .+ next job\./.test(out.e.text) && out.e.parts.length >= 1 && out.e.parts.length <= 2 && out.e.parts.every(x => !/^[A-Z]{2,3}\b/.test(x)), 'browser: one AI line about 1-2 plain-named parts added to the log');
 ok(out.same === null, 'browser: at most one beat per run');
 ok(out.e2 && out.e3 && out.e4 && out.e5 && !out.e6 && out.save === 5, 'browser: session cap of 5 runs; log persisted in save');
 const sent = page.__last; ok(sent && Array.isArray(sent.installed) && sent.installed.length >= 1 && sent.installed.length <= 2 && sent.chips.length === 0 && sent.installed.every(x => typeof x === 'string' && x in CATALOG.items) && /^[a-f0-9]{16,32}$/.test(sent.session) && JSON.stringify(sent).length < 700 && sanitizeSummary(sent).ok, 'browser: request is a tiny id-only body (1-2 parts) that the server accepts');
