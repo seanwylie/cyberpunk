@@ -6,7 +6,8 @@ export type AEventName = 'store_open' | 'sku_view' | 'purchase_start' | 'purchas
 export interface AEvent { n: number; t: number; name: AEventName; sku?: string; data?: Record<string, any>; }
 export interface AnalyticsSink { name: string; write(e: AEvent): void; }
 export const RING_MAX = 500;
-const ring: AEvent[] = []; let seq = 0; const sinks: AnalyticsSink[] = [];
+const __G = ((globalThis as any).__wvAnalytics ??= { ring: [], seq: 0, sinks: [] }) as { ring: AEvent[]; seq: number; sinks: AnalyticsSink[] };
+const ring = __G.ring; const sinks = __G.sinks;
 
 export const consoleSink: AnalyticsSink = { name: 'console', write: e => { try { console.debug('[analytics]', e.name, e.sku || '', e.data || ''); } catch { /* ignore */ } } };
 /** Keeps the last `max` events in localStorage (survives reloads, shows up in the export). */
@@ -23,13 +24,13 @@ export function removeSink(name: string) { const i = sinks.findIndex(x => x.name
 export const sinkNames = () => sinks.map(s => s.name);
 
 export function track(name: AEventName, sku?: string, data?: Record<string, any>): AEvent {
-  const e: AEvent = { n: ++seq, t: Date.now(), name, ...(sku ? { sku } : {}), ...(data ? { data } : {}) };
+  const e: AEvent = { n: ++__G.seq, t: Date.now(), name, ...(sku ? { sku } : {}), ...(data ? { data } : {}) };
   ring.push(e); if (ring.length > RING_MAX) ring.splice(0, ring.length - RING_MAX);
   for (const s of sinks) { try { s.write(e); } catch { /* a bad sink never breaks gameplay */ } }
   return e;
 }
 export const events = (): AEvent[] => ring.slice();
-export function resetAnalytics() { ring.length = 0; seq = 0; }
+export function resetAnalytics() { ring.length = 0; __G.seq = 0; }
 
 export interface Funnel {
   views: number; starts: number; confirms: number; successes: number; fails: number; cancels: number;

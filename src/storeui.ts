@@ -10,7 +10,7 @@ import { previewFromStore } from './wardrobeui';
 type UIx = any;
 const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export type StTab = 'skins' | 'bundles' | 'storage';
-export const ST = { tab: 'skins' as StTab, sel: '', phase: 'idle' as 'idle' | 'confirm' | 'processing' | 'done', orderId: '', msg: '', funnel: false, from: 'town' as 'town' | 'wardrobe' | 'locker' | 'bank' };
+export const ST = ((globalThis as any).__wvStoreUi ??= { tab: 'skins' as StTab, sel: '', phase: 'idle' as 'idle' | 'confirm' | 'processing' | 'done', orderId: '', msg: '', funnel: false, from: 'town' as 'town' | 'wardrobe' | 'locker' | 'bank' });
 const tabOf = (k: Sku): StTab => k.kind === 'skin' ? 'skins' : k.kind === 'bundle' ? 'bundles' : 'storage';
 const usd = (c: number) => fmtUsd(c);
 function view(id: string) { if (ST.sel === id) return; ST.sel = id; track('sku_view', id, { tab: ST.tab }); }

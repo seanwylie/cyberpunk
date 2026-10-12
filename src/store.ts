@@ -1,5 +1,5 @@
 // Simulated storefront (NO real money, NO payment provider). Behaves like a real IAP flow so a real provider can be swapped in:
-//   startPurchase (SKU view -> Buy) -> confirmPurchase (user confirm -> provider.purchase -> receipt) -> fulfil (idempotent entitlement grant).
+//   startPurchase (SKU view -> Buy) -> confirmPurchase (user confirm -> getProvider().purchase -> receipt) -> fulfil (idempotent entitlement grant).
 // Everything the player can buy is cosmetic or storage. Nothing here touches stats, drop rates or the rarity policy (premium skins are grey/green/blue only).
 // See docs/STORE_SIM.md.
 import { persist, Save } from './state';
@@ -50,7 +50,9 @@ export interface ProviderResult { status: 'success' | 'failed' | 'cancelled'; re
 /** Swap this for a real provider (App Store / Play / Stripe checkout). It only ever returns a receipt id; the grant happens in fulfil(). */
 export interface PaymentProvider { name: string; purchase(o: Order): Promise<ProviderResult>; cancel?(orderId: string): void; }
 export interface MockCfg { delayMs: number; failureRate: number; rng: () => number; }
-export const MOCK_CFG: MockCfg = { delayMs: 1200, failureRate: 0, rng: Math.random };
+// Module state lives on globalThis so a Vite HMR re-import (?t=...) shares it with the original instance.
+const __G = ((globalThis as any).__wvStoreState ??= {}) as any;
+export const MOCK_CFG: MockCfg = (__G.mockCfg ??= { delayMs: 1200, failureRate: 0, rng: Math.random });
 try { const raw = typeof localStorage !== 'undefined' && localStorage.getItem('wv_store_cfg'); if (raw) { const j = JSON.parse(raw); if (typeof j.delayMs === 'number') MOCK_CFG.delayMs = j.delayMs; if (typeof j.failureRate === 'number') MOCK_CFG.failureRate = j.failureRate; } } catch { /* ignore */ }
 let rcN = 0;
 export class MockProvider implements PaymentProvider {
@@ -65,15 +67,15 @@ export class MockProvider implements PaymentProvider {
   }
   cancel(orderId: string) { this.pend.get(orderId)?.({ status: 'cancelled', reason: 'Cancelled' }); }
 }
-let provider: PaymentProvider = new MockProvider();
-export const setProvider = (p: PaymentProvider) => { provider = p; };
-export const getProvider = () => provider;
+__G.provider ??= new MockProvider();
+export const setProvider = (p: PaymentProvider) => { __G.provider = p; };
+export const getProvider = (): PaymentProvider => __G.provider;
 export function configureMock(c: Partial<Pick<MockCfg, 'delayMs' | 'failureRate'>>) { if (c.delayMs !== undefined) MOCK_CFG.delayMs = c.delayMs; if (c.failureRate !== undefined) MOCK_CFG.failureRate = Math.max(0, Math.min(1, c.failureRate)); try { localStorage.setItem('wv_store_cfg', JSON.stringify({ delayMs: MOCK_CFG.delayMs, failureRate: MOCK_CFG.failureRate })); } catch { /* ignore */ } return { ...MOCK_CFG, rng: undefined }; }
 
 // ---------------------------------------------------------------- purchase flow
 export type OrderStatus = 'started' | 'processing' | 'success' | 'failed' | 'cancelled';
 interface LiveOrder extends Order { status: OrderStatus; }
-const orders = new Map<string, LiveOrder>();
+const orders: Map<string, LiveOrder> = (__G.orders ??= new Map<string, LiveOrder>());
 export const activeOrder = (): LiveOrder | null => { for (const o of orders.values()) if (o.status === 'started' || o.status === 'processing') return o; return null; };
 export const resetOrders = () => orders.clear();
 
@@ -89,7 +91,7 @@ export function startPurchase(s: Save, skuId: string): Start {
 }
 export interface PurchaseResult { status: 'success' | 'failed' | 'cancelled'; why: string; receiptId?: string; granted?: string[]; duplicate?: boolean; }
 /** User pressed Confirm: run the provider, then fulfil on success. */
-export async function confirmPurchase(s: Save, orderId: string, p: PaymentProvider = provider): Promise<PurchaseResult> {
+export async function confirmPurchase(s: Save, orderId: string, p: PaymentProvider = getProvider()): Promise<PurchaseResult> {
   const o = orders.get(orderId); if (!o || o.status !== 'started') return { status: 'failed', why: 'No pending purchase.' };
   o.status = 'processing'; track('purchase_confirm', o.sku, { orderId }); let r: ProviderResult;
   try { r = await p.purchase({ orderId, sku: o.sku, cents: o.cents, currency: o.currency }); } catch (e: any) { r = { status: 'failed', reason: String(e?.message || e) }; }
@@ -100,7 +102,7 @@ export async function confirmPurchase(s: Save, orderId: string, p: PaymentProvid
   return { status: 'success', why: f.duplicate ? 'Already applied.' : 'Purchase complete (simulated).', receiptId: r.receiptId, granted: f.granted, duplicate: f.duplicate };
 }
 /** User pressed Cancel (confirm sheet or while processing). */
-export function cancelOrder(orderId: string, p: PaymentProvider = provider): boolean {
+export function cancelOrder(orderId: string, p: PaymentProvider = getProvider()): boolean {
   const o = orders.get(orderId); if (!o || (o.status !== 'started' && o.status !== 'processing')) return false;
   const was = o.status; o.status = 'cancelled'; if (was === 'processing') p.cancel?.(orderId); track('purchase_cancel', o.sku, { orderId, stage: was }); return true;
 }
@@ -121,9 +123,9 @@ export function fulfil(s: Save, skuId: string, receiptId: string, cents: number,
 }
 
 // ---------------------------------------------------------------- contextual upsell (gentle, inline, town only)
-let dismissedUntil = 0; let lastPromptKey = '';
-export const resetUpsell = () => { dismissedUntil = 0; lastPromptKey = ''; };
-export const dismissUpsell = (mins = 15) => { dismissedUntil = Date.now() + mins * 60000; };
+const UP = (__G.upsell ??= { dismissedUntil: 0, lastPromptKey: "" }) as { dismissedUntil: number; lastPromptKey: string };
+export const resetUpsell = () => { UP.dismissedUntil = 0; UP.lastPromptKey = ''; };
+export const dismissUpsell = (mins = 15) => { UP.dismissedUntil = Date.now() + mins * 60000; };
 /** Which storage is full right now (null = none, or not in town). Never answers in a run, so nothing can pop up mid-combat. */
 export function storageFullKind(g: any): 'locker' | 'bank' | null {
   if (!g || g.mode !== 'town') return null; const s: Save = g.save;
@@ -132,8 +134,8 @@ export function storageFullKind(g: any): 'locker' | 'bank' | null {
 }
 /** Small inline row for the locker/bank header. Empty string when not applicable. Logs storage_full_prompt once per appearance. */
 export function storagePromptHtml(g: any, where: 'locker' | 'bank'): string {
-  if (Date.now() < dismissedUntil) return ''; const kind = storageFullKind(g); if (!kind || (where === 'locker' && kind !== 'locker')) return '';
-  const k = nextStorageSku(g.save, kind)!; const key = where + ':' + k.id; if (key !== lastPromptKey) { lastPromptKey = key; track('storage_full_prompt', k.id, { where, cents: k.cents }); }
+  if (Date.now() < UP.dismissedUntil) return ''; const kind = storageFullKind(g); if (!kind || (where === 'locker' && kind !== 'locker')) return '';
+  const k = nextStorageSku(g.save, kind)!; const key = where + ':' + k.id; if (key !== UP.lastPromptKey) { UP.lastPromptKey = key; track('storage_full_prompt', k.id, { where, cents: k.cents }); }
   return `<div class="bkmsg stprompt" role="status">${kind === 'locker' ? 'Locker is full.' : 'Bank is full.'} <span class="mut">Optional:</span> <button class="btn" data-act="st-open" data-sku="${k.id}">${k.name} · ${fmtUsd(k.cents)} SIMULATED</button> <button class="btn" data-act="st-dismiss">Not now</button></div>`;
 }
 
