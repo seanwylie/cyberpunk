@@ -66,7 +66,7 @@ No load-independent budget is breached today. Close to the line:
 * **HUD DOM mutations 10-18 per frame**: `ui.hud()` rewrites text and styles every frame even when nothing changed. The budget pins today's level so it can't grow. A memoised HUD writer (prototype in an earlier, uncommitted attempt) could take this to about 2.
 * **Town draw calls 4249-4626**: a full orange crowd costs about 1.7x the canvas ops of a dungeon fight. Skin FX particles stay within their pool (47 of 240).
 * **Timing (INFO only, loaded box)**: desktop frame p95 26-103 ms and mobile GC pauses up to 390 ms are over the 16.7/33 ms and 30/60 ms targets in these measurements. They were taken at load 5-10 per core with software raster, so they are not a verdict. Re-measure with `PERF_STRICT=1` on a quiet machine before treating them as breaches.
-* Known gap: the dungeon scene reports `gore 0` because the gate's gore counter hook (`GORE.counts`) doesn't match the gore module's API, so the gore cap is not measured yet.
+* Gore: the dungeon scene now waits for `mode === "run"` (it waited for a non-existent "dungeon" mode, so gore never activated) and checks live decals/chunks/drops against `CAPS[tier]` from `src/gore.ts`, plus "gore > 0" so a broken hook fails loudly. First quiet run: decals 78/160, chunks 48/48 (at cap, the cap evicts oldest), drops 134/150.
 
 ## Changes to budgets
 * 2026-10-12: initial budgets from the baselines above (counters ~+15-20% headroom; frame/GC targets are product targets, 60 fps desktop / 30 fps mobile).

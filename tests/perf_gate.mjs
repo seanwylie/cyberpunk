@@ -44,7 +44,7 @@ const SCEN = async ({ name, frames, warm }) => { var tour = null, hop = null;
   const CAL = () => { const t = performance.now(); let x = 0; const a = new Float64Array(4096); for (let k = 0; k < 1200; k++) for (let i = 0; i < 4096; i++) { a[i] = Math.sqrt(i * k + x); x += a[(i * 7) & 4095] * 1e-9; } return performance.now() - t + (x > 1e99 ? 1 : 0); };
   const g = window.__game, R = window.__rend, ui = window.__ui; const imp = async m => { try { return await import(m); } catch { return {}; } }; const FX = await imp('/src/cosfx.ts'), GO = await imp('/src/gore.ts');
   const P = { countOps(c) { const M = ['drawImage', 'fill', 'stroke', 'fillRect', 'strokeRect', 'fillText', 'strokeText', 'putImageData', 'clearRect']; const n = { total: 0, drawImage: 0 }; for (const m of M) { const o = c[m]; c[m] = function (...a) { n.total++; if (m === 'drawImage') n.drawImage++; return o.apply(this, a); }; } return { stop() { for (const m of M) delete c[m]; return n; } }; },
-    snapshot() { const gc = GO.GORE?.counts?.() || {}; return { particles: FX.liveParticles ? FX.liveParticles() : 0, gore: (gc.decals || 0) + (gc.chunks || 0) + (gc.drops || 0) }; } };
+    snapshot() { const gc = GO.GORE?.counts?.() || {}; return { particles: FX.liveParticles ? FX.liveParticles() : 0, gore: (gc.decals || 0) + (gc.chunks || 0) + (gc.drops || 0), goreBy: gc, goreCap: GO.CAPS ? GO.CAPS[window.__WV_Q_TIER || 'high'] : null }; } };
   const dt = 1 / 60; const step = () => { g.update(dt); R.draw(dt); ui.hud(); };
   if (name === 'town') {
     const A = await import('/src/content/appearance.ts'), RR = await import('/src/net/remote_render.ts'); const slots = {}; for (const d of A.COSMETICS) if (d.rarity === 'orange' && !slots[d.slot]) slots[d.slot] = d.id; const cos = Object.values(slots);
@@ -55,7 +55,7 @@ const SCEN = async ({ name, frames, warm }) => { var tour = null, hop = null;
     var move = () => { const tg = path[pi]; const dx = tg[0] - g.px, dy = tg[1] - g.py, d = Math.hypot(dx, dy); if (d < .3) pi = (pi + 1) % path.length; else { g.px += dx / d * .08; g.py += dy / d * .08; } };
   } else if (name === 'dungeon') {
     g.save.settings.gore = 'bloody'; g.dbg.god = true; g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.save.settings.devFreeReset = true; g.startRun('foundry', 4242);
-    for (let i = 0; i < 400 && !(g.mode === 'dungeon' && g.level && R.ready !== false); i++) await new Promise(r => setTimeout(r, 50)); await new Promise(r => setTimeout(r, 1500));
+    for (let i = 0; i < 400 && !(g.mode === 'run' && g.level && R.ready !== false); i++) await new Promise(r => setTimeout(r, 50)); await new Promise(r => setTimeout(r, 1500));
     const E = window.__enemies; const types = Object.keys(E).filter(k => !E[k].boss && !E[k].summon && E[k].hp > 0).slice(0, 6); let k = 0;
     const pack = () => { for (let i = 0; i < 28; i++) { const a = i * 0.7, r = 2.5 + (i % 5) * .7; const e = g.spawnEnemy(types[k++ % types.length], g.px + Math.cos(a) * r, g.py + Math.sin(a) * r); e.alert = true; } };
     pack(); try { const b = g.spawnEnemy(g.dd.defaultBoss, g.px + 4, g.py + 1); b.alert = true; b._rt.reveal = 0; } catch { } g.revealing = false;
@@ -78,7 +78,7 @@ const SCEN = async ({ name, frames, warm }) => { var tour = null, hop = null;
   const q = (a, p) => { const s = [...a].sort((x, y) => x - y); return +s[Math.min(s.length - 1, Math.floor(s.length * p))].toFixed(2); };
   const mem = window.__memSnap ? window.__memSnap() : {};
   return { cal: +cal.toFixed(2), submit: { p50: q(S, .5), p95: q(S, .95), p99: q(S, .99) }, frame: { p50: q(T, .5), p95: q(T, .95), p99: q(T, .99) },
-    drawCalls: Math.round(counts.total / N1), drawImage: Math.round(counts.drawImage / N1), domMut: +(mut / N1).toFixed(2), particles: sn.particles, gore: sn.gore, enemies: g.enemies.filter(e => !e.dead).length,
+    drawCalls: Math.round(counts.total / N1), drawImage: Math.round(counts.drawImage / N1), domMut: +(mut / N1).toFixed(2), particles: sn.particles, gore: sn.gore, goreBy: sn.goreBy, goreCap: (await imp('/src/quality.ts')).Q ? GO.CAPS?.[(await imp('/src/quality.ts')).Q.tier] : sn.goreCap, mode: g.mode, enemies: g.enemies.filter(e => !e.dead).length,
     heapMB: +((performance.memory?.usedJSHeapSize || 0) / 1048576).toFixed(1), texMB: +((mem.imgMB || 0) + (mem.cvMB || 0)).toFixed(1), audioMB: mem.audioMB || 0, canvas: R.canvas.width + 'x' + R.canvas.height };
 };
 // GC pauses during the timing pass: devtools trace, V8 GC events
@@ -138,6 +138,8 @@ for (const [pn, sc] of Object.entries(results.profiles)) { const B = BUD.profile
   ok(r.heapAfterGcMB <= SB.heapMB, `${pn}/${name}: JS heap after GC ${r.heapAfterGcMB} MB <= ${SB.heapMB} MB`);
   ok(r.texMB <= SB.textureMB, `${pn}/${name}: decoded images + canvases ${r.texMB} MB <= ${SB.textureMB} MB`);
   ok(r.particles <= BUD.features.fxParticlePool, `${pn}/${name}: live FX particles ${r.particles} <= pool ${BUD.features.fxParticlePool}`);
+  if (name === 'dungeon') { ok(r.mode === 'run' && r.gore > 0, `${pn}/${name}: gore is measured (mode ${r.mode}, ${r.gore} live pieces); 0 means the scene or the gate hook is broken`);
+    if (r.goreCap) for (const k of ['decals', 'chunks', 'drops']) ok((r.goreBy?.[k] || 0) <= r.goreCap[k], `${pn}/${name}: gore ${k} ${r.goreBy?.[k] || 0} <= cap ${r.goreCap[k]}`); else ok(false, `${pn}/${name}: gore caps not readable`); }
   okT(r.gc.maxMs <= SB.gcMaxMs, `${pn}/${name}: longest GC pause ${r.gc.maxMs} ms <= ${SB.gcMaxMs} ms`);
   if (FULL) okT(r.loadMs <= SB.loadMs, `${pn}/${name}: load to first town frame ${r.loadMs} ms <= ${SB.loadMs} ms (dev server)`);
   ok(!r.errors?.length, `${pn}/${name}: no page errors ${r.errors?.[0] || ''}`); } }
