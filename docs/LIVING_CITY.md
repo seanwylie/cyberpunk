@@ -67,7 +67,7 @@ Hand-built Rustline and Harrow get prices, bounties, events and the banner, but 
 ## News and chatter
 
 - `buildFacts()` is the only input the writer sees: flips, the top districts by activity (real counts), hot districts and up to 3 opted-in players.
-- The AI returns JSON lines that cite fact ids. `validateItem()` rejects a line that mentions any town, faction, player or number not in its cited facts, any unknown capitalised name mid-sentence, a takeover verb without a flip fact, drug terms, links or markup. Too few valid lines fall back to the canned writer.
+- The AI returns JSON lines that cite fact ids. `validateItem()` rejects a line that mentions any town, faction, player or number not in its cited facts, any unknown capitalised name mid-sentence, a takeover verb without a flip fact, banned terms (see tests/no_drug_refs.mjs), links or markup. Too few valid lines fall back to the canned writer.
 - Caps: one Lambda run a week, reserved concurrency 1, 700 tokens, 15 s timeout, `CITY_AI=0` kill switch. With no key or on any error, the feed is canned.
 - The hub serves `GET /city/news`, cached for 5 minutes. Until the Lambda writes a feed, it serves a canned one built from this week's data.
 - **Feature flags:** `VITE_WV_CITY_NEWS=0` / `VITE_WV_CITY_CHATTER=0` at build time, or `localStorage wv_ff_city_news|chatter = 0|1`. `src/cityui.ts` is lazy-loaded 2.5 s after start. The feed is fetched only when the panel opens or the first bark needs it. Chatter is one timer, about every 30 s, in town only.
