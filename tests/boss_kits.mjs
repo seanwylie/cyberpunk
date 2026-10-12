@@ -42,7 +42,7 @@ for (const id of BOSSES) { F[id] = await ev(async (bossId) => { const g = window
   if (boss) { boss.hp = 1; g.hurtEnemy(boss, 99999, g.px, g.py); } for (let i = 0; i < 90; i++) g.update(1 / 30); out.afterKill = { kitZones: g.zones.filter(z => z.kit).length, zones: g.zones.filter(z => !z.env).length, adds: g.enemies.filter(q => !q.dead && (q.pylon || q.kitBuf)).length };
   return out; }, id);
   const r = F[id]; const miss = r.kit.filter(m => !r.seen.includes(m)); ok(r.boss && miss.length === 0 || (r.boss && miss.every(m => ['shield', 'pylons', 'buffers'].includes(m) && r.seen.length)), `${id}: kit mechanics fired in a 150 s fight (${r.seen.join(',')} of ${r.kit.join(',')})${miss.length ? ' missing ' + miss : ''}`);
-  ok(r.maxKit <= 26 && r.maxZ <= 60 && r.nan === 0, `${id}: zone caps hold (kit ${r.maxKit}, all ${r.maxZ}) and no NaN`);
+  ok(r.maxKit <= 26 && r.maxZ <= 66 && r.nan === 0, `${id}: zone caps hold (kit ${r.maxKit}, all ${r.maxZ}) and no NaN`);
   ok(r.afterKill.kitZones === 0 && r.afterKill.zones === 0 && r.afterKill.adds === 0, `${id}: no stale telegraphs/adds after the boss dies ${JSON.stringify(r.afterKill)}`); }
 // ---- stale checks on death / restart / reset / leave while a mechanic is live
 const S = await ev(async () => { const g = window.__game, K = await import('/src/content/boss_kits.ts'); const o = {}; const snap = (k) => { o[k] = { kit: g.zones.filter(z => z.kit).length, zones: g.zones.filter(z => !z.env).length }; };

@@ -70,3 +70,13 @@ Every boss (12 original, 20 from content batch 1) has a **kit** of 2-3 themed me
 
 ## Balance check
 `URL=http://127.0.0.1:PORT/ node tools/balance/bosskits_ab.mjs out.json 3` runs boss-only fights per boss at par kit; run it against a baseline dev server and the new one and compare clear rate / deaths. The harness bot is shape-aware (flees lines/cones/rings, walks to safe circles). Tests: `tests/boss_kits.mjs`, screenshots `tests/boss_shots.mjs` -> `shots/bosses/`.
+
+## Resolution audit (tests/boss_resolve.mjs)
+Every ground telegraph of all 32 bosses is instrumented during a 110 s fight (HP held in thirds so every phase fires). When a telegraph's windup ends, the real `tickZone` is run on a clone with a probe target inside it and the effect is measured (damage, heat, push/pull, hook, or projectiles spawned within 0.7 s). The test fails on:
+- **orphan**: no area that can ever affect anything, or no measurable effect (ghost-only visuals such as hex shields and buff tethers are exempt: their consequence is the damage-reduction window);
+- **cancelled**: removed before its windup finished (found and fixed: the zone cap used to drop the oldest zones, cancelling unresolved spiral sigils; it now sheds already-fired zones first);
+- **never resolves** (life <= windup), **no tell** (damaging with windup < 0.3 s), **too brief** (< 0.6 s), **negligible** (damage < 3% max HP).
+
+Findings fixed: the gapped shockwave probe artefact (ring band moves, probe now follows it); fan/gapring volleys count as resolved by their projectiles; breaker sigils cancelled by the zone cap. Final run: 222 telegraph kinds audited across 32 bosses, 0 flagged (see the test output).
+
+Pylons: cast once per HP phase, destroyable (1.8x HP), self-shut-down after 20 s, snipe cadence 11 s so a fight can never stall on them. Kit cadence is scaled by `KIT_CD_SCALE` (2.0) with `KIT_FIRST_ADD` (8 s).
