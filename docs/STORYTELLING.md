@@ -25,3 +25,16 @@ The AWS Lambda ships `server/story_beat.mjs` + `server/story_catalog.json`, so t
 
 ## Testing
 `node tests/story_beats.mjs` (mocked OpenAI, limits, filter, http + serverless checks, browser: one beat per run, card placement/dismiss, settings toggle, offline fallback; needs the dev server via `URL=`). `node tools/story_smoke.mjs` makes real calls and prints only generated text.
+
+## Useful lines (story hints)
+Every Fixer line carries one actionable hint built from real game data (`src/content/story_hints.ts`):
+* **Next job**: the first unlocked, uncleared dungeon in the player's level band, and its boss.
+* **Mechanic + counter**: one of that boss's signature kit mechanics (`src/content/boss_kits.ts`, docs/BOSSES.md), with `MECH_HINT[mech].counter`.
+* **Gear gap**: the stat that counters the mechanic (move / HP / damage). If it's no better than ~stock (under 1.1x), the line says which parts to upgrade.
+  Otherwise it gives a **reward lead** (the top item in that boss's loot pool).
+* **Last run**: cleared or left early.
+
+The client sends ids and enums only (`hint:{dungeon,mech,gap,fail,reward}`). The proxy validates them against `server/story_catalog.json`
+(`bosses`, `mechs`, `gaps`, `jobs`; regenerate with `node tools/gen_story_ids.mjs` after changing kits or loot) and passes resolved facts to the model.
+AI lines that don't contain the mechanic keyword are rejected. Canned lines (`cannedHint`) use the same facts, so they're just as useful.
+In the story panel the keyword is highlighted, and its tooltip shows the mechanic's tell and counter. Tests: `tests/story_hints.mjs`.
