@@ -8,6 +8,7 @@ import { drawCosmetics, drawTrail } from './cosmetics';
 import { PlayerAnimator, Dir8, DIR_ORDER, dirFromWorld } from './sprites';
 import { persist } from './state';
 import { track, fmtUsd } from './analytics';
+import { equipSound, flourish, ORANGE, PURPLE } from './cosfx';
 import { CATALOG, SKU_BY_ID, Sku, activeOrder, cancelOrder, confirmPurchase, skuAvail, startPurchase } from './store';
 type UIx = any;
 type Look = Partial<Record<CosSlot, string>>;
@@ -18,7 +19,7 @@ const rc = (r: Rarity) => RARITY_COLOR[r];
 export const WD = {
   tab: 'all' as 'all' | 'sets' | CosSlot, show: 'all' as 'owned' | 'all' | 'store', sel: '', msg: '',
   staged: {} as Partial<Record<CosSlot, string | null>>, set: '' as string,
-  dir: 0 as Dir8, dirF: 0, phase: 'idle' as 'idle' | 'confirm' | 'processing', orderId: '', buySku: '',
+  dir: 0 as Dir8, dirF: 0, showcase: false, phase: 'idle' as 'idle' | 'confirm' | 'processing', orderId: '', buySku: '',
 };
 export const OUTFIT_SLOTS = 3;
 export const NEW_DAYS = 7;
@@ -62,7 +63,7 @@ export function revert(s: any) { const n = lookDiff(s).length; WD.staged = {}; W
 /** Apply: commit owned staged pieces to the character. Unowned pieces stay staged as previews. */
 export function applyLook(s: any): { applied: number; needBuy: number } { let applied = 0, needBuy = 0;
   for (const [sl, id] of Object.entries(WD.staged) as [CosSlot, string | null][]) { if (id === null) { equipCos(s, null, sl); delete WD.staged[sl]; applied++; } else if (ownsCos(s, id)) { equipCos(s, id); delete WD.staged[sl]; applied++; } else needBuy++; }
-  if (applied) { persist(s); track('dr_apply', undefined, { applied, needBuy }); } if (!needBuy) WD.set = ''; return { applied, needBuy }; }
+  if (applied) { equipSound(Object.values(wornLook(s)).map(id => COS_BY_ID[id!])); persist(s); track('dr_apply', undefined, { applied, needBuy }); } if (!needBuy) WD.set = ''; return { applied, needBuy }; }
 /** Rotate the model by `step` notches (45 degrees each). */
 export function rotate(step: number, via = 'button') { WD.dir = (((WD.dir + step) % 8) + 8) % 8 as Dir8; track('dr_rotate', undefined, { dir: DIR_ORDER[WD.dir], via }); }
 /** What the Buy button buys: the staged set if one is staged, else the selected unowned store piece. */
@@ -107,7 +108,7 @@ export function wardrobeHtml(ui: UIx): string {
   const outfits = Array.from({ length: OUTFIT_SLOTS }, (_, i) => { const o = c.outfits?.[i]; return `<button class="btn mini ${o ? '' : 'empty'}" data-act="wd-load" data-i="${i}" ${o ? '' : 'disabled'} data-tip="${esc(o ? '<b>' + o.n + '</b><br>' + (Object.values(o.eq).map(id => esc(COS_BY_ID[id!]?.name || '')).join('<br>') || 'Bare') + '<br><i>Click: preview it</i>' : 'Empty outfit slot')}">L${i + 1}</button>`; }).join('') + `<button class="btn mini" data-act="wd-save" ${need.length ? 'disabled' : ''} data-tip="${esc(need.length ? 'Buy the previewed store pieces first' : 'Save this preview as an outfit (fills the first empty slot, else L1)')}">Save</button>`;
   return `<div class="drwrap" data-dressing><div class="drstage">
       <canvas id="wdprev" width="300" height="360" aria-label="Character preview, facing ${DIR_ORDER[WD.dir]}. Drag to rotate." tabindex="0"></canvas>
-      <div class="drrot"><button class="btn" data-act="wd-rot" data-d="-1" aria-label="Rotate left" data-tip="Rotate left (or drag the model)">⟲</button><span class="mut drdir">${DIR_ORDER[WD.dir]}</span><button class="btn" data-act="wd-rot" data-d="1" aria-label="Rotate right" data-tip="Rotate right (or drag the model)">⟳</button></div>
+      <div class="drrot"><button class="btn" data-act="wd-rot" data-d="-1" aria-label="Rotate left" data-tip="Rotate left (or drag the model)">⟲</button><span class="mut drdir">${DIR_ORDER[WD.dir]}</span><button class="btn" data-act="wd-rot" data-d="1" aria-label="Rotate right" data-tip="Rotate right (or drag the model)">⟳</button><button class="btn ${WD.showcase ? 'primary' : ''}" data-act="wd-showcase" aria-pressed="${WD.showcase}" data-tip="Showcase: turn the model and loop the rarity reveal and animations">▶</button></div>
       <div class="drdiffs" aria-label="Changes vs your current look">${diffHtml}</div>
       <div class="drbar"><button class="btn primary" data-act="wd-apply" ${applyN ? '' : 'disabled'} data-tip="${esc(applyN ? 'Wear the previewed owned pieces' + (need.length ? ' (store pieces stay previews until bought)' : '') : 'Nothing owned to apply')}">Apply${applyN ? ' ' + applyN : ''}</button><button class="btn" data-act="wd-revert" ${diff.length ? '' : 'disabled'} data-tip="Back to your current look">Revert</button>${buy}</div></div>
     <div class="drright"><div class="wdtabs">${tabs}</div>
@@ -128,6 +129,7 @@ export function wardrobeClick(ui: UIx, el: HTMLElement, a: string): boolean {
     case 'wd-unslot': WD.staged[el.dataset.slot as CosSlot] = null; break;
     case 'wd-apply': case 'wd-equip': { const r = applyLook(s); WD.msg = r.applied ? 'Applied.' + (r.needBuy ? ' ' + r.needBuy + ' store piece(s) still preview only.' : '') : r.needBuy ? 'Buy the previewed store pieces first.' : ''; if (r.applied) g.toast?.('Look applied'); break; }
     case 'wd-revert': revert(s); break;
+    case 'wd-showcase': WD.showcase = !WD.showcase; track('dr_preview', undefined, { showcase: WD.showcase }); break;
     case 'wd-rot': rotate(+el.dataset.d! || 1); break;
     case 'wd-save': { const c = cosOf(s); let i = (c.outfits || []).findIndex(o => !o); if (i < 0) i = (c.outfits || []).length < OUTFIT_SLOTS ? (c.outfits || []).length : 0; WD.msg = saveOutfit(s, i) ? 'Saved as L' + (i + 1) + '.' : 'Buy the previewed store pieces first.'; break; }
     case 'wd-load': loadOutfit(s, +el.dataset.i!); WD.msg = 'Previewing L' + (+el.dataset.i! + 1) + '. Apply to wear it.'; break;
@@ -163,7 +165,7 @@ export function wardrobeAfter(ui: UIx) {
   cv.onpointermove = e => { if (dragX === null) return; acc += e.clientX - dragX; dragX = e.clientX; while (Math.abs(acc) >= 40) { const st = acc > 0 ? 1 : -1; WD.dir = (((WD.dir + st) % 8) + 8) % 8 as Dir8; acc -= st * 40; turned = true; } };
   cv.onpointerup = cv.onpointercancel = () => { if (turned) { track('dr_rotate', undefined, { dir: DIR_ORDER[WD.dir], via: 'drag' }); const l = document.querySelector('.drdir'); if (l) l.textContent = DIR_ORDER[WD.dir]; cv.setAttribute('aria-label', 'Character preview, facing ' + DIR_ORDER[WD.dir] + '. Drag to rotate.'); } dragX = null; };
   cv.onkeydown = e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); rotate(e.key === 'ArrowLeft' ? -1 : 1, 'key'); ui.render(); document.getElementById('wdprev')?.focus(); } };
-  const W = cv.width, H = cv.height, fx = W / 2, fy = H - 46;
+  const W = cv.width, H = cv.height, fx = W / 2, fy = H - 46; let revSel = '', revT = -9, revTier: string | null = null, lastShow = 0, lastTurn = 0;
   const frame = () => { if (!document.getElementById('wdprev')) return; const now = performance.now(), dt = Math.min(.1, (now - last) / 1000); last = now; t += dt;
     // smooth snap: dirF eases toward the target notch along the short way round
     let dd = WD.dir - WD.dirF; dd = ((dd % 8) + 12) % 8 - 4; WD.dirF = Math.abs(dd) < .02 ? WD.dir : WD.dirF + dd * Math.min(1, dt * 14); WD.dirF = ((WD.dirF % 8) + 8) % 8;
@@ -175,7 +177,13 @@ export function wardrobeAfter(ui: UIx) {
     ctx.globalAlpha = .5 + .1 * Math.sin(t * 2); const rim = ctx.createRadialGradient(fx, fy, 20, fx, fy, 95); rim.addColorStop(0, 'rgba(0,0,0,0)'); rim.addColorStop(.8, glow + '55'); rim.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = rim; ctx.beginPath(); ctx.ellipse(fx, fy, 95, 26, 0, 0, 7); ctx.fill(); ctx.restore();
     ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.beginPath(); ctx.ellipse(fx, fy, 52, 13, 0, 0, 7); ctx.fill();
     const u = 4.6, dA = Math.floor(WD.dirF) % 8 as Dir8, frac = WD.dirF - Math.floor(WD.dirF), dB = (dA + 1) % 8 as Dir8; const dShow = (frac < .5 ? dA : dB) as Dir8;
-    const k = { c: ctx, x: fx, y: fy, u, t, moving: false, face: FACE[dShow] };
+    const k = { c: ctx, x: fx, y: fy, u, t, moving: false, face: FACE[dShow], id: 'dr' };
+    // rarity reveal: selecting a purple/orange piece plays a beam + burst + tinted spotlight (orange bigger, longer, brighter); showcase loops it
+    if (sel && look[sel.slot] === sel.id && sel.id !== revSel) { revSel = sel.id; if (sel.rarity === 'orange' || sel.rarity === 'purple') { revT = t; revTier = sel.rarity; flourish('dr', -1e9); equipSound([sel]); } }
+    if (!sel || look[sel.slot] !== sel.id) revSel = '';
+    if (WD.showcase && !reducedFx()) { if (t - lastTurn > 1.6) { lastTurn = t; WD.dir = ((WD.dir + 1) % 8) as Dir8; } const tops = list.filter(x => x.rarity === 'orange' || x.rarity === 'purple'); if (tops.length && t - lastShow > 5) { lastShow = t; revT = t; revTier = tops.some(x => x.rarity === 'orange') ? 'orange' : 'purple'; } }
+    (window as any).__drReveal = { t: t - revT, tier: revTier };
+    if (revTier && t - revT < (revTier === 'orange' ? 2.2 : 1.4)) drawReveal(ctx, fx, fy, u, t - revT, revTier as any, W, H, reducedFx());
     const tr = list.find(x => x.slot === 'trail'); if (tr) drawTrail(ctx, Array.from({ length: 14 }, (_, i) => ({ x: fx - 8 - i * 7, y: fy + (i % 2) * 2, t: t - i * .06 })), t, u, tr);
     drawCosmetics(k, list, 'back'); let drew = false;
     if (anim) { try { const body = applyCosmeticVariants(bodyOf({ ...s, cosmetics: { owned: {}, equipped: {} } } as any, null), { cosmetics: { owned: Object.fromEntries(list.map(x => [x.id, 1])), equipped: look } } as any); anim.setBody(body); anim.anim = 'idle'; anim.t = t;
@@ -190,4 +198,13 @@ export function wardrobeAfter(ui: UIx) {
 }
 /** test / console hook */
 if (typeof window !== 'undefined') (window as any).__dr = { WD, previewLook: () => previewLook((window as any).__game.save), wornLook: () => wornLook((window as any).__game.save), diff: () => lookDiff((window as any).__game.save), activeOrder };
+const reducedFx = () => document.body.classList.contains('reducefx');
+/** Dressing-room rarity entrance: light beam from above, expanding burst ring, tinted spotlight. Orange: wider beam, double ring, flash, longer. Reduced FX: a static tinted spotlight only. */
+function drawReveal(c: CanvasRenderingContext2D, x: number, y: number, u: number, e: number, tier: 'orange' | 'purple', W: number, H: number, red: boolean) {
+  const O = tier === 'orange', col = O ? ORANGE : PURPLE, dur = O ? 2.2 : 1.4, k = Math.max(0, 1 - e / dur); c.save(); c.globalCompositeOperation = 'lighter';
+  const sp = c.createRadialGradient(x, y - 30 * u, 4, x, y - 30 * u, (O ? 170 : 120)); sp.addColorStop(0, col + (O ? '88' : '55')); sp.addColorStop(1, col + '00'); c.globalAlpha = red ? .6 : k; c.fillStyle = sp; c.fillRect(0, 0, W, H);
+  if (!red) { const bw = (O ? 46 : 26) * (0.4 + .6 * Math.min(1, e * 4)); const g = c.createLinearGradient(x - bw / 2, 0, x + bw / 2, 0); g.addColorStop(0, col + '00'); g.addColorStop(.5, O ? '#fff1c4' : '#ead8ff'); g.addColorStop(1, col + '00'); c.globalAlpha = k * (O ? .9 : .6); c.fillStyle = g; c.fillRect(x - bw / 2, 0, bw, y);
+    for (let i = 0; i < (O ? 2 : 1); i++) { const r = (e - i * .18) * (O ? 220 : 150); if (r <= 0) continue; c.globalAlpha = k; c.strokeStyle = i ? '#fff1c4' : col; c.lineWidth = O ? 4 : 2.5; c.beginPath(); c.ellipse(x, y, r, r * .33, 0, 0, 7); c.stroke(); }
+    if (O && e < .18) { c.globalAlpha = (1 - e / .18) * .55; c.fillStyle = '#fff1c4'; c.fillRect(0, 0, W, H); } }
+  c.restore(); }
 export { checkAchievements };

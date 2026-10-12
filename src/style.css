@@ -693,3 +693,12 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 .mltile{ width:48px; height:48px; } .mltile.on{ outline:2px solid #3ef0ff; }
 .mlrow{ display:flex; align-items:center; gap:8px; min-width:0; } .mlfrom{ max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .mlbody .actrow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .mlbody select{ flex:0 1 240px; min-width:0; }
+/* Rarity FX on tiles (docs/RARITY_FX.md): orange = animated rotating gold-orange border + glow + sweep; purple = slow soft sheen. */
+@property --rfa{ syntax:'<angle>'; inherits:false; initial-value:0deg; }
+.wdgrid .tile.r-orange,.stgrid .tile.r-orange{ border-color:transparent!important; background:linear-gradient(#1e1a14,#1e1a14) padding-box,conic-gradient(from var(--rfa),#ff9a1f,#fff1c4,#ff5a1f,#ffd27a,#ff9a1f) border-box; border-width:2px; box-shadow:0 0 10px rgba(255,154,31,.75),inset 0 0 8px rgba(255,154,31,.45)!important; animation:rfspin 3s linear infinite; overflow:hidden; }
+.wdgrid .tile.r-orange::after,.stgrid .tile.r-orange::after{ content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 35%,rgba(255,241,196,.55) 50%,transparent 65%); background-size:250% 100%; animation:rfsweep 2.4s ease-in-out infinite; pointer-events:none; }
+.wdgrid .tile.r-purple::after,.stgrid .tile.r-purple::after{ content:''; position:absolute; inset:0; background:linear-gradient(105deg,transparent 40%,rgba(226,200,255,.28) 50%,transparent 60%); background-size:250% 100%; animation:rfsweep 4.5s ease-in-out infinite; pointer-events:none; }
+.wdgrid .tile.r-purple,.stgrid .tile.r-purple{ box-shadow:0 0 6px rgba(180,107,255,.55),inset 0 0 6px rgba(180,107,255,.3)!important; overflow:hidden; }
+@keyframes rfspin{ to{ --rfa:360deg; } } @keyframes rfsweep{ 0%{ background-position:150% 0; } 100%{ background-position:-100% 0; } }
+body.reducefx .tile.r-orange,body.reducefx .tile.r-orange::after,body.reducefx .tile.r-purple::after{ animation:none!important; }
+@media (prefers-reduced-motion:reduce){ .tile.r-orange,.tile.r-orange::after,.tile.r-purple::after{ animation:none!important; } }
