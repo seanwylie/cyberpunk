@@ -227,6 +227,65 @@ WORLD6_MOODS = {
 WORLD6 = {f'{t}_{m}': mp + d + ". " + AMB for t, d in WORLD6_TOWNS.items() for m, mp in WORLD6_MOODS.items()}
 for _n, _p in WORLD6.items(): TRACKS[_n] = (90, True, _p)
 LOWRATE |= set(WORLD6)
+# --- pack 7: MUSIC_DIRECTION (docs/MUSIC_DIRECTION.md). Loneliness turning into rage, unease turning into emergency.
+# Prompts describe instruments, tempo, structure and mood only; never name or imitate existing works or artists.
+D7 = "instrumental, no vocals, no lyrics, raw and cinematic, dark near-future city, seamless loop."
+CORE7 = {
+ 'town': (90, True, "Lonely repeating felt piano figure, 76 bpm, D minor. A simple four-note motif repeats with tiny variations, soft electronic pulse underneath like a slow heartbeat, faint distant wordless choir pad far away in reverb, empty streets, mournful and hypnotic, never resolves, quiet dynamics. " + D7),
+ 'traversal_a': (75, True, "Insistent clean electric guitar ostinato, 96 bpm, E minor. One short repeated figure with long delay, sparse low tom pulse, slowly thickening tremolo drone, uneasy and watchful, steady tension that never releases. " + D7),
+ 'traversal_b': (75, True, "Cold hypnotic minimalism, 100 bpm, B minor. Repeating muted piano eighth notes, ticking electronic pulse, low bowed cello drone, distant metallic textures, rising unease held at a simmer. " + D7),
+ 'combat_a': (75, True, "Escalating post-rock assault, 132 bpm, E minor. The same insistent repeated guitar figure now distorted, driving floor-tom and snare pattern, layered tremolo guitars, abrasive noise swells, frightening and relentless, high intensity throughout. " + D7),
+ 'combat_b': (75, True, "Urgent orchestral-electronic chase, 140 bpm, C minor. Driving taiko-like percussion, staccato low strings ostinato, pulsing synth bass, abrasive brass-like stabs, panic and momentum, high intensity throughout. " + D7),
+ 'boss_fight': (80, True, "Overwhelming wall of noise boss battle, 138 bpm, D minor. A simple repeating guitar motif buried under layers of distorted tremolo guitars and feedback, massive pounding war drums, low brass-like swells, relentless and inevitable, maximum intensity throughout. " + D7),
+ 'boss_reveal': (28, False, "Cinematic boss entrance, instrumental. Starts with a lone repeating piano note and a faint electronic pulse, a tremolo guitar swell rises underneath, distant percussion builds, ends in a sudden roaring wall of sound."),
+ 'clear': (24, False, "Short aftermath resolution, instrumental. Slow warm ambient synth swell rising gently like light through haze, soft sustained chord, calm and almost spiritual relief, quiet ending."),
+}
+TRACKS.update(CORE7)
+TOWN7 = {
+ 'town_dir_vigil': "Solitary piano in an empty hall, 66 bpm, A minor. Slow repeating three-note figure, long sustain, faint tape hiss, distant wind, lonely and mournful.",
+ 'town_dir_pulse': "Hypnotic piano and electronic pulse, 104 bpm, F# minor. Repeating eighth-note piano pattern, soft analog pulse bass, ticking hi-hat, faraway wordless voices in reverb, cool and detached unease.",
+ 'town_dir_embers': "Quiet post-rock ambience, 70 bpm, D major-ish melancholic. Clean guitar harmonics with long delay, warm drone, soft brushed cymbal swells, hopeful but weary.",
+ 'town_dir_static': "Lonely radio night, 80 bpm, E minor. Sparse piano notes over a low electronic pulse, gentle shortwave static texture, slow pad, isolated and watchful.",
+ 'town_dir_lantern': "Gentle ambient piano loop, 72 bpm, C minor. Soft repeating motif, subtle cello drone, distant city hum, intimate and mournful.",
+ 'town_dir_glass': "Cold minimalist piano and synth, 96 bpm, B minor. Interlocking repeating piano lines, glassy bell tones, quiet sequenced pulse, clinical and hypnotic.",
+ 'town_dir_dust': "Desolate guitar ambience, 62 bpm, G minor. Slow reverbed electric guitar figure repeating, low bowed bass drone, dry wind texture, vast empty spaces.",
+ 'town_dir_choir': "Distant voices ambient, 68 bpm, D minor. Wordless far-off choir pad, slow piano chords, soft sub pulse, spiritual calm with a thread of unease.",
+ 'town_dir_rain': "Rain on concrete, 84 bpm, A minor. Repeating muted piano figure, soft electronic pulse, gentle rain texture, slow swelling strings pad, reflective and lonely.",
+ 'town_dir_tick': "Clockwork unease, 108 bpm, C# minor. Ticking electronic pulse, repeating two-note piano ostinato, low synth drone slowly opening its filter, controlled tension.",
+ 'town_dir_hollow': "Hollow shelter ambience, 60 bpm, F minor. Beatless warm drone, sparse distant piano notes, faint metallic resonance, safe but haunted.",
+ 'town_dir_signal': "Pulsing signal ambient, 100 bpm, E minor. Soft repeating synth pulse, slow descending piano line, distant processed voices without words, cool and hypnotic.",
+ 'town_dir_ash': "Mournful strings and piano, 64 bpm, B-flat minor. Slow repeating cello phrase, quiet piano answers, soft room tone, grief held quietly.",
+ 'town_dir_neon': "Late-night hypnotic groove, 92 bpm, G minor. Muted soft kick, repeating electric piano figure, pulsing synth bass, sparse delayed guitar notes, cool and lonely.",
+ 'town_dir_ascend': "Slow rising ambient, 58 bpm, D major. Long swelling synth chords that climb gently, soft high harmonics, no drums, serene and almost spiritual.",
+ 'town_dir_watch': "Watchful minimal post-rock, 88 bpm, A minor. Single clean guitar ostinato, soft mallet toms, slow tremolo swell that recedes before it peaks, uneasy calm.",
+}
+for _n, _p in TOWN7.items(): TRACKS[_n] = (120, True, _p + " quiet dynamics, no big drops. " + D7)
+LOWRATE |= set(TOWN7)
+DUNGEON7 = {
+ 'calm_dir_motif': "Insistent dungeon ambience, 92 bpm, E minor. A simple repeated guitar figure with delay, slow low drone, distant percussion hits, tension held, never resolves.",
+ 'calm_dir_corridor': "Uneasy corridor minimalism, 100 bpm, C minor. Repeating muted piano eighths, ticking pulse, abrasive metallic textures far away, low cello drone.",
+ 'calm_dir_vast': "Vast empty underground, 64 bpm, D minor. Wide reverbed guitar drones, sparse low piano notes, distant rumble, deeply unsettling emptiness.",
+ 'calm_dir_creep': "Creeping escalation, 108 bpm, F minor. Soft repeating synth pulse, low tom pattern, tremolo guitar slowly rising in volume, unease growing.",
+}
+for _n, _p in DUNGEON7.items(): TRACKS[_n] = (120, True, _p + " quiet to moderate dynamics. " + D7)
+LOWRATE |= set(DUNGEON7)
+HI7 = {  # escalation stems: crossfaded in when combat stays intense (src/music.ts ESCALATE)
+ 'elite_escalate_a': "Maximum escalation post-rock assault, 132 bpm, E minor. Repeated distorted guitar figure swallowed by walls of tremolo guitars and feedback, pounding drums, crashing cymbals, overwhelming noise, relentless.",
+ 'elite_escalate_b': "Maximum escalation orchestral-electronic emergency, 140 bpm, C minor. Thunderous percussion ensemble, frantic low strings ostinato, blaring brass-like alarms, distorted synth pulses, mass panic.",
+}
+for _n, _p in HI7.items(): TRACKS[_n] = (75, True, _p + " " + D7)
+BOSS7 = {
+ 'boss_wall_dread': "Slow-building boss battle, 120 bpm, A minor. Repeating guitar motif grows from clean to distorted, heavy half-time drums, low brass-like swells, dread becoming fury.",
+ 'boss_wall_siege': "Siege boss battle, 140 bpm, D minor. Driving war-drum percussion ensemble, staccato strings, abrasive synth textures, distorted guitar wall, urgent and relentless.",
+ 'boss_wall_storm': "Storm of noise boss battle, 150 bpm, E minor. Layered tremolo guitars and feedback, blast-like drums, pulsing electronic bass, frightening and overwhelming.",
+ 'boss_wall_end': "Final apocalyptic boss battle, 160 bpm, C minor. Massive orchestral-electronic hybrid, pounding percussion, repeating piano motif turned brutal, wall of distorted guitars, siren-like synths, inevitable doom.",
+}
+for _n, _p in BOSS7.items(): TRACKS[_n] = (75, True, _p + " maximum intensity, no breakdown. " + D7)
+TRACKS['theme_main'] = (120, True, "Main theme, 84 bpm, D minor. Opens with a lonely repeating piano motif and soft electronic pulse, a clean guitar joins with the same figure, percussion slowly enters, layers of tremolo guitars and low strings build gradually into a vast roaring crescendo, then fall back to the lone piano. Loneliness turning into rage. " + D7)
+LOWRATE.add('theme_main')
+STING['stinger_ascent'] = (14, 10.0, "Ascent arrival sting, instrumental. Slow luminous synth swell rising from silence, warm sustained major chord, soft high shimmer, spiritual calm and wonder, ends cleanly.")
+TRACKS['stinger_ascent'] = (14, False, STING['stinger_ascent'][2])
+NEW7 = list(CORE7) + list(TOWN7) + list(DUNGEON7) + list(HI7) + list(BOSS7) + ['theme_main', 'stinger_ascent']
 XF = 2.0
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'
@@ -258,6 +317,7 @@ def process(name, loop):
     print(name, f'{dur(out):.1f}s', out.stat().st_size//1024, 'KB')
 if __name__ == '__main__':
     force = '--force' in sys.argv; names = [a for a in sys.argv[1:] if not a.startswith('--')] or list(TRACKS)
+    if '--pack7' in sys.argv: names = NEW7
     for n in names:
         s, loop, p = TRACKS[n]
         if (OUT/f'{n}.mp3').exists() and not force: print('skip', n); continue
