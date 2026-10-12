@@ -8,15 +8,16 @@ import { CATALOG_VERSION } from './catalog_version';
 import { ABILITY_BY_ID } from './abilities/registry';
 import type { Save } from './state';
 import type { BuildSlots } from './catalog_snap';
+import { TRAIT_BY_ID, describeEffect } from './traits';
 
 export const BUILD_CODE_PREFIX='WVB1.'; export const BUILD_CODE_MAX=3000;
-export interface BuildExport { v:1; game:string; cat:string; lvl:number; slots:BuildSlots; picks?:(string|null)[]; /** made while the IDKFA dev cheat was on */ cheat?:true }
+export interface BuildExport { v:1; game:string; cat:string; lvl:number; slots:BuildSlots; picks?:(string|null)[]; /** confirmed trait ids [L10, L20?] (docs/TRAITS.md) */ traits?:string[]; /** made while the IDKFA dev cheat was on */ cheat?:true }
 const b64e=(s:string)=>{ const b=btoa(Array.from(new TextEncoder().encode(s),c=>String.fromCharCode(c)).join('')); return b.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); };
 const b64d=(s:string)=>{ let t=s.replace(/-/g,'+').replace(/_/g,'/'); while(t.length%4) t+='='; return new TextDecoder('utf-8',{fatal:true}).decode(Uint8Array.from(atob(t),c=>c.charCodeAt(0))); };
 
 export function exportBuild(s:Save):BuildExport{
   const slots:BuildSlots={}; for(const sl of SLOTS){ const u=s.installed[sl]; const it=u?s.items.find(i=>i.uid===u):undefined; if(it) slots[sl]={ d:it.def, c:[...it.chips] }; }
-  const picks=s.abPick; return { v:1, game:BUILD_ID, cat:CATALOG_VERSION, lvl:s.level|0, slots, ...(Array.isArray(picks)?{picks:picks.slice(0,3)}:{}), ...((s as any).idkfa?.on?{cheat:true as const}:{}) };
+  const picks=s.abPick; const tr=[(s as any).traits?.l10?.id,(s as any).traits?.l20?.id].filter((x:any)=>typeof x==='string'); return { v:1, game:BUILD_ID, cat:CATALOG_VERSION, lvl:s.level|0, slots, ...(Array.isArray(picks)?{picks:picks.slice(0,3)}:{}), ...(tr.length?{traits:tr}:{}), ...((s as any).idkfa?.on?{cheat:true as const}:{}) };
 }
 export const encodeBuild=(b:BuildExport)=>BUILD_CODE_PREFIX+b64e(JSON.stringify(b));
 const ID=/^[A-Za-z0-9_-]{1,64}$/;
@@ -35,7 +36,8 @@ export function decodeBuild(input:string):{ok:true;build:BuildExport}|{ok:false;
     if(!v||typeof v.d!=='string'||!ID.test(v.d)||!Array.isArray(v.c)||v.c.length>8||!v.c.every((c:any)=>typeof c==='string'&&ID.test(c))) return {ok:false,why:'bad entry in '+sl}; slots[sl]={d:v.d,c:[...v.c]}; }
   let picks:(string|null)[]|undefined; if(j.picks!=null){ if(!Array.isArray(j.picks)||j.picks.length>3||!j.picks.every((p:any)=>p===null||(typeof p==='string'&&ID.test(p)))) return {ok:false,why:'bad ability picks'}; picks=j.picks; }
   if(j.cheat!=null&&j.cheat!==true) return {ok:false,why:'bad cheat flag'};
-  return {ok:true,build:{v:1,game:j.game,cat:j.cat,lvl:j.lvl,slots,...(picks?{picks}:{}),...(j.cheat?{cheat:true as const}:{})}};
+  let traits:string[]|undefined; if(j.traits!=null){ if(!Array.isArray(j.traits)||j.traits.length>2||!j.traits.every((p:any)=>typeof p==='string'&&ID.test(p))) return {ok:false,why:'bad traits'}; traits=[...j.traits]; }
+  return {ok:true,build:{v:1,game:j.game,cat:j.cat,lvl:j.lvl,slots,...(picks?{picks}:{}),...(traits?{traits}:{}),...(j.cheat?{cheat:true as const}:{})}};
 }
 export function buildUrl(code:string, base=(typeof location!=='undefined'?location.origin+location.pathname:'https://play.seanwylie.ca/')){ return base+'?build='+encodeURIComponent(code); }
 /** Layout for computeBuild from an export: only ids that exist in THIS catalog; chips that no longer fit are dropped (diffBuild reports both). */
@@ -45,7 +47,7 @@ export const abName=(a:string)=>ABILITY_BY_ID[a]?.name||(ABILITIES as any)[a]?.n
 export function buildText(b:BuildExport):string{
   const r=computeBuild(layoutOf(b),b.lvl,{HI:0,PS:0,MM:0} as any,[],b.picks||null); const st=r.stats;
   const lines=[`# Warranty Void build (Lv ${b.lvl})${b.cheat?' [IDKFA CHEAT]':''}`,`Game ${b.game} · catalog ${b.cat}`,'',...SLOTS.filter(sl=>b.slots[sl]).map(sl=>{ const v=b.slots[sl]!, d=ITEM_BY_ID[v.d]; return `- ${SLOT_LABEL[sl]}: ${d?d.name+' ('+d.rarity+', '+MFR[d.mfr].name+')':v.d+' (unknown in this catalog)'}${v.c.length?' · chips: '+v.c.map(c=>(CHIPS as any)[c]?.name||c).join(', '):''}`; }),'',
-    `Abilities: ${r.abilities.map(abName).join(', ')||'none'}`,`HP ${Math.round(st.maxHp)} · DMG x${st.dmg.toFixed(2)} · ATK x${st.atkSpeed.toFixed(2)} · COOL x${st.cooling.toFixed(2)} · MOVE x${st.move.toFixed(2)} · ARM ${st.armor.toFixed(1)}`,
+    `Abilities: ${r.abilities.map(abName).join(', ')||'none'}`,...(b.traits?.length?[`Traits: ${b.traits.map(t=>TRAIT_BY_ID[t]?TRAIT_BY_ID[t].name+' ('+TRAIT_BY_ID[t].effects.map(describeEffect).join('; ')+')':t+' (unknown in this catalog)').join(', ')}`]:[]),`HP ${Math.round(st.maxHp)} · DMG x${st.dmg.toFixed(2)} · ATK x${st.atkSpeed.toFixed(2)} · COOL x${st.cooling.toFixed(2)} · MOVE x${st.move.toFixed(2)} · ARM ${st.armor.toFixed(1)}`,
     `Weapon: ${r.weaponName}`,r.mix.mfrs.length>1?`Mixed makers: -${Math.round(r.mix.coolingPenalty*100)}% cooling`:'',r.conflicts.length?'Conflicts: '+r.conflicts.join('; '):'' ];
   return lines.filter((l,i)=>l!==''||i<4).join('\n').trim()+'\n';
 }

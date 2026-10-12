@@ -686,3 +686,10 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 .trchip{ display:inline-block; padding:1px 8px; border:1px solid #3ef0ff; border-radius:10px; font-size:.9em; white-space:nowrap; }
 .trrecog{ font-style:italic; }
 .wmnode.locked i{ background:#2a2d33; box-shadow:none; border:2px dashed #6b7280; } .wmnode.locked span{ color:#7b8190; }
+.bdtraits{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:4px 0; }
+/* mail (src/mailui.ts) */
+.mlbody{ display:block; width:100%; flex:1 1 auto; min-width:0; }
+.mlgrid,.mlinbox{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.mltile{ width:48px; height:48px; } .mltile.on{ outline:2px solid #3ef0ff; }
+.mlrow{ display:flex; align-items:center; gap:8px; min-width:0; } .mlfrom{ max-width:120px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mlbody .actrow{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; } .mlbody select{ flex:0 1 240px; min-width:0; }

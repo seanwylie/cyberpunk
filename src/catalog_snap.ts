@@ -21,12 +21,17 @@ export function snapshot():Snap{
 }
 const GROUP:Record<string,string>={ handL:'hand',handR:'hand',armL:'arm',armR:'arm',legL:'leg',legR:'leg',footL:'foot',footR:'foot',torso:'torso',face:'face',brain:'brain' };
 export interface BuildSlots { [slot:string]:{ d:string; c:string[] } }
-export type ChangeKind='removed'|'renamed'|'stats'|'abilities'|'ability'|'chip_removed'|'chip_renamed'|'chip_stats'|'chip_fit'|'sockets'|'conflict'|'combo';
+export type ChangeKind='trait'|'trait_removed'|'trait_renamed'|'removed'|'renamed'|'stats'|'abilities'|'ability'|'chip_removed'|'chip_renamed'|'chip_stats'|'chip_fit'|'sockets'|'conflict'|'combo';
 export interface Change { kind:ChangeKind; slot?:string; id:string; text:string; incompatible:boolean }
 const fmt=(o:Record<string,number>)=>Object.entries(o).map(([k,v])=>`${k} ${v>0?'+':''}${v}`).join(', ')||'none';
 /** What changed for THIS build between the catalog it was made with (old) and the current one (cur). Incompatible = the build cannot be shown as it was. */
-export function diffBuild(old:Snap, cur:Snap, slots:BuildSlots):Change[]{
+export function diffBuild(old:Snap, cur:Snap, slots:BuildSlots, traits:string[]=[]):Change[]{
   const out:Change[]=[]; const add=(c:Change)=>out.push(c);
+  // traits: catalogs older than the trait system have no traits block, so only removals against the CURRENT catalog are reported for them
+  for(const id of traits){ const o=old.traits?.[id], n=cur.traits?.[id]; if(!n){ add({kind:'trait_removed',id,text:`Trait ${o?.n||id} no longer exists`,incompatible:true}); continue; } if(!o) continue;
+    if(o.n!==n.n) add({kind:'trait_renamed',id,text:`Trait ${o.n} is now called ${n.n}`,incompatible:false});
+    if(JSON.stringify(o.e)!==JSON.stringify(n.e)) add({kind:'trait',id,text:`Trait ${n.n}: ${o.e.join('; ')} → ${n.e.join('; ')}`,incompatible:false});
+    if(n.t===2&&traits[0]&&!n.p.includes(traits[0])) add({kind:'trait',id,text:`Trait ${n.n} no longer builds on ${cur.traits?.[traits[0]]?.n||traits[0]}`,incompatible:true}); }
   const abSeen=new Set<string>();
   for(const [sl,v] of Object.entries(slots)){ const o=old.items[v.d], n=cur.items[v.d];
     if(!n){ add({kind:'removed',slot:sl,id:v.d,text:`${o?.n||v.d} no longer exists`,incompatible:true}); }

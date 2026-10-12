@@ -1,3 +1,4 @@
+import { inbox } from './mail';
 // Bank modal (town station). All state lives in Save.bank via src/bank.ts; this file only renders and handles `bk-*` actions.
 import { CHIPS, ChipId, ITEM_BY_ID, MFR, RARITY_COLOR, SLOT_LABEL } from './config';
 import { BANK_TABS_MAX, BANK_TAB_SLOTS, bankCapacity, bankOf, bankUsed, depositChip, depositCredits, depositItem, depositMany, entryName, entryRarity, filterEntries, lockerCapOf, lockerFree, lockerUsed, nextTabPrice, sortTab, storedItems, tabUsed, unlockTab, withdraw, withdrawCredits, withdrawMany, BankFilter } from './bank';
@@ -27,7 +28,7 @@ export function bankHtml(ui: UIx): string {
   const opt = (v: string, cur: string, n: string) => `<option value="${v}" ${v === cur ? 'selected' : ''}>${n}</option>`;
   const free = lockerFree(s);
   return `<div class="bankwrap" data-bank>
-    <div class="bkhead"><span class="bkcred"><b>Wallet</b> ${s.credits}c</span><span class="bkcred vault"><b>Vault</b> ${b.credits}c <small>(safe from loss)</small></span><span class="mut">Bank ${bankUsed(b)}/${bankCapacity(b)} slots · Locker ${lockerUsed(s)}/${lockerCapOf(s)}</span></div>
+    <div class="bkhead"><span class="bkcred"><b>Wallet</b> ${s.credits}c</span><span class="bkcred vault"><b>Vault</b> ${b.credits}c <small>(safe from loss)</small></span><span class="mut">Bank ${bankUsed(b)}/${bankCapacity(b)} slots · Locker ${lockerUsed(s)}/${lockerCapOf(s)}</span><button class="btn" data-act="ml-open" data-tip="Send items to your other characters, claim items sent here">Mail${inbox().length?' ('+inbox().length+')':''}</button></div>
     ${storagePromptHtml(ui.g, 'bank')}
     ${BK.msg ? `<div class="bkmsg" role="status">${esc(BK.msg)}</div>` : ''}
     <div class="bkcols">

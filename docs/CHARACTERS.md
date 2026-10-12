@@ -35,3 +35,21 @@ Party display name is per character: a custom name typed in the party panel is r
 - `CHAR_LIMIT = 10` (`src/chars.ts`).
 - Seasonal characters: **open** (TBD). Characters and their traits persist; account-wide unlocks persist across seasons.
 - Characters are local to the browser profile until accounts exist.
+
+## Item transfers (account mailbox)
+
+There was no mail system, so transfers use a minimal **account mailbox** (`src/mail.ts`, modal `mail`, opened from the **Bank > Mail** button):
+
+- Only **unequipped locker items owned by the sending character**. Equipped items, IDKFA cheat gear and anything that is not an item are refused.
+- **Traits are never transferable**; they are not items and stay with their character.
+- Socketed chips are **not** sent: they return to the sender's locker stock (chips are a per-character resource).
+- The receiver claims into their locker. Claiming needs the item's **level requirement** and free locker space; until then the mail waits (shown as Locked with the reason in the tooltip).
+- Mailbox cap: 50 (`MAIL_MAX`). Mail to a deleted character goes back to its sender.
+
+## IDKFA
+
+The IDKFA snapshot lives in each character's save, so the cheat is **per character**: turning it on for one character never touches another, and the `cheated` flag is per character too.
+
+## Build export
+
+Exports (JSON, code, link, text) include the character's confirmed traits (`traits: [L10, L20]`). The inspector shows them as short chips with the effects in the tooltip. Trait definitions are part of the catalog snapshot, so an old build link reports trait changes ("What changed"): changed effects, renames, removed traits (Incompatible) and level 20 traits that no longer build on the level 10 one.

@@ -8,7 +8,7 @@ export const ROSTER_KEY='wv_roster_v1';
 export const LEGACY_KEY='arpg-proto-save-v1';
 export const CHAR_KEY=(id:string)=>'wv_char_'+id;
 export interface CharSummary { id:string; name:string; level:number; created:number; played:number; trait1?:string|null; trait2?:string|null }
-export interface Account { settings?:any; purchases?:{ lockerBlocks:number; skins:string[] }; store?:any; cosOwned?:Record<string,number>; cosSeen?:Record<string,number>; cosOutfits?:any[] }
+export interface Account { settings?:any; purchases?:{ lockerBlocks:number; skins:string[] }; store?:any; cosOwned?:Record<string,number>; cosSeen?:Record<string,number>; cosOutfits?:any[]; /** account mailbox (src/mail.ts) */ mail?:any[] }
 export interface Roster { v:1; active:string; chars:CharSummary[]; account:Account; nextN:number }
 type KV={ get(k:string):string|null; set(k:string,v:string):void; del(k:string):void };
 export const lsKV:KV={ get:k=>{ try{ return localStorage.getItem(k); }catch{ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch{} }, del:k=>{ try{ localStorage.removeItem(k); }catch{} } };
@@ -32,7 +32,7 @@ export function applyAccount(s:any,a:Account){ if(!a) return s; if(a.settings) s
 /** Read the active character's raw save JSON (falls back to the legacy mirror). */
 export function activeRaw(kv:KV=lsKV):string|null{ const r=ensureRoster(kv); return kv.get(LEGACY_KEY)??kv.get(CHAR_KEY(r.active)); }
 /** Persist path: character data to its own key + legacy mirror; account fields + summary to the roster. */
-export function saveActive(json:string,s:any,kv:KV=lsKV){ const r=ensureRoster(kv); kv.set(CHAR_KEY(r.active),json); kv.set(LEGACY_KEY,json); r.account=extractAccount(s); const c=r.chars.find(x=>x.id===r.active); if(c){ c.level=s.level||1; c.played=Date.now(); c.trait1=s.traits?.l10?.id??null; c.trait2=s.traits?.l20?.id??null; } writeRoster(r,kv); }
+export function saveActive(json:string,s:any,kv:KV=lsKV){ const r=ensureRoster(kv); kv.set(CHAR_KEY(r.active),json); kv.set(LEGACY_KEY,json); r.account={ ...r.account, ...extractAccount(s) }; const c=r.chars.find(x=>x.id===r.active); if(c){ c.level=s.level||1; c.played=Date.now(); c.trait1=s.traits?.l10?.id??null; c.trait2=s.traits?.l20?.id??null; } writeRoster(r,kv); }
 export type CharResult={ ok:true; id:string }|{ ok:false; why:string };
 /** Free character creation, capped at CHAR_LIMIT. The new save is built by the caller's factory (state.newSave) so it gets the stock loadout. */
 export function createChar(name:string,make:()=>any,kv:KV=lsKV):CharResult{ const r=ensureRoster(kv); if(r.chars.length>=CHAR_LIMIT) return { ok:false, why:`Character limit reached (${CHAR_LIMIT}). Delete one to make room.` };
@@ -41,7 +41,8 @@ export function createChar(name:string,make:()=>any,kv:KV=lsKV):CharResult{ cons
 /** Switch: the caller must persist the current character first, then reload. */
 export function selectChar(id:string,kv:KV=lsKV):CharResult{ const r=ensureRoster(kv); if(!r.chars.some(c=>c.id===id)) return { ok:false, why:'No such character.' }; r.active=id; const raw=kv.get(CHAR_KEY(id)); if(raw) kv.set(LEGACY_KEY,raw); else kv.del(LEGACY_KEY); writeRoster(r,kv); return { ok:true, id }; }
 /** Delete (UI asks for a typed confirm). Deleting the active one switches to another; deleting the last leaves a fresh character 1. */
-export function deleteChar(id:string,kv:KV=lsKV):CharResult{ const r=ensureRoster(kv); const i=r.chars.findIndex(c=>c.id===id); if(i<0) return { ok:false, why:'No such character.' }; r.chars.splice(i,1); kv.del(CHAR_KEY(id));
+export function deleteChar(id:string,kv:KV=lsKV):CharResult{ const r=ensureRoster(kv); const i=r.chars.findIndex(c=>c.id===id); if(i<0) return { ok:false, why:'No such character.' }; r.chars.splice(i,1); kv.del(CHAR_KEY(id)); kv.del('wv_name_'+id);
+  /* mail addressed to the deleted character goes back to its sender (if that character still exists) */ if(r.account.mail) r.account.mail=r.account.mail.filter((m:any)=>m.to!==id||(m.from!==id&&r!.chars.some(c=>c.id===m.from))).map((m:any)=>m.to===id?{ ...m, to:m.from, fromName:'Returned' }:m);
   if(!r.chars.length){ kv.del(LEGACY_KEY); kv.del(ROSTER_KEY); const r2=ensureRoster(kv); r2.account=r.account; writeRoster(r2,kv); return { ok:true, id:r2.active }; }
   if(r.active===id){ writeRoster(r,kv); return selectChar(r.chars[0].id,kv); } writeRoster(r,kv); return { ok:true, id:r.active }; }
 export function renameChar(id:string,name:string,kv:KV=lsKV){ const r=ensureRoster(kv); const c=r.chars.find(x=>x.id===id); if(c){ c.name=name.replace(/[<>"&]/g,'').trim().slice(0,16)||c.name; writeRoster(r,kv); } }

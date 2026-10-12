@@ -5,6 +5,7 @@ import { computeBuild } from './build';
 import { ABILITY_BY_ID, describe } from './abilities/registry';
 import { exportBuild, encodeBuild, decodeBuild, buildUrl, buildText, layoutOf, abName, type BuildExport } from './buildcode';
 import { snapshot, diffBuild, type Change, type Snap } from './catalog_snap';
+import { TRAIT_BY_ID, describeEffect } from './traits';
 import { CATALOG_VERSION } from './catalog_version';
 type UIx = any;
 const esc=(s:string)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
@@ -15,7 +16,7 @@ const snapCache:Record<string,Snap>={};
 export async function loadSnap(cat:string, fetcher:(u:string)=>Promise<any>=u=>fetch(u).then(r=>r.ok?r.json():null)):Promise<Snap|null>{ if(cat===CATALOG_VERSION) return cur(); if(snapCache[cat]) return snapCache[cat];
   try{ const base=((import.meta as any).env?.BASE_URL as string)||'/'; const j=await fetcher(base+'catalog/v/'+cat+'.json'); if(j&&j.items){ snapCache[cat]=j; return j; } }catch{} return null; }
 /** Diff for a shared build: [] when same catalog, the changes, or 'unavailable' when the old snapshot cannot be found (shown as a warning, never silent). */
-export async function whatChanged(b:BuildExport, fetcher?:(u:string)=>Promise<any>):Promise<Change[]|'unavailable'>{ if(b.cat===CATALOG_VERSION) return []; const old=await loadSnap(b.cat,fetcher); if(!old) return 'unavailable'; return diffBuild(old,cur(),b.slots); }
+export async function whatChanged(b:BuildExport, fetcher?:(u:string)=>Promise<any>):Promise<Change[]|'unavailable'>{ if(b.cat===CATALOG_VERSION) return []; const old=await loadSnap(b.cat,fetcher); if(!old) return 'unavailable'; return diffBuild(old,cur(),b.slots,b.traits||[]); }
 export function synergiesOf(abs:string[]):string[]{ const out:string[]=[]; for(const x of abs) for(const y of abs){ if(x===y) continue; const a=ABILITY_BY_ID[x], b=ABILITY_BY_ID[y]; if(!a||!b) continue; for(const t of a.gives||[]) if((b.uses||[]).includes(t)) out.push(`${a.name} → ${b.name} (${t})`); } return [...new Set(out)]; }
 
 export function buildHtml(ui:UIx):string{ const g=ui.g, s=g.save, st=bd(ui); const b:BuildExport=st.preview||exportBuild(s); const preview=!!st.preview;
@@ -33,7 +34,7 @@ export function buildHtml(ui:UIx):string{ const g=ui.g, s=g.save, st=bd(ui); con
       :`<div class="bdnotice${d.some(x=>x.incompatible)?' warn':''}" role="alert"><b>What changed</b> since catalog ${esc(b.cat)} (now ${CATALOG_VERSION}): ${d.length?`<ul>${d.map(x=>`<li class="${x.incompatible?'bdinc':''}" data-kind="${x.kind}">${x.incompatible?'<b>Incompatible:</b> ':''}${esc(x.text)}</li>`).join('')}</ul>`:'nothing that affects this build.'}</div>`; }
   else if(preview&&b.game!==ui.buildId) notice=`<div class="bdnotice" role="status">Made with game ${esc(b.game)}; same catalog, so augments behave the same.</div>`;
   return `<div class="col bdcol">${preview?`<div class="bdmode"><b>Shared build</b> · read-only preview, nothing is granted <button class="btn mini" data-act="bd-mine">Back to my build</button></div>`:''}
-    ${b.cheat?'<div class="bdnotice warn bdcheat" role="status"><b>IDKFA cheat build</b>: made with dev cheat gear, not a real loadout.</div>':''}<div class="mut bdver">Level ${b.lvl} · game ${esc(b.game)} · catalog ${esc(b.cat)}</div>${notice}
+    ${b.cheat?'<div class="bdnotice warn bdcheat" role="status"><b>IDKFA cheat build</b>: made with dev cheat gear, not a real loadout.</div>':''}<div class="mut bdver">Level ${b.lvl} · game ${esc(b.game)} · catalog ${esc(b.cat)}</div>${notice}${b.traits?.length?`<div class="bdtraits"><b>Traits</b> ${b.traits.map(t=>{ const d=TRAIT_BY_ID[t]; return `<span class="trchip" tabindex="0" data-tip="${esc(d?'<b>'+esc(d.name)+'</b><br>'+d.effects.map(e=>esc(describeEffect(e))).join('<br>'):esc(t)+' (unknown trait)')}">${esc(d?d.short:t)}</span>`; }).join(' ')}</div>`:''}
     <div class="bdgrid">${SLOTS.map(tile).join('')}</div>
     <h3 class="sh">Abilities</h3><div class="bdabs">${abs||'<span class="mut">none</span>'}</div>
     <h3 class="sh">Totals</h3><div class="bdtot" data-tip="${esc(totals+'<br>Weapon: '+esc(r.weaponName))}">${esc(totals)}</div>
