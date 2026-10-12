@@ -35,7 +35,7 @@ async function suite(label, opts) {
   await open(page); ok(await page.evaluate(() => !document.querySelector('.lkhint')), `${label}: hint does not return on next open`);
 
   // ---- compatible highlighting (selected slot = armR)
-  const H = await page.evaluate(() => { const fits = [...document.querySelectorAll('.stgrid .st.fits')], off = [...document.querySelectorAll('.stgrid .st.off')]; return { fits: fits.length, off: off.length, offOp: off[0] ? +getComputedStyle(off[0]).opacity : 1, fitOp: fits[0] ? +getComputedStyle(fits[0]).opacity : 0, fitsFirst: [...document.querySelectorAll('.stgrid .st')].slice(0, fits.length).every(x => x.classList.contains('fits')), hint: document.querySelector('.slotact .hint')?.textContent || '' }; });
+  const H = await page.evaluate(() => { const fits = [...document.querySelectorAll('.stgrid .st.fits')], off = [...document.querySelectorAll('.stgrid .st.off')]; return { fits: fits.length, off: off.length, offOp: off[0] ? +getComputedStyle(off[0].querySelector('.ticon')).opacity : 1, fitOp: fits[0] ? +getComputedStyle(fits[0]).opacity : 0, fitsFirst: [...document.querySelectorAll('.stgrid .st')].slice(0, fits.length).every(x => x.classList.contains('fits')), hint: document.querySelector('.slotact .hint')?.textContent || '' }; });
   ok(H.fits === 3 && H.off >= 3, `${label}: armR selected -> ${H.fits} compatible highlighted, ${H.off} dimmed`); ok(H.offOp < .5 && H.fitOp === 1 && H.fitsFirst, `${label}: dimmed tiles opacity ${H.offOp}, fits listed first`); ok(/pick one/i.test(H.hint), `${label}: slot hint explains next step ("${H.hint}")`);
 
   // ---- select storage item in another slot -> target slot highlighted, Equip button

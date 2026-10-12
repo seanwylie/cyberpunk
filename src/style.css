@@ -554,7 +554,7 @@ body.reducefx .rar::after{ animation:none; opacity:0; }
 .rar:not(.st) .rpips{ display:none; }
 .rar.st .rpips{ top:auto; bottom:1px; }
 /* ---- locker swap UX (equip / swap / unequip / undo) ---- */
-.lockerwin .slot.tile.st.fits{ opacity:1; } .lockerwin .slot.tile.st.off{ opacity:.38; filter:grayscale(.55); } .lockerwin .slot.tile.st.off:hover,.lockerwin .slot.tile.st.off:focus-visible,.lockerwin .slot.tile.st.off.sel{ opacity:.85; filter:none; }
+.lockerwin .slot.tile.st.fits{ opacity:1; } .lockerwin .slot.tile.st.off{ opacity:1; } .lockerwin .slot.tile.st.off .ticon{ opacity:.35; filter:grayscale(.6); } .lockerwin .slot.tile.st.off:hover .ticon,.lockerwin .slot.tile.st.off:focus-visible .ticon,.lockerwin .slot.tile.st.off.sel .ticon{ opacity:.85; filter:none; }
 .lockerwin .slot.tile.st.fits:not(.sel){ outline:1px dashed rgba(159,201,138,.7); outline-offset:1px; }
 .lockerwin .slot.tile.target{ background-color:#2c3a2a; outline:2px solid #9fd09a; outline-offset:1px; animation:tgtpulse 1.6s ease-in-out infinite; } .lockerwin .slot.tile.target.sel{ outline-color:#d9f0c8; }
 .tgtb{ position:absolute; left:2px; bottom:2px; z-index:3; font-style:normal; font-weight:700; font-size:max(12px,calc(10px*var(--fs))); line-height:1.15; background:#1e3a1a; color:#c9f0b8; border:1px solid #6faa63; border-radius:3px; padding:0 3px; pointer-events:none; }
@@ -575,3 +575,6 @@ body.reducefx .lockerwin .slot.tile.eqflash{ animation:none; outline:3px solid #
 #newver{ position:fixed; left:50%; bottom:max(14px,env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:10050; display:flex; gap:10px; align-items:center; padding:8px 12px; background:rgba(12,14,18,.94); color:#f4f1e6; border:1px solid #d6a642; border-radius:10px; font:600 13px/1.2 system-ui,sans-serif; max-width:calc(100vw - 16px); }
 #newver button{ font:inherit; color:#111; background:#d6a642; border:0; border-radius:6px; padding:4px 10px; cursor:pointer; }
 #newver #newver-x{ background:transparent; color:#f4f1e6; padding:0 4px; }
+.pop .popbtns{ position:sticky; bottom:0; background:#222426; padding:4px 0 2px; z-index:2; }
+.keepchips{ margin:3px 0 0; } .pop .warnb.small2{ margin:2px 0; }
+@media (max-height:480px){ .pop .cmp .crow{ line-height:1.15; } .pop .small2{ line-height:1.2; } }
