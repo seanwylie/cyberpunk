@@ -8,12 +8,16 @@ import { launch } from './lib.mjs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 const { browser, page, errors } = await launch({ query: '?splash=hold' }); const ev = (f, a) => page.evaluate(f, a);
 const ids = (process.env.ONLY ? process.env.ONLY.split(',') : null) || await ev(async () => { const C = await import('/src/config.ts'); return Object.entries(C.ENEMIES).filter(([, d]) => d.boss).map(([id]) => id); });
+const PATTERN = new Set(['slagpool', 'gasvent', 'ringpools', 'sawlanes', 'cratefall']); // zone patterns spawn their (audited) zones at telegraph start, so resolution adds nothing new
 const all = {}; const flags = [];
 for (const id of ids) {
   const r = await ev(async (bossId) => { const g = window.__game, { DUNGEONS } = await import('/src/content/dungeons.ts'), M = await import('/src/content/mechanics.ts');
     const ZS = await import(performance.getEntriesByType('resource').map(x => x.name).find(n => /zoneshape\.ts/.test(n)));
     const dng = Object.keys(DUNGEONS).find(k => DUNGEONS[k].defaultBoss === bossId) || 'warehouse'; g.enterTown(true); g.save.level = 40; g.save.instance = null; g.save.lockouts = {}; g.save.lastClearDay = null; g.save.settings.devFreeReset = true; g.startRun(dng);
     const f = g.inst.flags; f.gate1 = f.lock2 = f.controller = true; f.bossKey = bossId; const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; g.dbg.god = true;
+    let lastAtk = null, curI = 0; const atk = {}; const orig = g.resolveAttack.bind(g);
+    g.resolveAttack = (e, a, tx, ty) => { if (!(e.type === bossId)) return orig(e, a, tx, ty); const rt = e._rt, k = a, w = rt.t, z0 = g.zones.length, p0 = g.projs.length, n0 = g.enemies.length, hp0 = g.hp, x0 = e.x, y0 = e.y, kz = g.zones.filter(z => !z.env).length; const r = orig(e, a, tx, ty);
+      const o = atk[k] ||= { n: 0, minW: 99, eff: 0, hit: 0 }; o.n++; lastAtk = { o, i: curI, done: false }; o.minW = Math.min(o.minW, w); if (g.hp < hp0) { o.hit++; o.eff++; } else if (g.zones.filter(z => !z.env).length > kz || g.projs.length > p0 || g.enemies.length > n0 || Math.hypot(e.x - x0, e.y - y0) > .5 || (e._rt.st === 'tele' && e._rt.chained)) o.eff++; return r; };
     const tracked = new Map(), seenP = new WeakSet(); const kinds = {}; let home = null, boss = null; const mhp = g.maxHp;
     const probe = (z) => { // find a point inside the damaging shape, apply the real tick, measure
       const R = Math.max(z.R || 0, z.r || 0, z.len || 0, 6) + 2; let pt = null;
@@ -25,20 +29,21 @@ for (const id of ids) {
       for (let s = 0; s < (z.grow ? 30 : 6); s++) { try { ZS.tickZone(g, c, .1, [tg], 100, .4); } catch (e) { return { area: true, err: e.message }; } }
       const moved = Math.hypot(tg.g.px - pt[0], tg.g.py - pt[1]);
       return { area: true, dmg, heat: tg.g.heat, moved, hook: !!(z.onFire || z.onEnd) }; };
-    for (let i = 0; i < 30 * 110; i++) { g.hp = g.maxHp; g.update(1 / 30); boss = g.enemies.find(x => !x.dead && x.type === bossId);
+    g.dbg.god = false; for (let i = 0; i < 30 * 110; i++) { curI = i; g.hp = g.maxHp; if (g.downed) { g.downed = false; g.px = home ? home[0] : g.px; } g.update(1 / 30); boss = g.enemies.find(x => !x.dead && x.type === bossId);
       if (boss && g.zoneAt(g.px, g.py) !== 'boss') { const ar = M.arenaOf(g); if (!home) home = ar.tiles.map(([x, y]) => [x + .5, y + .5]).filter(([x, y]) => !g.circleHits(x, y, .6)).sort((a, b) => Math.hypot(a[0] - ar.cx, a[1] - ar.cy) - Math.hypot(b[0] - ar.cx, b[1] - ar.cy))[0]; g.px = home[0]; g.py = home[1]; }
       if (boss) { const fr = i < 30 * 40 ? 1 : i < 30 * 75 ? .6 : .3; boss.hp = Math.max(boss.hp, boss.maxHp * fr * .999); if (i % 150 === 0 && boss.hp > boss.maxHp * fr) boss.hp = boss.maxHp * fr; }
-      for (const pr of g.projs) if (!seenP.has(pr)) { seenP.add(pr); for (const [z, o] of tracked) if (o.resolved && !o.gone && z.t - z.windup < .7) o.spawned = (o.spawned || 0) + 1; }
+      for (const pr of g.projs) if (!seenP.has(pr)) { seenP.add(pr); if (lastAtk && !lastAtk.done && i - lastAtk.i <= 36) { lastAtk.o.eff++; lastAtk.done = true; } for (const [z, o] of tracked) if (o.resolved && !o.gone && z.t - z.windup < .7) o.spawned = (o.spawned || 0) + 1; }
       const live = new Set(g.zones);
-      for (const z of g.zones) { if (z.env) continue; if (!tracked.has(z)) tracked.set(z, { key: (z.kit || z.src || '?') + ':' + (z.style || z.shape || 'disc'), spawnT: i, windup: z.windup, life: z.life, dps: z.dps, burst: !!z.burst, ghost: z.shape === 'ghost', probe: null, resolved: false }); const o = tracked.get(z); o.t = z.t; if (!o.resolved && z.t >= z.windup) { o.resolved = true; if (!o.ghost) o.probe = probe(z); else o.probe = { ghost: true }; } o.heatOnly = !!z.heatOnly; o.follow = !!z.follow; }
+      for (const z of g.zones) { if (z.env) continue; if (!tracked.has(z) && lastAtk && !lastAtk.done && i - lastAtk.i <= 36) { lastAtk.o.eff++; lastAtk.done = true; } if (!tracked.has(z)) tracked.set(z, { key: (z.kit || z.src || '?') + ':' + (z.style || z.shape || 'disc'), spawnT: i, windup: z.windup, life: z.life, dps: z.dps, burst: !!z.burst, ghost: z.shape === 'ghost', probe: null, resolved: false }); const o = tracked.get(z); o.t = z.t; if (!o.resolved && z.t >= z.windup) { o.resolved = true; if (!o.ghost) o.probe = probe(z); else o.probe = { ghost: true }; } o.heatOnly = !!z.heatOnly; o.follow = !!z.follow; }
       for (const [z, o] of tracked) if (!live.has(z) && !o.gone) { o.gone = true; o.goneEarly = !o.resolved && boss && !boss.dead; if (o.goneEarly && (kinds._dbg ||= []).length < 4) kinds._dbg.push([i, o.t, z.t, z.windup, z.life, boss.hp / boss.maxHp, g.zones.length, g.downed, g.revealing]); } }
     delete kinds._dbg0; for (const [z, o] of tracked) { const k = o.key; const a = kinds[k] ||= { n: 0, orphan: 0, cancelled: 0, noTell: 0, brief: 0, weak: 0, noRes: 0, minW: 99, maxDmg: 0, heat: 0, moved: 0, hook: 0, ghost: 0, dmgZones: 0 };
       a.n++; a.minW = Math.min(a.minW, o.windup || 0); if (o.ghost) { a.ghost++; continue; } if (o.goneEarly) a.cancelled++; if (!(o.life > o.windup)) a.noRes++;
       const p = o.probe; if (!p) { if (!o.gone) { /* still in windup at end of run: not judged */ } continue; } if (!p.area) { a.orphan++; continue; }
       if (o.dps > 0 && !o.heatOnly) { a.dmgZones++; a.maxDmg = Math.max(a.maxDmg, p.dmg / mhp); if ((o.windup || 0) < .3 && !o.follow) a.noTell++; else if ((o.windup || 0) < .6) a.brief++; if (p.dmg < .03 * mhp) a.weak++; }
       else { if (o.spawned > 0) a.hook++; if (p.heat > 0) a.heat++; if (p.moved > 0) a.moved++; if (p.hook) a.hook++; if (!(p.heat > 0 || p.moved > 0 || p.hook || o.spawned > 0)) a.orphan++; } }
-    const dbg = kinds._dbg; delete kinds._dbg; return { dng, boss: !!boss, kinds, n: tracked.size, dbg }; }, id);
+    const atkOut = atk; const dbg = kinds._dbg; delete kinds._dbg; return { dng, boss: !!boss, kinds, n: tracked.size, dbg, atk: atkOut }; }, id);
   all[id] = r; if (r.dbg) console.log('DBG', id, JSON.stringify(r.dbg)); ok(r.boss, `${id}: boss fight ran (${r.n} telegraphs observed)`);
+  for (const [k, a] of Object.entries(r.atk || {})) { const bad = []; if (a.minW < .35) bad.push('no tell x' + a.n); if (a.n >= 4 && a.eff === 0 && !PATTERN.has(k)) bad.push('zero effect x' + a.n); if (bad.length) flags.push({ boss: id, key: 'attack:' + k, bad, a: { minW: a.minW, maxDmg: 0 } }); }
   for (const [k, a] of Object.entries(r.kinds)) { const bad = []; if (a.orphan) bad.push('orphan x' + a.orphan); if (a.cancelled) bad.push('cancelled-before-resolve x' + a.cancelled); if (a.noRes) bad.push('never resolves x' + a.noRes); if (a.noTell) bad.push('no tell x' + a.noTell); if (a.brief) bad.push('too brief x' + a.brief); if (a.weak) bad.push('negligible damage x' + a.weak);
     if (bad.length) { flags.push({ boss: id, key: k, bad, a }); } }
 }

@@ -72,7 +72,7 @@ export const KITS:Record<string,Kit>={
   rattle:{pal:'coral',title:'Night Shift',mechs:[M('strike',10,{first:5}),M('buffers',32,{first:12}),M('scythe',11)]},
   breaker:{pal:'amber',title:'Chain Yard',mechs:[M('scythe',10,{first:5}),M('ricochet',13),M('vortex',16,{p:{dir:-1}})]},
   widow:{pal:'violet',title:'Signal Web',mechs:[M('beam',12,{first:6}),M('gaze',12),M('pylons',30,{first:14})]},
-  recall:{pal:'magenta',title:'Recall Everything',mechs:[M('shield',30,{first:9}),M('pylons',30,{first:14,at:.8}),M('overload',22,{first:12,at:.6}),M('grid',15,{at:.5})]},
+  recall:{pal:'magenta',title:'Recall Everything',mechs:[M('shield',30,{first:9}),M('pylons',30,{first:14,at:.8}),M('overload',24,{first:14,at:.6})]},
 };
 export const kitOf=(id:string):Kit|undefined=>KITS[id];
 export const palOf=(id:string):keyof typeof PALS=>KITS[id]?.pal||'amber';
@@ -144,7 +144,7 @@ const MECHS:Record<MechId,(c:C)=>number|null>={
     for(let tries=0;tries<80&&pts.length<n;tries++){ const [tx,ty]=ar.tiles[Math.floor(c.rng()*ar.tiles.length)]; const x=tx+.5,y=ty+.5; if(!c.free(x,y)) continue; if(pts.length===0&&Math.hypot(x-T.x,y-T.y)>10) continue; if(pts.some(q=>Math.hypot(q.x-x,q.y-y)<6)) continue; pts.push({x,y,r}); }
     if(!pts.length) pts.push({x:T.x,y:T.y,r});
     c.add({shape:'safe',style:'coolant',x:ar.cx,y:ar.cy,r:ar.maxR+2.5,safe:pts,windup:w,life:w+dur,dps:0,heat:18+3*c.ph,heatOnly:true,label:'HEAT OVERLOAD: STAND IN COOLANT',onFire:fireSfx(c)}); sfx(c,'tell'); return w+dur; },
-  buffers(c){ if(c.sim.enemies.some((o:any)=>o.kitBuf&&!o.dead)||c.rt.kit.bufDone===c.ph) return null; c.rt.kit.bufDone=c.ph; const T=String(c.km.p?.type||'sentry'); if(!ENEMIES[T]) return null; let made=0; for(let i=0;i<2+(c.ph>=2?1:0);i++){ const t=freeTile(c.sim,c.ar,5,c.e); if(!t) continue; const o=c.sim.spawnEnemy(T,t.x,t.y); o.alert=true; o.bossAdd=true; o.kitBuf=true; o.kitBorn=c.rt.kit.t; o.maxHp=o.hp=Math.round(o.maxHp*1.5); made++; c.sim.fx.push({kind:'ring',x:t.x,y:t.y,r:1.6,t:0,life:.6,c:PALS[c.pal].a}); }
+  buffers(c){ if(c.sim.enemies.some((o:any)=>o.kitBuf&&!o.dead)||c.rt.kit.bufDone===c.ph) return null; c.rt.kit.bufDone=c.ph; const T=String(c.km.p?.type||'sentry'); if(!ENEMIES[T]) return null; let made=0; for(let i=0;i<2+(c.ph>=2?1:0);i++){ const t=freeTile(c.sim,c.ar,5,c.e); if(!t) continue; const o=c.sim.spawnEnemy(T,t.x,t.y); o.alert=true; o.bossAdd=true; o.kitBuf=true; o.stunT=1e4; o.kitBorn=c.rt.kit.t; o.maxHp=o.hp=Math.round(o.maxHp*1.5); made++; c.sim.fx.push({kind:'ring',x:t.x,y:t.y,r:1.6,t:0,life:.6,c:PALS[c.pal].a}); }
     if(made){ c.sim.toast('Buff nodes online: destroy them to expose '+ENEMIES[c.e.type].name); sfx(c,'fire'); return 6; } return null; },
   shockring(c){ const n=1+Math.min(2,c.ph), w=wind(c,1.25), R=Math.min(10,c.ar.maxR+1), g=5.2; let gap=c.rng()*TAU; for(let i=0;i<n;i++){ const ww=w+i*1.1; const ax=gap+(i?Math.PI+(c.rng()-.5):0); c.add({shape:'ring',style:'toll',x:c.e.x,y:c.e.y,r:1.6,r0:.5,R,gapA:ax,gapW:1.35,grow:g,windup:ww,life:ww+(R-1.6)/g+.15,dps:c.dmg(.1),burst:true,label:i?undefined:'SHOCKWAVE: FIND THE GAP',onFire:i?undefined:fireSfx(c)}); }
     sfx(c,'tell'); return w+(R-1.6)/g+(n-1)*1.1; },
