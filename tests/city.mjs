@@ -30,7 +30,7 @@ ok(s.dist.neon_mile.ctrl === ctrl, `min hold: the new holder keeps it for ${C.CI
 { const s5 = C.newCity(T0); C.applyEvents(s5, [{ k: 'hack', d: 'rustline', f: 'Rustline Compact' }], T0); C.applyEvents(s5, [{ k: 'hack', d: 'rustline', f: 'Rustline Compact' }], T0 + 7 * 24 * H); ok(s5.prev?.dist.rustline.hack === 1 && s5.week.dist.rustline.hack === 1, 'week aggregate rolls on Monday; last week kept for the news'); }
 // effects
 { const s6 = C.newCity(T0); const calm = C.effectsFor(s6, 'neon_mile', T0, DUNGEONS); s6.dist.neon_mile.tension = 85; const hot = C.effectsFor(s6, 'neon_mile', T0, DUNGEONS);
-  ok(calm.priceMul < 1 && hot.priceMul > calm.priceMul && hot.priceMul <= 1.35, `prices follow tension (${calm.priceMul} -> ${hot.priceMul}), bounded`);
+  ok(calm.priceMul === 1 && hot.priceMul > calm.priceMul && hot.priceMul <= 1.35, `prices follow tension (${calm.priceMul} -> ${hot.priceMul}), bounded`);
   ok(hot.guards > calm.guards && hot.guards <= 8, `guards follow tension (${calm.guards} -> ${hot.guards}), bounded`);
   ok(calm.bounties.length === 0 && hot.bounties.length > 0 && hot.bounties.every(b => b.reward > 0 && C.factionOfDungeon(DUNGEONS[b.dungeon]) === 'Kestrel Value'), 'bounties appear when tense, on dungeons of the holding faction');
   ok(hot.events.some(e => e.kind === 'lockdown' && /Kestrel lockdown in Neon Mile/.test(e.label)), 'corp-held district at high tension: "Kestrel lockdown in Neon Mile"');

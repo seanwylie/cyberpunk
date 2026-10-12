@@ -26,9 +26,11 @@ export function cityInit(now = Date.now()) { if (CITY_C.s) return CITY_C.s; CITY
 export function cityFromServer(m: Wire & { p?: number }) { const base = CITY_C.src === 'server' ? CITY_C.s : newCity(); CITY_C.s = fromWire(m, m.p ? base : newCity()); if (!m.p) { CITY_C.s.v = m.v; } CITY_C.src = 'server'; changed(); }
 export function cityGoOffline() { if (CITY_C.src === 'local') return; CITY_C.src = 'local'; CITY_C.s = loadLocal(); ambient(CITY_C.s); changed(); }
 export const cityVersion = () => CITY_C.src === 'server' ? CITY_C.s?.v ?? -1 : -1;
-export function cityEffects(town: string, now = Date.now()): Effects { cityInit(now); return effectsFor(CITY_C.s, town, now, DUNGEONS as any); }
+/** hermetic tests (tests/lib.mjs sets wv_city_neutral unless a test opts in): the city exists but applies list prices/no events */
+const neutral = (() => { try { return localStorage.getItem('wv_city_neutral') === '1'; } catch { return false; } })();
+export function cityEffects(town: string, now = Date.now()): Effects { cityInit(now); if (neutral) { const s = newCity(now); return effectsFor(s, town, Date.UTC(2026, 0, 6), DUNGEONS as any); } return effectsFor(CITY_C.s, town, now, DUNGEONS as any); }
 /** decoration hook for town generation: controlling-faction signage + colour (null = the district's own faction holds it) */
-export function cityDecor(town: string): { signs: string[]; color: string; guards: number } | null { const e = cityEffects(town); return { signs: e.signs, color: e.color, guards: e.guards }; }
+export function cityDecor(town: string): { ctrl: string; signs: string[]; color: string; guards: number } | null { const e = cityEffects(town); return { ctrl: e.ctrl, signs: e.signs, color: e.color, guards: e.guards }; }
 
 type Net = { state: string; send: (m: any) => void } | null;
 const netOf = (): Net => { const n = (globalThis as any).__net?.client; return n && n.state === 'online' ? n : null; };

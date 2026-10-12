@@ -2,7 +2,7 @@
 // news panel from the local sim (canned, real numbers), street chatter, feature flags off = no panel/no chatter, privacy toggle. Shots: shots/city/
 import { launch, sleep } from './lib.mjs'; import fs from 'fs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; }; fs.mkdirSync('shots/city', { recursive: true });
-const { browser, page, errors } = await launch({ query: '?splash=hold' });
+const { browser, page, errors } = await launch({ query: '?splash=hold', city: true });
 await page.evaluate(() => document.getElementById('splash')?.remove()); await page.waitForFunction(() => window.__city, null, { timeout: 15000 });
 ok(await page.evaluate(() => window.__city.CITY_C.src === 'local' && Object.keys(window.__city.CITY_C.s.dist).length === 11), 'offline: local city simulation running (no server)');
 // Neon Mile, calm vs hot
@@ -35,7 +35,7 @@ ok(await page.evaluate(() => !window.__game.save.settings.cityPublic), 'privacy:
 const ms = await page.evaluate(() => { const t = performance.now(); for (let i = 0; i < 2000; i++) window.__city.cityEffects('neon_mile'); return performance.now() - t; }); ok(ms < 150, `2000 effect lookups take ${ms.toFixed(1)} ms`);
 ok(errors.length === 0, 'no page errors ' + errors.slice(0, 2).join('|')); await browser.close();
 // flags off
-{ const { browser, page, errors } = await launch({ query: '?splash=hold', init: () => { localStorage.setItem('wv_ff_city_news', '0'); localStorage.setItem('wv_ff_city_chatter', '0'); } });
+{ const { browser, page, errors } = await launch({ query: '?splash=hold', city: true, init: () => { localStorage.setItem('wv_ff_city_news', '0'); localStorage.setItem('wv_ff_city_chatter', '0'); } });
   await page.evaluate(() => document.getElementById('splash')?.remove()); await page.waitForFunction(() => window.__city, null, { timeout: 15000 });
   await page.evaluate(() => { document.getElementById('citybanner')?.click(); }); await sleep(200); ok(await page.evaluate(() => window.__ui.modal !== 'news'), 'flag off: banner does not open the news');
   await page.evaluate(() => window.__ui.open('news')); await sleep(200); ok(await page.evaluate(() => /switched off/.test(document.getElementById('modal')?.textContent || '') && !window.__city.NEWS.feed), 'flag off: panel shows switched off, nothing fetched');

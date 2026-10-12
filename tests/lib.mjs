@@ -12,6 +12,8 @@ export async function launch(opts = {}) {
   // the first-run tutorial is off for every other test (it is covered by tests/tutorial.mjs); pass tutorial:true to leave it on
   // the calm-start grace (dormant enemies, unhurtable player) is off for every other test; pass grace:true to leave it on (tests/calm_start.mjs)
   if (!opts.grace) await page.addInitScript(() => { try { localStorage.setItem('wv_nograce', '1'); } catch {} });
+  // living city effects (prices, events, guards) are neutral for every other test; pass city:true to leave them live (tests/city_ui.mjs)
+  if (!opts.city) await page.addInitScript(() => { try { localStorage.setItem('wv_city_neutral', '1'); } catch {} });
   if (!opts.tutorial) await page.addInitScript(() => { try { localStorage.setItem('wv_notut', '1'); } catch {} });
   if (opts.init) await page.addInitScript(opts.init);
   await page.goto(URL + (opts.query || ''), { waitUntil: 'load' }); await page.waitForFunction(() => window.__game);

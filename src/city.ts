@@ -95,7 +95,7 @@ export function worldEvents(s: CityState, now = Date.now()): WorldEvent[] {
 }
 export function effectsFor(s: CityState, d: string, now = Date.now(), dungeons?: Record<string, { faction?: string; mfr?: string; minLevel?: number }>): Effects {
   const D = s.dist[d] || newCity(now).dist[d] || { ctrl: 0, tension: CITY.tensionBase, inf: [] } as any; const f = FACTIONS[D.ctrl]; const ev = worldEvents(s, now).filter(e => e.d === d); const t = WORLD_BY_ID[d];
-  let priceMul = clamp(1 + .25 * (D.tension - 30) / 70, .9, 1.25); if (t && t.faction === f && CORPS.includes(f)) priceMul -= .05;
+  let priceMul = 1 + .25 * Math.max(0, D.tension - 30) / 70; /* calm = list price; only unrest raises it */
   if (ev.some(e => e.kind === 'lockdown')) priceMul += .1; if (ev.some(e => e.kind === 'night_market')) priceMul -= .1; priceMul = Math.round(clamp(priceMul, .8, 1.35) * 100) / 100;
   const guards = clamp((CORPS.includes(f) ? 2 : 1) + Math.round(D.tension / 25) + (ev.some(e => e.kind === 'lockdown') ? 2 : 0), 0, 8);
   const bounties: Bounty[] = []; if (D.tension >= CITY.bountyTension && t) { const war = ev.some(e => e.kind === 'turf_war') ? 1.5 : 1;
