@@ -10,9 +10,9 @@ for (const [w, h, touch] of VPS) for (const mode of ['run', 'town']) {
   await page.evaluate(({ mode }) => { const g = window.__game, t = window.__tut, ui = window.__ui; if (mode === 'run') { g.dbg.god = true; g.startRun(Object.keys(window.__dungeons || {})[0] || undefined); }
     ui.open(null); // park the tutorial on the dungeon controls step (the one that points at the objective + minimap) with its flags satisfied
     const ids = ['move', 'contract', 'equip', 'chip', 'vendor', 'bank', 'gate']; for (const i of ids) { try { t.latch(i); } catch {} } t.flags.cast = true; t.flags.dodge = true; }, { mode });
-  await sleep(1200);
+  await sleep(1200); await page.waitForFunction(() => (() => { const b = document.getElementById('banner'); return !b || (!b.classList.contains('show') && +getComputedStyle(b).opacity < 0.05); })(), null, { timeout: 20000 }); /* the run-intro banner is an intentional outlined box that hides itself after ~5 s of game time; a banner that never hides still fails here */
   const r = await page.evaluate(() => {
-    const vis = e => { const s = getComputedStyle(e), b = e.getBoundingClientRect(); return s.display !== 'none' && s.visibility !== 'hidden' && b.width > 0 && b.height > 0; };
+    const vis = e => { const s = getComputedStyle(e), b = e.getBoundingClientRect(); return s.display !== 'none' && s.visibility !== 'hidden' && +s.opacity > 0.05 && b.width > 0 && b.height > 0; /* opacity-0 (faded-out) boxes are not visible */ };
     const R = sel => { const e = document.querySelector(sel); if (!e || !vis(e)) return null; const b = e.getBoundingClientRect(); return b; };
     const out = []; const hud = ['#objective', '#minimap', '#btn-menu', '#btn-map', '#btn-town'].map(R).filter(Boolean);
     // every visible fixed/absolute, pointer-transparent, outlined box that is not a known tutorial marker
@@ -20,9 +20,9 @@ for (const [w, h, touch] of VPS) for (const mode of ['run', 'town']) {
       const bw = parseFloat(s.borderTopWidth) + parseFloat(s.borderLeftWidth); const b = e.getBoundingClientRect(); if (bw >= 2 && s.pointerEvents === 'none' && b.width * b.height > 0.05 * innerWidth * innerHeight) out.push((e.id || e.className) + ' ' + Math.round(b.width) + 'x' + Math.round(b.height)); }
     const sp = document.getElementById('tutspot'); const sb = sp && sp.style.display !== 'none' ? sp.getBoundingClientRect() : null;
     const covered = sb ? hud.filter(b => b.left >= sb.left - 1 && b.right <= sb.right + 1 && b.top >= sb.top - 1 && b.bottom <= sb.bottom + 1).length : 0;
-    return { stray: out, spot: sb && { w: Math.round(sb.width), h: Math.round(sb.height) }, covered, vw: innerWidth, vh: innerHeight, step: window.__tut.cur()?.id };
+    return { bn: (() => { const b = document.getElementById('banner'); const s = getComputedStyle(b); return [b.className, s.opacity, s.visibility, b.textContent.slice(0, 40)]; })(), stray: out, spot: sb && { w: Math.round(sb.width), h: Math.round(sb.height) }, covered, vw: innerWidth, vh: innerHeight, step: window.__tut.cur()?.id };
   });
-  ok(r.stray.length === 0, `${tag}: no stray outlined overlay (${r.stray.join(', ') || 'none'})`);
+  ok(r.stray.length === 0, `${tag}: no stray outlined overlay (${r.stray.join(', ') || 'none'}) ${JSON.stringify(r.bn)}`);
   ok(r.covered <= 1, `${tag}: spotlight (${r.spot ? r.spot.w + 'x' + r.spot.h : 'off'}, step ${r.step}) wraps at most one HUD element (wraps ${r.covered})`);
   ok(!r.spot || r.spot.w * r.spot.h < 0.3 * r.vw * r.vh, `${tag}: spotlight is not screen-sized`);
   ok(errors.length === 0, `${tag}: no console errors ${errors[0] || ''}`);
