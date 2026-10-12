@@ -204,6 +204,29 @@ CALM5 = {
 }
 for _n, _p in CALM5.items(): TRACKS[_n] = (120, True, _p)
 LOWRATE |= set(CALM5)
+# --- pack 6: world districts (docs/WORLD.md). Six town-hub moods per generated district, named <town>_<mood>; pools in src/music.ts WORLD_POOLS ---
+WORLD6_TOWNS = {
+ 'neon_mile': "neon entertainment strip, arcade bleeps and karaoke-bar glow in the distance",
+ 'the_stacks': "container slum stacks, distant generators, laundry flapping, tin and rope textures",
+ 'salt_harbor': "flooded harbor boardwalks, lapping water, distant foghorn, creaking moorings",
+ 'dust_yard': "desert salvage yard under a white sun, dry wind, distant hauler wrecks clanking",
+ 'under_bazaar': "underground metro night market, lantern hum, echoing concourse, cable hum",
+ 'aldane_spire': "clean white corporate arcology lobby, filtered air, glass and chrome, polished calm",
+ 'signal_heights': "rooftop antenna shanties, radio static and distant pirate broadcasts, wind on masts",
+ 'kestrel_plaza': "corporate HQ fountain plaza, polite chimes, fountain water, sponsored calm",
+ 'tether_base': "orbital elevator customs base, vast low hum of the tether, slow climber cars, cold air",
+}
+WORLD6_MOODS = {
+ 'a': "Slow ambient groove, 84 bpm, minor key. Soft kick, warm analog pads, gentle repeating synth motif, ",
+ 'b': "Beatless evolving ambient, 60 bpm. Long drones, distant bell tones, slow filter sweeps, ",
+ 'c': "Mellow downtempo trip-hop, 88 bpm. Dusty swung beat, deep round bass, muted chord stabs, ",
+ 'd': "Calm minimal techno, 104 bpm. Muted four-on-floor kick, soft shaker, dubby chord echoes, ",
+ 'e': "Night lounge, 78 bpm. Electric piano chords, brushed drums, warm synth bass, smoky lead, ",
+ 'f': "Dreamy retro synthwave haze, 96 bpm. Gated soft snare, warm arpeggio, wide pads, ",
+}
+WORLD6 = {f'{t}_{m}': mp + d + ". " + AMB for t, d in WORLD6_TOWNS.items() for m, mp in WORLD6_MOODS.items()}
+for _n, _p in WORLD6.items(): TRACKS[_n] = (90, True, _p)
+LOWRATE |= set(WORLD6)
 XF = 2.0
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'

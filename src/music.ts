@@ -23,11 +23,15 @@ export const SIG_TRACKS=Object.values(SIGNATURE).flatMap(x=>[x.main,...(x.p2?[x.
 export const CALM5_TOWN=['town_neonbazaar','town_raingutter','town_lounge','town_synthhaze','town_nightbus'], CALM5_HARROW=['harrow_rainworks','harrow_lounge','harrow_glowpipes','harrow_nightshift','harrow_neonforge'];
 export const CALM5=[...CALM5_TOWN,...CALM5_HARROW];
 Object.assign(FAMILY,{ town_neonbazaar:'pulse',town_raingutter:'noir',town_lounge:'noir',town_synthhaze:'drift',town_nightbus:'pulse',harrow_rainworks:'noir',harrow_lounge:'noir',harrow_glowpipes:'drift',harrow_nightshift:'industrial',harrow_neonforge:'pulse' });
-export const CALM_LAZY=new Set([...CALM2,...CALM3,...CALM4,...CALM5]);
-export const LAZY=new Set([...CALM2,...CALM3,...CALM4,...CALM5,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]);
+/** pack 6: six generated tracks per world district (tools/gen_music.py WORLD6, docs/WORLD.md), lazy-loaded on first visit */
+export const WORLD6_TOWNS=['neon_mile','the_stacks','salt_harbor','dust_yard','under_bazaar','aldane_spire','signal_heights','kestrel_plaza','tether_base'];
+const W6M:Record<string,string>={ a:'drift',b:'drift',c:'noir',d:'pulse',e:'noir',f:'pulse' };
+export const WORLD6=WORLD6_TOWNS.flatMap(t=>Object.keys(W6M).map(m=>t+'_'+m));
+export const CALM_LAZY=new Set([...CALM2,...CALM3,...CALM4,...CALM5,...WORLD6]);
+export const LAZY=new Set([...WORLD6,...CALM2,...CALM3,...CALM4,...CALM5,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]);
 const T:Record<string,TrackDef>={ boss_reveal:{file:'boss_reveal',loop:false,keepPos:false}, clear:{file:'clear',loop:false,keepPos:false} };
 for(const n of STINGERS) T[n]={file:n,loop:false,keepPos:false};
-for(const n of [...LOOPS,...CALM2,...CALM3,...CALM4,...CALM5,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]) T[n]={file:n,loop:/^(combat_|boss_|elite_)/.test(n),keepPos:/^(combat_|boss_|elite_)/.test(n)}; // calm tracks never loop: rotation crossfades out before the end (a lone track is never repeated)
+for(const n of [...LOOPS,...WORLD6,...CALM2,...CALM3,...CALM4,...CALM5,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]) T[n]={file:n,loop:/^(combat_|boss_|elite_)/.test(n),keepPos:/^(combat_|boss_|elite_)/.test(n)}; // calm tracks never loop: rotation crossfades out before the end (a lone track is never repeated)
 /** Tracks that must load for file music to activate; the rest load best-effort and are dropped from pools when missing. */
 export const CORE_TRACKS=['town','traversal_a','traversal_b','combat_a','combat_b','boss_reveal','boss_fight','clear'];
 /** Per-state track pools (rotation draws from these via a shuffle bag). */
@@ -40,6 +44,8 @@ export const POOLS:Record<MState,string[]>={
   bosscombat:['boss_fight','boss_overclock','boss_meltdown','boss_hydraulic','elite_siege','elite_hunt','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall',...BOSS4],
   resolution:['clear'] };
 export const TOWN_POOLS:Record<string,string[]>={ rustline:['town','calm_drift','calm_rust','calm_vents','town_dusk','town_market','town_neonrain','town_rooftop','town_jukebox','town_dockside','town_dawnmarket','town_lastcall','town_scrapyard',...CALM5_TOWN], harrow:['harrow_forge','harrow_ember','harrow_steam','harrow_dawn','harrow_cinder','harrow_smelter','harrow_lamplight','harrow_ash','harrow_shift','harrow_whistle','harrow_chapel','harrow_mill',...CALM5_HARROW] };
+for(const t of WORLD6_TOWNS) TOWN_POOLS[t]=Object.keys(W6M).map(m=>t+'_'+m);
+Object.assign(FAMILY,Object.fromEntries(WORLD6.map(n=>[n,W6M[n.slice(-1)]])));
 /** Run areas (manufacturer of the dungeon): tracks written for an area get double weight there and are excluded elsewhere; everything else in the traversal pool is shared. */
 export const AREA_TRACKS:Record<string,string[]>={ HI:['area_hi_slag','area_hi_press','area_hi_ember','area_hi_coke','area_hi_bellring'], PS:['area_ps_sterile','area_ps_ward','area_ps_hush','area_ps_archive','area_ps_ledger'], MM:['area_mm_muzak','area_mm_aisles','area_mm_closing','area_mm_clearance','area_mm_freight'] };
 /** Traversal pool for an area with weights: [track, weight]. Unknown/empty area = shared pool only. */
