@@ -76,3 +76,8 @@ try:
     from specs_variety import VARIETY
     SPECS.update(VARIETY)
 except ImportError: pass
+
+try:
+    from specs_bestiary import BESTIARY
+    SPECS.update(BESTIARY)
+except ImportError: pass

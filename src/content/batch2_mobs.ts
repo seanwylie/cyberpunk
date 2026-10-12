@@ -4,6 +4,7 @@
 // PLACEHOLDER balance, like the rest of the prototype. This file is data only (no sim/config imports) so config.ts, boss_moves.ts and the level generator can all read it.
 import type { MoveSpec } from './batch1_bosses';
 import { BAL } from './balance';
+import { BESTIARY_MOBS } from './bestiary_mobs';
 export type Role='swarmer'|'bruiser'|'ranged'|'caster'|'shielded'|'exploder'|'summoner'|'sniper'|'charger'|'healer'|'debuffer'|'support';
 export type FacTag='HB'|'AS'|'KV'|'RC'|'QS'|'RA';
 export interface MobMeta { tier:1|2|3|4; role:Role; fac:FacTag[]; lifesteal?:number; shield?:number; keep?:number; hasted?:boolean; }
@@ -51,6 +52,7 @@ export const MOBS:MobSpec[]=[
  M({ id:'repocrawler', name:'Repo Crawler', tier:4, role:'charger', fac:['RA'], mfr:'MM', blurb:'Armoured repossession crawler. Fast, bites hard and lunges in a long charge.', hp:125, speed:4.0, radius:.5, aggro:10, xp:54, dmg:1.9, melee:['bite','charge'], moves:[], hasted:true, h:1.05, spr:'cinderhound', pack:[2,3] }),
  M({ id:'triagewarden', name:'Triage Warden', tier:4, role:'healer', fac:['RA'], mfr:'PS', blurb:'Authority field medic. Heals and shields its squad, and will stab you if you come close.', hp:185, speed:2.8, radius:.45, aggro:10, xp:72, dmg:1.9, melee:['swing'], moves:[], custom:['mend','ward'], ranged:true, keep:6, h:1.75, spr:'matron', pack:[1,1] }),
 ];
+MOBS.push(...BESTIARY_MOBS); // docs/BESTIARY.md
 export const MOB_BY_ID:Record<string,MobSpec>=Object.fromEntries(MOBS.map(m=>[m.id,m]));
 export const MOB_IDS=MOBS.map(m=>m.id);
 /** mob-only attacks (runtime in mobs.ts). base damage per attack, windup etc. */

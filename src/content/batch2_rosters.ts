@@ -8,6 +8,7 @@
 // Elite chance (a pack leader gets affixes) and affix count rise by tier (TIER_CURVE in batch2_mobs.ts); rollAffixes() is called by the generator.
 import { MOB_BY_ID, TIER_CURVE, AFFIX_TIER } from './batch2_mobs';
 import type { Affix, Role } from './batch2_mobs';
+import { BESTIARY_ROSTER } from './bestiary_mobs';
 export type Squad=[string,number][];
 export interface LevelMobs { new:string[]; old:string[] }
 /** roles for legacy (pre-batch-2) enemies so they mix with the new ones */
@@ -39,6 +40,7 @@ export const LEVEL_MOBS:Record<string,LevelMobs>={
   // ---- tier IV
   recall_yard:      { new:['recalltrooper','tagcarrier','reclaimwalker','purgebeacon','sweepertread','repocrawler','triagewarden'], old:['shooter','arcflinger','shiftstalker','mortartread','relaynode','leechorderly','rebarcrusher','staticpup','fusecrawler','packmule','bulwarktread','menderwisp','longlens'] },
 };
+for(const [lv,ids] of Object.entries(BESTIARY_ROSTER)) { const e=LEVEL_MOBS[lv]; if(e) for(const id of ids) if(!e.new.includes(id)) e.new.push(id); }
 const GROUPS:Record<string,Role[]>={ front:['bruiser','shielded','charger'], swarm:['swarmer','exploder'], range:['ranged','sniper','caster'], supp:['healer','support','summoner','debuffer'] };
 type Slot=[string,number]; // "group.pref.index", count
 const TEMPLATES:Record<'yard'|'proc'|'junction'|'salvage',Slot[][]>={

@@ -383,6 +383,7 @@ def pose(R,spec,anim,f,n):
         setr(R.torso,12*kneel+r2*75,0,r2*10); setr(R.head,r2*20); setr(R.shL,r2*60); setr(R.shR,r2*40); setr(R.elL,-20-r2*30); setr(R.elR,-20-r2*20)
         R.root.location.y=0
         R.root.rotation_euler=(0,0,0)
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'arch_bestiary.py')).read())
 # ---------------- scene, camera, lights ----------------
 def setup_scene(ortho):
     cam=bpy.data.cameras.new('c'); cam.type='ORTHO'; cam.ortho_scale=ortho; cam.shift_y=.30; cam.clip_end=60
