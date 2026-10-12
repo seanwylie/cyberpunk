@@ -14,6 +14,10 @@ export const recordAbility=(s:any,abilityId:string)=>addSig(s,abilityFamilies(ab
 export const recordAuto=(s:any,weaponKind:string)=>addSig(s,MELEE_WEAPONS.has(weaponKind)?{ brute:1 }:weaponKind==='arc'?{ gun:.6, hack:.4 }:{ gun:1 },.25);
 export const recordDodge=(s:any)=>addSig(s,{ ghost:1 },.6);
 export const recordHack=(s:any)=>addSig(s,{ hack:1 },4);
+/** speech attempt (docs/ALT_GAMEPLAY.md): feeds the social signal; intimidate leans chrome */
+export const recordSpeech=(s:any,kind:string)=>addSig(s,kind==='intimidate'||kind==='terrify'?{ social:.6, chrome:.4 }:{ social:1 },4);
+/** per-run humanity lean (docs/HUMANITY.md): small, so play still decides */
+export const recordHumanity=(s:any,h:number)=>addSig(s,{ social:h/100, chrome:1-h/100 },1.5);
 export const recordCloakKill=(s:any)=>addSig(s,{ ghost:1 },2);
 /** Close the current bucket (dungeon clear / town return) and trim to the rolling window. */
 export function closeRun(s:any,now=Date.now()){ const T=traitsOf(s); if(T.cur&&T.cur.n>0){ T.cur.end=now; T.runs.push(T.cur); } T.cur=null; trimWindow(T,now); }
@@ -22,7 +26,7 @@ export function scores(s:any,now=Date.now()):{ sig:Record<Family,number>; total:
   for(const r of [...T.runs.filter(r=>now-(r.end??r.t)<=C.windowMs).slice(-C.windowRuns),...(T.cur?[T.cur]:[])]) for(const f of FAMILIES) sig[f]+=r.sig[f]||0; return { sig, total:FAMILIES.reduce((a,f)=>a+sig[f],0) }; }
 
 // ---------- candidate rules ----------
-const singles:Record<Family,string>={ hack:'netrunner', brute:'bruiser', gun:'gunslinger', ghost:'ghost', tech:'tinker' };
+const singles:Record<Family,string>={ hack:'netrunner', brute:'bruiser', gun:'gunslinger', ghost:'ghost', tech:'tinker', social:'face', chrome:'chromed' };
 const hybridsOf=(f:Family)=>TRAITS.filter(t=>t.tier===1&&t.fams.length===2&&t.fams.includes(f));
 export interface Lean { shares:Record<Family,number>; order:Family[]; sparse:boolean; kind:'lean'|'hybrid'|'balanced' }
 /** prior = family weights of the currently equipped abilities (weak prior used only when the history is sparse). */

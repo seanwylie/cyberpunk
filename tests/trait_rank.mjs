@@ -39,7 +39,7 @@ let mode = 'good'; await page.route('**/api/story-beat', rt => { const b = JSON.
 await ev(async () => { document.getElementById('splash')?.remove(); const S = await import('/src/traitstate.ts'); const g = window.__game, s = g.save; g.enterTown(true); s.level = 12; for (let i = 0; i < 30; i++) { S.addSig(s, { hack: 1 }, 3); if (i % 5 === 4) S.closeRun(s); } S.closeRun(s); S.refreshOffer(s); window.__ui.open('traits'); });
 await sleep(700);
 const c1 = await ev(() => ({ names: [...document.querySelectorAll('#modal .trgrid .trn')].map(x => x.textContent), line: document.querySelector('#modal .trgrid .trline')?.textContent, src: window.__game.save.traits.offer.src }));
-ok(c1.src === 'ai' && c1.names[0] === 'Breacher' && /crack locks/.test(c1.line), 'client: AI order + line shown (' + c1.names + ')');
+ok(c1.src === 'ai' && c1.names[2] === 'Netrunner' && c1.names[0] !== 'Netrunner' && /crack locks/.test(c1.line), 'client: AI order + line shown (' + c1.names + ')');
 mode = 'bad'; const c2 = await ev(async () => { const S = await import('/src/traitstate.ts'), R = await import('/src/traitrank.ts'); const s = window.__game.save; s.traits.offer = null; S.refreshOffer(s); const before = s.traits.offer.ids.join(); const r = await R.rankOffer(s, {}); return { r, before, after: s.traits.offer.ids.join(), src: s.traits.offer.src, lines: s.traits.offer.lines || null }; });
 ok(c2.r === 'kept' && c2.before === c2.after && c2.src === 'rules' && !c2.lines, 'client: reply with an id outside the candidate set is ignored (rules order kept)');
 ok(errors.length === 0, 'no page errors ' + errors.slice(0, 2).join('|')); await browser.close();

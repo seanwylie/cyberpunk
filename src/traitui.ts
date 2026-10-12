@@ -10,6 +10,8 @@ const esc=(s:string)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>
 export const TS={ confirm:'' as string, msg:'' };
 /** Odalys recognition lines by leading family (no numbers, no meter). */
 export const RECOG:Record<Family,string[]>={
+  social:['You talk your way past more guards than you shoot. People remember a good voice.','Half your jobs end in a handshake now. That is a skill.'],
+  chrome:['More chrome every time I see you. Some doors open for that. Some shut.','You stopped flinching at the ripperdoc. I noticed.'],
   hack:['Every lock you pass opens a little easier, doesn\'t it? People are noticing how you work.','You talk to machines more than people. That is a direction, whether you chose it or not.'],
   brute:['You go through doors, not around them. Clients like that. Doors do not.','Word is you finish fights up close. That reputation is starting to stick.'],
   gun:['You keep your distance and the bodies keep dropping. That is a style now.','Nobody sees you up close any more. Good habit, or a calling.'],

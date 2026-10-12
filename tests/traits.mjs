@@ -50,7 +50,7 @@ ok(r.errors.length === 0 && r.bounds && r.noAugment, 'trait data: every effect w
 ok(r.validatorCatches, 'validator rejects out-of-bounds values and unknown effect types');
 ok(r.l20parents, 'every level 10 trait has at least two level 20 follow-ups');
 ok(r.tags.cascade.hack && r.tags.jab.brute && r.tags.turret.tech && r.tags.decoy.ghost && r.tags.headshot.gun && r.tags.control.hack, 'ability families come from catalog role/type/shape: ' + JSON.stringify(r.tags));
-ok(r.hacker[0] === 'netrunner' && r.hackerLean === 'lean' && r.hacker.every(id => ['netrunner', 'breacher', 'glitch', 'jackofall'].includes(id)), 'hacker history -> hacking choices: ' + r.hacker);
+ok(r.hacker[0] === 'netrunner' && r.hackerLean === 'lean' && r.hacker.every(id => ['netrunner', 'breacher', 'glitch', 'conartist', 'jackofall'].includes(id)), 'hacker history -> hacking choices: ' + r.hacker);
 ok(r.brute[0] === 'bruiser' && r.brute.every(id => ['bruiser', 'breacher', 'phantom', 'jackofall'].includes(id)), 'brute-force history -> direct-combat choices: ' + r.brute);
 ok(r.mixedLean === 'hybrid' && r.mixed[0] === 'breacher' && r.mixed.includes('netrunner') && r.mixed.includes('bruiser'), 'mixed hack+brute -> hybrid first: ' + r.mixed);
 ok(r.sparse.sparse && r.sparse.ids[0] === 'jackofall' && r.sparse.ids.includes('tinker'), 'sparse history -> balanced set + equipped abilities as a weak prior: ' + r.sparse.ids);

@@ -20,9 +20,9 @@ export const TRAIT_CFG = {
   /** hints: recognition lines fire when a family's share crosses this */
   hintShare:.4,
 };
-export type Family='hack'|'brute'|'gun'|'ghost'|'tech';
-export const FAMILIES:Family[]=['hack','brute','gun','ghost','tech'];
-export const FAMILY_NAME:Record<Family,string>={ hack:'Hacking', brute:'Direct combat', gun:'Ranged', ghost:'Stealth & evasion', tech:'Drones & tech' };
+export type Family='hack'|'brute'|'gun'|'ghost'|'tech'|'social'|'chrome';
+export const FAMILIES:Family[]=['hack','brute','gun','ghost','tech','social','chrome'];
+export const FAMILY_NAME:Record<Family,string>={ hack:'Hacking', brute:'Direct combat', gun:'Ranged', ghost:'Stealth & evasion', tech:'Drones & tech', social:'Speech', chrome:'Chrome' };
 
 /** Whitelisted effect types with hard numeric bounds (fractions). Anything else is rejected. */
 export const EFFECT_BOUNDS = {
@@ -36,6 +36,8 @@ export const EFFECT_BOUNDS = {
   maxHp:    { min:0, max:.1,  desc:(v:number)=>`+${pct(v)} max HP` },
   moveSpd:  { min:0, max:.08, desc:(v:number)=>`+${pct(v)} move speed` },
   dodgeCd:  { min:0, max:.2,  desc:(v:number)=>`${pct(v)} faster dodge recovery` },
+  speechOdds:{ min:0, max:.15, desc:(v:number)=>`+${pct(v)} speech success` },
+  speechTier:{ min:0, max:1, desc:(v:number)=>`+${v} speech tier` },
 } as const;
 export type EffectType=keyof typeof EFFECT_BOUNDS;
 export interface Effect { t:EffectType; v:number; f?:Family }
@@ -43,7 +45,7 @@ export interface TraitDef { id:string; tier:1|2; name:string; short:string; fams
 const pct=(v:number)=>Math.round(v*100)+'%';
 const fam=(f?:Family)=>f?FAMILY_NAME[f].toLowerCase():'all';
 /** Max total |value| per effect type summed over BOTH traits of a character (stacking bound). */
-export const STACK_CAP:Partial<Record<EffectType,number>>={ famDmg:.25, famCdr:.2, famHeat:.25, famDur:.3, autoDmg:.15, meleeDmg:.15, rangedDmg:.15, maxHp:.12, moveSpd:.1, dodgeCd:.25 };
+export const STACK_CAP:Partial<Record<EffectType,number>>={ famDmg:.25, famCdr:.2, famHeat:.25, famDur:.3, autoDmg:.15, meleeDmg:.15, rangedDmg:.15, maxHp:.12, moveSpd:.1, dodgeCd:.25, speechOdds:.2, speechTier:1 };
 
 const T=(id:string,tier:1|2,name:string,short:string,fams:Family[],blurb:string,effects:Effect[],parent?:string[]):TraitDef=>({ id,tier,name,short,fams,blurb,effects,parent });
 export const TRAITS:TraitDef[]=[
@@ -57,7 +59,11 @@ export const TRAITS:TraitDef[]=[
   T('overwatch',1,'Overwatch','Overw.',['gun','tech'],'Turrets on the left, you on the right.',[{t:'rangedDmg',v:.07},{t:'famDur',f:'tech',v:.12}]),
   T('phantom',1,'Phantom Blade','Phantom',['ghost','brute'],'In, out, gone.',[{t:'meleeDmg',v:.07},{t:'famDur',f:'ghost',v:.12},{t:'dodgeCd',v:.08}]),
   T('glitch',1,'Glitch','Glitch',['hack','ghost'],'The cameras see static where you stood.',[{t:'famDmg',f:'hack',v:.07},{t:'famDur',f:'ghost',v:.12}]),
-  T('jackofall',1,'Freelancer','Freel.',['hack','brute','gun','ghost','tech'],'No speciality is still a speciality.',[{t:'autoDmg',v:.05},{t:'maxHp',v:.05},{t:'moveSpd',v:.03}]),
+  T('jackofall',1,'Freelancer','Freel.',['hack','brute','gun','ghost','tech','social','chrome'],'No speciality is still a speciality.',[{t:'autoDmg',v:.05},{t:'maxHp',v:.05},{t:'moveSpd',v:.03}]),
+  T('face',1,'Face','Face',['social'],'Doors open when you ask nicely.',[{t:'speechTier',v:1},{t:'speechOdds',v:.1}]),
+  T('conartist',1,'Con Artist','Con',['hack','social'],'Spoof the badge, then sell the story.',[{t:'speechOdds',v:.08},{t:'famCdr',f:'hack',v:.06}]),
+  T('chromed',1,'Full Chrome','Chrome',['chrome'],'Less of you, more of it.',[{t:'maxHp',v:.06},{t:'meleeDmg',v:.06}]),
+  T('heavy',1,'Heavy','Heavy',['chrome','social'],'Nobody argues with a wall of chrome.',[{t:'speechOdds',v:.06},{t:'maxHp',v:.05}]),
   // ---- level 20: per L10 trait, complements it ----
   T('rootkit',2,'Rootkit','Rootkit',['hack'],'Every system you touch stays a little bit yours.',[{t:'famDur',f:'hack',v:.2},{t:'famHeat',f:'hack',v:.15}],['netrunner','glitch','breacher']),
   T('icebreaker',2,'Icebreaker','Icebrk.',['hack','brute'],'Overload first, ask later.',[{t:'famDmg',f:'hack',v:.1},{t:'maxHp',v:.04}],['netrunner','breacher']),
@@ -70,6 +76,11 @@ export const TRAITS:TraitDef[]=[
   T('fieldmech',2,'Field Mechanic','Mech.',['tech','brute'],'Keeps the drones and the body running.',[{t:'maxHp',v:.05},{t:'famHeat',f:'tech',v:.15}],['tinker','overwatch']),
   T('journeyman',2,'Journeyman','Journ.',['hack','brute','gun','ghost','tech'],'Every tool, a little sharper.',[{t:'famCdr',v:.06},{t:'maxHp',v:.04}],['jackofall']),
   T('adaptable',2,'Adaptable','Adapt.',['hack','brute','gun','ghost','tech'],'Whatever the job needs, again.',[{t:'autoDmg',v:.05},{t:'famHeat',v:.1},{t:'dodgeCd',v:.08}],['jackofall','glitch','breacher','phantom','overwatch']),
+  T('silvertongue',2,'Silver Tongue','Silver',['social'],'Every no is a maybe.',[{t:'speechOdds',v:.1},{t:'moveSpd',v:.03}],['face','conartist','heavy']),
+  T('kingpin',2,'Kingpin','Kingpin',['social','chrome'],'Your reputation walks in first.',[{t:'speechTier',v:1},{t:'maxHp',v:.04}],['face','heavy']),
+  T('grifter',2,'Grifter','Grifter',['hack','social'],'The mark thanks you after.',[{t:'speechTier',v:1},{t:'famDur',f:'hack',v:.1}],['conartist','glitch']),
+  T('cyberpsycho',2,'Cyberpsycho','Psycho',['chrome','brute'],'Something else is driving now.',[{t:'meleeDmg',v:.08},{t:'maxHp',v:.04}],['chromed','heavy','bruiser']),
+  T('ironclad',2,'Ironclad','Ironclad',['chrome'],'Plates where the doubts were.',[{t:'maxHp',v:.06},{t:'dodgeCd',v:.08}],['chromed','breacher']),
 ];
 export const TRAIT_BY_ID:Record<string,TraitDef>=Object.fromEntries(TRAITS.map(t=>[t.id,t]));
 
