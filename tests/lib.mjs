@@ -5,7 +5,7 @@ export async function launch(opts = {}) {
   const exe = process.env.CHROME || ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].find(p => fs.existsSync(p));
   const browser = await chromium.launch({ executablePath: exe, headless: true, args: ['--no-sandbox', '--use-gl=swiftshader', '--autoplay-policy=no-user-gesture-required'] });
   const ctx = await browser.newContext({ viewport: opts.viewport || { width: 1280, height: 720 }, hasTouch: !!opts.touch, isMobile: !!opts.touch, deviceScaleFactor: opts.dpr || 1 });
-  const page = await ctx.newPage(); const errors = [];
+  const page = await ctx.newPage(); const errors = []; if (process.env.PW_TIMEOUT) page.setDefaultTimeout(+process.env.PW_TIMEOUT); // loaded shared box: allow a longer load
   page.on('pageerror', e => errors.push('pageerror: ' + e.message)); page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   // hermetic story proxy: the dev middleware rate-limits (429) when many suites share one IP, and Chrome logs any 4xx as a console error. The client already falls back to authored beats on ok:false.
   if (!opts.realStory) await page.route('**/api/story-beat', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: false }) }));

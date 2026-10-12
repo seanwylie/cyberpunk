@@ -1,0 +1,17 @@
+{
+ "_doc": "Hard performance budgets enforced by tests/perf_gate.mjs. See docs/PERF_BUDGETS.md. Raising a number needs a written reason in that doc.",
+ "profiles": {
+  "desktop": { "submitP95": 16.7, "drawCalls": 3000, "domMutPerFrame": 14, "heapMB": 64, "textureMB": 700, "gcMaxMs": 30, "loadMs": 20000 },
+  "mobile":  { "submitP95": 33, "drawCalls": 3000, "domMutPerFrame": 14, "heapMB": 64, "textureMB": 500, "gcMaxMs": 60, "loadMs": 45000 }
+ },
+ "scenes": {
+  "town":      { "drawCalls": 5600, "domMutPerFrame": 13 },
+  "dungeon":   { "drawCalls": 3000, "domMutPerFrame": 22 },
+  "worldtour": { "drawCalls": 3500, "domMutPerFrame": 13 },
+  "worldmap":  { "drawCalls": 3400, "domMutPerFrame": 16 }
+ },
+ "features": { "fxParticlePool": 240 },
+ "static": { "initialJsKB": 1600, "initialGzKB": 480, "perTownMB": 40 },
+ "net": { "perClientBps": 8000 },
+ "regression": { "counters": 0.10, "timingNoise": 0.25, "netNoise": 0.10 }
+}
