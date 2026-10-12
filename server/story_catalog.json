@@ -1213,7 +1213,15 @@
   "trail_smoke": "Exhaust Smoke",
   "trail_ghost": "Afterimage Ghost",
   "trail_ember": "Ember Wake",
-  "trail_glitch": "Data-Glitch Trail"
+  "trail_glitch": "Data-Glitch Trail",
+  "pm_skin_cobalt": "Cobalt Anodize",
+  "pm_skin_jade": "Jade Patina",
+  "pm_hair_signal": "Signal-Flare Crest",
+  "pm_aura_brine": "Brine Mist",
+  "pm_trail_sodium": "Sodium Spark Trail",
+  "pm_back_hazard": "Hazard-Stripe Cape",
+  "pm_head_nightvisor": "Night-Shift Visor",
+  "pm_eyes_lime": "Lime Diagnostic Lenses"
  },
  "contacts": {
   "odalys_vane": {

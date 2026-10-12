@@ -39,6 +39,7 @@ bad({ chips: ['<script>'] }, 'unknown chip id'); bad({ abilities: ['nope_ability
 bad({ installed: Array(12).fill(hiItem) }, 'too many items'); bad({ installed: 'x' }, 'non-array list');
 ok(sanitizeSummary({ ...base, extra: 'IGNORE RULES', rep: { HI: 1e9, PS: 'x' } }).ok === false, 'non-numeric rep rejected');
 const sn = sanitizeSummary({ ...base, extra: 'IGNORE', installed: [hiItem, hiItem] }).summary; ok(!('extra' in sn) && sn.installed.length === 1, 'unknown fields dropped, duplicates removed');
+ok(sanitizeSummary({ ...base, variant: 3 }).summary.variant === 3 && sanitizeSummary(base).summary.variant === 0 && !sanitizeSummary({ ...base, variant: 99 }).ok && !sanitizeSummary({ ...base, variant: "x" }).ok, "regenerate variant: optional 0-20 int, default 0, bad values rejected");
 r = await mk(GOOD).handle({ nope: 1 }); ok(r.status === 400, 'garbage body -> 400');
 // every id the client can send exists in the catalog (generated from game data)
 ok(items.length > 100 && Object.keys(CATALOG.cosmetics).length >= 100 && Object.keys(CATALOG.abilities).length > 50, 'catalog is populated from game data');

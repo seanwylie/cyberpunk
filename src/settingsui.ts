@@ -91,6 +91,7 @@ function storyHtml(ui:UIx):string{ const st=ui.g.save.settings, l=st.llm; const 
   const badge=badgeHtml(l);
   return head('Story AI','The fixer and contacts get new story beats from a provider. It never touches bosses, drops or access.')
   +row('Story line after each run','On: the Fixer says one short line about your gear after a run, written by an AI. Only the names of one or two equipped parts are sent, nothing personal. Off: a fixed line, no network calls.',sw('storyai',st.storyAi!==false,'Story line after each run'),{tag:'label',id:'s-storyai'})
+  +row('Typewriter reveal in the story panel','Off by default. Types the line out letter by letter. Always off with Reduced FX.',sw('storytype',!!st.storyTypewriter,'Typewriter reveal'),{tag:'label',id:'s-storytype'})
   +`<div class="scard"><b>Status ${badge}</b><small>Active provider: ${esc(p)}. The offline mock needs no setup and sends nothing anywhere. A real provider is any OpenAI-compatible chat-completions endpoint; it is called only when a story update runs outside combat.</small></div>`
   +row('Use a real provider','Off = offline mock. Needs a URL and key below.',sw('llmon',!!l.enabled,'Use a real provider'),{tag:'label',id:'s-llmon'})
   +`<div class="sfields${l.enabled?'':' off'}"><label class="sf"><b>Endpoint URL</b><input type="text" data-in="llmurl" placeholder="https://…/v1/chat/completions" value="${esc(l.url)}" autocomplete="off" spellcheck="false" ${l.enabled?'':'disabled'}/></label>`
@@ -125,7 +126,7 @@ function keep(ui:UIx,focusEl?:HTMLElement|null,reset=false){ const sb=document.q
 export function settingsTab(ui:UIx,id:string){ setTab(ui,id,false); }
 function setTab(ui:UIx,id:string,focus=true){ if(!TABS.some(t=>t[0]===id)) return; S.tab=id; S.confirm=null; try{ localStorage.setItem(TAB_KEY,id); }catch{} S.focus=focus?'#stab-'+id:''; S.scroll=0; ui.render(); }
 
-const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','autosell','recnudge','stationmk','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','storyai','llmurl','llmkey','llmmodel','devreset']);
+const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','autosell','recnudge','stationmk','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','storyai','storytype','llmurl','llmkey','llmmodel','devreset']);
 /** returns true if handled. v is the new value (string for selects/ranges/text, boolean for switches) */
 function apply(ui:UIx,k:string,v:any,final=true){ const g=ui.g, s=g.save, st=s.settings;
   switch(k){
@@ -135,7 +136,7 @@ function apply(ui:UIx,k:string,v:any,final=true){ const g=ui.g, s=g.save, st=s.s
     case 'vol': st.volume=+v; ui.audio.setVolume(st.volume); if(final) preview(ui); break;
     case 'musicvol': st.musicVol=+v; ui.audio.setMusicVolume(st.musicVol); break;
     case 'sfxvol': st.sfxVol=+v; ui.audio.setSfxVolume(st.sfxVol); if(final) preview(ui); break;
-    case 'storyai': st.storyAi=!!v; break; case 'llmon': st.llm.enabled=!!v; break; case 'llmurl': st.llm.url=v; break; case 'llmkey': st.llm.key=v; break; case 'llmmodel': st.llm.model=v; break;
+    case 'storyai': st.storyAi=!!v; break; case 'storytype': st.storyTypewriter=!!v; break; case 'llmon': st.llm.enabled=!!v; break; case 'llmurl': st.llm.url=v; break; case 'llmkey': st.llm.key=v; break; case 'llmmodel': st.llm.model=v; break;
     case 'rechide': st.recHidden=!v; break; case 'recnudge': st.recNudge=!!v; break; case 'stationmk': st.stationMarkers=!!v; break;
     case 'quality': st.quality=v; Q.setPref(v); break; case 'showfps': st.showFps=!!v; Q.showFps=!!v; break;
     case 'minimap': ui.setMinimap(!!v); return;

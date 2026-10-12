@@ -39,7 +39,8 @@ export function sanitizeSummary(b) {
   const installed = ids(b.installed, CATALOG.items, LIMITS.maxItems), chips = ids(b.chips, CATALOG.chips, LIMITS.maxList), abilities = ids(b.abilities, CATALOG.abilities, LIMITS.maxList), cosmetics = ids(b.cosmetics, CATALOG.cosmetics, LIMITS.maxList);
   if (!installed) return { ok: false, why: 'installed' }; if (!chips) return { ok: false, why: 'chips' }; if (!abilities) return { ok: false, why: 'abilities' }; if (!cosmetics) return { ok: false, why: 'cosmetics' };
   const rep = {}; for (const m of MFR_IDS) { const r = b.rep?.[m] ?? 0; if (!Number.isFinite(r)) return { ok: false, why: 'rep' }; rep[m] = Math.max(-9999, Math.min(9999, Math.round(r))); }
-  const out = { trigger: b.trigger, town: b.town, level: lvl, session: b.session, installed, chips, abilities, cosmetics, rep };
+  const variant = b.variant == null ? 0 : b.variant; if (!Number.isInteger(variant) || variant < 0 || variant > 20) return { ok: false, why: 'variant' };
+  const out = { trigger: b.trigger, town: b.town, level: lvl, session: b.session, installed, chips, abilities, cosmetics, rep, variant };
   if (b.contract != null) { if (!own(CATALOG.contracts, b.contract)) return { ok: false, why: 'contract' }; out.contract = b.contract; }
   if (b.dungeon != null) { if (!own(CATALOG.dungeons, b.dungeon)) return { ok: false, why: 'dungeon' }; out.dungeon = b.dungeon; }
   if (b.newMfr != null) { if (!MFR_IDS.includes(b.newMfr)) return { ok: false, why: 'newMfr' }; out.newMfr = b.newMfr; }
@@ -58,7 +59,7 @@ export function promptFacts(s, recent = []) {
   return f;
 }
 /** Cache key: hash of the normalised summary (level bucketed by 5), per session so repeat-avoidance stays meaningful. */
-export function loadoutHash(s) { const { session, ...rest } = s; return crypto.createHash('sha256').update(JSON.stringify({ ...rest, level: Math.floor(s.level / 5) })).digest('hex').slice(0, 24); }
+export function loadoutHash(s) { const { session, variant, ...rest } = s; return crypto.createHash('sha256').update(JSON.stringify({ ...rest, level: Math.floor(s.level / 5) })).digest('hex').slice(0, 24); }
 /** Output filter. Returns cleaned text or null. */
 export function cleanOutput(t) {
   if (typeof t !== 'string') return null;
@@ -104,7 +105,7 @@ export function createStoryService(opts = {}) {
   async function handle(raw, meta = {}) {
     const v = sanitizeSummary(raw); if (!v.ok) return { status: 400, json: { ok: false, reason: 'bad_request:' + v.why } };
     const s = v.summary, now = nowFn(), ip = String(meta.ip || 'unknown');
-    const ck = s.session + ':' + loadoutHash(s) + ':' + s.trigger + ':' + (s.contract || s.newMfr || '');
+    const ck = s.session + ':' + s.variant + ':' + loadoutHash(s) + ':' + s.trigger + ':' + (s.contract || s.newMfr || '');
     if (cache.has(ck)) return { status: 200, json: { ok: true, text: cache.get(ck), model: model(), cached: true } };
     if (!windowCheck(ipMin, ip, now, 60000, LIMITS.perIpPerMin, false) || !windowCheck(ipHour, ip, now, 3600000, LIMITS.perIpPerHour, false)) return { status: 429, json: { ok: false, reason: 'rate_limited_ip' } };
     if (!windowCheck(sesHour, s.session, now, 3600000, LIMITS.perSessionPerHour, false)) return { status: 429, json: { ok: false, reason: 'rate_limited_session' } };
