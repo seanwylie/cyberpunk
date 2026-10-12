@@ -607,8 +607,8 @@ body:not(.intown) #btn-story{ display:none; }
 .stparts .tile.stp>b.cap{ position:absolute; left:2px; right:2px; bottom:2px; font-size:max(12px,calc(10.5px*var(--fs))); text-align:center; background:rgba(10,10,11,.7); border-radius:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.25; padding:1px 2px; }
 /* Dressing room (src/wardrobeui.ts, docs/DRESSING_ROOM.md) */
 .drwrap{ display:flex; gap:10px; align-items:flex-start; min-width:0; }
-.drstage{ flex:0 0 300px; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-width:0; }
-.drstage #wdprev{ width:100%; height:auto; aspect-ratio:300/360; border:1px solid #4a4c4a; border-radius:6px; background:#101418; cursor:grab; box-shadow:0 0 24px rgba(0,0,0,.6) inset; }
+.drstage{ flex:0 0 360px; display:flex; flex-direction:column; gap:5px; align-items:stretch; min-width:0; }
+.drstage #wdprev{ width:100%; height:auto; aspect-ratio:360/460; border:1px solid #4a4c4a; border-radius:6px; background:#101418; cursor:grab; box-shadow:0 0 24px rgba(0,0,0,.6) inset; }
 .drstage #wdprev:active{ cursor:grabbing; } .drstage #wdprev:focus-visible{ outline:2px solid #9fd09a; }
 .drrot{ display:flex; justify-content:center; align-items:center; gap:8px; } .drrot .btn{ min-width:40px; font-size:16px; } .drdir{ min-width:2.4em; text-align:center; }
 .drdiffs{ display:flex; flex-wrap:wrap; gap:3px; min-height:22px; align-items:center; justify-content:center; }

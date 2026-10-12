@@ -121,7 +121,7 @@ export function wardrobeHtml(ui: UIx): string {
   else if (bt) buy = bt.kind === 'sku' ? `<button class="btn buy" data-act="wd-buy" data-sku="${bt.sku.id}" data-tip="${esc(bt.sku.name + ': ' + fmtUsd(bt.sku.cents) + ' SIMULATED, no real charge. Stays a preview until you Apply.')}">Buy ${fmtUsd(bt.sku.cents)}</button>` : `<button class="btn buy" data-act="wd-buy" data-id="${bt.d.id}" ${s.credits >= (bt.d.src as any).price ? '' : 'disabled'} data-tip="${esc(bt.d.name + ' for ' + (bt.d.src as any).price + 'c (you have ' + s.credits + 'c)')}">Buy ${(bt.d.src as any).price}c</button>`;
   const outfits = Array.from({ length: OUTFIT_SLOTS }, (_, i) => { const o = c.outfits?.[i]; return `<button class="btn mini ${o ? '' : 'empty'}" data-act="wd-load" data-i="${i}" ${o ? '' : 'disabled'} data-tip="${esc(o ? '<b>' + o.n + '</b><br>' + (Object.values(o.eq).map(id => esc(COS_BY_ID[id!]?.name || '')).join('<br>') || 'Bare') + '<br><i>Click: preview it</i>' : 'Empty outfit slot')}">L${i + 1}</button>`; }).join('') + `<button class="btn mini" data-act="wd-save" ${need.length ? 'disabled' : ''} data-tip="${esc(need.length ? 'Buy the previewed store pieces first' : 'Save this preview as an outfit (fills the first empty slot, else L1)')}">Save</button>`;
   return `<div class="drwrap" data-dressing><div class="drstage">
-      <canvas id="wdprev" width="300" height="360" aria-label="Character preview, facing ${DIR_ORDER[WD.dir]}. Drag to rotate." tabindex="0"></canvas>
+      <canvas id="wdprev" width="360" height="460" aria-label="Character preview, facing ${DIR_ORDER[WD.dir]}. Drag to rotate." tabindex="0"></canvas>
       <div class="drrot"><button class="btn" data-act="wd-rot" data-d="-1" aria-label="Rotate left" data-tip="Rotate left (or drag the model)">⟲</button><span class="mut drdir">${DIR_ORDER[WD.dir]}</span><button class="btn" data-act="wd-rot" data-d="1" aria-label="Rotate right" data-tip="Rotate right (or drag the model)">⟳</button><button class="btn ${WD.showcase ? 'primary' : ''}" data-act="wd-showcase" aria-pressed="${WD.showcase}" data-tip="Showcase: turn the model and loop the rarity reveal and animations">▶</button></div>
       <div class="drdiffs" aria-label="Changes vs your current look">${diffHtml}</div>
       <div class="drbar"><button class="btn primary" data-act="wd-apply" ${applyN ? '' : 'disabled'} data-tip="${esc(applyN ? 'Wear the previewed owned pieces' + (need.length ? ' (store pieces stay previews until bought)' : '') : 'Nothing owned to apply')}">Apply${applyN ? ' ' + applyN : ''}</button><button class="btn" data-act="wd-revert" ${diff.length ? '' : 'disabled'} data-tip="Back to your current look">Revert</button>${buy}</div></div>
@@ -167,7 +167,7 @@ export function wardrobeClick(ui: UIx, el: HTMLElement, a: string): boolean {
 export function previewFromStore(ui: UIx, id: string) { WD.tab = 'all'; WD.show = 'all'; stageItem(ui.g.save, id); WD.msg = ''; ui.open('wardrobe'); }
 
 // ------------------------------------------------------------------------------------------------ stage (canvas)
-let raf = 0, anim: PlayerAnimator | null = null, animSrc: any = null;
+const PLATE_BAND = 48; let raf = 0, anim: PlayerAnimator | null = null, animSrc: any = null;
 /** world facing angle whose screen direction is `d` (for the procedural cosmetics) */
 const FACE: number[] = (() => { const o: number[] = []; for (let i = 0; i < 64; i++) { const a = i / 64 * Math.PI * 2, dd = dirFromWorld(Math.cos(a), Math.sin(a)); if (o[dd] === undefined) o[dd] = a; } return o; })();
 export function wardrobeAfter(ui: UIx) {
@@ -181,7 +181,7 @@ export function wardrobeAfter(ui: UIx) {
   cv.onpointermove = e => { if (dragX === null) return; acc += e.clientX - dragX; dragX = e.clientX; while (Math.abs(acc) >= 40) { const st = acc > 0 ? 1 : -1; WD.dir = (((WD.dir + st) % 8) + 8) % 8 as Dir8; acc -= st * 40; turned = true; } };
   cv.onpointerup = cv.onpointercancel = () => { if (turned) { track('dr_rotate', undefined, { dir: DIR_ORDER[WD.dir], via: 'drag' }); const l = document.querySelector('.drdir'); if (l) l.textContent = DIR_ORDER[WD.dir]; cv.setAttribute('aria-label', 'Character preview, facing ' + DIR_ORDER[WD.dir] + '. Drag to rotate.'); } dragX = null; };
   cv.onkeydown = e => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); rotate(e.key === 'ArrowLeft' ? -1 : 1, 'key'); ui.render(); document.getElementById('wdprev')?.focus(); } };
-  const W = cv.width, H = cv.height, fx = W / 2, fy = H - 46; let revSel = '', revT = -9, revTier: string | null = null, lastShow = 0, lastTurn = 0;
+  const W = cv.width, H = cv.height, fx = W / 2, fy = H - PLATE_BAND - 14; let revSel = '', revT = -9, revTier: string | null = null, lastShow = 0, lastTurn = 0;
   const frame = () => { if (!document.getElementById('wdprev')) return; const now = performance.now(), dt = Math.min(.1, (now - last) / 1000); last = now; t += dt;
     // smooth snap: dirF eases toward the target notch along the short way round
     let dd = WD.dir - WD.dirF; dd = ((dd % 8) + 12) % 8 - 4; WD.dirF = Math.abs(dd) < .02 ? WD.dir : WD.dirF + dd * Math.min(1, dt * 14); WD.dirF = ((WD.dirF % 8) + 8) % 8;
@@ -189,17 +189,17 @@ export function wardrobeAfter(ui: UIx) {
     const sel = WD.sel ? COS_BY_ID[WD.sel] : null, glow = sel && look[sel.slot] === sel.id ? rc(sel.rarity) : '#6b7a86';
     // backdrop: dark gradient, spotlight cone, floor disc with rarity rim light
     const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#101418'); bg.addColorStop(1, '#1d2023'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-    ctx.save(); ctx.globalCompositeOperation = 'lighter'; const sp = ctx.createRadialGradient(fx, fy - 150, 10, fx, fy - 120, 190); sp.addColorStop(0, 'rgba(255,240,215,.16)'); sp.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = sp; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; const sp = ctx.createRadialGradient(fx - 40, fy - 230, 10, fx, fy - 150, 260); sp.addColorStop(0, 'rgba(255,240,215,.16)'); sp.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = sp; ctx.fillRect(0, 0, W, H);
     ctx.globalAlpha = .5 + .1 * Math.sin(t * 2); const rim = ctx.createRadialGradient(fx, fy, 20, fx, fy, 95); rim.addColorStop(0, 'rgba(0,0,0,0)'); rim.addColorStop(.8, glow + '55'); rim.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = rim; ctx.beginPath(); ctx.ellipse(fx, fy, 95, 26, 0, 0, 7); ctx.fill(); ctx.restore();
     ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.beginPath(); ctx.ellipse(fx, fy, 52, 13, 0, 0, 7); ctx.fill();
-    const u = 4.6, dA = Math.floor(WD.dirF) % 8 as Dir8, frac = WD.dirF - Math.floor(WD.dirF), dB = (dA + 1) % 8 as Dir8; const dShow = (frac < .5 ? dA : dB) as Dir8;
+    const u = 6.2, dA = Math.floor(WD.dirF) % 8 as Dir8, frac = WD.dirF - Math.floor(WD.dirF), dB = (dA + 1) % 8 as Dir8; const dShow = (frac < .5 ? dA : dB) as Dir8;
     const k = { c: ctx, x: fx, y: fy, u, t, moving: false, face: FACE[dShow], id: 'dr' };
     // rarity reveal: selecting a purple/orange piece plays a beam + burst + tinted spotlight (orange bigger, longer, brighter); showcase loops it
     if (sel && look[sel.slot] === sel.id && sel.id !== revSel) { revSel = sel.id; if (sel.rarity === 'orange' || sel.rarity === 'purple') { revT = t; revTier = sel.rarity; flourish('dr'); equipSound([sel]); } }
     if (!sel || look[sel.slot] !== sel.id) revSel = '';
     if (WD.showcase && !reducedFx()) { if (t - lastTurn > 1.6) { lastTurn = t; WD.dir = ((WD.dir + 1) % 8) as Dir8; } const tops = list.filter(x => x.rarity === 'orange' || x.rarity === 'purple'); if (tops.length && t - lastShow > 6) { lastShow = t; revT = t; flourish('dr'); revTier = tops.some(x => x.rarity === 'orange') ? 'orange' : 'purple'; } }
-    (window as any).__drReveal = { t: t - revT, tier: revTier };
-    if (revTier && t - revT < 3.4) { const rd = list.find(x => x.rarity === revTier); const sg = rd && SIGNATURE[rd.id]; drawReveal(ctx, fx, fy, u, t - revT, revTier as any, W, H, reducedFx(), rd?.name || '', sg ? PALETTES[sg.pal] : undefined); }
+    (window as any).__drReveal = { t: t - revT, tier: revTier }; let plate: (() => void) | null = null;
+    if (revTier && t - revT < 3.4) { const rd = list.find(x => x.rarity === revTier); const sg = rd && SIGNATURE[rd.id]; drawReveal(ctx, fx, fy, u, t - revT, revTier as any, W, H, reducedFx(), '', sg ? PALETTES[sg.pal] : undefined); plate = () => drawPlate(ctx, t - revT, revTier as any, W, H, reducedFx(), rd?.name || '', sg ? PALETTES[sg.pal] : undefined); }
     const tr = list.find(x => x.slot === 'trail'); if (tr) drawTrail(ctx, Array.from({ length: 14 }, (_, i) => ({ x: fx - 8 - i * 7, y: fy + (i % 2) * 2, t: t - i * .06 })), t, u, tr);
     drawCosmetics(k, list, 'back'); let drew = false;
     if (anim) { try { const body = applyCosmeticVariants(bodyOf({ ...s, cosmetics: { owned: {}, equipped: {} } } as any, null), { cosmetics: { owned: Object.fromEntries(list.map(x => [x.id, 1])), equipped: look } } as any); anim.setBody(body); anim.anim = 'idle'; anim.t = t;
@@ -209,6 +209,12 @@ export function wardrobeAfter(ui: UIx) {
     drawCosmetics(k, list, 'front');
     // key light from the upper left
     ctx.save(); ctx.globalCompositeOperation = 'soft-light'; const kl = ctx.createLinearGradient(0, 0, W, H); kl.addColorStop(0, 'rgba(255,230,200,.35)'); kl.addColorStop(1, 'rgba(0,10,30,.35)'); ctx.fillStyle = kl; ctx.fillRect(0, 0, W, H); ctx.restore();
+    // back rim light in the selected rarity colour: separates the silhouette from the wash (no particles)
+    if (glow !== '#6b7a86') { ctx.save(); ctx.globalCompositeOperation = 'lighter'; const rl = ctx.createRadialGradient(fx, fy - 24 * u, 6 * u, fx, fy - 22 * u, 30 * u); rl.addColorStop(0, 'rgba(0,0,0,0)'); rl.addColorStop(.65, glow + '22'); rl.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = rl; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    // reserved name-plate band: opaque, drawn last so neither feet nor trails ever sit under the plaque text
+    ctx.fillStyle = '#0d1013'; ctx.fillRect(0, H - PLATE_BAND, W, PLATE_BAND); ctx.fillStyle = 'rgba(255,255,255,.08)'; ctx.fillRect(0, H - PLATE_BAND, W, 1);
+    plate?.();
+    (window as any).__drLayout = { W, H, fy, u, band: H - PLATE_BAND, headY: fy - 50 * u };
     raf = requestAnimationFrame(frame); };
   frame();
 }
@@ -225,10 +231,14 @@ function drawReveal(c: CanvasRenderingContext2D, x: number, y: number, u: number
   const strokes = O ? 5 : 3; for (let i = 0; i < strokes; i++) { const d = red ? 1 : Math.max(0, Math.min(1, (e - i * .06) / .45)); const p = d < .2 ? -.05 * d / .2 : 1 - Math.pow(1 - (d - .2) / .8, 3); const yy = H * (.15 + i * .17), len = W * 1.2 * p;
     c.globalAlpha = (O ? .5 : .32) * fade; c.fillStyle = i % 2 ? P[1] : P[0]; c.beginPath(); c.moveTo(-20, yy); c.quadraticCurveTo(len * .5, yy - 18 - i * 3, len, yy + 6); c.lineTo(len - 30, yy + 34); c.quadraticCurveTo(len * .45, yy + 40, -20, yy + 30); c.closePath(); c.fill(); }
   // splash card frame
-  const m = 10 + (1 - settle) * 14; c.globalAlpha = fade; c.lineJoin = 'round'; c.strokeStyle = P[0]; c.lineWidth = 6; c.strokeRect(m, m, W - 2 * m, H - 2 * m); c.strokeStyle = O ? P[3] : P[3]; c.lineWidth = O ? 2.5 : 1.5; c.strokeRect(m, m, W - 2 * m, H - 2 * m);
-  if (O) for (const [cx, cy, sx, sy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) { c.fillStyle = P[3]; c.strokeStyle = P[0]; c.lineWidth = 2; c.beginPath(); c.moveTo(cx - sx * 4, cy - sy * 4); c.lineTo(cx + sx * 22, cy - sy * 4); c.lineTo(cx + sx * 8, cy + sy * 8); c.lineTo(cx - sx * 4, cy + sy * 22); c.closePath(); c.fill(); c.stroke(); }
-  // name plaque
-  if (name) { const ph = 26, py = H - m - ph - 6, pw = Math.min(W - 2 * m - 20, 12 + name.length * 8.4); const px = (W - pw) / 2; c.globalAlpha = fade * settle; c.fillStyle = P[0]; c.fillRect(px, py, pw, ph); c.strokeStyle = P[3]; c.lineWidth = 1.5; c.strokeRect(px, py, pw, ph);
+  const m = 10 + (1 - settle) * 14; c.globalAlpha = fade; c.lineJoin = 'round'; c.strokeStyle = P[0]; c.lineWidth = 6; const fb = H - PLATE_BAND; c.strokeRect(m, m, W - 2 * m, fb - 2 * m); c.strokeStyle = P[3]; c.lineWidth = O ? 2.5 : 1.5; c.strokeRect(m, m, W - 2 * m, fb - 2 * m);
+  if (O) for (const [cx, cy, sx, sy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, fb - m, 1, -1], [W - m, fb - m, -1, -1]]) { c.fillStyle = P[3]; c.strokeStyle = P[0]; c.lineWidth = 2; c.beginPath(); c.moveTo(cx - sx * 4, cy - sy * 4); c.lineTo(cx + sx * 22, cy - sy * 4); c.lineTo(cx + sx * 8, cy + sy * 8); c.lineTo(cx - sx * 4, cy + sy * 22); c.closePath(); c.fill(); c.stroke(); }
+  void name; void x; void y; void u; c.restore(); }
+/** Name plaque, drawn inside the reserved bottom band (below the floor line), after the character. */
+function drawPlate(c: CanvasRenderingContext2D, e: number, tier: 'orange' | 'purple', W: number, H: number, red: boolean, name: string, pal?: string[]) {
+  const O = tier === 'orange'; const P = pal || (O ? PALETTES.forge : ['#140a20', '#7a4ad0', '#efe4ff', '#b48cff']); const settle = red ? 1 : 1 - Math.pow(1 - Math.min(1, e / .5), 3);
+  const fade = red ? .85 : e < 2.6 ? 1 : Math.max(0, 1 - (e - 2.6) / .8); if (fade <= 0 || !name) return; c.save();
+  { const ph = 24, py = H - PLATE_BAND + 16, pw = Math.min(W - 60, 12 + name.length * 8.4); const px = (W - pw) / 2; c.globalAlpha = fade * settle; c.fillStyle = P[0]; c.fillRect(px, py, pw, ph); c.strokeStyle = P[3]; c.lineWidth = 1.5; c.strokeRect(px, py, pw, ph);
     c.fillStyle = O ? P[3] : '#efe4ff'; c.font = 'bold 14px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(name.toUpperCase(), W / 2, py + ph / 2 + 1); c.font = '10px system-ui,sans-serif'; c.fillStyle = P[2]; c.fillText(O ? 'LEGENDARY' : 'EPIC', W / 2, py - 8); }
-  void x; void y; void u; c.restore(); }
+  c.restore(); }
 export { checkAchievements };
