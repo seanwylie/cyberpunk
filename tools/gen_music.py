@@ -281,12 +281,13 @@ BOSS7 = {
  'boss_wall_end': "Final apocalyptic boss battle, 160 bpm, C minor. Massive orchestral-electronic hybrid, pounding percussion, repeating piano motif turned brutal, wall of distorted guitars, siren-like synths, inevitable doom.",
 }
 for _n, _p in BOSS7.items(): TRACKS[_n] = (75, True, _p + " maximum intensity, no breakdown. " + D7)
-TRACKS['theme_main'] = (120, True, "Main theme, 84 bpm, D minor. Opens with a lonely repeating piano motif and soft electronic pulse, a clean guitar joins with the same figure, percussion slowly enters, layers of tremolo guitars and low strings build gradually into a vast roaring crescendo, then fall back to the lone piano. Loneliness turning into rage. " + D7)
+TRACKS['theme_main'] = (120, False, "Main theme, 84 bpm, D minor. Opens with a lonely repeating piano motif and soft electronic pulse, a clean guitar joins with the same figure, percussion slowly enters, layers of tremolo guitars and low strings build gradually into a vast roaring crescendo, then fall back to the lone piano. Loneliness turning into rage. " + D7)
 LOWRATE.add('theme_main')
 STING['stinger_ascent'] = (14, 10.0, "Ascent arrival sting, instrumental. Slow luminous synth swell rising from silence, warm sustained major chord, soft high shimmer, spiritual calm and wonder, ends cleanly.")
 TRACKS['stinger_ascent'] = (14, False, STING['stinger_ascent'][2])
 NEW7 = list(CORE7) + list(TOWN7) + list(DUNGEON7) + list(HI7) + list(BOSS7) + ['theme_main', 'stinger_ascent']
-XF = 2.0
+FADE_END = {'theme_main'}  # full pieces with a composed ending: 5.5 s musical fade-out instead of a loop seam
+XF = 3.0
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'
     if raw.exists(): return raw
@@ -302,18 +303,49 @@ def gen(name, secs, prompt):
             time.sleep(20)
     return raw
 def dur(p): return float(subprocess.check_output(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0',str(p)]).strip())
+def static_gain(raw, L, S=0.0):
+    """Static gain to -16 LUFS. Dynamic loudnorm on a loop drifts its gain between the end and the start, which clicks at the seam."""
+    import re
+    e = subprocess.run(['ffmpeg','-v','info','-ss',str(S),'-t',str(L-S),'-i',str(raw),'-af','loudnorm=I=-16:TP=-1.5:print_format=json','-f','null','-'], capture_output=True, text=True).stderr
+    i = float(re.findall(r'"input_i" : "(-?[0-9.]+)"', e)[-1]); tp = float(re.findall(r'"input_tp" : "(-?[0-9.]+)"', e)[-1])
+    return min(-16 - i, -1.5 - tp)  # no limiter: its look-ahead delay shifts the signal and breaks the seam
+import re as _re
+HARD_LOOP = lambda n: bool(_re.match(r'^(combat_|boss_|elite_)', n))
+def _env(raw):
+    import array, math
+    b = subprocess.run(['ffmpeg','-v','error','-i',str(raw),'-ac','1','-ar','22050','-f','s16le','-'], capture_output=True).stdout
+    x = array.array('h'); x.frombytes(b); w = 2205
+    return [10*math.log10(sum(v*v for v in x[i*w:(i+1)*w])/w/1073741824+1e-12) for i in range(len(x)//w)]
+def body_start(raw):
+    """First point (s) where the 100 ms RMS reaches within 4 dB of the body level (median of loud windows)."""
+    env = _env(raw); loud = sorted(e for e in env if e > -60); body = loud[len(loud)//2] if loud else -30
+    first = next((i for i, e in enumerate(env) if e >= body-4), 0)
+    return min(first*0.1, len(env)*0.1*0.25)
+def body_end(raw, L):
+    """Last point (s) before the generated ending fade: 100 ms RMS stays within 6 dB of the body level (median of the final 30 s, ignoring silence)."""
+    import array, math
+    b = subprocess.run(['ffmpeg','-v','error','-i',str(raw),'-ac','1','-ar','22050','-f','s16le','-'], capture_output=True).stdout
+    x = array.array('h'); x.frombytes(b); w = 2205; n = len(x)//w
+    env = [10*math.log10(sum(v*v for v in x[i*w:(i+1)*w])/w/1073741824+1e-12) for i in range(max(0,n-300), n)]
+    loud = sorted(e for e in env if e > -60); body = loud[len(loud)//2] if loud else -30
+    last = max((i for i, e in enumerate(env) if e >= body-6), default=len(env)-1)
+    cut = (max(0,n-300)+last+1)*w/22050 - 0.3
+    return min(L, max(L*0.7, cut))
 def process(name, loop):
     raw = RAW/f'{name}.mp3'; out = OUT/f'{name}.mp3'; L = dur(raw); BR = '80k' if name in LOWRATE else '112k'
+    if loop and not HARD_LOOP(name): loop = False; FADE_END.add(name)  # calm tracks never loop in game (rotation crossfades): keep the generated ending + a musical fade
+    S = 0.0
+    if loop: S, L = body_start(raw), body_end(raw, L)  # hard loops: cut the generated intro swell and ending fade so the seam never dips, then blend tail into head
     if loop:  # equal-power blend of tail into head so the file loops seamlessly
-        fc = (f"[0:a]asplit=3[a][b][c];[a]atrim={XF}:{L-XF},asetpts=PTS-STARTPTS[mid];"
-              f"[b]atrim={L-XF}:{L},asetpts=PTS-STARTPTS[tail];[c]atrim=0:{XF},asetpts=PTS-STARTPTS[head];"
-              f"[tail][head]acrossfade=d={XF-0.01}:c1=qsin:c2=qsin[x];[mid][x]concat=n=2:v=0:a=1,loudnorm=I=-16:TP=-1.5[o]")
+        fc = (f"[0:a]atrim={S}:{L},asetpts=PTS-STARTPTS,asplit=3[a][b][c];[a]atrim={XF}:{L-S-XF},asetpts=PTS-STARTPTS[mid];"
+              f"[b]atrim={L-S-XF}:{L-S},asetpts=PTS-STARTPTS[tail];[c]atrim=0:{XF},asetpts=PTS-STARTPTS[head];"
+              f"[tail][head]acrossfade=d={XF-0.01}:c1=qsin:c2=qsin[x];[mid][x]concat=n=2:v=0:a=1,volume={static_gain(raw, L, S):.2f}dB[o]")
         subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(raw),'-filter_complex',fc,'-map','[o]','-ac','2','-ar','44100','-b:a',BR,str(out)])
     elif name in STING:
         k = STING[name][1]
         subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(raw),'-af',f'atrim=0:{k},afade=t=out:st={k-1.2}:d=1.2,loudnorm=I=-16:TP=-1.5','-ac','2','-ar','44100','-b:a','112k',str(out)])
     else:
-        subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(raw),'-af',f'loudnorm=I=-16:TP=-1.5,afade=t=out:st={L-1.5}:d=1.5' if name=='clear' else 'loudnorm=I=-16:TP=-1.5','-ac','2','-ar','44100','-b:a','112k',str(out)])
+        subprocess.check_call(['ffmpeg','-y','-v','error','-i',str(raw),'-af',f'loudnorm=I=-16:TP=-1.5,afade=t=out:st={L-1.5}:d=1.5' if name=='clear' else f'loudnorm=I=-16:TP=-1.5,afade=t=out:st={L-5.5}:d=5.5' if name in FADE_END else 'loudnorm=I=-16:TP=-1.5','-ac','2','-ar','44100','-b:a',BR,str(out)])
     print(name, f'{dur(out):.1f}s', out.stat().st_size//1024, 'KB')
 if __name__ == '__main__':
     force = '--force' in sys.argv; names = [a for a in sys.argv[1:] if not a.startswith('--')] or list(TRACKS)

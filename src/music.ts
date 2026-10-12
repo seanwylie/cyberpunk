@@ -174,7 +174,7 @@ export class MusicManager {
       const lo=Math.min(...pool.map(x=>INTENSITY[x]||2)); const g=pool.filter(x=>(INTENSITY[x]||2)===lo); nx=g[Math.floor(Math.random()*g.length)]; }
     if(!this.buffers[nx]){ this.ensure(nx); this.phasePend={name:nx}; return; } this.doPhase(nx); }
   private doPhase(nx:string){ const t=this.now(); this.phasePend=null; this.lastSwitchAt=t; this.counts.phase++; this.counts.hard++; this.counts.total++; this.crossfade(nx,2,'bosscombat'); if(this.sig&&nx===this.sig.p2) this.p2done=true; if(this.fightBag) this.fightBag.last=nx; this.setHard(nx); }
-  tick(){ if(!this.ready) return; const t=this.now(); this.flushPending(t); if((this.state==='town'||this.state==='traversal')&&this.want===this.state&&!this.pend&&this.leaveSince<0&&!this.live.some(l=>!l.ending)){ const st=this.state; this.state=null; this.enter(st); return; } // safety: a calm track ended with nothing queued -> start the next one
+  tick(){ if(!this.ready) return; const t=this.now(); this.flushPending(t); this.tailGuard(t); if((this.state==='town'||this.state==='traversal')&&this.want===this.state&&!this.pend&&this.leaveSince<0&&!this.live.some(l=>!l.ending)){ const st=this.state; this.state=null; this.enter(st); return; } // safety: a calm track ended with nothing queued -> start the next one
     this.applyPhase(); if(this.phasePend){ if(this.state!=='bosscombat') this.phasePend=null; else if(this.buffers[this.phasePend.name]&&this.phasePend.name!==this.cur) this.doPhase(this.phasePend.name); else this.ensure(this.phasePend.name); }
     if(this.state==='bosscombat'&&this.sig?.p2&&!this.p2done) this.ensure(this.sig.p2); let tgt=this.want;
     const hard=(s:MState|null)=>s==='elite'||s==='bosscombat'||s==='combat';
@@ -230,5 +230,7 @@ export class MusicManager {
     if(!on){ if(this.intensity>=ESC_LEVEL){ if(this.escAt<0) this.escAt=t; if(t-this.escAt>=3){ const n=ESCALATE.find(x=>this.buffers[x]&&x!==this.lastEsc); if(n){ this.escFrom=this.cur; this.lastEsc=n; this.escAt=-1; this.lastSwitchAt=t; this.crossfade(n,2,'elite'); } else this.ensure(ESCALATE[1]); } } else this.escAt=-1; return; }
     if(this.intensity<=1){ if(this.calmAt<0) this.calmAt=t; if(t-this.calmAt>=6&&this.escFrom&&this.buffers[this.escFrom]){ this.calmAt=-1; this.lastSwitchAt=t; this.crossfade(this.escFrom,3,'elite'); this.escFrom=null; } } else this.calmAt=-1; }
   lastEsc:string|null=null;
+  /** Never hard-stop: a non-looping track within 3.5 s of its end that nothing has faded out yet is ramped to silence by its last sample (the safety re-entry in tick() then starts the next calm track). */
+  tailGuard(t:number){ for(const l of this.live){ if(l.ending||T[l.name]?.loop) continue; const b=this.buffers[l.name]; if(!b) continue; const left=b.duration-(l.offset+(t-l.startedAt)); if(left>3.5) continue; l.ending=true; const g=l.gain.gain, ct=this.ctx.currentTime; try{ g.cancelScheduledValues(ct); g.setValueAtTime(g.value,ct); g.linearRampToValueAtTime(0,ct+Math.max(.05,left-.05)); }catch{} } }
   stopAll(dur=2){ this.state=null; this.crossfade(null,dur,'town'); }
 }
