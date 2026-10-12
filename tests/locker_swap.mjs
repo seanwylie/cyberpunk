@@ -1,6 +1,8 @@
 // Locker swap UX: compatible highlighting, target slot, Equip/Swap button + deltas, double-click, drag & drop, unequip, undo, chips kept/moved,
 // empty-slot hints, one-time hint, keyboard, mobile viewport. SHOTS=<dir> saves screenshots (default shots/locker_swap).
 import { launch, sleep } from './lib.mjs';
+// double-tap with no actionability waits between the taps: page.tap() twice can exceed the double-tap window on a loaded box
+const dtap = async (page, sel) => { await page.tap(sel); await page.evaluate(s => document.querySelector(s)?.click(), sel); }; // first tap is a real touch; the second lands well inside the 450 ms window (a second page.tap waits on actionability and can miss it under load)
 import fs from 'fs';
 const SHOTS = process.env.SHOTS || 'shots/locker_swap'; fs.mkdirSync(SHOTS, { recursive: true });
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
@@ -80,13 +82,13 @@ async function suite(label, opts) {
   // ---- free equip by double-click / double-tap (torso: Standard Issue -> green is free)
   await page.evaluate(() => { window.__ui.sel = 'torso'; window.__ui.render(); });
   const tsel = `[data-act=pick][data-uid="${T.greenT}"]`;
-  if (opts.touch) { await page.tap(tsel); await page.tap(tsel); } else await page.dblclick(tsel); await sleep(250);
+  if (opts.touch) await dtap(page, tsel); else await page.dblclick(tsel); await sleep(250);
   a = await inst(page, 'torso'); ok(a.uid === T.greenT, `${label}: ${opts.touch ? 'double-tap' : 'double-click'} equips a free swap immediately`);
   await clickSel(page, '[data-act=undo]'); ok((await inst(page, 'torso')).uid !== T.greenT, `${label}: undo after quick equip`);
 
   // ---- paid swap by double-click shows the confirm first (blue torso over stock: free; so use armR green->blue paid)
   await page.evaluate(() => { window.__ui.sel = 'armR'; window.__ui.render(); }); const bsel = `[data-act=pick][data-uid="${T.greenR}"]`;
-  if (opts.touch) { await page.tap(bsel); await page.tap(bsel); } else await page.dblclick(bsel); await sleep(250);
+  if (opts.touch) await dtap(page, bsel); else await page.dblclick(bsel); await sleep(250);
   ok(await page.evaluate(() => !!document.querySelector('.pop [data-act=confirm-replace]')), `${label}: double-click on a paid swap shows the confirm`); if (!(await page.evaluate(() => !!document.querySelector('.pop')))) console.log('DBG', await page.evaluate(() => JSON.stringify({ inst: window.__game.save.installed.armR, pick: window.__ui.pickUid, toasts: [...document.querySelectorAll('.toast')].map(x => x.textContent), cost: window.__ui.confirm })));
   await clickSel(page, '[data-act=cancel-confirm]'); ok((await inst(page, "armR")).uid !== T.greenR, `${label}: cancel leaves the slot unchanged`);
 
