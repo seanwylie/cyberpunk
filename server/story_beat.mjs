@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { createLimiter, memoryStore, limitConfig } from './story_limits.mjs';
 import { createTraitRanker } from './trait_rank.mjs';
+import { createNemesisWords } from './nemesis_words.mjs';
 
 export const CATALOG = JSON.parse(fs.readFileSync(new URL('./story_catalog.json', import.meta.url), 'utf8'));
 
@@ -124,8 +125,10 @@ export function createStoryService(opts = {}) {
   }
   /** raw: parsed body. meta: {ip}. Returns {status, json}. json: {ok:true,text,model,cached} or {ok:false,reason}. Never includes key material. */
   const traitRank = createTraitRanker({ limiter, clean: (s) => cleanTraitLine(s), call: async (system, user) => { const day = new Date(nowFn()).toISOString().slice(0, 10); if (daily.day !== day) { daily.day = day; daily.n = 0; } if (daily.n >= dailyCap()) return { error: 'daily_cap' }; daily.n++; return callOpenAI(user, system, true); } });
+  const nemWords = createNemesisWords({ limiter, clean: (s) => cleanTraitLine(s), call: async (system, user) => { const day = new Date(nowFn()).toISOString().slice(0, 10); if (daily.day !== day) { daily.day = day; daily.n = 0; } if (daily.n >= dailyCap()) return { error: 'daily_cap' }; daily.n++; return callOpenAI(user, system, true); } });
   async function handle(raw, meta = {}) {
-    if (raw && typeof raw === 'object' && raw.kind === 'trait_rank') return traitRank(raw, meta); // trait offers (server/trait_rank.mjs): same limits + budget
+    if (raw && typeof raw === 'object' && raw.kind === 'trait_rank') return traitRank(raw, meta);
+    if (raw && typeof raw === 'object' && raw.kind === 'nemesis_words') return nemWords(raw, meta); // nemesis name + taunt (server/nemesis_words.mjs): same limits + budget // trait offers (server/trait_rank.mjs): same limits + budget
     const v = sanitizeSummary(raw); if (!v.ok) return { status: 400, json: { ok: false, reason: 'bad_request:' + v.why } };
     const s = v.summary, now = nowFn(), ip = String(meta.ip || 'unknown');
     const ck = s.session + ':' + s.variant + ':' + loadoutHash(s) + ':' + s.trigger + ':' + (s.contract || s.newMfr || '');

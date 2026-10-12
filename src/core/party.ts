@@ -220,7 +220,7 @@ export class PartyWorld {
   snapshot(id: string, ev?: any[]): SnapMsg | null {
     const me = this.hosts.get(id); if (!me) return null; const g = me.g; const R2 = 30 * 30;
     const enemies: EnemyView[] = []; for (const e of this.enemies) { if (e.dead) continue; if ((e.x - g.px) ** 2 + (e.y - g.py) ** 2 > R2 && !ENEMIES[e.type].boss) continue; const rt = e._rt; if (rt.reveal > 0 && (e.x - g.px) ** 2 + (e.y - g.py) ** 2 > R2) continue;
-      enemies.push({ id: e.id, type: e.type, x: r2(e.x), y: r2(e.y), hp: Math.round(e.hp), maxHp: Math.round(e.maxHp), face: r2(rt.ang || 0), boss: ENEMIES[e.type].boss ? true : undefined, atk: rt.st === 'tele' || undefined, ally: e.faction === 'ally' || undefined, sh: rt.shield?.hp > 0 ? Math.round(rt.shield.hp) : undefined, rv: rt.reveal > 0 || undefined, aff: (e as any).affix } as any); }
+      enemies.push({ id: e.id, type: e.type, x: r2(e.x), y: r2(e.y), hp: Math.round(e.hp), maxHp: Math.round(e.maxHp), face: r2(rt.ang || 0), boss: ENEMIES[e.type].boss ? true : undefined, atk: rt.st === 'tele' || undefined, ally: e.faction === 'ally' || undefined, sh: rt.shield?.hp > 0 ? Math.round(rt.shield.hp) : undefined, rv: rt.reveal > 0 || undefined, aff: (e as any).affix, nem: (e as any).nem ? { n: (e as any).name, o: (e as any).nemOwner } : undefined } as any); }
     const players: PlayerView[] = []; for (const h of this.hosts.values()) if (h !== me) players.push(this.view(h));
     const drops: DropView[] = me.g.inst!.drops.map(d => ({ id: d.id, x: r2(d.x), y: r2(d.y), kind: d.kind, item: d.inst?.def, chip: d.chip, amount: d.amount }));
     const evs = [...(ev || [])]; for (const f of this.fxOut) if ((f.x - g.px) ** 2 + (f.y - g.py) ** 2 < R2 && f.id !== id) evs.push({ e: 'fx', id: f.id, fx: f.fx, vev: f.vev });

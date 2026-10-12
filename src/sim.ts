@@ -1,3 +1,4 @@
+import { nemOnDown, nemOnRunStart, nemTick, nemCache, nemIncoming, nemOnKill } from './nemesis_sim';
 import { progressTick, objectiveStep, unstuck } from './progress';
 import { PROFILES } from './abilities/vfxprofile';
 import { GORE } from './gore';
@@ -100,7 +101,7 @@ export class Game {
   worldArrive(){ const id=this.townId, t=WORLD_BY_ID[id]; if(!t) return; const xp=visitTown(this.save,id); if(xp&&GATEWAY_TO[id]) this.toast(GATEWAY_TO[id].arrival); if(xp){ this.addXp(xp); const m=FACTION_MFR[t.faction]; if(m) this.save.rep[m]+=FIRST_VISIT_REP; this.toast(`Discovered ${t.name}: +${xp} XP${m?' · '+t.faction+' noticed you':''}.`); persist(this.save); }
     const line=outOfDepth(this.save.level,id); if(line) this.emit('toast','Odalys: '+line); }
   /** epic gateway clear: opens the Reach Line to the destination for this character (each party member runs this on their own save) */
-  gatewayClear(){ const gw=GATEWAY_BY_DUNGEON[this.dd.id]; if(!gw) return; const w:any=(this.save as any).world??={visited:{},landmarks:{}}; if(w.unlocked?.[gw.to]) return; (w.unlocked??={})[gw.to]=Date.now(); w.arrival=gw.to; const t=WORLD_BY_ID[gw.to];
+  gatewayClear(){ const gw=GATEWAY_BY_DUNGEON[this.dd.id]; if(!gw) return; const w:any=(this.save as any).world??={visited:{},landmarks:{}}; if(w.unlocked?.[gw.to]) return; (w.unlocked??={})[gw.to]=Date.now(); w.arrival=gw.to; const t=WORLD_BY_ID[gw.to]; this.emit('moment',{ kind:'gateway_clear', title:'Gateway cleared', sub:(t?.name||gw.to) });
     this.toast(`GATEWAY CLEARED: ${gw.title}. ${gw.arrival} The Reach Line to ${t.name} is open.`); this.emit('stinger','ascent'); this.emit('gateway',gw.to); persist(this.save); }
   worldScan(){ const L:any=this.level; const xp=landmarkNear(this.save,this.townId,this.px,this.py,L.landmark); if(xp){ this.addXp(xp); this.toast(`Landmark logged: ${L.landmark.name} (+${xp} XP).`); persist(this.save); } }
   /** Unlock towns whose condition is newly met (clears, level ups, load). Returns the ids unlocked now. */
@@ -132,13 +133,14 @@ export class Game {
       checkpoint:{id:1,x:lv.checkpoints[0].x,y:lv.checkpoints[0].y}, px:lv.spawn.x, py:lv.spawn.y, hp:0, broken:[], protectedSlots:[], repairAdded:0, nextId:1, xpEarned:0, warned:false, kills:{}, claimed:[], elapsed:0 };
     for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp*this.hpMul(), maxHp:ENEMIES[sp.type].hp*this.hpMul(), alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); }
     { const n=Math.min(2,s.stims); inst.carried.stims=n; s.stims-=n; }
-    s.instance=inst; this.inst=inst; s.stats.runs++; this.resumeInstance(true); if(s.level<dd.minLevel-2) this.toast('Warning: '+dd.name+' is recommended for Lv '+dd.minLevel+'+ (you are Lv '+s.level+'). Press '+key('town')+' any time to leave, or use Abandon in the menu.'); return true;
+    s.instance=inst; this.inst=inst; s.stats.runs++; try{ nemOnRunStart(this,inst); }catch(e){ console.warn('nemesis spawn skipped',e); } this.resumeInstance(true); if(s.level<dd.minLevel-2) this.toast('Warning: '+dd.name+' is recommended for Lv '+dd.minLevel+'+ (you are Lv '+s.level+'). Press '+key('town')+' any time to leave, or use Abandon in the menu.'); return true;
   }
   resumeInstance(fresh=false){
     const inst=this.inst!; abxReset(this); this.clearTransients(); this.mode='run'; this.level=dungeonOf(inst.dungeon).build(inst.seed); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.townFails=0; this.downed=false; this.revealing=false;
     this.lastZone=''; this.zoneShown={}; this.zoneAnyAt=-1e9; this.pathWp=null; this.applyDoors(); this.progT=0; this.progKey=''; this.progPulled=false; this.progScan=0;
     if(!fresh&&!inst.enemies.length&&!this.instDone(inst)&&!inst.flags.bossDead&&!inst.flags.bossSpawned){ /* repair an instance whose enemy list was wiped by an old save-in-town bug: respawn the roster */ const lv=this.level; inst.enemies=[]; for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp*this.hpMul(), maxHp:ENEMIES[sp.type].hp*this.hpMul(), alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); } }
     this.enemies=inst.enemies.map(e=>this.wrap(e));
+    nemCache(this);
     for(const e of this.enemies){ const r=ENEMIES[e.type]?.radius||.4; this.snapWalkable(e,r); if(e.home&&this.stranded(e.home.x,e.home.y,r)) e.home={x:e.x,y:e.y}; }
     // Boss attempts always replay the full reveal: reset a living boss on (re)entry.
     this.resetBossIfAlive(); this.fixStuckDrops();
@@ -420,7 +422,7 @@ export class Game {
     const hadShield=!!(rt.shield&&rt.shield.hp>0);
     if(hadShield&&dmg>0){ if(tag==='pulse') dmg=Math.max(dmg*AB.pulseShield,(rt.shield.max||rt.shield.hp)*AB.pulseShieldFrac); else if(tag==='auto') dmg*=AB.shieldAuto; else dmg*=AB.shieldAbility; }
     if(tag!=='auto') rt.abHitAt=this.time;
-    { const pre=e.hp+(hadShield?rt.shield.hp:0); this.dealt[tag]=(this.dealt[tag]||0)+Math.min(dmg,pre); } dmg=filterDamage(this,e,dmg); e.hp-=dmg; e.alert=true; e._rt.hit=.12; if(!ENEMIES[e.type].boss) e._rt.lost=0; if(dmg>0&&this.save.settings.gore!=='off'){ const P0=PROFILES[tag]; GORE.hit(this,e,dmg,((P0?P0.power:.3)>=.75)||dmg/Math.max(1,e.maxHp)>=.12,sx,sy); }
+    { const pre=e.hp+(hadShield?rt.shield.hp:0); this.dealt[tag]=(this.dealt[tag]||0)+Math.min(dmg,pre); } dmg=filterDamage(this,e,dmg); if((e as any).nem) dmg=nemIncoming(this,e,dmg,tag); e.hp-=dmg; e.alert=true; e._rt.hit=.12; if(!ENEMIES[e.type].boss) e._rt.lost=0; if(dmg>0&&this.save.settings.gore!=='off'){ const P0=PROFILES[tag]; GORE.hit(this,e,dmg,((P0?P0.power:.3)>=.75)||dmg/Math.max(1,e.maxHp)>=.12,sx,sy); }
     this.emit('sfx','hit'); this.combatHold=3; if(!ENEMIES[e.type].boss&&this.isElite(e)) this.eliteExchange();
     const broke=hadShield&&!(rt.shield&&rt.shield.hp>0);
     if(tag!=='auto'&&dmg>0){ const P=PROFILES[tag]; const pw=P?P.power:.3; const frac=dmg/Math.max(1,e.maxHp); const heavy=pw>=.75||frac>=.12; const red=!!this.save.settings.reducedFx; // damage numbers scale with the hit; heavy hits pop (crit-style)
@@ -447,6 +449,7 @@ export class Game {
     const st=this.stat(); { const em=this.earlyMul(); if(em<1){ const k=String(this.dmgSrc).split(':')[0]; dmg*=em*(ENEMIES[k]?.boss?Math.sqrt(em):1); } } dmg=abxIncoming(this,dmg,sx,sy); if(dmg<=.01) return; dmg=Math.max(1,dmg-st.armor); if(this.overheated) dmg*=HEAT.overheat.takenMul; let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
     if(this.channel&&!this.channel.hard){ this.townInterrupt('Town return interrupted by damage',true); this.channel=null; }
     this.fx.push({kind:'blood',x:this.px,y:this.py,t:0,life:.6,c:'#7a2f26'});
+    if(this.inst?.flags.bossSpawned) (this.inst as any)._bossHits=((this.inst as any)._bossHits||0)+1;
     if(this.hp<=0) this.playerDown();
   }
   /** Bracing: the attacker takes a share of what it dealt; a charging attacker is counter-stunned. */
@@ -473,6 +476,7 @@ export class Game {
     let broke:Slot|null=null; if(cand.length){ broke=cand[Math.floor(Math.random()*cand.length)]; inst.broken.push(broke); const it=this.save.items.find(i=>i.uid===this.save.installed[broke!])!; const cost=Math.round(REPAIR_COST[ITEM_BY_ID[it.def].rarity]*HARD.death.repairMul); this.save.repairBill+=cost; inst.repairAdded+=cost; }
     { const lost=Math.floor(inst.carried.credits*HARD.death.creditLoss); if(lost>0){ inst.carried.credits-=lost; this.toast('Downed: lost '+lost+' carried credits.'); } }
     const hasDefib=this.build.passives.includes('defib')&&this.defibCd<=0;
+    try{ nemOnDown(this); }catch(e){ console.warn('nemesis skipped',e); }
     this.recompute(); this.hp=0; this.emit('down',{ broke:broke&&ITEM_BY_ID[this.save.items.find(i=>i.uid===this.save.installed[broke!])!.def].name, defib:hasDefib });
   }
   returnToCheckpoint(){ if(!this.downed||!this.inst) return; const inst=this.inst; for(const s of inst.broken) if(!inst.protectedSlots.includes(s)) inst.protectedSlots.push(s); inst.broken=[]; this.downed=false; this.px=inst.checkpoint.x; this.py=inst.checkpoint.y; this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.iframes=1.5; this.resetBossIfAlive(); this.clearTransients(); this.emit('revived','checkpoint'); this.toast('Checkpoint recovery: hardware restored. Repair bill kept ('+this.save.repairBill+'c).'); }
@@ -480,7 +484,7 @@ export class Game {
 
   // ---------- run logic ----------
   updateRun(dt:number){
-    const inst=this.inst!; const f=inst.flags; const L=this.level;
+    const inst=this.inst!; nemTick(this,dt); const f=inst.flags; const L=this.level;
     // checkpoints
     for(const cp of L.checkpoints){ if(dist(this.px,this.py,cp.x,cp.y)<1.8){ inst.reached=inst.reached||[]; const first=!inst.reached.includes(cp.id); if(first&&!this.downed){ inst.reached.push(cp.id); this.hp=Math.min(this.maxHp,this.hp+this.maxHp*.4); this.heat=0; this.overheated=false; this.emit('checkpoint',cp.label); this.fx.push({kind:'ring',x:cp.x,y:cp.y,r:1.1,t:0,life:.8}); }
       if(inst.checkpoint.id!==cp.id){ inst.checkpoint={id:cp.id,x:cp.x,y:cp.y}; this.toast('CHECKPOINT: '+cp.label+(first?' · +40% HP, heat vented. Downed? you return here. Menu: Restart from checkpoint.':' · respawn point set.')); this.saveNow(); }
@@ -709,6 +713,7 @@ export class Game {
     if(e.faction==='ally') { return; }
     this.grantKill(e); const inst=this.inst!;
     if(e.type===this.dd.lockElite&&!inst.flags.lock2){ inst.flags.lock2=true; this.openDoor('lock2'); this.toast(def.name+' down: lock released'); }
+    if((e as any).nem) nemOnKill(this,e);
     if(def.boss) this.onBossDead(e);
   }
   /** Per-player kill rewards: counters, XP, reputation, contract credit and this player's OWN loot/cosmetic/ability rolls. Solo calls it once; a party calls it once per participating member (each with their own save, pity timers and rng). */
@@ -783,7 +788,7 @@ export class Game {
   autoPickup(){
     const inst=this.inst!; if(this.downed) return; const rad=COMBAT.pickupRadius+this.stat().pickup; const near=inst.drops.filter(d=>dist(d.x,d.y,this.px,this.py)<rad);
     near.sort((a,b)=>RARITY_RANK[this.dropRarity(b)]-RARITY_RANK[this.dropRarity(a)]); const c=inst.carried;
-    for(const d of near){ if(d.kind!=='credits'&&d.inst){ const rr=this.dropRarity(d); if(rr==='purple'||rr==='orange') this.emit('stinger','rare'); } this.pickFx.push({id:d.id,x:d.x,y:d.y,kind:d.kind,inst:d.inst,chip:d.chip,amount:d.amount,t0:this.time}); if(this.pickFx.length>24) this.pickFx.shift(); if(d.kind==='credits'){ c.credits+=d.amount; this.rm(d); this.emit('sfx','coin'); continue; }
+    for(const d of near){ if(d.kind!=='credits'&&d.inst){ const rr=this.dropRarity(d); if(rr==='purple'||rr==='orange') this.emit('stinger','rare'); if(rr==='orange'){ const nm=d.kind==='item'?ITEM_BY_ID[d.inst!.def]?.name:'Orange chip'; this.emit('moment',{ kind:'orange_drop', title:'Orange drop', sub:nm||'Orange' }); } } this.pickFx.push({id:d.id,x:d.x,y:d.y,kind:d.kind,inst:d.inst,chip:d.chip,amount:d.amount,t0:this.time}); if(this.pickFx.length>24) this.pickFx.shift(); if(d.kind==='credits'){ c.credits+=d.amount; this.rm(d); this.emit('sfx','coin'); continue; }
       if(d.kind==='item'&&HARD.autoSellGrey&&this.save.settings.autoSellGrey!==false&&ITEM_BY_ID[d.inst!.def].rarity==='grey'&&!ITEM_BY_ID[d.inst!.def].abilities?.length){ /* grey ability augments are the level 1-5 ability source: never junk */ const v=SELL_VALUE.grey; c.credits+=v; this.rm(d); this.emit('sfx','coin'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.9,text:'sold junk +'+v+'c',c:'#c9b87a'}); continue; }
       const stacksOk=(d.kind==='chip'&&(c.chips[d.chip!]||0)>0)||(d.kind==='stim'&&c.stims>0); const fits=stacksOk||this.carriedCount()<COMBAT.missionSlots;
       if(!fits){ if(!d.marker){ d.marker=true; this.toast('Inventory full: item left on the ground (marked).'); } continue; }
@@ -792,6 +797,7 @@ export class Game {
   }
   rm(d:Drop){ const inst=this.inst!; inst.drops=inst.drops.filter(x=>x.id!==d.id); }
   onBossDead(e:En){
+    if(!this.inst!.flags.bossDead&&!((this.inst as any)._bossHits)&&!this.dbg.god) this.emit('moment',{ kind:'flawless_boss', title:'Flawless', sub:ENEMIES[e.type].name });
     const inst=this.inst!; const f=inst.flags; if(!f.bossDead){ f.bossDead=true; f.completed=true; this.projs=[]; this.zones=[]; clearBossAdds(this); } this.grantClear(e); }
   /** Per-player clear rewards (clear XP, lockout, contracts, achievements). */
   grantClear(e:En){ const inst=this.inst!; const f=inst.flags; if((inst as any)._cg) return; (inst as any)._cg=true; f.completed=true; this.save.cleared={...(this.save.cleared||{}),[this.dd.id]:Date.now()}; this.gatewayClear();
