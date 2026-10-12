@@ -189,6 +189,21 @@ for _n, _p in BOSS4.items(): TRACKS[_n] = (75, True, _p)
 for _n, _p in ELITE4.items(): TRACKS[_n] = (75, True, _p + "dark industrial cyberpunk, steady high intensity throughout, no breakdown, seamless loop.")
 for _n, (_g, _k, _p) in STING.items(): TRACKS[_n] = (_g, False, _p)
 LOWRATE |= set(CALM4)
+# --- pack 5: town / hub moods (more town variety so the first track and rotation feel fresh). Rustline = town_*, Harrow Reach = harrow_* ---
+CALM5 = {
+ 'town_neonbazaar': "Neon night market groove, 98 bpm, F-sharp minor. Soft swung hand percussion, bubbling analog arpeggio, warm round bass, distant hawker-stall chatter textures (no words), glowing signs hum. " + AMB,
+ 'town_raingutter': "Rain on tin roofs and gutters, 72 bpm, D minor. Soft rain texture, slow warm Rhodes chords, gentle sidechained pad, faint rim clicks, cosy and melancholic. " + AMB,
+ 'town_lounge': "Late-night synth lounge, 86 bpm, A-flat major seventh chords. Smooth electric piano, brushed drums, warm fretless-like synth bass, soft muted trumpet-like synth lead, intimate and relaxed. " + AMB,
+ 'town_synthhaze': "Beatless synth ambient haze over a settlement, 60 bpm, E major. Slowly evolving warm analog pads, shimmering high arpeggio far in the background, tape warble, peaceful. " + AMB,
+ 'town_nightbus': "Night shuttle ride through the hub, 92 bpm, B minor. Soft steady kick, rolling bassline, passing light swooshes, gentle repeating synth motif, reflective. " + AMB,
+ 'harrow_rainworks': "Rain over a foundry yard, 70 bpm, G minor. Heavy rain texture, distant muffled hammer strikes, warm low drone, slow detuned piano-like synth chords. " + AMB,
+ 'harrow_lounge': "Foundry workers' lounge after shift, 80 bpm, C minor. Brushed drums, warm bass, smoky electric piano, faint clinking glasses and machinery hum, tired but warm. " + AMB,
+ 'harrow_glowpipes': "Synth ambient among glowing heat pipes, 64 bpm, D major. Warm evolving pads, slow sine bell motif, soft steam breaths, gentle sub pulse, no drums. " + AMB,
+ 'harrow_nightshift': "Night shift groove, 102 bpm, A minor. Muted four-on-floor kick, metallic shaker, rubbery bass, dubby chord stabs, conveyor rhythm in the distance, steady and calm. " + AMB,
+ 'harrow_neonforge': "Neon-lit forge district market, 94 bpm, E minor. Plucked synth melody, hand percussion, warm glowing pad, distant anvil ticks as rhythm, curious and lively but calm. " + AMB,
+}
+for _n, _p in CALM5.items(): TRACKS[_n] = (120, True, _p)
+LOWRATE |= set(CALM5)
 XF = 2.0
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'
