@@ -1,4 +1,5 @@
 import { ITEM_BY_ID, CHIPS, RARITY_COLOR, RARITY_RANK, uiFs, cpx } from './config';
+import { RSTYLE, pulse, sparkleCount, drawMarker, SPARKLE_CAP_TOTAL } from './rarity';
 import type { Rarity, Slot, Mfr } from './config';
 /**
  * Loot-drop art (see docs/LOOT_ART.md). Everything is pre-rendered into small offscreen canvases (icon cells, sheen frames)
@@ -205,6 +206,23 @@ function dust(c:C,x:number,y:number,u:number,s:number,col:string,sparks:boolean,
 function gear(c:C,x:number,y:number,r:number,rot:number,teeth:number,col:string,dk:string){ c.beginPath(); for(let i=0;i<teeth*2;i++){ const a=rot+i/(teeth*2)*6.283; const rr_=i%2?r*.78:r; c.lineTo(x+Math.cos(a)*rr_,y+Math.sin(a)*rr_*.5); } c.closePath(); c.fillStyle=col; c.fill(); c.strokeStyle=dk; c.lineWidth=1; c.stroke(); c.fillStyle=dk; c.beginPath(); c.ellipse(x,y,r*.25,r*.125,0,0,7); c.fill(); }
 function glint(c:C,x:number,y:number,r:number,a:number){ c.save(); c.globalAlpha=a; c.fillStyle='#f4ecd2'; c.beginPath(); c.moveTo(x,y-r); c.lineTo(x+r*.18,y-r*.18); c.lineTo(x+r,y); c.lineTo(x+r*.18,y+r*.18); c.lineTo(x,y+r); c.lineTo(x-r*.18,y+r*.18); c.lineTo(x-r,y); c.lineTo(x-r*.18,y-r*.18); c.closePath(); c.fill(); c.restore(); }
 const sm=(u:number)=>u<=0?0:u>=1?1:u*u*(3-2*u);
+
+/** Rarity read-at-a-glance: tier-coloured halo on the ground (green+), a tapered light beam (blue+, taller and stronger per tier), pulse limited by the flash guard. */
+function rarityAura(c:C,gx:number,gy:number,s:number,t:number,spec:LootSpec,seed:number,fx:0|1|2){
+  const st=RSTYLE[spec.rar]; if(!st.halo||fx===0) return; const pu=pulse(spec.rar,t,seed,fx); const col=st.color;
+  c.save(); c.globalCompositeOperation='lighter';
+  const R=st.halo*s, g=c.createRadialGradient(gx,gy,0,gx,gy,R); g.addColorStop(0,col); g.addColorStop(1,'rgba(0,0,0,0)'); c.save(); c.translate(gx,gy); c.scale(1,.5); c.translate(-gx,-gy); c.globalAlpha=st.haloA*pu; c.fillStyle=g; c.fillRect(gx-R,gy-R,R*2,R*2); c.restore();
+  if(st.beamH){ const H=st.beamH*s, bw=(3+st.rank*1.5)*s; const g2=c.createLinearGradient(0,gy,0,gy-H); g2.addColorStop(0,col); g2.addColorStop(1,'rgba(0,0,0,0)'); c.globalAlpha=st.beamA*pu; c.fillStyle=g2; c.beginPath(); c.moveTo(gx-bw,gy); c.lineTo(gx-bw*.35,gy-H); c.lineTo(gx+bw*.35,gy-H); c.lineTo(gx+bw,gy); c.closePath(); c.fill();
+    c.globalAlpha=Math.min(1,st.beamA*1.4*pu); c.fillStyle='#ffffff'; c.fillRect(gx-bw*.18,gy-H*.55,bw*.36,H*.55); }
+  c.restore();
+}
+let sparkT=-1, sparkUsed=0;
+/** sparkles drawn in the current frame (for the cap test) */ export const sparkStats=()=>sparkUsed;
+/** Distinct sparkle shapes per tier (circle, diamond, triangle, star); animated tier only, per-frame total capped. */
+function raritySparkles(c:C,gx:number,cy:number,s:number,t:number,spec:LootSpec,seed:number,fx:0|1|2){
+  const n=sparkleCount(spec.rar,fx); if(!n) return; if(t!==sparkT){ sparkT=t; sparkUsed=0; } const st=RSTYLE[spec.rar]; const rise=(26+st.beamH*.25)*s;
+  for(let i=0;i<n&&sparkUsed<SPARKLE_CAP_TOTAL;i++,sparkUsed++){ const ph=((t*.55+i/n+seed*.013)%1+1)%1; c.globalAlpha=Math.sin(ph*Math.PI)*.9; drawMarker(c,st.sparkShape,gx+Math.sin(seed*1.7+i*2.3)*15*s,cy+8*s-ph*rise,(1.6+st.rank*.25)*s,st.rank>=3?'#fff3d6':st.color,'rgba(0,0,0,0)'); } c.globalAlpha=1;
+}
 export interface DrawOpts { age:number; reduced:boolean; fx:0|1|2; dim?:boolean; }
 /** fx: 0 = icon + shadow only (far/over-budget), 1 = static trims (Reduced FX), 2 = full animation */
 export function drawLoot(c:C,a:number,b:number,s:number,t:number,spec:LootSpec,seed:number,o:DrawOpts){
@@ -217,14 +235,12 @@ export function drawLoot(c:C,a:number,b:number,s:number,t:number,spec:LootSpec,s
   c.fillStyle='rgba(0,0,0,.32)'; const sh=Math.max(.45,1-lift/(60*s)); c.beginPath(); c.ellipse(gx,gy,11*s*sh,5*s*sh,0,0,7); c.fill();
   if(o.dim){ c.globalAlpha=.7; blit(c,ic,gx,ao?gy-tt.z:cy,k,ao); c.restore(); return; }
   const ph=t*1.0+seed*.37; // idle phase
+  if(settled||o.age>TOSS_T*.5) rarityAura(c,gx,gy,s,t,spec,seed,o.fx);
   if(settled||o.age>TOSS_T*.5){ // ground marks
     if(rk>=1){ const pul=full?.5+.5*Math.sin(t*(rk===1?1.6:2.2)+seed):.6; c.strokeStyle=col; c.lineWidth=1.2*s; c.globalAlpha=(rk===1?.2:.3)*(.6+.4*pul); c.beginPath(); c.ellipse(gx,gy,(14+rk*1.5+pul*(full?2:0))*s,(6.5+rk*.7)*s,0,0,7); c.stroke(); c.globalAlpha=1; }
-    if(rk===2&&full){ const g=c.createLinearGradient(0,gy,0,gy-34*s); g.addColorStop(0,col); g.addColorStop(1,'rgba(0,0,0,0)'); c.globalAlpha=.16+.06*Math.sin(t*2+seed); c.fillStyle=g; c.fillRect(gx-5*s,gy-34*s,10*s,34*s); c.globalAlpha=1; }
     if(rk>=3){ // mechanical ring with tick marks
       const R=(17+(rk===4?3:0))*s; c.strokeStyle=col; c.globalAlpha=.55; c.lineWidth=1.3*s; c.beginPath(); c.ellipse(gx,gy,R,R*.46,0,0,7); c.stroke(); c.globalAlpha=.85; c.lineWidth=2.2*s; const rot=full?t*(rk===4?.9:.6)+seed:seed;
       for(let i=0;i<(rk===4?8:6);i++){ const n=rk===4?8:6; const an=rot+i/n*6.283; c.beginPath(); c.ellipse(gx,gy,R,R*.46,0,an,an+.22); c.stroke(); } c.globalAlpha=1; }
-    if(rk===4){ // warm ground beam: readable, narrow, fades up
-      const g=c.createLinearGradient(0,gy,0,gy-70*s); g.addColorStop(0,'rgba(226,150,72,.2)'); g.addColorStop(1,'rgba(204,127,60,0)'); c.fillStyle=g; const bw=(3.2+(full?.8*Math.sin(t*2.4+seed):0))*s; c.beginPath(); c.moveTo(gx-bw,gy-2*s); c.lineTo(gx-bw*.5,gy-70*s); c.lineTo(gx+bw*.5,gy-70*s); c.lineTo(gx+bw,gy-2*s); c.fill(); }
   }
   // purple gimbal rings (behind half)
   const gim=(front:boolean)=>{ const R=15*s, y0=cy; c.strokeStyle=col; c.lineWidth=1.5*s; for(let r=0;r<2;r++){ const tilt=full?t*(r?-1.1:1.4)+seed+r*1.7:seed+r*1.7; const ry=Math.abs(Math.cos(tilt))*R*.55+R*.12; const x0=r?Math.PI:0; c.globalAlpha=front?.85:.4; c.beginPath(); c.ellipse(gx,y0,R*(r?.78:1),ry,r?.9:-.5,front?0:Math.PI,front?Math.PI:Math.PI*2); c.stroke(); }
@@ -247,6 +263,7 @@ export function drawLoot(c:C,a:number,b:number,s:number,t:number,spec:LootSpec,s
   if(rk===4){ if(!ao) housing(true);
     if(full){ // heat shimmer: faint warm wavy lines rising above
       c.strokeStyle='rgba(224,160,96,.5)'; c.lineWidth=1*s; for(let i=0;i<3;i++){ const ph2=(t*.5+i*.33+seed*.1)%1; c.globalAlpha=.32*(1-ph2)*Math.min(1,ph2*5); c.beginPath(); for(let y=0;y<=12;y++){ const yy=cy-14*s-ph2*26*s-y*1.2*s; const xx=gx+(i-1)*7*s+Math.sin(y*.9+t*5+i)*1.6*s; y?c.lineTo(xx,yy):c.moveTo(xx,yy); } c.stroke(); } c.globalAlpha=1; } }
+  raritySparkles(c,gx,cy,s,t,spec,seed,o.fx);
   // spawn dust (+ sparks for blue and above), not under Reduced FX
   if(!o.reduced){ const sp=rk>=2; dust(c,a,b,(o.age-.36)/.32,s,col,sp,seed); dust(c,a,b,(o.age-.53)/.2,s*.6,col,false,seed+3); }
   c.restore();
@@ -265,7 +282,7 @@ export function drawPickup(c:C,fx:number,fy:number,tx:number,ty:number,s:number,
 }
 // ---------------------------------------------------------------- labels
 export function drawLabel(c:C,x:number,y:number,s:number,spec:LootSpec,strong:boolean){ const fs=cpx(Math.max(10,Math.round(11*Math.max(.9,s)))*uiFs()); c.save(); c.font=`600 ${fs}px "Roboto Condensed","Bahnschrift","Liberation Sans Narrow","Arial Narrow",system-ui,sans-serif`; const txt=spec.name; const w=c.measureText(txt).width+12, h=fs+7; const col=RARITY_COLOR[spec.rar];
-  c.globalAlpha=strong?.95:.78; c.fillStyle='rgba(14,15,16,.82)'; rr(c,x-w/2,y-h,w,h,3); c.fill(); c.strokeStyle=col; c.lineWidth=1; c.stroke(); c.fillStyle=spec.rar==='grey'?'#cfc9b6':col; c.textAlign='center'; c.textBaseline='middle'; c.globalAlpha=1; c.fillText(txt,x,y-h/2+.5);
-  if(spec.mfr){ c.fillStyle=PAL[spec.mfr].b; c.fillRect(x-w/2+1,y-h+1,2.6,h-2); } c.restore(); return { w, h }; }
+  const rs=RSTYLE[spec.rar]; const mw=rs.rank>0?fs*.9:0; const W2=w+mw; c.globalAlpha=strong?.95:.8; c.fillStyle='rgba(14,15,16,.88)'; rr(c,x-W2/2,y-h,W2,h,3); c.fill(); if(rs.rank>=2){ c.save(); c.shadowColor=col; c.shadowBlur=rs.rank*2.5; c.strokeStyle=col; c.lineWidth=rs.border; rr(c,x-W2/2,y-h,W2,h,3); c.stroke(); c.restore(); } c.strokeStyle=col; c.lineWidth=rs.border; c.stroke(); if(mw) drawMarker(c,rs.marker,x-W2/2+mw*.75+1,y-h/2,fs*.3,col); c.fillStyle=spec.rar==='grey'?'#cfc9b6':col; c.textAlign='center'; c.textBaseline='middle'; c.globalAlpha=1; c.fillText(txt,x+mw/2,y-h/2+.5);
+  if(spec.mfr){ c.fillStyle=PAL[spec.mfr].b; c.fillRect(x-W2/2+1,y-h+1,2.6,h-2); } c.restore(); return { w:W2, h }; }
 export const LOOT_FILTERS:Rarity[]=['grey','green','blue','purple','orange'];
 export const visibleAt=(spec:LootSpec,min:Rarity)=>RARITY_RANK[spec.rar]>=RARITY_RANK[min];

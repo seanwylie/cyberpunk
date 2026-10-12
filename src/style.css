@@ -523,3 +523,33 @@ body:has(#dialog[style*="block"]) #banner{ visibility:hidden; }
 @keyframes scfade{ 0%,90%{opacity:1} 100%{opacity:0} }
 .stprompt{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
 [data-store] .cosw{ color:#f6f3ea; text-shadow:0 0 2px #000,0 0 3px #000,0 1px 1px #000; }
+
+/* ---- Rarity at a glance (src/rarity.ts): tinted tile, tier-coloured frame, corner gradient, shine (blue+), pip count. Not colour-only: border width, pips and shine differ per tier. ---- */
+.rar{ position:relative; --rb:2%; border-color:var(--rc) !important; background-image:linear-gradient(135deg,color-mix(in srgb,var(--rc) 16%,transparent) 0%,transparent 55%),radial-gradient(circle at 100% 100%,color-mix(in srgb,var(--rc) 22%,transparent) 0%,transparent 60%); background-color:color-mix(in srgb,var(--rc) 14%,#17191b); }
+.rar.rar-grey{ border-width:1px; background-image:none; background-color:#17191b; border-color:#6b6e6a !important; }
+.rar.rar-green{ border-width:1px; }
+.rar.rar-blue,.rar.rar-purple{ border-width:2px; box-shadow:inset 0 0 8px color-mix(in srgb,var(--rc) 35%,transparent), 0 0 6px color-mix(in srgb,var(--rc) 30%,transparent); }
+.rar.rar-purple{ background-image:linear-gradient(135deg,color-mix(in srgb,var(--rc) 28%,transparent) 0%,transparent 60%),radial-gradient(circle at 100% 100%,color-mix(in srgb,var(--rc) 38%,transparent) 0%,transparent 65%); box-shadow:inset 0 0 12px color-mix(in srgb,var(--rc) 50%,transparent), 0 0 10px color-mix(in srgb,var(--rc) 45%,transparent); }
+.rar.rar-orange{ border-width:3px; border-style:double !important; background-image:linear-gradient(135deg,color-mix(in srgb,var(--rc) 30%,transparent) 0%,transparent 60%),radial-gradient(circle at 100% 100%,color-mix(in srgb,var(--rc) 45%,transparent) 0%,transparent 65%); box-shadow:inset 0 0 14px color-mix(in srgb,var(--rc) 55%,transparent), 0 0 12px color-mix(in srgb,var(--rc) 55%,transparent); }
+.rar.rar-blue>b,.rar.rar-purple>b,.rar.rar-orange>b,.rar.rar-green>b{ color:var(--rc) !important; }
+.rar .rpips{ position:absolute; left:3px; top:1px; font-style:normal; font-size:max(9px,calc(8px*var(--fs))); line-height:1; letter-spacing:-.05em; color:var(--rc); text-shadow:0 0 2px #000,0 0 2px #000; pointer-events:none; z-index:2; }
+.rar.rar-blue::after,.rar.rar-purple::after,.rar.rar-orange::after{ content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.28) 50%,transparent 60%); background-size:250% 100%; background-position:150% 0; animation:rarshine 4.2s ease-in-out infinite; mix-blend-mode:screen; }
+.rar.rar-purple::after,.rar.rar-orange::after{ animation-duration:3s; }
+@keyframes rarshine{ 0%,60%{ background-position:150% 0 } 100%{ background-position:-50% 0 } }
+body.reducefx .rar::after{ animation:none; opacity:0; }
+@media (prefers-reduced-motion:reduce){ .rar::after{ animation:none; opacity:0; } }
+.lp-item,.pickbar>b{ text-shadow:0 0 1px #000; }
+.rar.sock .rpips,.rar.mini .rpips{ display:none; }
+
+/* Inventory emphasis pass: stronger tint + bright 2px frames from green up + corner wedge badge in the tier colour */
+.rar{ background-color:color-mix(in srgb,var(--rc) 20%,#15171a); }
+.rar.rar-green{ border-width:2px; background-image:linear-gradient(135deg,color-mix(in srgb,var(--rc) 26%,transparent) 0%,transparent 60%),radial-gradient(circle at 100% 100%,color-mix(in srgb,var(--rc) 30%,transparent) 0%,transparent 65%); box-shadow:inset 0 0 8px color-mix(in srgb,var(--rc) 28%,transparent); }
+.rar.rar-blue{ background-image:linear-gradient(135deg,color-mix(in srgb,var(--rc) 36%,transparent) 0%,transparent 62%),radial-gradient(circle at 100% 100%,color-mix(in srgb,var(--rc) 42%,transparent) 0%,transparent 65%); box-shadow:inset 0 0 12px color-mix(in srgb,var(--rc) 45%,transparent), 0 0 8px color-mix(in srgb,var(--rc) 45%,transparent); }
+.rar.rar-purple{ background-color:color-mix(in srgb,var(--rc) 26%,#15171a); box-shadow:inset 0 0 16px color-mix(in srgb,var(--rc) 60%,transparent), 0 0 12px color-mix(in srgb,var(--rc) 60%,transparent); }
+.rar.rar-orange{ background-color:color-mix(in srgb,var(--rc) 30%,#15171a); box-shadow:inset 0 0 18px color-mix(in srgb,var(--rc) 65%,transparent), 0 0 14px color-mix(in srgb,var(--rc) 70%,transparent); }
+.rar.rar-grey{ background-color:#15171a; }
+.rar.rar-green::before,.rar.rar-blue::before,.rar.rar-purple::before,.rar.rar-orange::before{ content:''; position:absolute; top:0; right:0; width:14px; height:14px; background:var(--rc); clip-path:polygon(0 0,100% 0,100% 100%); pointer-events:none; z-index:2; }
+.rar.rar-blue::before{ width:16px; height:16px; } .rar.rar-purple::before{ width:19px; height:19px; } .rar.rar-orange::before{ width:22px; height:22px; background:linear-gradient(135deg,#ffd27a,var(--rc)); }
+.rar.sock::before,.rar.mini::before{ width:10px !important; height:10px !important; }
+.rar:not(.st) .rpips{ display:none; }
+.rar.st .rpips{ top:auto; bottom:1px; }

@@ -733,7 +733,7 @@ export class Game {
       const stacksOk=(d.kind==='chip'&&(c.chips[d.chip!]||0)>0)||(d.kind==='stim'&&c.stims>0); const fits=stacksOk||this.carriedCount()<COMBAT.missionSlots;
       if(!fits){ if(!d.marker){ d.marker=true; this.toast('Inventory full: item left on the ground (marked).'); } continue; }
       if(d.kind==='item') c.items.push(d.inst!); else if(d.kind==='chip') c.chips[d.chip!]=(c.chips[d.chip!]||0)+1; else if(d.kind==='stim') c.stims++;
-      if(d.kind==='item'&&ITEM_BY_ID[d.inst!.def]?.abilities?.length){ (inst as any).abGot=true; const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); aq.total++; } this.rm(d); this.contractEvent('pickup',''); this.emit('pickup',d); this.emit('sfx','pickup'); { const pr=this.dropRarity(d); if(RARITY_RANK[pr]>=2) this.emit('sfx','pickup_'+pr); } }
+      if(d.kind==='item'&&ITEM_BY_ID[d.inst!.def]?.abilities?.length){ (inst as any).abGot=true; const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); aq.total++; } this.rm(d); this.contractEvent('pickup',''); this.emit('pickup',d); this.emit('sfx','pickup'); { const pr=this.dropRarity(d); if(RARITY_RANK[pr]>=1) this.emit('sfx','pickup_'+pr); } }
   }
   rm(d:Drop){ const inst=this.inst!; inst.drops=inst.drops.filter(x=>x.id!==d.id); }
   onBossDead(e:En){

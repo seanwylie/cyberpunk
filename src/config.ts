@@ -31,7 +31,7 @@ export const MFR: Record<Mfr,{name:string;short:string;color:string;accent:strin
 };
 export type Rarity = 'grey'|'green'|'blue'|'purple'|'orange';
 export const RARITIES: Rarity[] = ['grey','green','blue','purple','orange'];
-export const RARITY_COLOR: Record<Rarity,string> = { grey:'#b4b6b2', green:'#93b676', blue:'#82aed2', purple:'#b79ccb', orange:'#dd8d42' };
+export const RARITY_COLOR: Record<Rarity,string> = { grey:'#b4b6b2', green:'#7fd35a', blue:'#4aa8ff', purple:'#b56dff', orange:'#ff9a2e' };
 export const RARITY_RANK: Record<Rarity,number> = { grey:0, green:1, blue:2, purple:3, orange:4 };
 
 export interface Stats { maxHp:number; dmg:number; atkSpeed:number; cooling:number; move:number; pickup:number; regen:number; armor:number; }
