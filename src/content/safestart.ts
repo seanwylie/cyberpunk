@@ -24,9 +24,17 @@ export function offenders(L:Level,R=SAFE_R):number[]{ const o:number[]=[]; L.spa
 
 function pathDist(L:Level):Int16Array{ const {w,h}=L; const s=new Uint8Array(L.solid); for(const d of L.doors) for(const [x,y] of d.tiles) s[y*w+x]=0; const dist=new Int16Array(w*h).fill(-1); const q=[hf(L.spawn.y)*w+hf(L.spawn.x)]; dist[q[0]]=0; for(let k=0;k<q.length;k++){ const c=q[k], cx=c%w, cy=(c/w)|0; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=cx+dx, ny=cy+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; const i=ny*w+nx; if(dist[i]>=0||s[i]) continue; dist[i]=dist[c]+1; q.push(i); } } return dist; }
 
+/** Progression stage per tile: how many doors (gate1, lock2, boss, in run order) must be open before the tile is reachable from the entry. 255 = never. */
+export function stageMap(L:Pick<Level,'w'|'h'|'solid'|'doors'|'spawn'>):Uint8Array{ const {w,h}=L; const st=new Uint8Array(w*h).fill(255); const order=['gate1','lock2','boss']; const extra=L.doors.filter(d=>!order.includes(d.id)).map(d=>d.id);
+  for(let k=0;k<=order.length;k++){ const open=new Set([...order.slice(0,k),...(k===order.length?extra:[])]); const s=new Uint8Array(L.solid); for(const d of L.doors){ for(const [x,y] of d.tiles) s[y*w+x]=open.has(d.id)?0:1; }
+    const q=[hf(L.spawn.y)*w+hf(L.spawn.x)]; const seen=new Uint8Array(w*h); seen[q[0]]=1; for(let i=0;i<q.length;i++){ const c=q[i]; if(st[c]===255) st[c]=k; const cx=c%w, cy=(c/w)|0; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=cx+dx, ny=cy+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; const n=ny*w+nx; if(seen[n]||s[n]) continue; seen[n]=1; q.push(n); } } }
+  return st; }
 export function safeEntry(L:Level,seed:number):Level{
   if((L as any).safeEntry||L.kind==='town'||!L.spawns.length) return L; (L as any).safeEntry=true;
   const q=rngOf((seed^0x5afe57a7)>>>0); const w=L.w, h=L.h; const reach=[0,1,2].map(c=>reachMap(L,L.spawn,c)); const dist=pathDist(L);
+  // progression stage of every tile (0 = reachable with every door closed, 1 = after gate1, 2 = after lock2, 3 = boss side). A relocated pack must stay in its own stage:
+  // moving a gate guard past the gate it opens made the gate impossible to open (Sean's stuck run, docs/PROGRESSION.md).
+  const stage=stageMap(L);
   // hazards never sit inside the safe zone
   if(L.hazards) L.hazards=L.hazards.filter(z=>Math.hypot(z.x-L.spawn.x,z.y-L.spawn.y)>=SAFE_R);
   const used=()=>{ const m=new Set<number>(); for(const s of L.spawns) m.add(s.y*w+s.x); return m; };
@@ -40,8 +48,8 @@ export function safeEntry(L:Level,seed:number):Level{
   const centre=(ids:number[])=>({x:ids.reduce((a,i)=>a+L.spawns[i].x,0)/ids.length,y:ids.reduce((a,i)=>a+L.spawns[i].y,0)/ids.length});
   /** move a whole group so its members stand on valid tiles around a freshly chosen centre */
   const relocate=(ids:number[],prefZones:string[],minDist=SAFE_R,maxTries=1):boolean=>{
-    const types=ids.map(i=>L.spawns[i].type); const lead=types[0]; const occ=used(); for(const i of ids) occ.delete(L.spawns[i].y*w+L.spawns[i].x);
-    const cand:[number,number][]=[]; for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){ if(L.solid[y*w+x]||occ.has(y*w+x)) continue; const zn=zoneOf(x,y); if(zn==='corridor'||zn==='boss') continue; if(!types.every(t=>okTile(t,x,y))) continue; cand.push([x,y]); }
+    const types=ids.map(i=>L.spawns[i].type); const lead=types[0]; const st0=stage[L.spawns[ids[0]].y*w+L.spawns[ids[0]].x]; const gate=ids.some(i=>L.spawns[i].group>=90||L.spawns[i].group===50); /* only door-opening mobs (gate guards 90/91, lock elite 50) are stage-bound */ const occ=used(); for(const i of ids) occ.delete(L.spawns[i].y*w+L.spawns[i].x);
+    const cand:[number,number][]=[]; for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){ if(L.solid[y*w+x]||occ.has(y*w+x)) continue; const zn=zoneOf(x,y); if(zn==='corridor'||zn==='boss') continue; if(!types.every(t=>okTile(t,x,y))) continue; if(gate&&stage[y*w+x]!==st0) continue; cand.push([x,y]); }
     if(!cand.length) return false; void minDist; void maxTries;
     const c0=centre(ids); for(const zs of [prefZones,null]){ const pool=cand.filter(([x,y])=>!zs||zs.includes(zoneOf(x,y))); if(!pool.length) continue;
       // prefer tiles that are well past the safe radius but not at the far end of the level: walking distance 18..45 from the entry
@@ -52,12 +60,17 @@ export function safeEntry(L:Level,seed:number):Level{
     return false; };
   let moved=0; for(const [,ids] of groups){ if(!ids.some(i=>violates(L,L.spawns[i].type,L.spawns[i].x,L.spawns[i].y))) continue; const zn=ids.map(i=>zoneOf(L.spawns[i].x,L.spawns[i].y)); if(relocate(ids,[zn[0]])) moved++; else { // cannot keep the pack together: place the offenders one by one
       for(const i of ids){ const s=L.spawns[i]; if(violates(L,s.type,s.x,s.y)) relocate([i],[zoneOf(s.x,s.y)]); } } }
+  // door-opening mobs that still violate (their stage has no compliant tile, e.g. a cramped entry yard): progression wins over calm start. Put each on the stage-0/1 tile
+  // that is out of line of sight if possible and otherwise as far from the entry as the stage allows; listed in safeInfo.gateExempt (tests/calm_start.mjs exempts them).
+  const gateExempt:number[]=[]; L.spawns.forEach((sp,i)=>{ if(!(sp.group>=90||sp.group===50)||!violates(L,sp.type,sp.x,sp.y)) return; const st0=stage[sp.y*w+sp.x]; const c=clsOf(ENEMIES[sp.type]?.radius??.4), R=FLOW_R[c]; const occ=used(); occ.delete(sp.y*w+sp.x); let best=-1,bs=-1e9;
+    for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){ const k=y*w+x; if(L.solid[k]||occ.has(k)||stage[k]!==st0||reach[c][k]!==1||!clrAt(w,h,L.solid,x,y,R)||nearHaz(x,y)||nearInt(x,y)) continue; const d=Math.hypot(x+.5-L.spawn.x,y+.5-L.spawn.y); const sc=(losTiles(L,L.spawn.x,L.spawn.y,x+.5,y+.5)?0:1000)+d; if(sc>bs){ bs=sc; best=k; } }
+    if(best>=0){ sp.x=best%w; sp.y=(best/w)|0; } if(violates(L,sp.type,sp.x,sp.y)) gateExempt.push(i); });
   let surplusN=0; for(let pass=0;pass<5;pass++){
   // ramp (re-ranked until stable, because moving surplus into later packs can shift the ranking): the first packs (by walking distance from the entry) are small; surplus members join later packs
   const gm=new Map<number,number[]>(); L.spawns.forEach((sp,i)=>{ (gm.get(sp.group)||gm.set(sp.group,[]).get(sp.group)!).push(i); }); const normal=[...gm.entries()].filter(([g,ids])=>g<90&&ids.length>0&&!ids.some(i=>ENEMIES[L.spawns[i].type]?.elite||ENEMIES[L.spawns[i].type]?.static)).map(([g,ids])=>{ return {g,ids,d:packDist(ids)}; }).sort((a,b)=>a.d-b.d);
   const surplus:number[]=[]; normal.slice(0,RAMP_CAPS.length).forEach((p,k)=>{ const keep=RAMP_CAPS[k]; if(p.ids.length>keep){ const lead=p.ids.slice().sort((a,b)=>(ENEMIES[L.spawns[b].type]?.hp||0)-(ENEMIES[L.spawns[a].type]?.hp||0))[0]; const rest=p.ids.filter(i=>i!==lead); const drop=rest.slice(keep-1); surplus.push(...drop); } if(k<2) for(const i of p.ids) delete (L.spawns[i] as any).affix; });
   const later=normal.slice(RAMP_CAPS.length+1); const pool=later.length?later:normal.slice(-1); let rr=0; for(const i of surplus){ const t=L.spawns[i].type; let done=false; for(const R of [6,12,20]){ for(let a=0;a<pool.length&&!done;a++){ const dest=pool[(rr+a)%pool.length]; const c=centre(dest.ids); const occ=used(); const tl:[number,number][]=[]; for(let y=hf(c.y)-R;y<=c.y+R;y++)for(let x=hf(c.x)-R;x<=c.x+R;x++) if(okTile(t,x,y)&&!occ.has(y*w+x)&&!L.spawns.some(s=>Math.hypot(s.x-x,s.y-y)<1.6)) tl.push([x,y]); tl.sort((p,q2)=>Math.hypot(p[0]-c.x,p[1]-c.y)-Math.hypot(q2[0]-c.x,q2[1]-c.y)); if(tl.length){ L.spawns[i].x=tl[0][0]; L.spawns[i].y=tl[0][1]; L.spawns[i].group=dest.g; dest.ids.push(i); done=true; rr=(rr+a+1)%pool.length; } } if(done) break; } }
   surplusN+=surplus.length; if(!surplus.length) break; }
-  (L as any).safeInfo={ moved, surplus:surplusN, left:offenders(L).length };
+  (L as any).safeInfo={ moved, surplus:surplusN, gateExempt, left:offenders(L).length };
   return L;
 }

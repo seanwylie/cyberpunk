@@ -597,6 +597,7 @@ export class UI {
       case 'reset-ask': this.resetAsk=true; this.render(); return; case 'reset-cancel': this.resetAsk=false; this.render(); return;
       case 'reset-go': this.resetAsk=false; if(g.resetInstance()&&g.mode==='run') this.close(); else this.render(); return;
       case 'sum-town': this.close(); g.townReturn(); return;
+      case 'unstuck': g.unstuck(); this.close(); return;
       case 'restart-cp': g.restartFromCheckpoint(); this.close(); return;
       case 'devrestart': g.devRestartFromStart(); this.devOpen=false; this.close(); return;
       case 'townchoice': { const st=g.story(); record(st,'town_choice',el.dataset.boost!); st.arc=el.dataset.boost!; const ed=st.edges.find(x=>x.from==='player'&&x.to==='odalys_vane'); if(ed) ed.w+=1; st.town=null; persist(s); this.msg='Odalys will push the "'+el.dataset.boost+'" lead.'; this.render(); return; }

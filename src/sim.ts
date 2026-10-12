@@ -1,3 +1,4 @@
+import { progressTick, objectiveStep, unstuck } from './progress';
 import { PROFILES } from './abilities/vfxprofile';
 import { GORE } from './gore';
 import { SFX } from './abilities/sfxprofile';
@@ -115,7 +116,7 @@ export class Game {
   }
   resumeInstance(fresh=false){
     const inst=this.inst!; abxReset(this); this.clearTransients(); this.mode='run'; this.level=dungeonOf(inst.dungeon).build(inst.seed); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.townFails=0; this.downed=false; this.revealing=false;
-    this.lastZone=''; this.zoneShown={}; this.zoneAnyAt=-1e9; this.pathWp=null; this.applyDoors();
+    this.lastZone=''; this.zoneShown={}; this.zoneAnyAt=-1e9; this.pathWp=null; this.applyDoors(); this.progT=0; this.progKey=''; this.progPulled=false; this.progScan=0;
     if(!fresh&&!inst.enemies.length&&!this.instDone(inst)&&!inst.flags.bossDead&&!inst.flags.bossSpawned){ /* repair an instance whose enemy list was wiped by an old save-in-town bug: respawn the roster */ const lv=this.level; inst.enemies=[]; for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp*this.hpMul(), maxHp:ENEMIES[sp.type].hp*this.hpMul(), alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); } }
     this.enemies=inst.enemies.map(e=>this.wrap(e));
     for(const e of this.enemies){ const r=ENEMIES[e.type]?.radius||.4; this.snapWalkable(e,r); if(e.home&&this.stranded(e.home.x,e.home.y,r)) e.home={x:e.x,y:e.y}; }
@@ -477,6 +478,7 @@ export class Game {
     const f=this.inst!.flags;
     // zone based doors
     if(!f.gate1&&this.enemies.filter(e=>e.type===this.dd.gateGuard&&!e.dead).length===0){ f.gate1=true; this.openDoor('gate1'); this.toast('Security gate released'); }
+    progressTick(this,dt);
     // reveal timer
     const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead);
     if(boss&&boss._rt.reveal>0){ boss._rt.reveal-=dt; this.revealing=true; this.projs=[]; this.zones=this.zones.filter(z=>z.env); if(boss._rt.reveal<=0){ boss._rt.reveal=0; this.revealing=false; boss.alert=true; this.emit('reveal-end'); this.toast('Fight!'); } }
@@ -764,6 +766,8 @@ export class Game {
     if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Return to town any time: your pack is banked and you can start another dungeon.'); }
     for(const d of checkAchievements(this.save)) this.toast('Wardrobe unlocked: '+d.name+' ('+d.rarity+')'); this.emit('boss-dead'); this.emit('stinger','complete'); this.resPending=5; this.saveNow();
   }
+  /** Settings > Unstuck (docs/PROGRESSION.md) */ unstuck(){ const m=unstuck(this); this.toast(m); return m; }
+  progT=0; progKey=''; progScan=0; progPulled=false; progFixed=0; progForced=0;
   resPending=0; zoneShown:Record<string,number>={}; zoneAnyAt=-1e9; lastZone=''; seenT=0; seen:Uint8Array|null=null; seenFor:Level|null=null; pathT=0; pathWp:{x:number;y:number}|null=null; pathLen=0;
   markSeen(){ const L=this.level; if(this.seenFor!==L||!this.seen){ this.seen=new Uint8Array(L.w*L.h); this.seenFor=L; } const R=9; const px=Math.floor(this.px), py=Math.floor(this.py); for(let y=Math.max(0,py-R);y<=Math.min(L.h-1,py+R);y++) for(let x=Math.max(0,px-R);x<=Math.min(L.w-1,px+R);x++) if((x-px)**2+(y-py)**2<=R*R) this.seen[y*L.w+x]=1; }
   /** Current dungeon objective (text + world target) derived from instance flags; used by the HUD arrow, minimap and zone banners. */
@@ -771,6 +775,7 @@ export class Game {
     if(f.bossDead){ let best:Drop|null=null,bd=1e9; for(const d of inst.drops){ const k=dist(this.px,this.py,d.x,d.y); if(k<bd){ bd=k; best=d; } } const near=inst.drops.filter(d=>dist(this.px,this.py,d.x,d.y)<=16).length; if(best) return {text:'Boss defeated! Pick up your loot ('+(near||inst.drops.length)+(near?' nearby':' left')+'), then press '+TOWN_KEY+' to return to town',x:best.x,y:best.y,kind:'loot'}; return {text:'Dungeon cleared. Press '+TOWN_KEY+' to return to town.',x:L.spawn.x,y:L.spawn.y,kind:'exit'}; }
     if(f.bossSpawned&&!f.bossDead){ const b=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead); return {text:'Defeat the boss',x:b?b.x:L.bossSpawn.x,y:b?b.y:L.bossSpawn.y,kind:'boss'}; }
     if(f.controller){ const bd=L.doors.find(d=>d.id==='boss'); if(bd&&bd.tiles.length){ let sx=0,sy=0; for(const [tx,ty] of bd.tiles){ sx+=tx; sy+=ty; } return {text:'Enter the open boss chamber',x:sx/bd.tiles.length+.5,y:sy/bd.tiles.length+.5,kind:'boss'}; } return {text:'Enter the open boss chamber',x:L.bossSpawn.x,y:L.bossSpawn.y,kind:'boss'}; }
+    { const st=objectiveStep(this); if(st) return st; }
     const c=it('controller'); if(c) return {text:(f.lock2?'Secure the ':'Break through the locked gate, then secure the ')+dd.objectiveLabel,x:c.x,y:c.y,kind:'controller'}; return null; }
   /** BFS next-waypoint toward a world target so the arrow follows walkable routes rather than pointing through walls. */
   guidance(){ const o=this.objective(); if(!o) return null; this.pathT-=1/60; if(this.pathT<=0||!this.pathWp){ this.pathT=.4; const L=this.level, w=L.w, h=L.h; const sx0=Math.floor(this.px), sy0=Math.floor(this.py), tx=Math.floor(o.x), ty=Math.floor(o.y); const prev=new Int32Array(w*h).fill(-1); const q=[sy0*w+sx0]; prev[sy0*w+sx0]=sy0*w+sx0; let found=-1; for(let qi=0;qi<q.length;qi++){ const cur=q[qi], cx=cur%w, cy=(cur/w)|0; if(Math.abs(cx-tx)<=1&&Math.abs(cy-ty)<=1){ found=cur; break; } for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){ const nx=cx+dx, ny=cy+dy; if(nx<0||ny<0||nx>=w||ny>=h) continue; const ni=ny*w+nx; if(prev[ni]>=0||L.solid[ni]) continue; prev[ni]=cur; q.push(ni); } }

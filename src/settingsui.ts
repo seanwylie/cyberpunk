@@ -83,6 +83,7 @@ function instanceHtml(ui:UIx):string{ const g=ui.g, i=g.resetInfo(); const run=g
   const d=DUNGEONS[i.id]; let h=`<div class="scard"><b>${esc(d?.name||i.id)}</b><small>${esc(i.why)}</small></div>`;
   h+=row('Reset instance',`Throw this run away and roll a fresh map. ${i.lost?i.lost+' uncollected loot item(s) are lost. ':''}Your repair bill is kept.${i.dev?' (prototype override active)':''}`,`<button type="button" class="btn${i.allowed?'':' dim'}" data-act="s-ask" data-c="reset" ${i.allowed?'':'disabled'}>Reset instance</button>`);
   h+=confirmBox('reset',`Reset ${esc(d?.short||i.id)}? ${run?'You restart at the entry immediately.':'You can then start a fresh run.'}`,'s-reset-go','Yes, reset');
+  if(run) h+=row('Unstuck','Stuck or cannot find the way on? Pulls the remaining gate guards to you, or opens the next gate when nothing is left to fight.',`<button type="button" class="btn" data-act="unstuck">Unstuck</button>`);
   if(run) h+=row('Restart from checkpoint','Return to your last checkpoint in this same map.',`<button type="button" class="btn" data-act="restart-cp">Restart from checkpoint</button>`);
   { h+=row('Abandon instance',run?'Leave right now and return to town, forfeiting remaining loot. Always available, even in a boss fight.':'Close it and forfeit remaining loot. No new run until the daily lockout allows.',`<button type="button" class="btn" data-act="s-ask" data-c="abandon">Abandon</button>`);
     h+=confirmBox('abandon','Abandon this instance and forfeit its loot? This cannot be undone.','s-abandon-go','Yes, abandon'); }

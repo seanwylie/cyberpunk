@@ -11,7 +11,8 @@ await build({ entryPoints: [entry], bundle: true, platform: 'node', format: 'esm
 const { D, S, C, M } = await import(pathToFileURL(path.join(tmp, 'e.mjs')).href); fs.rmSync(tmp, { recursive: true, force: true });
 const SEEDS = Array.from({ length: 16 }, (_, i) => 101 + i * 1237); const E = C.ENEMIES; let n = 0; const bad = { enemy: [], los: [], haz: [], cap: [], aff: [], count: [], valid: [], elite: [] }; let minD = 1e9, groupsMoved = 0;
 for (const d of D.DUNGEON_LIST) for (const s of SEEDS) { const L = d.build(s); n++; const sp = L.spawn; groupsMoved += L.safeInfo?.moved || 0;
-  for (const e of L.spawns) { const dd = Math.hypot(e.x + .5 - sp.x, e.y + .5 - sp.y); minD = Math.min(minD, dd); if (dd < S.SAFE_R) bad.enemy.push(d.id + '@' + s + ':' + e.type); if (S.violates(L, e.type, e.x, e.y)) bad.los.push(d.id + '@' + s + ':' + e.type); }
+  const ex = new Set((L.safeInfo?.gateExempt || []).map(i => L.spawns[i])); // gate guards in a yard too small for calm start: progression wins (docs/PROGRESSION.md)
+  for (const e of L.spawns) { if (ex.has(e)) continue; const dd = Math.hypot(e.x + .5 - sp.x, e.y + .5 - sp.y); minD = Math.min(minD, dd); if (dd < S.SAFE_R) bad.enemy.push(d.id + '@' + s + ':' + e.type); if (S.violates(L, e.type, e.x, e.y)) bad.los.push(d.id + '@' + s + ':' + e.type); }
   for (const h of L.hazards || []) if (Math.hypot(h.x - sp.x, h.y - sp.y) < S.SAFE_R) bad.haz.push(d.id + '@' + s);
   if (L.spawns.length < 40) bad.count.push(d.id + '@' + s + ':' + L.spawns.length);
   const v = M.validate(L); if (v.length) bad.valid.push(d.id + '@' + s + ':' + v[0]);
