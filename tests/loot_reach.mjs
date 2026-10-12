@@ -20,7 +20,7 @@ const res = await page.evaluate(async () => {
     g.inst.drops = [];
     const chk = (d, why) => { drops++; const reachable = !g.solidAt(d.x, d.y) && !g.circleHits(d.x, d.y, 0.38) && reach[(d.y | 0) * W + (d.x | 0)] === 1; if (!reachable) { bad++; if (badWhy.length < 3) badWhy.push([why, +d.x.toFixed(2), +d.y.toFixed(2), g.solidAt(d.x, d.y), g.circleHits(d.x, d.y, 0.38), reach[(d.y | 0) * W + (d.x | 0)], solid((d.x|0)+1,d.y|0), solid((d.x|0)-1,d.y|0), solid(d.x|0,(d.y|0)+1), solid(d.x|0,(d.y|0)-1)]); }
       // collect: stand on the drop (clearance >= player radius) with an empty bag
-      g.inst.carried.items = []; g.inst.carried.chips = {}; g.inst.carried.stims = 0; g.downed = false; g.px = d.x; g.py = d.y; const n0 = g.inst.drops.length; g.autoPickup(); if (g.inst.drops.length >= n0) { uncollect++; } };
+      g.inst.carried.items = []; g.inst.carried.chips = {}; g.inst.carried.stims = 0; g.downed = false; g.px = d.x; g.py = d.y; if (!g.inst.drops.includes(d)) return; /* already scooped up with a neighbouring drop from the same kill (kills now drop credits + item side by side) */ const n0 = g.inst.drops.length; g.autoPickup(); if (g.inst.drops.includes(d)) { uncollect++; } };
     for (const [x, y] of pick) {
       // 1) drops from a kill hugging each wall edge (all four tile corners/edges)
       for (const [ox, oy] of [[.02, .5], [.98, .5], [.5, .02], [.5, .98], [.02, .02], [.98, .98]]) { const before = g.inst.drops.length; g.addDrop(x + ox, y + oy, { kind: 'item', inst: (await import('/src/state.ts')).mkInst(g.save, 'pool_g_torso'), amount: 1 }); chk(g.inst.drops[g.inst.drops.length - 1], 'edge'); g.inst.drops = g.inst.drops.slice(0, before); }
