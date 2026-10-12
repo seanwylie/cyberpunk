@@ -48,11 +48,13 @@ const WAREHOUSE_LOOT={ ordinary:L({item:'mm_pallet_torso',w:6},{item:'mm_stocker
 const FIXER:Record<string,string>={ HI:'ten_hallowell', PS:'noor_abiodun', MM:'handler_cole' };
 const mixPool=(k:'ordinary'|'elite'|'boss')=>[...FOUNDRY_LOOT[k],...CLINIC_LOOT[k],...WAREHOUSE_LOOT[k]];
 const LOOT_BY:Record<string,{ordinary:LootEntry[];elite:LootEntry[];boss:LootEntry[]}>={ HI:FOUNDRY_LOOT, PS:CLINIC_LOOT, MM:WAREHOUSE_LOOT, mix:{ordinary:mixPool('ordinary'),elite:mixPool('elite'),boss:mixPool('boss')} };
+/** tier-1 boss signatures: the earnable low-level oranges (gateway copies inherit them via ...base) */
+const BATCH1_SIG:Record<string,Record<string,{item:string;chance:number}>>={ coke_ovens:{ voss:{item:'sig_oven_heart',chance:.1} }, tailings_pit:{ pitboss:{item:'sig_pit_drill',chance:.1} }, scrap_gantry:{ gantrymother:{item:'sig_crane_legs',chance:.1} } };
 export function makeBatch1Dungeon(sp:LevelSpec):DungeonDef{
   const indep=!['Harrow-Brandt','Aldane Surgical','Kestrel Value'].includes(sp.faction);
   return { id:sp.id, name:sp.name, short:sp.short, mfr:sp.mfr, district:sp.district, fixer:indep?'odalys_vane':FIXER[sp.mfr], blurb:sp.blurb, minLevel:sp.minLevel, maxLevel:sp.maxLevel, tierCap:sp.maxLevel, estMinutes:sp.est,
     build:(s=sp.id.length*977+sp.tier*131)=>genBatch1(sp,s), zoneLabels:sp.zoneLabels, defaultBoss:sp.boss, conds:[], gateGuard:sp.gateGuard, lockElite:sp.lockElite, alarmType:sp.alarmType,
-    relayLabel:sp.objective.relay, objectiveLabel:sp.objective.label, objectiveToast:sp.objective.toast, cache:{label:sp.objective.bonus,chips:sp.chips as ChipId[]}, hazards:[], loot:LOOT_BY[sp.loot], signature:null,
+    relayLabel:sp.objective.relay, objectiveLabel:sp.objective.label, objectiveToast:sp.objective.toast, cache:{label:sp.objective.bonus,chips:sp.chips as ChipId[]}, hazards:[], loot:LOOT_BY[sp.loot], signature:BATCH1_SIG[sp.id]??null,
     creditMul:sp.creditMul, clearXp:sp.xp, intro:sp.intro, generalClue:sp.blurb, needsArt:[], tier:sp.tier, unlock:sp.unlock.after, faction:sp.faction, boss:sp.boss } as DungeonDef; }
 // ---------------- registry ----------------
 const annexConds:CondDef[]=[]; // Annex keeps its legacy terminal/armory handling in sim.ts (ids 'terminal' and 'armoryfuse').

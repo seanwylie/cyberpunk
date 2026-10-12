@@ -1,21 +1,21 @@
 {
  "version": 1,
- "catalogVersion": "a8e0184eede8",
+ "catalogVersion": "42e8215771bf",
  "generatedBy": "tools/gen_catalog.mjs",
  "stats": {
-  "augments": 169,
-  "abilityAugments": 110,
+  "augments": 172,
+  "abilityAugments": 113,
   "abilities": 78,
   "chips": 17,
   "dungeons": 32,
   "bySlot": {
    "face": 15,
    "brain": 19,
-   "armL": 17,
-   "torso": 32,
+   "armL": 18,
+   "torso": 33,
    "armR": 19,
    "handL": 11,
-   "legL": 13,
+   "legL": 14,
    "handR": 20,
    "footL": 5,
    "legR": 13,
@@ -26,7 +26,7 @@
    "green": 55,
    "blue": 41,
    "purple": 20,
-   "orange": 24
+   "orange": 27
   },
   "gaps": {
    "augmentNoSource": 0,
@@ -3672,6 +3672,120 @@
     }
    ],
    "blurb": "Twin saw-rig cut from the theatre ceiling."
+  },
+  {
+   "id": "sig_pit_drill",
+   "name": "Ossendrecht Pit-Drill",
+   "slot": "armL",
+   "slotLabel": "Left arm",
+   "group": "arm",
+   "maker": "HI",
+   "makerName": "Harrow-Brandt Heavy Works",
+   "rarity": "orange",
+   "level": 16,
+   "humanity": 11,
+   "stats": {
+    "dmg": 0.18,
+    "armor": 3
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [
+    "force"
+   ],
+   "abilities": [
+    {
+     "id": "sweep",
+     "name": "Powered Sweep",
+     "effect": "Wide ripper arc: 119 damage to everything in front, shoves and staggers 0.7s. Clears packs, swarms and summoned adds.",
+     "cooldown": 1.8,
+     "vfx": "kinetic",
+     "sfx": "blade"
+    }
+   ],
+   "sockets": 3,
+   "chips": [
+    {
+     "id": "bladepat",
+     "name": "Blade Pattern",
+     "stats": {},
+     "abilityMods": {
+      "len": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "cutwide",
+     "name": "Wide-Cut Pattern",
+     "stats": {},
+     "abilityMods": {
+      "arc": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "fineedge",
+     "name": "Fine-Edge Chip",
+     "stats": {
+      "atkSpeed": 0.1,
+      "dmg": 0.04
+     },
+     "abilityMods": {
+      "cdr": 0.02,
+      "dmg": 0.02
+     },
+     "affects": []
+    },
+    {
+     "id": "overdrive",
+     "name": "Overdrive Chip",
+     "stats": {
+      "dmg": 0.22,
+      "cooling": -0.1
+     },
+     "abilityMods": {
+      "dmg": 0.12
+     },
+     "affects": []
+    },
+    {
+     "id": "power",
+     "name": "Power Chip",
+     "stats": {
+      "dmg": 0.12
+     },
+     "abilityMods": {
+      "dmg": 0.06
+     },
+     "affects": []
+    },
+    {
+     "id": "speed",
+     "name": "Speed Chip",
+     "stats": {
+      "atkSpeed": 0.15
+     },
+     "abilityMods": {
+      "cdr": 0.03
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "signature",
+     "dungeon": "tailings_pit",
+     "dungeonName": "Tailings Pit 3",
+     "bossId": "pitboss",
+     "boss": "Pit Boss Karl Ossendrecht",
+     "via": "prestige",
+     "share": 0.75
+    }
+   ],
+   "blurb": "Pit Boss signature. A tailings auger worn to a mirror edge."
   },
   {
    "id": "stock_armL",
@@ -23058,6 +23172,112 @@
    "blurb": ""
   },
   {
+   "id": "sig_crane_legs",
+   "name": "Gantry-Mother Crane Legs",
+   "slot": "legL",
+   "slotLabel": "Left leg",
+   "group": "leg",
+   "maker": "MM",
+   "makerName": "Kestrel Value Systems",
+   "rarity": "orange",
+   "level": 17,
+   "humanity": 9,
+   "stats": {
+    "maxHp": 36,
+    "armor": 3,
+    "move": 0.1
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [],
+   "abilities": [
+    {
+     "id": "reposition",
+     "name": "Reposition",
+     "effect": "Dash-strike to an open point: 70 damage along the path, 0.32s invulnerable. Cast INTO a telegraph for a PERFECT EVADE: cooldown drops to 1.5s, -12 heat, abilities +30% for 3s.",
+     "cooldown": 2.4,
+     "vfx": "blink",
+     "sfx": "blink"
+    }
+   ],
+   "sockets": 3,
+   "chips": [
+    {
+     "id": "ablative",
+     "name": "Ablative Chip",
+     "stats": {
+      "armor": 2,
+      "maxHp": 10
+     },
+     "abilityMods": {
+      "shield": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "plating",
+     "name": "Plating Chip",
+     "stats": {
+      "armor": 3
+     },
+     "abilityMods": {
+      "shield": 0.08
+     },
+     "affects": []
+    },
+    {
+     "id": "servo",
+     "name": "Servo Chip",
+     "stats": {
+      "move": 0.1,
+      "armor": 1
+     },
+     "abilityMods": {
+      "dash": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "stride",
+     "name": "Stride Chip",
+     "stats": {
+      "move": 0.06
+     },
+     "abilityMods": {
+      "dash": 0.06
+     },
+     "affects": []
+    },
+    {
+     "id": "sustain",
+     "name": "Sustain Chip",
+     "stats": {
+      "regen": 0.8,
+      "maxHp": 6
+     },
+     "abilityMods": {
+      "heal": 0.1
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "signature",
+     "dungeon": "scrap_gantry",
+     "dungeonName": "Rustline Scrap Gantry",
+     "bossId": "gantrymother",
+     "boss": "Gantry-Mother Ngozi Adeyemi",
+     "via": "prestige",
+     "share": 0.75
+    }
+   ],
+   "blurb": "Gantry-Mother signature. Counterweighted strides that never miss a beam."
+  },
+  {
    "id": "stock_legL",
    "name": "Standard Issue Left leg",
    "slot": "legL",
@@ -31253,6 +31473,120 @@
    "blurb": "Authored Easter egg: an orange item outside the high-level band. Returned, refurbished, resold."
   },
   {
+   "id": "sig_oven_heart",
+   "name": "Voss Oven-Heart",
+   "slot": "torso",
+   "slotLabel": "Torso",
+   "group": "torso",
+   "maker": "HI",
+   "makerName": "Harrow-Brandt Heavy Works",
+   "rarity": "orange",
+   "level": 15,
+   "humanity": 13,
+   "stats": {
+    "maxHp": 40,
+    "armor": 4,
+    "regen": 0.4
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [],
+   "abilities": [
+    {
+     "id": "brace",
+     "name": "Bracing",
+     "effect": "Lock the frame for 3.5s: 75% less damage, 150% of what you take is reflected to the attacker, and a hit from a charging enemy stuns it 2s. Shoves adjacent enemies.",
+     "cooldown": 4.2,
+     "vfx": "barrier",
+     "sfx": "shield"
+    }
+   ],
+   "sockets": 8,
+   "chips": [
+    {
+     "id": "ablative",
+     "name": "Ablative Chip",
+     "stats": {
+      "armor": 2,
+      "maxHp": 10
+     },
+     "abilityMods": {
+      "shield": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "cloakdur",
+     "name": "Cloak Duration",
+     "stats": {},
+     "abilityMods": {
+      "cloak": 2
+     },
+     "affects": []
+    },
+    {
+     "id": "coolant",
+     "name": "Coolant Chip",
+     "stats": {
+      "cooling": 0.2
+     },
+     "abilityMods": {
+      "heat": 0.04
+     },
+     "affects": []
+    },
+    {
+     "id": "plating",
+     "name": "Plating Chip",
+     "stats": {
+      "armor": 3
+     },
+     "abilityMods": {
+      "shield": 0.08
+     },
+     "affects": []
+    },
+    {
+     "id": "quench",
+     "name": "Quench Coil",
+     "stats": {
+      "cooling": 0.35
+     },
+     "abilityMods": {
+      "heat": 0.07
+     },
+     "affects": []
+    },
+    {
+     "id": "sustain",
+     "name": "Sustain Chip",
+     "stats": {
+      "regen": 0.8,
+      "maxHp": 6
+     },
+     "abilityMods": {
+      "heal": 0.1
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "signature",
+     "dungeon": "coke_ovens",
+     "dungeonName": "Basin Slag Ovens",
+     "bossId": "voss",
+     "boss": "Oven-Tender Marguerite Voss",
+     "via": "prestige",
+     "share": 0.75
+    }
+   ],
+   "blurb": "Oven-Tender signature. A banked ember glow under riveted plate, still warm forty years on."
+  },
+  {
    "id": "sig_recovered_veil",
    "name": "Recovered Veil",
    "slot": "torso",
@@ -31834,7 +32168,8 @@
     "hi_torso_cool",
     "s1_quiet_halo",
     "sig_anvil_arm",
-    "sig_lazarus_rack"
+    "sig_lazarus_rack",
+    "sig_oven_heart"
    ],
    "combosInto": []
   },
@@ -33779,6 +34114,7 @@
     "ps_ceramic_leg_l",
     "ps_legs_l",
     "s1_quiet_halo",
+    "sig_crane_legs",
     "sig_r0_lifter",
     "sig_recovered_veil"
    ],
@@ -34870,6 +35206,7 @@
     "hi_ripper_arm",
     "s1_prism_lancer",
     "sig_anvil_arm",
+    "sig_pit_drill",
     "sig_reclaimer_ripper"
    ],
    "combosInto": []

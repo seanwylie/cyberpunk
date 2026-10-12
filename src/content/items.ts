@@ -47,6 +47,10 @@ export const EXTRA_ITEMS:ItemDef[] = [
   H('mm_returns_torso','Kestrel Returns Rack','torso','MM','blue',15,{maxHp:26,regen:.5},{abilities:['revive','defib'],caps:['defib']}),
   H('sig_lazarus_rack','Lazarus Rack','torso','MM','orange',14,{maxHp:40,regen:1.2},{abilities:['revive','brace','defib'],caps:['defib'],authoredException:true,blurb:'Authored Easter egg: an orange item outside the high-level band. Returned, refurbished, resold.'}),
   H('sig_r0_lifter','R-0 Lifter Legs','legR','MM','orange',24,{maxHp:50,armor:5,move:.1},{abilities:['reposition'],blurb:'Retrieval Unit R-0 signature. Built to lift what the shelves cannot.'}),
+  // ---- low-level signatures (tier-1 bosses, levels 15-17): an earnable orange in the 15-25 band ----
+  H('sig_oven_heart','Voss Oven-Heart','torso','HI','orange',15,{maxHp:40,armor:4,regen:.4},{abilities:['brace'],blurb:'Oven-Tender signature. A banked ember glow under riveted plate, still warm forty years on.'}),
+  H('sig_pit_drill','Ossendrecht Pit-Drill','armL','HI','orange',16,{dmg:.18,armor:3},{abilities:['sweep'],caps:['force'],blurb:'Pit Boss signature. A tailings auger worn to a mirror edge.'}),
+  H('sig_crane_legs','Gantry-Mother Crane Legs','legL','MM','orange',17,{maxHp:36,armor:3,move:.1},{abilities:['reposition'],blurb:'Gantry-Mother signature. Counterweighted strides that never miss a beam.'}),
 ];
 export const EXTRA_CONFLICTS:{a:string;b:string;reason:string}[] = [
   { a:'sig_anvil_arm', b:'sig_recovered_veil', reason:'Ram vibration defeats the Veil weave. Hard conflict (unchanged by reputation).' },
