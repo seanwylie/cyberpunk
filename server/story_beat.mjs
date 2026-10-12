@@ -4,6 +4,7 @@
 // (regenerate with: node tools/gen_story_ids.mjs).
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import { createLimiter, memoryStore, limitConfig } from './story_limits.mjs';
 
 export const CATALOG = JSON.parse(fs.readFileSync(new URL('./story_catalog.json', import.meta.url), 'utf8'));
 
@@ -40,7 +41,9 @@ export function sanitizeSummary(b) {
   if (!installed) return { ok: false, why: 'installed' }; if (!chips) return { ok: false, why: 'chips' }; if (!abilities) return { ok: false, why: 'abilities' }; if (!cosmetics) return { ok: false, why: 'cosmetics' };
   const rep = {}; for (const m of MFR_IDS) { const r = b.rep?.[m] ?? 0; if (!Number.isFinite(r)) return { ok: false, why: 'rep' }; rep[m] = Math.max(-9999, Math.min(9999, Math.round(r))); }
   const variant = b.variant == null ? 0 : b.variant; if (!Number.isInteger(variant) || variant < 0 || variant > 20) return { ok: false, why: 'variant' };
+  if (b.player != null && (typeof b.player !== 'string' || !SESSION.test(b.player))) return { ok: false, why: 'player' };
   const out = { trigger: b.trigger, town: b.town, level: lvl, session: b.session, installed, chips, abilities, cosmetics, rep, variant };
+  if (b.player) out.player = b.player;
   if (b.contract != null) { if (!own(CATALOG.contracts, b.contract)) return { ok: false, why: 'contract' }; out.contract = b.contract; }
   if (b.dungeon != null) { if (!own(CATALOG.dungeons, b.dungeon)) return { ok: false, why: 'dungeon' }; out.dungeon = b.dungeon; }
   if (b.newMfr != null) { if (!MFR_IDS.includes(b.newMfr)) return { ok: false, why: 'newMfr' }; out.newMfr = b.newMfr; }
@@ -59,7 +62,7 @@ export function promptFacts(s, recent = []) {
   return f;
 }
 /** Cache key: hash of the normalised summary (level bucketed by 5), per session so repeat-avoidance stays meaningful. */
-export function loadoutHash(s) { const { session, variant, ...rest } = s; return crypto.createHash('sha256').update(JSON.stringify({ ...rest, level: Math.floor(s.level / 5) })).digest('hex').slice(0, 24); }
+export function loadoutHash(s) { const { session, variant, player, ...rest } = s; return crypto.createHash('sha256').update(JSON.stringify({ ...rest, level: Math.floor(s.level / 5) })).digest('hex').slice(0, 24); }
 /** Output filter. Returns cleaned text or null. */
 export function cleanOutput(t) {
   if (typeof t !== 'string') return null;
@@ -87,6 +90,8 @@ export function createStoryService(opts = {}) {
   const nowFn = opts.now || Date.now;
   const cache = new Map(); const ipMin = new Map(), ipHour = new Map(), sesHour = new Map(); const recent = new Map();
   const daily = { day: '', n: 0 };
+  const limiter = opts.limiter === undefined ? createLimiter({ store: memoryStore(), cfg: limitConfig(env), now: nowFn }) : opts.limiter;
+  const maxTokens = () => { const n = parseInt(env.STORY_MAX_TOKENS || '', 10); return Number.isFinite(n) && n > 0 ? Math.min(n, 800) : 400; };
   const model = () => env.OPENAI_STORY_MODEL || 'gpt-5.4-nano';
   const base = () => (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
   const dailyCap = () => { const n = parseInt(env.STORY_DAILY_CAP || '', 10); return Number.isFinite(n) && n >= 0 ? n : LIMITS.dailyCap; };
@@ -94,8 +99,8 @@ export function createStoryService(opts = {}) {
     const key = env.OPENAI_API_KEY; if (!key) return { error: 'no_key' };
     const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), opts.timeoutMs || LIMITS.timeoutMs);
     try {
-      const body = { model: model(), messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: JSON.stringify(facts) }], max_completion_tokens: 400, reasoning_effort: env.OPENAI_STORY_REASONING || 'low' };
-      if (!/^(gpt-5|o\d)/.test(model())) { delete body.reasoning_effort; body.max_completion_tokens = 200; body.temperature = 0.9; }
+      const body = { model: model(), messages: [{ role: 'system', content: SYSTEM_PROMPT }, { role: 'user', content: JSON.stringify(facts) }], max_completion_tokens: maxTokens(), reasoning_effort: env.OPENAI_STORY_REASONING || 'low' };
+      if (!/^(gpt-5|o\d)/.test(model())) { delete body.reasoning_effort; body.max_completion_tokens = Math.min(200, maxTokens()); body.temperature = 0.9; }
       const r = await fetchFn(base() + '/chat/completions', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) });
       if (!r.ok) return { error: 'http_' + r.status };
       const j = await r.json(); return { text: j?.choices?.[0]?.message?.content };
@@ -111,6 +116,8 @@ export function createStoryService(opts = {}) {
     if (!windowCheck(sesHour, s.session, now, 3600000, LIMITS.perSessionPerHour, false)) return { status: 429, json: { ok: false, reason: 'rate_limited_session' } };
     const day = new Date(now).toISOString().slice(0, 10); if (daily.day !== day) { daily.day = day; daily.n = 0; }
     if (daily.n >= dailyCap()) return { status: 429, json: { ok: false, reason: 'daily_cap' } };
+    if (limiter) { const L = await limiter.check({ player: s.player || s.session, ip, regen: s.variant > 0 });
+      if (!L.ok) return L.reason === 'budget' ? { status: 200, json: { ok: false, reason: 'budget', canned: true, retryAfter: L.retryAfter } } : { status: 429, json: { ok: false, reason: L.reason, retryAfter: L.retryAfter, scope: L.scope } }; }
     windowCheck(ipMin, ip, now, 60000, 1e9, true); windowCheck(ipHour, ip, now, 3600000, 1e9, true); windowCheck(sesHour, s.session, now, 3600000, 1e9, true);
     const rec = recent.get(s.session) || [];
     let text = null, err = null;

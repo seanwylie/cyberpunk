@@ -1,6 +1,7 @@
 // AWS Lambda (Function URL, payload v2) wrapper around the shared story-beat service. The OpenAI key is read ONCE per cold start from
 // Secrets Manager (OPENAI_SECRET_ID) and never returned to clients. Staged next to server/story_beat.mjs + story_catalog.json by the CDK app.
 import { createStoryService, LIMITS } from './story_beat.mjs';
+import { createLimiter, dynamoStore, memoryStore, limitConfig } from './story_limits.mjs';
 let service = null;
 async function init() {
   if (service) return service;
@@ -9,7 +10,8 @@ async function init() {
     const r = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: process.env.OPENAI_SECRET_ID }));
     if (r.SecretString && !/^PLACEHOLDER/.test(r.SecretString)) process.env.OPENAI_API_KEY = r.SecretString.trim();
   }
-  service = createStoryService(); return service;
+  const store = process.env.STORY_TABLE ? dynamoStore(process.env.STORY_TABLE) : memoryStore();
+  service = createStoryService({ limiter: createLimiter({ store, cfg: limitConfig(process.env) }) }); return service;
 }
 const json = (status, body) => ({ statusCode: status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' }, body: JSON.stringify(body) });
 export async function handler(event) {

@@ -10,7 +10,7 @@ import { WvConfig } from './config';
 export function stageStoryLambda(): string {
   const root = path.resolve(__dirname, '..', '..'); const out = path.resolve(__dirname, '..', '.staged', 'story'); fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
   fs.copyFileSync(path.join(root, 'infra', 'lambda', 'story-beat.mjs'), path.join(out, 'story-beat.mjs'));
-  for (const f of ['story_beat.mjs', 'story_catalog.json']) fs.copyFileSync(path.join(root, 'server', f), path.join(out, f));
+  for (const f of ['story_beat.mjs', 'story_limits.mjs', 'story_catalog.json']) fs.copyFileSync(path.join(root, 'server', f), path.join(out, f));
   return out;
 }
 
