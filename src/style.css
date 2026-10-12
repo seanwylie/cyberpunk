@@ -578,3 +578,6 @@ body.reducefx .lockerwin .slot.tile.eqflash{ animation:none; outline:3px solid #
 .pop .popbtns{ position:sticky; bottom:0; background:#222426; padding:4px 0 2px; z-index:2; }
 .keepchips{ margin:3px 0 0; } .pop .warnb.small2{ margin:2px 0; }
 @media (max-height:480px){ .pop .cmp .crow{ line-height:1.15; } .pop .small2{ line-height:1.2; } }
+@media (max-height:480px){ .pop{ padding:8px 12px; } .pop .abdiff{ margin:3px 0; } .keepchips input{ width:16px; height:16px; } .pop .swap{ margin:2px 0; } }
+@media (max-height:480px){ .pop{ max-height:calc(100vh - 8px); } body.tutdock .pop{ max-height:calc(100vh - 8px - var(--tutdock,0px)); } }
+@media (max-height:480px){ .pop .cmp:not(.cmpinline){ display:grid; grid-template-columns:1fr 1fr; column-gap:16px; } .pop .cmp:not(.cmpinline) .crow.head{ display:none; } }
