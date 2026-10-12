@@ -8,7 +8,7 @@ import { drawCosmetics, drawTrail } from './cosmetics';
 import { PlayerAnimator, Dir8, DIR_ORDER, dirFromWorld } from './sprites';
 import { persist } from './state';
 import { track, fmtUsd } from './analytics';
-import { equipSound, flourish, ORANGE, PURPLE } from './cosfx';
+import { equipSound, flourish, PALETTES, SIGNATURE } from './cosfx';
 import { CATALOG, SKU_BY_ID, Sku, activeOrder, cancelOrder, confirmPurchase, skuAvail, startPurchase } from './store';
 type UIx = any;
 type Look = Partial<Record<CosSlot, string>>;
@@ -179,11 +179,11 @@ export function wardrobeAfter(ui: UIx) {
     const u = 4.6, dA = Math.floor(WD.dirF) % 8 as Dir8, frac = WD.dirF - Math.floor(WD.dirF), dB = (dA + 1) % 8 as Dir8; const dShow = (frac < .5 ? dA : dB) as Dir8;
     const k = { c: ctx, x: fx, y: fy, u, t, moving: false, face: FACE[dShow], id: 'dr' };
     // rarity reveal: selecting a purple/orange piece plays a beam + burst + tinted spotlight (orange bigger, longer, brighter); showcase loops it
-    if (sel && look[sel.slot] === sel.id && sel.id !== revSel) { revSel = sel.id; if (sel.rarity === 'orange' || sel.rarity === 'purple') { revT = t; revTier = sel.rarity; flourish('dr', -1e9); equipSound([sel]); } }
+    if (sel && look[sel.slot] === sel.id && sel.id !== revSel) { revSel = sel.id; if (sel.rarity === 'orange' || sel.rarity === 'purple') { revT = t; revTier = sel.rarity; flourish('dr'); equipSound([sel]); } }
     if (!sel || look[sel.slot] !== sel.id) revSel = '';
-    if (WD.showcase && !reducedFx()) { if (t - lastTurn > 1.6) { lastTurn = t; WD.dir = ((WD.dir + 1) % 8) as Dir8; } const tops = list.filter(x => x.rarity === 'orange' || x.rarity === 'purple'); if (tops.length && t - lastShow > 5) { lastShow = t; revT = t; revTier = tops.some(x => x.rarity === 'orange') ? 'orange' : 'purple'; } }
+    if (WD.showcase && !reducedFx()) { if (t - lastTurn > 1.6) { lastTurn = t; WD.dir = ((WD.dir + 1) % 8) as Dir8; } const tops = list.filter(x => x.rarity === 'orange' || x.rarity === 'purple'); if (tops.length && t - lastShow > 6) { lastShow = t; revT = t; flourish('dr'); revTier = tops.some(x => x.rarity === 'orange') ? 'orange' : 'purple'; } }
     (window as any).__drReveal = { t: t - revT, tier: revTier };
-    if (revTier && t - revT < (revTier === 'orange' ? 2.2 : 1.4)) drawReveal(ctx, fx, fy, u, t - revT, revTier as any, W, H, reducedFx());
+    if (revTier && t - revT < 3.4) { const rd = list.find(x => x.rarity === revTier); const sg = rd && SIGNATURE[rd.id]; drawReveal(ctx, fx, fy, u, t - revT, revTier as any, W, H, reducedFx(), rd?.name || '', sg ? PALETTES[sg.pal] : undefined); }
     const tr = list.find(x => x.slot === 'trail'); if (tr) drawTrail(ctx, Array.from({ length: 14 }, (_, i) => ({ x: fx - 8 - i * 7, y: fy + (i % 2) * 2, t: t - i * .06 })), t, u, tr);
     drawCosmetics(k, list, 'back'); let drew = false;
     if (anim) { try { const body = applyCosmeticVariants(bodyOf({ ...s, cosmetics: { owned: {}, equipped: {} } } as any, null), { cosmetics: { owned: Object.fromEntries(list.map(x => [x.id, 1])), equipped: look } } as any); anim.setBody(body); anim.anim = 'idle'; anim.t = t;
@@ -199,12 +199,20 @@ export function wardrobeAfter(ui: UIx) {
 /** test / console hook */
 if (typeof window !== 'undefined') (window as any).__dr = { WD, previewLook: () => previewLook((window as any).__game.save), wornLook: () => wornLook((window as any).__game.save), diff: () => lookDiff((window as any).__game.save), activeOrder };
 const reducedFx = () => document.body.classList.contains('reducefx');
-/** Dressing-room rarity entrance: light beam from above, expanding burst ring, tinted spotlight. Orange: wider beam, double ring, flash, longer. Reduced FX: a static tinted spotlight only. */
-function drawReveal(c: CanvasRenderingContext2D, x: number, y: number, u: number, e: number, tier: 'orange' | 'purple', W: number, H: number, red: boolean) {
-  const O = tier === 'orange', col = O ? ORANGE : PURPLE, dur = O ? 2.2 : 1.4, k = Math.max(0, 1 - e / dur); c.save(); c.globalCompositeOperation = 'lighter';
-  const sp = c.createRadialGradient(x, y - 30 * u, 4, x, y - 30 * u, (O ? 170 : 120)); sp.addColorStop(0, col + (O ? '88' : '55')); sp.addColorStop(1, col + '00'); c.globalAlpha = red ? .6 : k; c.fillStyle = sp; c.fillRect(0, 0, W, H);
-  if (!red) { const bw = (O ? 46 : 26) * (0.4 + .6 * Math.min(1, e * 4)); const g = c.createLinearGradient(x - bw / 2, 0, x + bw / 2, 0); g.addColorStop(0, col + '00'); g.addColorStop(.5, O ? '#fff1c4' : '#ead8ff'); g.addColorStop(1, col + '00'); c.globalAlpha = k * (O ? .9 : .6); c.fillStyle = g; c.fillRect(x - bw / 2, 0, bw, y);
-    for (let i = 0; i < (O ? 2 : 1); i++) { const r = (e - i * .18) * (O ? 220 : 150); if (r <= 0) continue; c.globalAlpha = k; c.strokeStyle = i ? '#fff1c4' : col; c.lineWidth = O ? 4 : 2.5; c.beginPath(); c.ellipse(x, y, r, r * .33, 0, 0, 7); c.stroke(); }
-    if (O && e < .18) { c.globalAlpha = (1 - e / .18) * .55; c.fillStyle = '#fff1c4'; c.fillRect(0, 0, W, H); } }
-  c.restore(); }
+/** Dressing-room reveal, recall / splash-art style: a painterly background wash (wide brush strokes in the skin palette sweep in with
+ *  anticipation -> snap -> settle), then a framed splash card (ink frame, corner ornaments, name plaque). Orange: full card + gold ornaments;
+ *  purple: lighter wash + simple frame. Reduced FX: the settled card only, no motion. */
+function drawReveal(c: CanvasRenderingContext2D, x: number, y: number, u: number, e: number, tier: 'orange' | 'purple', W: number, H: number, red: boolean, name = '', pal?: string[]) {
+  const O = tier === 'orange'; const P = pal || (O ? PALETTES.forge : ['#140a20', '#7a4ad0', '#efe4ff', '#b48cff']); const ease = red ? 1 : Math.min(1, e / .5); const settle = red ? 1 : 1 - Math.pow(1 - ease, 3);
+  const fade = red ? .85 : e < 2.6 ? 1 : Math.max(0, 1 - (e - 2.6) / .8); if (fade <= 0) return; c.save();
+  // painterly wash: 5 broad strokes from the left, each a little later (anticipation: they first pull back a few px)
+  const strokes = O ? 5 : 3; for (let i = 0; i < strokes; i++) { const d = red ? 1 : Math.max(0, Math.min(1, (e - i * .06) / .45)); const p = d < .2 ? -.05 * d / .2 : 1 - Math.pow(1 - (d - .2) / .8, 3); const yy = H * (.15 + i * .17), len = W * 1.2 * p;
+    c.globalAlpha = (O ? .5 : .32) * fade; c.fillStyle = i % 2 ? P[1] : P[0]; c.beginPath(); c.moveTo(-20, yy); c.quadraticCurveTo(len * .5, yy - 18 - i * 3, len, yy + 6); c.lineTo(len - 30, yy + 34); c.quadraticCurveTo(len * .45, yy + 40, -20, yy + 30); c.closePath(); c.fill(); }
+  // splash card frame
+  const m = 10 + (1 - settle) * 14; c.globalAlpha = fade; c.lineJoin = 'round'; c.strokeStyle = P[0]; c.lineWidth = 6; c.strokeRect(m, m, W - 2 * m, H - 2 * m); c.strokeStyle = O ? P[3] : P[3]; c.lineWidth = O ? 2.5 : 1.5; c.strokeRect(m, m, W - 2 * m, H - 2 * m);
+  if (O) for (const [cx, cy, sx, sy] of [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]]) { c.fillStyle = P[3]; c.strokeStyle = P[0]; c.lineWidth = 2; c.beginPath(); c.moveTo(cx - sx * 4, cy - sy * 4); c.lineTo(cx + sx * 22, cy - sy * 4); c.lineTo(cx + sx * 8, cy + sy * 8); c.lineTo(cx - sx * 4, cy + sy * 22); c.closePath(); c.fill(); c.stroke(); }
+  // name plaque
+  if (name) { const ph = 26, py = H - m - ph - 6, pw = Math.min(W - 2 * m - 20, 12 + name.length * 8.4); const px = (W - pw) / 2; c.globalAlpha = fade * settle; c.fillStyle = P[0]; c.fillRect(px, py, pw, ph); c.strokeStyle = P[3]; c.lineWidth = 1.5; c.strokeRect(px, py, pw, ph);
+    c.fillStyle = O ? P[3] : '#efe4ff'; c.font = 'bold 14px system-ui,sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(name.toUpperCase(), W / 2, py + ph / 2 + 1); c.font = '10px system-ui,sans-serif'; c.fillStyle = P[2]; c.fillText(O ? 'LEGENDARY' : 'EPIC', W / 2, py - 8); }
+  void x; void y; void u; c.restore(); }
 export { checkAchievements };
