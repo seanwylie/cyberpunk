@@ -57,7 +57,7 @@ Every boss (12 original, 20 from content batch 1) has a **kit** of 2-3 themed me
 | `overseer` | Annex Oversight | coral | Tether pylons + snipes (30); Gapped shockwave (12) |
 | `warden` | Neural Warden | violet | Safe zones (20); Tile sequence (13); Line-of-sight gaze (15) |
 | `enforcer` | Repossession | gold | Conveyor floor (16); Scythe sweep (10); Ricochet roller (14) |
-| `voss` | Coke Battery | amber | Rotating beam (12); Heat overload (22) |
+| `voss` | Oven Battery | amber | Rotating beam (12); Heat overload (22) |
 | `lineman` | Live Lines | cyan | Line-of-sight gaze (11); Tether pylons + snipes (30); Laser grid (16) |
 | `gantrymother` | Crane Drop | yellow | Conveyor floor (15); Laser grid (14); Buff nodes (34, <=80% HP) |
 | `pitboss` | The Pit | bronze | Gravity vortex (14); Gapped shockwave (12); Ricochet roller (15) |

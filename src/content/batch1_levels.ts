@@ -18,13 +18,13 @@ export interface LevelSpec {
 }
 const T=(t:1|2|3|4)=>({1:{min:12,max:24},2:{min:20,max:32},3:{min:28,max:42},4:{min:38,max:50}}[t]);
 export const LEVELS:LevelSpec[]=[
- { id:'coke_ovens', name:'Basin Coke Ovens', short:'Coke Ovens', boss:'voss', mfr:'HI', faction:'Harrow-Brandt', district:'Harrow Reach', tier:1, minLevel:T(1).min, maxLevel:T(1).max, est:[6,9], theme:'coke_ovens',
-   blurb:'Condemned coke batteries that never stopped firing. Ember beds, charging rails and a battery floor for Marguerite Voss.',
+ { id:'coke_ovens', name:'Basin Slag Ovens', short:'Slag Ovens', boss:'voss', mfr:'HI', faction:'Harrow-Brandt', district:'Harrow Reach', tier:1, minLevel:T(1).min, maxLevel:T(1).max, est:[6,9], theme:'coke_ovens',
+   blurb:'Condemned oven batteries that never stopped firing. Ember beds, charging rails and a battery floor for Marguerite Voss.',
    pal:{f:'rgba(110,70,40,.55)',fm:'rgb(150,126,110)',w:'rgba(96,58,34,.6)',wm:'rgb(150,128,112)',accent:'rgba(230,120,40,.7)',light:'red',dust:'220,140,80',motif:'cracks'},
    shapes:['open','colonnade','islands','pit'], dims:[[18,18],[28,22],[16,20],[22,24]], haz:{label:'Ember bed',mode:'channels',n:2,dps:8,heat:12,r:1.1},
    roster:{yard:[['slaghauler',7],['cinderhound',3]],proc:[['slaghauler',6],['ladlecrew',4],['cinderhound',4]],junction:[['ladlecrew',4],['slaghauler',3]],salvage:[['cinderhound',3]]}, gateGuard:'slagcannon', lockElite:'brakeman', alarmType:'slaghauler',
-   objective:{label:'Battery charging controller',relay:'Charging-rail relay',toast:'Battery controller secured. The battery floor door opens.',bonus:'Quench-tower cache'}, zoneLabels:{yard:'Coke yard',proc:'Oven battery',junction:'Charging gantry',boss:'Battery floor',salvage:'Quench shed',passage:'Rail alcove'}, props:{crate:8,machine:3,rack:2,conveyor:2},
-   unlock:{after:['annex']}, creditMul:1.5, xp:450, chips:['ablative','quench'], loot:'HI', intro:'Coke Ovens: shut the charging gate, take the controller, face Voss.' },
+   objective:{label:'Battery charging controller',relay:'Charging-rail relay',toast:'Battery controller secured. The battery floor door opens.',bonus:'Quench-tower cache'}, zoneLabels:{yard:'Slag yard',proc:'Oven battery',junction:'Charging gantry',boss:'Battery floor',salvage:'Quench shed',passage:'Rail alcove'}, props:{crate:8,machine:3,rack:2,conveyor:2},
+   unlock:{after:['annex']}, creditMul:1.5, xp:450, chips:['ablative','quench'], loot:'HI', intro:'Slag Ovens: shut the charging gate, take the controller, face Voss.' },
  { id:'substation_12', name:'Substation 12', short:'Substation', boss:'lineman', mfr:'HI', faction:'Harrow-Brandt', district:'Harrow Reach', tier:1, minLevel:T(1).min, maxLevel:T(1).max, est:[6,9], theme:'substation_12',
    blurb:'A live grid substation with breaker halls and transformer yards. Lineman Brandt keeps the lines hot.',
    pal:{f:'rgba(70,86,110,.6)',fm:'rgb(150,156,168)',w:'rgba(56,70,96,.65)',wm:'rgb(140,150,166)',accent:'rgba(240,210,70,.7)',light:'cool',dust:'160,190,230',motif:'stripes'},

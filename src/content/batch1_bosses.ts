@@ -19,9 +19,9 @@ export interface BossSpec {
 }
 const P=(at:number,say:string,...acts:PhaseAct[]):Phase=>({at,say,acts});
 export const BOSSES:BossSpec[]=[
- { id:'voss', name:'Coke-Tender Marguerite Voss', faction:'Harrow-Brandt', mfr:'HI', level:'coke_ovens', tier:1, lore:'Last tender of the Basin coke batteries. Harrow-Brandt kept her on the books for forty years after the ovens were condemned; she keeps feeding them.',
+ { id:'voss', name:'Oven-Tender Marguerite Voss', faction:'Harrow-Brandt', mfr:'HI', level:'coke_ovens', tier:1, lore:'Last tender of the Basin oven batteries. Harrow-Brandt kept her on the books for forty years after the ovens were condemned; she keeps feeding them.',
    hp:2800, speed:2.6, radius:.9, melee:['slam','charge'], moves:[{k:'marks',p:{n:5,r:1.6,spread:3.6}},{k:'spokes',p:{n:7,len:8,sweep:150}}], phases:[P(.45,'The ovens remember the schedule.',{k:'enrage',spd:1.25,cd:.75},{k:'gimmick',g:{k:'rain',every:6,n:4,r:1.5}})], gimmick:{k:'rain',every:11,n:3,r:1.5},
-   arena:'Coke battery floor: ember rain falls in the open.', signature:'Rotating coke-door beam sweep + ember rain', h:2.3, track:'elite_siege', xp:380 },
+   arena:'Oven battery floor: ember rain falls in the open.', signature:'Rotating oven-door beam sweep + ember rain', h:2.3, track:'elite_siege', xp:380 },
  { id:'lineman', name:'Lineman Tomasz Brandt', faction:'Harrow-Brandt', mfr:'HI', level:'substation_12', tier:1, lore:'A Brandt cousin who kept Substation 12 live through the strikes. Believes the grid is a promise.',
    hp:3000, speed:2.3, radius:.85, melee:['cleave'], moves:[{k:'nova',p:{n:16,speed:7.5,gap:50}},{k:'fan',p:{n:5,spread:50,speed:11}}], phases:[P(.7,'Phase to ground. Lines are live.',{k:'pylons',type:'camgun',n:3})], gimmick:{k:'pillarfire',every:9,n:8},
    arena:'Pylon tether: three relay nodes shield him; pillars shield you from the arc nova.', signature:'Tether pylons + arc nova you hide from behind pillars', h:2.3, track:'boss_lineman', xp:390 },

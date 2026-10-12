@@ -53,7 +53,7 @@ export const KITS:Record<string,Kit>={
   warden:{pal:'violet',title:'Neural Warden',mechs:[M('safe',20,{first:10}),M('tiles',13,{first:6}),M('gaze',15)]},
   enforcer:{pal:'gold',title:'Repossession',mechs:[M('conveyor',16,{first:8}),M('scythe',10,{first:5}),M('ricochet',14)]},
   // ---- content batch 1
-  voss:{pal:'amber',title:'Coke Battery',mechs:[M('beam',12,{first:6}),M('overload',22,{first:12})]},
+  voss:{pal:'amber',title:'Oven Battery',mechs:[M('beam',12,{first:6}),M('overload',22,{first:12})]},
   lineman:{pal:'cyan',title:'Live Lines',mechs:[M('gaze',11,{first:6}),M('pylons',30,{first:12}),M('grid',16)]},
   gantrymother:{pal:'yellow',title:'Crane Drop',mechs:[M('conveyor',15,{first:7}),M('grid',14),M('buffers',34,{at:.8})]},
   pitboss:{pal:'bronze',title:'The Pit',mechs:[M('vortex',14,{p:{dir:1},first:7}),M('shockring',12),M('ricochet',15)]},

@@ -40,7 +40,7 @@ Each level declares a primary and an alternate macro archetype (`ARCH_OF`); the 
 
 | Archetype | Room graph / geometry | Used by (primary) |
 |---|---|---|
-| `gauntlet` | linear E-E-E, long narrow corridors, flat staggered rooms, optional side wing | Coke Ovens, Freight Depot, Quiet Shift Tunnels |
+| `gauntlet` | linear E-E-E, long narrow corridors, flat staggered rooms, optional side wing | Slag Ovens, Freight Depot, Quiet Shift Tunnels |
 | `ell` | two legs then a 90 degree turn to the boss, mid-length corridors | Scrap Gantry, Liquidation Floor, Recall Yard |
 | `zig` | staircase / Z (E-S-E) with large perpendicular offsets and dogleg corridors | Tailings Pit, Breaker Yard |
 | `uturn` | U shape (E-S-W): control room below the lock, boss back under the entry | Cold Archive, Anechoic Lab, Drained Reservoir |

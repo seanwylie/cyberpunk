@@ -64,7 +64,7 @@ const fresh = id => ev(id => { const g = window.__game; g.enterTown(); g.save.in
 const step = secs => ev(s => { const g = window.__game; for (let i = 0; i < s / 0.016; i++) g.update(0.016); }, secs);
 // unlock gating (without bypass)
 const lock = await ev(() => { const g = window.__game; g.enterTown(); g.save.instance = null; g.inst = null; g.save.cleared = {}; g.save.lockouts = {}; g.save.lastClearDay = null; g.save.settings.devFreeReset = false; const a = g.startRun('recall_yard'); g.save.cleared = { breaker_yard: 1, radio_mast: 1, warranty_vault: 1 }; const b = g.startRun('recall_yard'); g.enterTown(); g.save.instance = null; g.inst = null; g.save.cleared = {}; const c = g.startRun('coke_ovens'); g.save.lastClearDay = '2020-1-1'; g.enterTown(); g.save.instance = null; g.inst = null; const d = g.startRun('coke_ovens'); return { a, b, c, d }; });
-ok(lock.a === false && lock.b === true && lock.c === false && lock.d === true, 'unlock gating: Recall Yard needs 3 clears, Coke Ovens needs the Annex (a previous Annex clear counts)');
+ok(lock.a === false && lock.b === true && lock.c === false && lock.d === true, 'unlock gating: Recall Yard needs 3 clears, Slag Ovens needs the Annex (a previous Annex clear counts)');
 const PICK = ['coke_ovens', 'bell_foundry', 'cold_archive', 'freight_depot', 'night_tunnels', 'recall_yard'];
 for (const id of PICK) {
   ok(await fresh(id), id + ': fresh run starts'); await step(0.3);

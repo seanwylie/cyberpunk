@@ -136,7 +136,7 @@ CALM4 = {
  'calm_breathing': "Breathing room drift, 58 bpm, E-flat major. Slow breathing pad swells, tiny bell pings, no rhythm, soft sub. " + AMB,
  'calm_wires': "Humming power wires pulse, 112 bpm, D minor. Electric hum bed, soft sequenced pulse, gentle filtered arpeggio, cool and steady. " + AMB,
  'calm_sodium': "Sodium streetlight noir, 70 bpm, F# minor. Slow tremolo electric guitar-like synth, sparse upright-bass notes, rain-on-metal texture. " + AMB,
- 'area_hi_coke': "Coke ovens glow, 86 bpm, D minor. Slow heavy soft-hit pulse, ember crackle, warm low drone, sparse bell. " + AMB,
+ 'area_hi_coke': "Slag ovens glow, 86 bpm, D minor. Slow heavy soft-hit pulse, ember crackle, warm low drone, sparse bell. " + AMB,
  'area_hi_bellring': "Distant bell foundry ambience, 62 bpm, A-flat major. Deep tolling bells softened with reverb, warm pad, slow shimmer, no drums. " + AMB,
  'area_ps_archive': "Cold archive drift, 60 bpm, B minor. Paper-and-glass textures, slow pure-tone pad, tiny clicks, frozen air. " + AMB,
  'area_ps_ledger': "Audit-floor noir, 92 bpm, E-flat minor. Typewriter-like soft clicks as rhythm, dry upright bass, muted keys, bureaucratic loneliness. " + AMB,

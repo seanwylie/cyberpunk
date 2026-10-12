@@ -50,7 +50,7 @@ Same run chain as every dungeon (entry, gate1, hall, lock2, control with control
 
 | # | id | Name | Faction | Tier | Level | HP | Melee (existing) | Toolkit moves | Phases | Arena gimmick | Signature |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | `voss` | Coke-Tender Marguerite Voss | Harrow-Brandt | I | `coke_ovens` | 2800 | slam, charge | marks(n5,r1.6,spread3.6); spokes(n7,len8,sweep150) | <45%: enrage x1.25 speed, x0.75 cooldowns + gimmick rain | rain every 11s. Coke battery floor: ember rain falls in the open. | Rotating coke-door beam sweep + ember rain |
+| 1 | `voss` | Oven-Tender Marguerite Voss | Harrow-Brandt | I | `coke_ovens` | 2800 | slam, charge | marks(n5,r1.6,spread3.6); spokes(n7,len8,sweep150) | <45%: enrage x1.25 speed, x0.75 cooldowns + gimmick rain | rain every 11s. Oven battery floor: ember rain falls in the open. | Rotating oven-door beam sweep + ember rain |
 | 2 | `lineman` | Lineman Tomasz Brandt | Harrow-Brandt | I | `substation_12` | 3000 | cleave | nova(n16,speed7.5,gap50); fan(n5,spread50,speed11) | <70%: 3x camgun tether | pillarfire every 9s. Pylon tether: three relay nodes shield him; pillars shield you from the arc nova. | Tether pylons + arc nova you hide from behind pillars |
 | 3 | `gantrymother` | Gantry-Mother Ngozi Adeyemi | Rustline Compact | I | `scrap_gantry` | 2900 | slam | lanes(n5,gap2,len12,space2.4); adds(typepicker,n3,cap7) | <50%: 2x forkbot wave + gimmick lanes | trickle every 14s. Crane lanes: striped drop lanes with one safe gap each cast. | Crane-drop lane volleys with a safe gap + scrap-crew trickle |
 | 4 | `pitboss` | Pit Boss Karl Ossendrecht | Harrow-Brandt | I | `tailings_pit` | 3300 | charge, slam, rsweep | ring(n12,gaps2,rad6,r1.6) | <60%: gimmick edge | edge every 9s. Collapsing rim: ground along the arena edge turns toxic, shrinking the safe area. | Shrinking arena + charge/slam brawler |
@@ -73,7 +73,7 @@ Same run chain as every dungeon (entry, gate1, hall, lock2, control with control
 
 ### 3.1 Lore tie-ins
 
-- **Coke-Tender Marguerite Voss** (Harrow-Brandt): Last tender of the Basin coke batteries. Harrow-Brandt kept her on the books for forty years after the ovens were condemned; she keeps feeding them.
+- **Oven-Tender Marguerite Voss** (Harrow-Brandt): Last tender of the Basin oven batteries. Harrow-Brandt kept her on the books for forty years after the ovens were condemned; she keeps feeding them.
 - **Lineman Tomasz Brandt** (Harrow-Brandt): A Brandt cousin who kept Substation 12 live through the strikes. Believes the grid is a promise.
 - **Gantry-Mother Ngozi Adeyemi** (Rustline Compact): Runs the scrapyard cranes for the Rustline independents and has never dropped a load she did not mean to.
 - **Pit Boss Karl Ossendrecht** (Harrow-Brandt): Ran the tailings pit until the contract lapsed. His shift whistle still sets the pace of the machines.
@@ -96,7 +96,7 @@ Same run chain as every dungeon (entry, gate1, hall, lock2, control with control
 
 ### 3.2 Phase lines (spoken on transition)
 
-- Coke-Tender Marguerite Voss: "The ovens remember the schedule."
+- Oven-Tender Marguerite Voss: "The ovens remember the schedule."
 - Lineman Tomasz Brandt: "Phase to ground. Lines are live."
 - Gantry-Mother Ngozi Adeyemi: "Hook down!"
 - Pit Boss Karl Ossendrecht: "The pit is getting smaller."
@@ -121,7 +121,7 @@ Same run chain as every dungeon (entry, gate1, hall, lock2, control with control
 
 | # | id | Name | Host boss | Mfr | Tier | Lv band | Theme / motif | Room shapes (yard, hall, junction, arena) | Hazards | Objective | Gate guard / lock elite | Roster | Unlock |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | `coke_ovens` | Basin Coke Ovens | `voss` | HI | I | 12-24 | cracks, red light | open / colonnade / islands / pit | Ember bed (channels x2) | Battery charging controller | slagcannon / brakeman | slaghauler, cinderhound, ladlecrew | annex |
+| 1 | `coke_ovens` | Basin Slag Ovens | `voss` | HI | I | 12-24 | cracks, red light | open / colonnade / islands / pit | Ember bed (channels x2) | Battery charging controller | slagcannon / brakeman | slaghauler, cinderhound, ladlecrew | annex |
 | 2 | `substation_12` | Substation 12 | `lineman` | HI | I | 12-24 | stripes, cool light | pillars / rings / zigzag / colonnade | Live bus bar (lanes x3) | Grid interlock | turret / sawhand | worker, shooter | warehouse |
 | 3 | `scrap_gantry` | Rustline Scrap Gantry | `gantrymother` | MM | I | 12-24 | crates, warm light | islands / maze / islands / open | Crane drop zone (scatter x6) | Crane master console | camgun / hobbs | picker, loader, forkbot, scanner | warehouse |
 | 4 | `tailings_pit` | Tailings Pit 3 | `pitboss` | HI | I | 12-24 | plates, warm light | diag / cave / diag / pit | Sludge pool (scatter x7) | Haul-road relay | slagcannon / sawhand | slaghauler, loader, cinderhound, ladlecrew | annex |
@@ -146,7 +146,7 @@ Same run chain as every dungeon (entry, gate1, hall, lock2, control with control
 
 | id | Blurb | Credit x | Clear XP | Cache chips | Loot pool |
 |---|---|---|---|---|---|
-| `coke_ovens` | Condemned coke batteries that never stopped firing. Ember beds, charging rails and a battery floor for Marguerite Voss. | 1.5 | 450 | ablative, quench | HI |
+| `coke_ovens` | Condemned oven batteries that never stopped firing. Ember beds, charging rails and a battery floor for Marguerite Voss. | 1.5 | 450 | ablative, quench | HI |
 | `substation_12` | A live grid substation with breaker halls and transformer yards. Lineman Brandt keeps the lines hot. | 1.5 | 460 | power, coolant | HI |
 | `scrap_gantry` | A cluttered scrap yard under travelling cranes. Mounds of salvage make maze-like lanes for the Gantry-Mother. | 1.4 | 430 | magnet, speed | MM |
 | `tailings_pit` | An open pit with switchback ramps and sludge pools. Karl Ossendrecht still runs the shift. | 1.5 | 450 | plating, ablative | HI |

@@ -22,7 +22,7 @@ Art comes from the Blender 8-direction pipeline (`tools/enemies3d/arch_bestiary.
 | Vehicle / turret-crab | `arach` crab + turret | Crab Gun (T3 mortar caster) | Tow-Crab (T4 shield) |
 
 ## Dungeon assignment (batch 1; merged into the level rosters, `BESTIARY_ROSTER`)
-Coke Ovens: Slag Leech, Soot Sac · Substation 12: Gutterling · Scrap Gantry: Gutterling, Soot Sac · Tailings Pit: Gutterling, Slag Leech, Soot Sac · Bell Foundry: Meat Carrier · Cold Archive: Drape Jelly, Fitting-Room Doll · Audit Tower: Hang Tick, Doll · Aesthetic Ward: Jelly, Doll · Pharmacy Vault: Jelly, Hang Tick · Outlet Mall: Doll, Stitch Spider · Drained Reservoir: Stitch Spider, Jelly, Meat Carrier · Anechoic Lab: Hollow Ghost, Flesh Drone · Liquidation Floor: Squidwalker · Parcel Tower: Stitch Spider, Crab Gun · Freight Depot: Squidwalker, Crab Gun, Stitch Spider · Warranty Vault: Hollow Ghost, Glitch Shard · Night Tunnels: Hang Tick, Ghost, Glitch, Root Cluster · Breaker Yard: Meat Carrier, Crab Gun, Squidwalker · Radio Mast: Glitch, Ghost, Root Cluster · Recall Yard: Squidwalker, Glitch, Flesh Drone, Ghost, Meat Carrier.
+Slag Ovens: Slag Leech, Soot Sac · Substation 12: Gutterling · Scrap Gantry: Gutterling, Soot Sac · Tailings Pit: Gutterling, Slag Leech, Soot Sac · Bell Foundry: Meat Carrier · Cold Archive: Drape Jelly, Fitting-Room Doll · Audit Tower: Hang Tick, Doll · Aesthetic Ward: Jelly, Doll · Pharmacy Vault: Jelly, Hang Tick · Outlet Mall: Doll, Stitch Spider · Drained Reservoir: Stitch Spider, Jelly, Meat Carrier · Anechoic Lab: Hollow Ghost, Flesh Drone · Liquidation Floor: Squidwalker · Parcel Tower: Stitch Spider, Crab Gun · Freight Depot: Squidwalker, Crab Gun, Stitch Spider · Warranty Vault: Hollow Ghost, Glitch Shard · Night Tunnels: Hang Tick, Ghost, Glitch, Root Cluster · Breaker Yard: Meat Carrier, Crab Gun, Squidwalker · Radio Mast: Glitch, Ghost, Root Cluster · Recall Yard: Squidwalker, Glitch, Flesh Drone, Ghost, Meat Carrier.
 
 Balance: every new mob is a re-bodied copy of a tuned role at the same tier (same attack ids, HP/damage within +-10% of its siblings, see `docs/BALANCE.md`), so clear-rate targets are unchanged.
 
@@ -42,7 +42,7 @@ Balance: every new mob is a re-bodied copy of a tuned role at the same tier (sam
 | Annex Overseer | Tower of monitors on stilts | pylons = antennae tethers |
 | Neural Warden | Brain-in-jar with cable roots | gaze from the eye lens |
 | Reclamation Enforcer | Armoured hound-truck hybrid | roller + scythe |
-| Voss (coke battery) | Oven-door torso, ember vents | vents glow during Heat overload |
+| Voss (oven battery) | Oven-door torso, ember vents | vents glow during Heat overload |
 | Lineman | Pylon-tall hanging figure on live cables | cable pylons |
 | Gantry-Mother | Crane body, dangling brood sacs | sacs drop as Crane Drop |
 | Pit Boss | Tailings leviathan half-sunk in sludge | vortex = mouth whirlpool |
