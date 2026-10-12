@@ -59,7 +59,7 @@ export const KITS:Record<string,Kit>={
   pitboss:{pal:'bronze',title:'The Pit',mechs:[M('vortex',14,{p:{dir:1},first:7}),M('shockring',12),M('ricochet',15)]},
   bellfounder:{pal:'gold',title:'Foundry Bell',mechs:[M('safe',19,{first:9}),M('shield',34,{at:.7}),M('shockring',11,{first:6})]},
   cryo:{pal:'ice',title:'Deep Freeze',mechs:[M('grid',13,{first:6}),M('shield',34,{at:.75}),M('tiles',14)]},
-  auditor:{pal:'blue',title:'Audit Trail',mechs:[M('tiles',12,{first:6}),M('strike',12),M('shield',36,{at:.6})]},
+  auditor:{pal:'blue',title:'Audit Trail',mechs:[M('tiles',13,{first:7}),M('strike',13)]},
   mirrorpt:{pal:'orchid',title:'Hall of Mirrors',mechs:[M('strike',11,{first:6}),M('gaze',13),M('buffers',34,{at:.7})]},
   apothecary:{pal:'magenta',title:'Dispensary',mechs:[M('bombs',14,{first:8}),M('overload',24,{first:14})]},
   resonance:{pal:'white',title:'Anechoic Cell',mechs:[M('beam',12,{first:6}),M('safe',19,{first:10}),M('shockring',13)]},
@@ -69,10 +69,10 @@ export const KITS:Record<string,Kit>={
   dispatcher:{pal:'cyan',title:'Fleet Uplink',mechs:[M('beam',13,{first:6}),M('pylons',30,{first:14}),M('buffers',32,{at:.8})]},
   warrantor:{pal:'gold',title:'Warranty Seal',mechs:[M('safe',19,{first:10}),M('pylons',30,{first:14}),M('tiles',14)]},
   tidewarden:{pal:'blue',title:'Pump Hall',mechs:[M('vortex',14,{p:{dir:-1},first:7}),M('conveyor',16),M('shockring',12)]},
-  rattle:{pal:'coral',title:'Night Shift',mechs:[M('strike',10,{first:5}),M('buffers',32,{first:12}),M('scythe',11)]},
+  rattle:{pal:'coral',title:'Night Shift',mechs:[M('strike',11,{first:6}),M('buffers',32,{first:14})]},
   breaker:{pal:'amber',title:'Chain Yard',mechs:[M('scythe',10,{first:5}),M('ricochet',13),M('vortex',16,{p:{dir:-1}})]},
   widow:{pal:'violet',title:'Signal Web',mechs:[M('beam',12,{first:6}),M('gaze',12),M('pylons',30,{first:14})]},
-  recall:{pal:'magenta',title:'Recall Everything',mechs:[M('shield',30,{first:9}),M('pylons',30,{first:14,at:.8}),M('overload',24,{first:14,at:.6})]},
+  recall:{pal:'magenta',title:'Recall Everything',mechs:[M('overload',24,{first:14,at:.7}),M('grid',16,{first:10,at:.5})]}, // its own phases already add the shield and the tether pylons
 };
 export const kitOf=(id:string):Kit|undefined=>KITS[id];
 export const palOf=(id:string):keyof typeof PALS=>KITS[id]?.pal||'amber';
