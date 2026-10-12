@@ -1,23 +1,35 @@
-// Rarity FX for cosmetics: orange (legendary) = epic animated layers + per-skin signature + flourishes + moving trail;
-// purple (epic) = subtle sheen/glow + light particle accent + a per-skin accessory silhouette. Clearly below orange.
-// Drawn from drawCosmetics() so the local player, other players (net/remote_render) and the dressing room all get it.
-// Budget: ONE shared particle pool (fixed size), cached glow sprites (shared "shaders"), quality tiers scale it, Reduced FX freezes it.
-// See docs/RARITY_FX.md.
+// Rarity FX for cosmetics, painterly (Arcane / LoL skin-line direction, docs/RARITY_FX.md):
+//  - less but better: no floor rings, light pillars, ember spam, scanlines or spark bursts.
+//  - orange (legendary): a cohesive themed look INTEGRATED on the model: flat-shaded emissive inlays with ink outlines, crystalline
+//    growths, brush-stroke energy wisps on hair/cloth, a painterly smear trail while moving. Idle motion is slow breathing; the
+//    signature flourish plays on ability use / emote with anticipation -> snap -> soft settle (not a constant loop).
+//  - purple (epic): polished material: one crisp rim highlight + an accent glow on a per-slot accessory with ink outline.
+// One shared particle pool (fixed size), cached glow sprites, quality tiers scale it, Reduced FX freezes it (static inlays stay).
 import type { CosDef } from './content/appearance';
 import { Q } from './quality';
 type C = CanvasRenderingContext2D;
 export interface FxCtx { c: C; x: number; y: number; u: number; t: number; moving: boolean; face: number; id?: string }
 
-export const ORANGE = '#ff9a1f', PURPLE = '#b46bff';
-/** Per-orange-skin signature effect. Every orange cosmetic must have one (tests/rarity_fx.mjs). */
-export const SIGNATURE: Record<string, { name: string; fx: string }> = {
-  hair_flame: { name: 'Plasma flame crown', fx: 'flame' },
-  eyes_sun: { name: 'Furnace gaze beams', fx: 'gaze' },
-  torso_nova: { name: 'Plasma veins', fx: 'veins' },
-  back_wings: { name: 'Cinder wingbeat', fx: 'wings' },
-  skin_holo: { name: 'Holographic glitch', fx: 'holo' },
-  aura_nova: { name: 'Nanoswarm corona', fx: 'swarm' },
-  head_cowl: { name: 'Liquid chrome seam', fx: 'chrome' },
+export const ORANGE = '#ffb54a', PURPLE = '#b48cff';
+/** Deliberate limited palettes: [ink, base, light, glow]. */
+export const PALETTES: Record<string, [string, string, string, string]> = {
+  hextech: ['#0d1420', '#2e7fd6', '#9fe6ff', '#ffd27a'],   // hextech blue / gold
+  shimmer: ['#1a0d1e', '#c23fa0', '#ff9be0', '#b48cff'],   // shimmer pink / purple
+  chem: ['#0c1a10', '#3fb04a', '#c8ff6a', '#e8ffb0'],      // chem-punk green
+  forge: ['#1a0e08', '#d9631a', '#ffc070', '#fff0c8'],     // furnace gold-orange
+};
+/** Per-orange-skin signature (theme + palette). Every orange cosmetic must have one (tests/rarity_fx.mjs). */
+export const SIGNATURE: Record<string, { name: string; fx: string; pal: keyof typeof PALETTES }> = {
+  hair_flame: { name: 'Painted flame locks', fx: 'flame', pal: 'forge' },
+  eyes_sun: { name: 'Furnace gaze streaks', fx: 'gaze', pal: 'forge' },
+  torso_nova: { name: 'Heartstar inlay', fx: 'veins', pal: 'forge' },
+  back_wings: { name: 'Cinder wing panels', fx: 'wings', pal: 'forge' },
+  skin_holo: { name: 'Shimmer inlays', fx: 'holo', pal: 'shimmer' },
+  aura_nova: { name: 'Hextech corona shards', fx: 'swarm', pal: 'hextech' },
+  head_cowl: { name: 'Hextech seam', fx: 'chrome', pal: 'hextech' },
+  pm_skin_plasma: { name: 'Chem-vein dermis', fx: 'veins', pal: 'chem' },
+  pm_aura_swarm: { name: 'Hextech orbit shards', fx: 'swarm', pal: 'hextech' },
+  pm_back_chrome: { name: 'Hextech wing panels', fx: 'wings', pal: 'hextech' },
 };
 /** Purple accessory silhouette per slot (one distinct shape per skin slot). */
 export const ACCESSORY: Record<string, string> = { hair: 'crest', head: 'tickring', eyes: 'visor', torso: 'fins', arms: 'bracers', hands: 'orbs', legs: 'anklefins', back: 'shards', skin: 'outline', tattoo: 'glyph', aura: 'mote', trail: 'wake' };
@@ -30,14 +42,30 @@ export const reduced = () => reducedOverride ?? (typeof document !== 'undefined'
 export const budget = () => reduced() ? 0 : Q.p.fx === 2 ? .3 : Q.p.fx === 1 ? .6 : 1;
 export const POOL_MAX = 240;
 
-// ------------------------------------------------------------------ shared glow sprites (cached per colour+size bucket)
+// ------------------------------------------------------------------ shared glow sprites (cached per colour) - used sparingly, under the flat shapes
 const sprites = new Map<string, HTMLCanvasElement>();
 export function glowSprite(col: string): HTMLCanvasElement {
   let s = sprites.get(col); if (s) return s; s = document.createElement('canvas'); s.width = s.height = 64; const x = s.getContext('2d')!;
-  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, col); g.addColorStop(.25, col + 'aa'); g.addColorStop(1, col + '00'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); sprites.set(col, s); return s; }
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, col + 'cc'); g.addColorStop(.4, col + '55'); g.addColorStop(1, col + '00'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); sprites.set(col, s); return s; }
 const blob = (c: C, x: number, y: number, r: number, col: string, a: number) => { if (a <= 0 || r <= 0) return; c.globalAlpha = Math.min(1, a); c.drawImage(glowSprite(col), x - r, y - r, r * 2, r * 2); };
 
-// ------------------------------------------------------------------ particle pool (shared by every character)
+// ------------------------------------------------------------------ painterly primitives
+/** flat polygon with an ink outline */
+function shape(c: C, pts: number[][], fill: string, ink: string, lw: number, a = 1) { c.globalAlpha = a; c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); c.fillStyle = fill; c.fill(); if (lw > 0) { c.lineJoin = 'round'; c.strokeStyle = ink; c.lineWidth = lw; c.stroke(); } }
+/** tapered brush stroke along a quadratic curve: thick in the middle, pointed ends (hand-painted wisp / smear) */
+function stroke(c: C, x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, w: number, col: string, a: number, n = 6) {
+  if (a <= 0) return; const L: number[][] = [], R: number[][] = [];
+  for (let i = 0; i <= n; i++) { const t = i / n, mt = 1 - t; const px = mt * mt * x0 + 2 * mt * t * cx + t * t * x1, py = mt * mt * y0 + 2 * mt * t * cy + t * t * y1;
+    const dx = 2 * mt * (cx - x0) + 2 * t * (x1 - cx), dy = 2 * mt * (cy - y0) + 2 * t * (y1 - cy); const l = Math.hypot(dx, dy) || 1; const hw = w * Math.sin(Math.PI * Math.min(1, t * 1.15)) * .5; L.push([px - dy / l * hw, py + dx / l * hw]); R.push([px + dy / l * hw, py - dx / l * hw]); }
+  c.globalAlpha = a; c.beginPath(); [...L, ...R.reverse()].forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); c.fillStyle = col; c.fill(); }
+/** 4-point crystal shard (flat 2-tone + ink) */
+function shard(c: C, x: number, y: number, h: number, w: number, ang: number, pal: string[], a = 1) {
+  const ca = Math.cos(ang), sa = Math.sin(ang); const P = (px: number, py: number) => [x + px * ca - py * sa, y + px * sa + py * ca];
+  shape(c, [P(0, -h), P(w, 0), P(0, h * .35), P(-w, 0)], pal[1], pal[0], Math.max(1, w * .28), a); shape(c, [P(0, -h), P(w * .2, -h * .1), P(0, h * .2), P(-w * .55, 0)], pal[2], pal[0], 0, a * .9); }
+/** motion timing: anticipation (pull back) -> snap -> soft settle. e = seconds since trigger. Returns {k: 0..1 envelope, s: signed squash} */
+export function flourishCurve(e: number): { k: number; s: number } { if (e < 0) return { k: 0, s: 0 }; if (e < .12) { const p = e / .12; return { k: .25 * p, s: -.35 * p }; } if (e < .26) { const p = (e - .12) / .14; return { k: .25 + .75 * (1 - (1 - p) ** 3), s: -.35 + 1.45 * p }; } if (e < 1.1) { const p = (e - .26) / .84; return { k: 1 - p * p * (3 - 2 * p), s: 1.1 * Math.exp(-p * 5) * Math.cos(p * 9) }; } return { k: 0, s: 0 }; }
+
+// ------------------------------------------------------------------ particle pool (shared by every character) - now only painterly smears / motes
 interface P { on: boolean; o: string; x: number; y: number; vx: number; vy: number; life: number; age: number; r: number; col: string; kind: 0 | 1 | 2 }
 const pool: P[] = Array.from({ length: POOL_MAX }, () => ({ on: false, o: '', x: 0, y: 0, vx: 0, vy: 0, life: 1, age: 0, r: 1, col: ORANGE, kind: 0 }));
 let cursor = 0;
@@ -48,101 +76,97 @@ function spawn(o: string, x: number, y: number, vx: number, vy: number, life: nu
 export const liveParticles = (o?: string) => pool.reduce((n, p) => n + (p.on && (!o || p.o === o) ? 1 : 0), 0);
 export const resetFx = () => { for (const p of pool) p.on = false; owners.clear(); stats.live = stats.spawned = stats.dropped = stats.frames = 0; };
 
-/** per-owner state: last time, emit accumulators, flourish clock, last anchor (for the moving trail) */
 interface Own { t: number; acc: number; tacc: number; flo: number; ax: number; ay: number; tier: 'orange' | 'purple' | null }
 const owners = new Map<string, Own>();
 let onSound: ((name: string, owner: string) => void) | null = null;
 export const setFxSound = (f: typeof onSound) => { onSound = f; };
-export const FLOURISH_EVERY = 7;
+/** Signature flourish plays on ability use / emote (render.ts triggers it), never on a timer. Sound at most once per FLOURISH_SOUND_GAP s. */
+export const FLOURISH_SOUND_GAP = 25; let lastFloSound = -1e9;
 
 const hasRar = (list: CosDef[], r: string) => list.some(d => d.rarity === r);
 export const topTier = (list: CosDef[]): 'orange' | 'purple' | null => hasRar(list, 'orange') ? 'orange' : hasRar(list, 'purple') ? 'purple' : null;
 
-/** Force a flourish / reveal now (dressing room showcase, equip). */
-export function flourish(owner = 'me', at?: number) { const o = owners.get(owner); if (o) o.flo = at ?? -1e9; }
+/** Trigger the signature flourish (ability use, emote, dressing-room showcase). */
+export function flourish(owner = 'me', at?: number) { const o = owners.get(owner); if (!o) { owners.set(owner, { t: 0, acc: 0, tacc: 0, flo: at ?? -1, ax: 0, ay: 0, tier: null }); return; } o.flo = at ?? -1; }
+export const flourishAge = (owner = 'me') => { const o = owners.get(owner); return o ? o.t - o.flo : 1e9; };
 
 // ------------------------------------------------------------------ main entry
 export function drawRarityFx(k: FxCtx, list: CosDef[], phase: 'back' | 'front') {
   const tier = topTier(list); if (!tier) return; const id = k.id || 'me'; const { c, x, y, u } = k; const red = reduced(), B = budget();
-  const t = red ? 0 : k.t; // Reduced FX: frozen look, no motion
-  let o = owners.get(id); if (!o) { o = { t: k.t, acc: 0, tacc: 0, flo: k.t, ax: x, ay: y, tier }; owners.set(id, o); if (owners.size > 64) owners.delete(owners.keys().next().value as string); }
-  const col = tier === 'orange' ? ORANGE : PURPLE;
+  const t = red ? 0 : k.t;
+  let o = owners.get(id); if (!o) { o = { t: k.t, acc: 0, tacc: 0, flo: -1e9, ax: x, ay: y, tier }; owners.set(id, o); if (owners.size > 64) owners.delete(owners.keys().next().value as string); }
+  if (o.flo === -1) { o.flo = k.t; if (tier === 'orange' && (id === 'me' || id === 'dr') && k.t - lastFloSound > FLOURISH_SOUND_GAP) { lastFloSound = k.t; onSound?.('cos_flourish_orange', id); } }
+  const fc = red ? { k: 0, s: 0 } : flourishCurve(k.t - o.flo);
   c.save();
   if (phase === 'back') {
-    const dt = Math.max(0, Math.min(.1, k.t - o.t)); o.t = k.t;
-    // move existing particles of this owner along with the anchor so they stay with the character (trail ones keep their screen position)
-    const dx = x - o.ax, dy = y - o.ay; o.ax = x; o.ay = y;
-    c.globalCompositeOperation = 'lighter';
+    const dt = Math.max(0, Math.min(.1, k.t - o.t)); o.t = k.t; const dx = x - o.ax, dy = y - o.ay; o.ax = x; o.ay = y;
     if (tier === 'orange') {
-      // floor crown: bright ring + rotating ticks + light pillar (reads as top tier at a glance)
-      const pu = .75 + .25 * Math.sin(t * 3);
-      blob(c, x, y, 26 * u, ORANGE, .55 * pu);
-      c.globalAlpha = .85; c.strokeStyle = ORANGE; c.lineWidth = Math.max(1.5, 1.1 * u); c.beginPath(); c.ellipse(x, y, 15 * u, 5.4 * u, 0, 0, 7); c.stroke();
-      c.strokeStyle = '#ffe2a8'; c.lineWidth = Math.max(1, .7 * u); for (let i = 0; i < 6; i++) { const a = t * 1.6 + i * Math.PI / 3; c.beginPath(); c.ellipse(x, y, 15 * u, 5.4 * u, 0, a, a + .35); c.stroke(); }
-      if (!red) { const g = c.createLinearGradient(x, y - 60 * u, x, y); g.addColorStop(0, 'rgba(255,154,31,0)'); g.addColorStop(1, `rgba(255,154,31,${.22 * pu})`); c.globalAlpha = 1; c.fillStyle = g; c.fillRect(x - 9 * u, y - 60 * u, 18 * u, 60 * u); }
-      for (const d of list) if (d.rarity === 'orange') signature(k, d, 'back', t, id, B);
-      // idle flourish: spiral burst + sound
-      if (!red && k.t - o.flo > FLOURISH_EVERY) { o.flo = k.t; const n = Math.round(28 * B); for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; spawn(id, x + Math.cos(a) * 6 * u, y - 4 * u, Math.cos(a) * 26 * u, -18 * u - Math.random() * 20 * u, .9 + Math.random() * .5, 1.4 * u, i % 3 ? ORANGE : '#fff1c4', 1); } onSound?.('cos_flourish_orange', id); }
-      // ambient embers + moving trail
-      o.acc += dt * 14 * B; while (o.acc >= 1) { o.acc--; spawn(id, x + (Math.random() - .5) * 18 * u, y - Math.random() * 40 * u, (Math.random() - .5) * 6 * u, -10 * u - Math.random() * 14 * u, .8 + Math.random() * .6, (.8 + Math.random() * .8) * u, Math.random() < .7 ? ORANGE : '#ffd27a'); }
-      if (k.moving) { o.tacc += dt * 40 * B; while (o.tacc >= 1) { o.tacc--; spawn(id + ':trail', x + (Math.random() - .5) * 10 * u, y - Math.random() * 30 * u, (Math.random() - .5) * 4 * u, -4 * u, .6 + Math.random() * .3, 1.5 * u, Math.random() < .5 ? ORANGE : '#fff1c4', 2); } }
-    } else {
-      // purple: soft floor glow + slow ring, light sparkle accent
-      blob(c, x, y, 18 * u, PURPLE, .32 * (.85 + .15 * Math.sin(t * 2)));
-      c.globalAlpha = .5; c.strokeStyle = PURPLE; c.lineWidth = Math.max(1, .8 * u); c.beginPath(); c.ellipse(x, y, 12 * u, 4.3 * u, 0, 0, 7); c.stroke();
-      o.acc += dt * 2.5 * B; while (o.acc >= 1) { o.acc--; spawn(id, x + (Math.random() - .5) * 16 * u, y - (10 + Math.random() * 32) * u, 0, -5 * u, 1.1, .9 * u, '#e2c8ff', 0); }
-      for (const d of list) if (d.rarity === 'purple') accessory(k, d, 'back', t);
-    }
-    // update + draw this owner's particles
+      for (const d of list) if (d.rarity === 'orange') signature(k, d, 'back', t, fc);
+      // painterly smear trail while moving: a few long tapered strokes in the skin palette (no confetti)
+      const pal = PALETTES[SIGNATURE[list.find(d => d.rarity === 'orange')!.id]?.pal || 'forge'];
+      if (k.moving && B > 0) { o.tacc += dt * 9 * B; while (o.tacc >= 1) { o.tacc--; spawn(id + ':trail', x + (Math.random() - .5) * 8 * u, y - (8 + Math.random() * 26) * u, 0, 0, .45, (5 + Math.random() * 4) * u, Math.random() < .6 ? pal[2] : pal[1], 2); } }
+    } else for (const d of list) if (d.rarity === 'purple') accessory(k, d, 'back', t);
     let live = 0;
     for (const p of pool) { if (!p.on || (p.o !== id && p.o !== id + ':trail')) continue; p.age += dt; if (p.age >= p.life) { p.on = false; continue; } live++;
-      if (p.kind !== 2) { p.x += dx; p.y += dy; } p.x += p.vx * dt; p.y += p.vy * dt; p.vy += (p.kind === 1 ? 30 : -4) * u * dt;
-      const a = 1 - p.age / p.life; blob(c, p.x, p.y, p.r * (p.kind === 2 ? 2.2 : 1.8) * (.6 + .4 * a), p.col, a * (p.kind === 1 ? 1 : .8)); }
+      const a = 1 - p.age / p.life; if (p.kind === 2) { const ang = Math.atan2(dy || .001, dx || .001); const L = p.r * (1 + (1 - a)); stroke(c, p.x - Math.cos(ang) * L, p.y - Math.sin(ang) * L * .5, p.x, p.y - 2 * u, p.x + Math.cos(ang) * L * .3, p.y + Math.sin(ang) * L * .15, 1.6 * u * a, p.col, .55 * a); }
+      else { p.x += dx + p.vx * dt; p.y += dy + p.vy * dt; shape(c, [[p.x, p.y - p.r], [p.x + p.r * .5, p.y], [p.x, p.y + p.r], [p.x - p.r * .5, p.y]], p.col, '#000', 0, a * .8); } }
     stats.live = live; stats.frames++;
   } else {
-    c.globalCompositeOperation = 'lighter';
-    if (tier === 'orange') { for (const d of list) if (d.rarity === 'orange') signature(k, d, 'front', t, id, B);
-      // scanline / pulse sweep over the body (shared)
-      if (!red && Q.p.fx < 2) { const ph = (t * .7) % 1.6; if (ph < 1) { const sy = y - (4 + ph * 44) * u; const g = c.createLinearGradient(0, sy - 3 * u, 0, sy + 3 * u); g.addColorStop(0, 'rgba(255,200,120,0)'); g.addColorStop(.5, 'rgba(255,214,150,.55)'); g.addColorStop(1, 'rgba(255,200,120,0)'); c.globalAlpha = 1; c.fillStyle = g; c.fillRect(x - 11 * u, sy - 3 * u, 22 * u, 6 * u); } }
-      blob(c, x, y - 41 * u, 9 * u, ORANGE, .25 + .15 * Math.sin(t * 4)); // head halo glint
-    } else { for (const d of list) if (d.rarity === 'purple') accessory(k, d, 'front', t);
-      // sheen: a slow soft diagonal band
-      if (!red) { const ph = (t * .35) % 2; if (ph < 1) { const sx = x + (ph * 24 - 12) * u; c.globalAlpha = .28; const g = c.createLinearGradient(sx - 4 * u, 0, sx + 4 * u, 0); g.addColorStop(0, 'rgba(220,190,255,0)'); g.addColorStop(.5, 'rgba(230,205,255,.8)'); g.addColorStop(1, 'rgba(220,190,255,0)'); c.fillStyle = g; c.fillRect(sx - 4 * u, y - 46 * u, 8 * u, 46 * u); } }
-    }
+    if (tier === 'orange') { for (const d of list) if (d.rarity === 'orange') signature(k, d, 'front', t, fc); }
+    else { for (const d of list) if (d.rarity === 'purple') accessory(k, d, 'front', t); }
+    if (tier === 'purple') { // polished material: one crisp rim highlight that slowly travels along the shoulder line
+      const ph = red ? .5 : .5 + .5 * Math.sin(t * .6); c.globalAlpha = .55; c.strokeStyle = '#efe4ff'; c.lineWidth = Math.max(1, .55 * u); c.lineCap = 'round'; c.beginPath(); c.arc(x, y - 30 * u, 9.5 * u, -Math.PI * (.85 - ph * .3), -Math.PI * (.6 - ph * .3)); c.stroke(); }
   }
   c.restore();
 }
 
-// ------------------------------------------------------------------ orange signatures
-function signature(k: FxCtx, d: CosDef, phase: 'back' | 'front', t: number, id: string, B: number) {
-  const { c, x, y, u } = k; const s = SIGNATURE[d.id]?.fx; const cc = d.c || ORANGE, c2 = d.c2 || '#fff1c4';
-  switch (s) {
-    case 'flame': if (phase === 'front') { for (let i = 0; i < 7; i++) { const fx = x + (i - 3) * 1.6 * u, h = (6 + 4 * Math.sin(t * 9 + i * 1.7)) * u; blob(c, fx, y - 46 * u - h * .5, 3.6 * u, i % 2 ? cc : c2, .85); blob(c, fx, y - 46 * u - h, 2.2 * u, '#fff1c4', .75); } } else if (Math.random() < .25 * B) spawn(id, x + (Math.random() - .5) * 8 * u, y - 48 * u, 0, -22 * u, .5, 1.2 * u, cc); break;
-    case 'gaze': if (phase === 'front') { const sw = Math.sin(t * 1.3) * .5; for (const ex of [-2, 2]) { const ox = x + ex * u, oy = y - 41.5 * u; blob(c, ox, oy, 3.4 * u, c2, .9); c.globalAlpha = .35 + .2 * Math.sin(t * 5); c.strokeStyle = cc; c.lineWidth = Math.max(1, .9 * u); c.beginPath(); c.moveTo(ox, oy); c.lineTo(ox + Math.cos(k.face + sw) * 26 * u, oy + Math.sin(k.face + sw) * 10 * u); c.stroke(); } } break;
-    case 'veins': if (phase === 'front') { c.globalAlpha = .55 + .35 * Math.sin(t * 4); c.strokeStyle = cc; c.lineWidth = Math.max(1, .8 * u); c.lineCap = 'round'; for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + Math.sin(t * .7) * .3; let px = x, py = y - 29 * u; c.beginPath(); c.moveTo(px, py); for (let j = 1; j <= 4; j++) { px += Math.cos(a + Math.sin(t * 2 + i + j) * .6) * 2.2 * u; py += Math.sin(a + Math.sin(t * 2 + i + j) * .6) * 2.6 * u; c.lineTo(px, py); } c.stroke(); } blob(c, x, y - 29 * u, 6 * u, c2, .8 + .2 * Math.sin(t * 6)); } break;
-    case 'wings': if (phase === 'back') { const fl = Math.sin(t * 3) * .25; for (const sd of [-1, 1]) { for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + sd * (0.5 + i * .22 + fl); const r = (10 + i * 2.6) * u; blob(c, x + sd * 3 * u + Math.cos(a) * r * sd * sd, y - 32 * u + Math.sin(a) * r * .6 - i * .5 * u, (2.8 - i * .25) * u, i % 2 ? cc : c2, .55); } } if (Math.random() < .3 * B) spawn(id, x + (Math.random() - .5) * 30 * u, y - 34 * u, 0, 12 * u, .9, 1 * u, cc, 1); } break;
-    case 'holo': if (phase === 'front') { const n = Q.p.fx === 2 ? 3 : 6; for (let i = 0; i < n; i++) { const sy = y - ((t * 30 + i * 8.3) % 46) * u; const off = !reduced() && Math.sin(t * 23 + i * 5) > .6 ? Math.sin(t * 97 + i * 13) * 3 * u : 0; c.globalAlpha = .4; c.fillStyle = `hsl(${(t * 120 + i * 50) % 360},95%,65%)`; c.fillRect(x - 9 * u + off, sy, 18 * u, Math.max(1, .6 * u)); } c.globalAlpha = .25; c.fillStyle = '#00e5ff'; c.fillRect(x - 10 * u - 1.2 * u, y - 46 * u, 1 * u, 46 * u); c.fillStyle = '#ff2bd6'; c.fillRect(x + 10 * u + .2 * u, y - 46 * u, 1 * u, 46 * u); } break;
-    case 'chrome': if (phase === 'front') { for (let i = 0; i < 5; i++) { const ph = (t * .8 + i / 5) % 1; const dx = (i - 2) * 2.4 * u; blob(c, x + dx, y - (50 - ph * 10) * u, (1.6 - ph) * 1.4 * u, '#e8f4ff', .8 * (1 - ph)); } c.globalAlpha = .7 + .3 * Math.sin(t * 5); c.strokeStyle = c2; c.lineWidth = Math.max(1.2, 1 * u); c.beginPath(); c.moveTo(x, y - 49 * u); for (let j = 1; j <= 6; j++) c.lineTo(x + Math.sin(t * 3 + j) * .9 * u, y - (49 - j * 1.6) * u); c.stroke(); blob(c, x, y - 44 * u, 5 * u, c2, .5 + .2 * Math.sin(t * 5)); } break;
-    case 'swarm': if (phase === 'back' || phase === 'front') { const n = Math.round((phase === 'front' ? 14 : 10) * (B || .5)); for (let i = 0; i < n; i++) { const a = t * (1.4 + (i % 3) * .3) + i * 2.399; const r = (12 + (i % 4) * 2) * u; const yy = y - (14 + 10 * Math.sin(a * .7 + i)) * u; const z = Math.sin(a); if ((z > 0) !== (phase === 'front')) continue; blob(c, x + Math.cos(a) * r, yy + z * 3 * u, 1.3 * u, i % 3 ? cc : '#e8f4ff', .9); } } break;
+// ------------------------------------------------------------------ orange signatures (integrated on the model, themed palettes)
+function signature(k: FxCtx, d: CosDef, phase: 'back' | 'front', t: number, fc: { k: number; s: number }) {
+  const { c, x, y, u } = k; const sg = SIGNATURE[d.id]; if (!sg) return; const P = PALETTES[sg.pal]; const ink = P[0], lw = Math.max(1, .55 * u);
+  const br = .5 + .5 * Math.sin(t * 1.4);              // slow breathing, not noise
+  const amp = 1 + fc.k * .6 + fc.s * .25;              // flourish: anticipation pull-in, snap, settle
+  switch (sg.fx) {
+    case 'flame': if (phase === 'front') { // painted flame locks: 5 tapered strokes rising from the crown, swaying with follow-through
+      for (let i = 0; i < 5; i++) { const sx = x + (i - 2) * 2.2 * u, sway = Math.sin(t * 1.6 + i * .9) * 1.6 * u + fc.s * 2 * u, h = (7 + (i % 2) * 3 + br * 1.5) * u * amp;
+        stroke(c, sx, y - 44 * u, sx + sway, y - 44 * u - h * .6, sx + sway * 1.6, y - 44 * u - h, 3.4 * u, ink, .9); stroke(c, sx, y - 44.5 * u, sx + sway, y - 44 * u - h * .55, sx + sway * 1.5, y - 44 * u - h * .9, 2.4 * u, i % 2 ? P[1] : P[2], .95); }
+      blob(c, x, y - 49 * u, 7 * u, P[1], .25 + .15 * br); } break;
+    case 'gaze': if (phase === 'front') { for (const ex of [-2, 2]) { const ox = x + ex * u, oy = y - 41.5 * u; shape(c, [[ox - 1.6 * u, oy], [ox, oy - .9 * u], [ox + 1.6 * u, oy], [ox, oy + .9 * u]], P[3], ink, lw * .7); // almond eye inlay
+        const L = (4 + br * 2 + fc.k * 10) * u; stroke(c, ox, oy, ox + Math.cos(k.face) * L * .5 + ex * .5 * u, oy - 1 * u, ox + Math.cos(k.face) * L + ex * u, oy + Math.sin(k.face) * L * .3 - 1.5 * u, 1.6 * u, P[2], .75); } } break;
+    case 'veins': if (phase === 'front') { // inlaid core + branching painted channels with an ink outline (Heartstar / chem-veins)
+      const cy = y - 29 * u; for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + (i - 2) * .7; const L = (6 + (i % 2) * 2) * u * amp; stroke(c, x, cy, x + Math.cos(a + .3) * L * .5, cy + Math.sin(a + .3) * L * .5, x + Math.cos(a) * L, cy + Math.sin(a) * L + 4 * u, 1.9 * u, ink, .85); stroke(c, x, cy, x + Math.cos(a + .3) * L * .5, cy + Math.sin(a + .3) * L * .5, x + Math.cos(a) * L, cy + Math.sin(a) * L + 4 * u, 1.1 * u, P[2], .55 + .35 * br); }
+      blob(c, x, cy, 6 * u, P[1], .3 + .2 * br); shard(c, x, cy, 3.4 * u * amp, 2.2 * u, 0, P, 1); } break;
+    case 'wings': if (phase === 'back') { // flat panelled wings (2 feathers each side), slow beat, snap open on flourish
+      const open = .25 + .08 * br + fc.k * .45 + fc.s * .1; for (const sd of [-1, 1]) for (let i = 0; i < 3; i++) { const a = -Math.PI / 2 + sd * (open + i * .32), L = (14 - i * 2.5) * u, bx = x + sd * 2 * u, by = y - 33 * u;
+        const tx = bx + Math.cos(a) * L * sd * sd, ty = by + Math.sin(a) * L * .85; shape(c, [[bx, by], [bx + (tx - bx) * .55 + sd * 2 * u, by + (ty - by) * .55 - 2 * u], [tx, ty], [bx + (tx - bx) * .5, by + (ty - by) * .5 + 2.5 * u]], i ? P[1] : P[2], ink, lw); } } break;
+    case 'holo': if (phase === 'front') { // shimmer inlays: 3 crisp diamond inlays on chest/shoulders + one slow iridescent brush streak across the body
+      for (const [ix, iy, s] of [[0, -31, 1.3], [-7, -34, .9], [7, -34, .9]]) shard(c, x + ix * u, y + iy * u, 2.2 * u * s * amp, 1.4 * u * s, 0, P, .95);
+      const ph = (t * .25) % 1.6; if (ph < 1) { const sy = y - (8 + ph * 36) * u; stroke(c, x - 10 * u, sy + 3 * u, x, sy - 1 * u, x + 10 * u, sy + 2 * u, 2.2 * u, P[2], .35 * Math.sin(ph * Math.PI)); } } break;
+    case 'swarm': { // hextech corona: 6 crystal shards on a slow ellipse, depth sorted, gold rim on the near ones
+      const n = 6; for (let i = 0; i < n; i++) { const a = t * .45 + i / n * Math.PI * 2; const z = Math.sin(a); if ((z > 0) !== (phase === 'front')) continue; const r = (13 + fc.k * 5) * u;
+        shard(c, x + Math.cos(a) * r, y - 24 * u + z * 3.5 * u + Math.sin(t + i) * 1.2 * u, (3 + z) * u, 1.6 * u, Math.cos(a) * .4, z > 0 ? [P[0], P[1], P[3], P[3]] : P, .95); } } break;
+    case 'chrome': if (phase === 'front') { // hextech seam: gold seam inlay down the cowl + two small crystal studs
+      const cy = y - 46 * u; shape(c, [[x - .8 * u, cy - 4 * u], [x + .8 * u, cy - 4 * u], [x + .5 * u, cy + 5 * u], [x - .5 * u, cy + 5 * u]], P[3], ink, lw * .8, .9);
+      shard(c, x - 3.4 * u, cy + 1 * u, 1.8 * u * amp, 1.1 * u, -.3, P, 1); shard(c, x + 3.4 * u, cy + 1 * u, 1.8 * u * amp, 1.1 * u, .3, P, 1); blob(c, x, cy, 4 * u, P[1], .2 + .2 * br); } break;
   }
 }
-// ------------------------------------------------------------------ purple accessories (one silhouette per slot)
+// ------------------------------------------------------------------ purple accessories (one silhouette per slot): polished flat shapes + ink + accent glow
 function accessory(k: FxCtx, d: CosDef, phase: 'back' | 'front', t: number) {
-  const { c, x, y, u } = k; const a = ACCESSORY[d.slot]; const col = d.c || PURPLE; c.strokeStyle = col; c.fillStyle = col; c.lineWidth = Math.max(1, .8 * u); c.globalAlpha = .75;
-  const tri = (pts: number[][]) => { c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); c.fill(); };
-  if (phase === 'back') { if (a === 'shards') for (const s of [-1, 1]) { const by = y - (34 + Math.sin(t * 2 + s) * 1.5) * u; tri([[x + s * 9 * u, by - 7 * u], [x + s * 12 * u, by], [x + s * 9 * u, by + 5 * u], [x + s * 7 * u, by]]); }
-    else if (a === 'mote') { const an = t * 1.2; blob(c, x + Math.cos(an) * 14 * u, y - 20 * u + Math.sin(an) * 4 * u, 2.4 * u, col, .9); } return; }
+  const { c, x, y, u } = k; const a = ACCESSORY[d.slot]; const col = d.c || PURPLE, ink = '#140a20', lw = Math.max(1, .5 * u); const P = [ink, col, '#efe4ff', PURPLE];
+  const tri = (pts: number[][]) => shape(c, pts, col, ink, lw, .95);
+  if (phase === 'back') { if (a === 'shards') for (const s of [-1, 1]) shard(c, x + s * 10 * u, y - (34 + Math.sin(t * 1.2 + s) * .8) * u, 4 * u, 1.6 * u, s * .25, P, .95);
+    else if (a === 'mote') { const an = t * .7; shard(c, x + Math.cos(an) * 13 * u, y - 22 * u + Math.sin(an) * 3 * u, 2 * u, 1.2 * u, 0, P, .9); } return; }
   switch (a) {
-    case 'crest': for (const s of [-1, 1]) tri([[x + s * 2 * u, y - 46 * u], [x + s * 5 * u, y - 53 * u], [x + s * 4.5 * u, y - 45 * u]]); break;
-    case 'tickring': c.beginPath(); c.ellipse(x, y - 52 * u, 6 * u, 1.8 * u, 0, 0, 7); c.stroke(); for (let i = 0; i < 4; i++) { const an = t + i * Math.PI / 2; blob(c, x + Math.cos(an) * 6 * u, y - 52 * u + Math.sin(an) * 1.8 * u, 1 * u, '#ffffff', .8); } break;
-    case 'visor': c.globalAlpha = .55 + .3 * Math.sin(t * 2); c.fillRect(x - 5 * u, y - 42.4 * u, 10 * u, 1.3 * u); break;
-    case 'fins': for (const s of [-1, 1]) tri([[x + s * 7 * u, y - 35 * u], [x + s * 12.5 * u, y - 38.5 * u], [x + s * 10 * u, y - 32 * u]]); break;
-    case 'bracers': for (const s of [-1, 1]) { c.beginPath(); c.ellipse(x + s * 9.5 * u, y - 22 * u, 2.6 * u, 1 * u, 0, 0, 7); c.stroke(); } break;
-    case 'orbs': for (const s of [-1, 1]) blob(c, x + s * 10 * u, y - 16 * u, 2.2 * u, col, .8 + .2 * Math.sin(t * 3 + s)); break;
-    case 'anklefins': for (const s of [-1, 1]) tri([[x + s * 4 * u, y - 4 * u], [x + s * 8 * u, y - 7 * u], [x + s * 6 * u, y - 2 * u]]); break;
-    case 'outline': c.globalAlpha = .35 + .15 * Math.sin(t * 2); c.beginPath(); c.ellipse(x, y - 24 * u, 11 * u, 24 * u, 0, 0, 7); c.stroke(); break;
-    case 'glyph': c.globalAlpha = .6 + .3 * Math.sin(t * 2.4); c.beginPath(); c.arc(x + 12 * u, y - 40 * u, 2 * u, 0, 7); c.moveTo(x + 10 * u, y - 40 * u); c.lineTo(x + 14 * u, y - 40 * u); c.stroke(); break;
+    case 'crest': for (const s of [-1, 1]) tri([[x + s * 2 * u, y - 46 * u], [x + s * 5 * u, y - 52 * u], [x + s * 4.2 * u, y - 45 * u]]); break;
+    case 'tickring': c.globalAlpha = .9; c.strokeStyle = ink; c.lineWidth = 2.2 * lw; c.beginPath(); c.ellipse(x, y - 52 * u, 6 * u, 1.8 * u, 0, 0, 7); c.stroke(); c.strokeStyle = col; c.lineWidth = lw * 1.2; c.stroke(); break;
+    case 'visor': shape(c, [[x - 5 * u, y - 42.6 * u], [x + 5 * u, y - 42.6 * u], [x + 4 * u, y - 41.2 * u], [x - 4 * u, y - 41.2 * u]], col, ink, lw, .9); break;
+    case 'fins': for (const s of [-1, 1]) tri([[x + s * 7 * u, y - 35 * u], [x + s * 12 * u, y - 38 * u], [x + s * 10 * u, y - 32.5 * u]]); break;
+    case 'bracers': for (const s of [-1, 1]) shape(c, [[x + s * 8 * u, y - 23 * u], [x + s * 11 * u, y - 23 * u], [x + s * 11 * u, y - 21 * u], [x + s * 8 * u, y - 21 * u]], col, ink, lw); break;
+    case 'orbs': for (const s of [-1, 1]) { shard(c, x + s * 10 * u, y - 16 * u, 1.8 * u, 1.2 * u, 0, P, .95); } break;
+    case 'anklefins': for (const s of [-1, 1]) tri([[x + s * 4 * u, y - 4 * u], [x + s * 7.5 * u, y - 6.5 * u], [x + s * 6 * u, y - 2.5 * u]]); break;
+    case 'outline': c.globalAlpha = .4; c.strokeStyle = '#efe4ff'; c.lineWidth = lw; c.beginPath(); c.arc(x, y - 30 * u, 10 * u, -2.6, -1.9); c.stroke(); c.beginPath(); c.arc(x, y - 30 * u, 10 * u, -1.25, -.55); c.stroke(); break;
+    case 'glyph': shard(c, x + 11 * u, y - 40 * u, 2 * u, 1.2 * u, 0, P, .9); break;
   }
+  blob(c, x, y - 30 * u, 8 * u, PURPLE, .08); // faint accent glow
 }
 
 // ------------------------------------------------------------------ sounds (ElevenLabs, public/audio/sfx/cos_*.mp3), lazy + cached, rate-limited
@@ -154,7 +178,29 @@ export function playCosSfx(name: string, gain = .55) {
   if (!b) { sbuf.set(name, 'loading'); fetch('audio/sfx/' + name + '.mp3').then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(x => ctx.decodeAudioData(x)).then(d => { sbuf.set(name, d); playCosSfx(name, gain); lastPlay[name] = 0; }).catch(() => sbuf.set(name, null)); lastPlay[name] = 0; return false; }
   const src = ctx.createBufferSource(); src.buffer = b; const g = ctx.createGain(); g.gain.value = gain; src.connect(g); g.connect(A.sfxBus); src.start(); return true; }
 export const fxSoundLog: string[] = [];
-setFxSound((n, owner) => { if (owner !== 'me' && owner !== 'dr') return; fxSoundLog.push(n); if (fxSoundLog.length > 50) fxSoundLog.shift(); playCosSfx(n, n.includes('flourish') ? .3 : .55); });
+setFxSound((n, owner) => { if (owner !== 'me' && owner !== 'dr') return; fxSoundLog.push(n); if (fxSoundLog.length > 50) fxSoundLog.shift(); playCosSfx(n, n.includes('flourish') ? .22 : .35); });
 /** equip sound for the top tier of a set of applied pieces */
 export function equipSound(list: CosDef[]) { const tr = topTier(list); if (!tr) return; const n = 'cos_equip_' + tr; fxSoundLog.push(n); playCosSfx(n); }
 if (typeof window !== 'undefined') (window as any).__cosfx = { stats, liveParticles, resetFx, setReducedFx, budget, SIGNATURE, ACCESSORY, fxSoundLog, flourish, POOL_MAX };
+
+// ------------------------------------------------------------------ gear / augment rarity FX (scaled DOWN: always below the cosmetic tier)
+/** body-part anchor (units) per hardware slot */
+const PART: Record<string, [number, number]> = { face: [0, -41], brain: [0, -45], torso: [0, -28], armL: [-9.5, -27], armR: [9.5, -27], handL: [-10, -17], handR: [10, -17], legL: [-4, -10], legR: [4, -10], footL: [-4, -1], footR: [4, -1] };
+export type GearFx = { slot: string; r: 'purple' | 'orange' };
+/** Caps: at most GEAR_GLINTS glints (orange first), particle rate capped at GEAR_RATE/s total; none when the character already wears an orange cosmetic tier. */
+export const GEAR_GLINTS = 4, GEAR_RATE = 1;
+export function encodeGear(g: GearFx[]): string[] { return g.map(x => x.slot + ':' + (x.r === 'orange' ? 'o' : 'p')); }
+export function decodeGear(a?: string[]): GearFx[] { return (a || []).map(s => { const [slot, r] = String(s).split(':'); return PART[slot] && (r === 'o' || r === 'p') ? { slot, r: r === 'o' ? 'orange' : 'purple' } as GearFx : null; }).filter(Boolean) as GearFx[]; }
+export function drawGearFx(k: FxCtx, gear: GearFx[], cosTier: 'orange' | 'purple' | null) {
+  if (!gear.length) return; const { c, x, y, u } = k; const red = reduced(), t = red ? 0 : k.t, B = budget(); const id = (k.id || 'me') + ':gear';
+  const list = [...gear].sort((a, b) => (b.r === 'orange' ? 1 : 0) - (a.r === 'orange' ? 1 : 0)).slice(0, GEAR_GLINTS);
+  let o = owners.get(id); if (!o) { o = { t: k.t, acc: 0, tacc: 0, flo: 0, ax: x, ay: y, tier: null }; owners.set(id, o); } const dt = Math.max(0, Math.min(.1, k.t - o.t)); o.t = k.t; const dx = x - o.ax, dy = y - o.ay; o.ax = x; o.ay = y;
+  c.save(); c.globalCompositeOperation = 'lighter';
+  list.forEach((g, i) => { const p = PART[g.slot]; const O = g.r === 'orange'; const ph = .5 + .5 * Math.sin(t * 1.2 + i * 1.3); const px = x + p[0] * u, py = y + p[1] * u, r = (O ? 1.5 : 1.1) * u;
+    // small flat inlay with ink outline (smaller and dimmer than any cosmetic layer)
+    shape(c, [[px, py - r * 1.4], [px + r, py], [px, py + r * .6], [px - r, py]], O ? '#ffc070' : '#c9a8ff', '#120c10', Math.max(.8, .35 * u), .55 + .25 * ph); });
+  // particles: tiny rate, off under an orange cosmetic tier so skins stay the premium layer
+  const rate = cosTier === 'orange' ? 0 : Math.min(GEAR_RATE, list.reduce((n, g) => n + (g.r === 'orange' ? .4 : .15), 0)) * B;
+  o.acc += dt * rate; while (o.acc >= 1) { o.acc--; const g = list[Math.floor(Math.random() * list.length)], p = PART[g.slot]; spawn(id, x + p[0] * u, y + p[1] * u, (Math.random() - .5) * 4 * u, -7 * u, .7, .7 * u, g.r === 'orange' ? '#ffcf8a' : '#e2c8ff'); }
+  for (const p of pool) { if (!p.on || p.o !== id) continue; p.age += dt; if (p.age >= p.life) { p.on = false; continue; } p.x += dx + p.vx * dt; p.y += dy + p.vy * dt; const a = 1 - p.age / p.life; shape(c, [[p.x, p.y - p.r], [p.x + p.r * .5, p.y], [p.x, p.y + p.r], [p.x - p.r * .5, p.y]], p.col, '#000', 0, a * .6); }
+  c.restore(); }
