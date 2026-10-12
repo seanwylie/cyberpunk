@@ -177,7 +177,7 @@ export const COS_ROLL_CHANCE={ ordinary:.004, elite:.05, boss:.35, bossSpecific:
 /** Credit value when a duplicate (or an all-owned rarity) rolls. */
 export const COS_DUPE_CREDITS:Record<Rarity,number>={ grey:10, green:40, blue:150, purple:600, orange:4000 };
 
-export interface CosState { owned:Record<string,number>; equipped:Partial<Record<CosSlot,string>>; seen?:Record<string,number> }
+export interface CosState { owned:Record<string,number>; equipped:Partial<Record<CosSlot,string>>; seen?:Record<string,number>; outfits?:({ n:string; eq:Partial<Record<CosSlot,string>> }|null)[] }
 export const newCos=():CosState=>({ owned:{}, equipped:{}, seen:{} });
 export function cosOf(s:{cosmetics?:CosState}):CosState{ if(!s.cosmetics) s.cosmetics=newCos(); const c=s.cosmetics; c.owned=c.owned||{}; c.equipped=c.equipped||{}; c.seen=c.seen||{}; return c; }
 export const ownsCos=(s:{cosmetics?:CosState},id:string)=>!!cosOf(s).owned[id];

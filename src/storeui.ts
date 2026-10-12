@@ -6,7 +6,7 @@ import { CATALOG, LOCKER_SLOTS_PER_TIER, LOCKER_TIER_CENTS, BANK_TIER_CENTS, Sku
 import { exportJson, fmtUsd, funnel, track } from './analytics';
 import { lockerCapOf } from './bank';
 import { bankOf, bankCapacity } from './bank';
-import { WD } from './wardrobeui';
+import { previewFromStore } from './wardrobeui';
 type UIx = any;
 const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export type StTab = 'skins' | 'bundles' | 'storage';
@@ -59,7 +59,7 @@ export function storeClick(ui: UIx, el: HTMLElement, a: string): boolean {
     case 'st-dismiss': dismissUpsell(); ui.render(); return true;
     case 'st-tab': if (ST.phase === 'processing') return true; ST.tab = (el.dataset.tab as StTab) || 'skins'; ST.sel = ''; ST.phase = 'idle'; ST.msg = ''; break;
     case 'st-sel': if (ST.phase === 'processing') return true; if (ST.phase === 'confirm' && ST.orderId) cancelOrder(ST.orderId); ST.phase = 'idle'; ST.msg = ''; view(el.dataset.id!); break;
-    case 'st-preview': { const k = SKU_BY_ID[el.dataset.id!]; if (!k?.items) return true; WD.sel = k.items[0]; WD.msg = ''; ui.open('wardrobe'); return true; }
+    case 'st-preview': { const k = SKU_BY_ID[el.dataset.id!]; if (!k?.items) return true; previewFromStore(ui, k.items[0]); return true; }
     case 'st-buy': { const r = startPurchase(s, el.dataset.id!); if (r.ok) { ST.orderId = r.order.orderId; ST.phase = 'confirm'; ST.msg = ''; } else ST.msg = r.why; break; }
     case 'st-confirm': {
       if (ST.phase !== 'confirm' || !ST.orderId) return true; const oid = ST.orderId; ST.phase = 'processing'; ST.msg = '';

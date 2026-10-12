@@ -30,7 +30,8 @@
     "test:heat": "node tests/heat.mjs",
     "test:store": "node tests/store.mjs",
     "test:content": "node tests/no_drug_refs.mjs",
-    "test:ui-overflow": "node tests/ui_overflow.mjs"
+    "test:ui-overflow": "node tests/ui_overflow.mjs",
+    "test:dressing-room": "node tests/dressing_room.mjs"
   },
   "devDependencies": {
     "@types/ws": "^8.18.2",

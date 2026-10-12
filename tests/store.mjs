@@ -71,9 +71,9 @@ r = await ev(async () => { const A = await import('/src/analytics.ts'); const go
 ok(r.got === 701 && r.ring === r.max, 'pluggable sinks receive events (bad sink ignored); ring buffer capped at ' + r.max);
 // UI flow
 await ev(async () => { const A = await import('/src/analytics.ts'); A.resetAnalytics(); const S = await import('/src/store.ts'); S.configureMock({ delayMs: 2500, failureRate: 0 }); S.resetOrders(); window.__game.enterTown(); window.__game.save.cosmetics.owned = {}; window.__game.save.cosmetics.equipped = {}; window.__ui.open('wardrobe'); });
-await page.evaluate(() => { document.querySelector('#modal [data-act=wd-show]')?.click(); });
+await page.evaluate(() => { document.querySelector('#modal [data-act=wd-show][data-show=all]')?.click(); });
 await ev(() => document.querySelector('#modal [data-act=wd-sel][data-id=pm_aura_brine]')?.click());
-r = await ev(() => ({ buy: !!document.querySelector('#modal [data-act=st-open][data-sku=skin_pm_aura_brine]'), lock: window.wvStore.funnel().prompts.lockedClicks, txt: document.querySelector('#modal .wdsel')?.textContent }));
+r = await ev(() => ({ buy: !!document.querySelector('#modal [data-act=st-open][data-sku=skin_pm_aura_brine]'), lock: window.wvStore.funnel().prompts.lockedClicks, txt: document.querySelector('#modal .drdet')?.textContent }));
 ok(r.buy && r.lock === 1 && /Previewing/.test(r.txt), 'wardrobe: locked premium item previews and offers Buy; click logged');
 await ev(() => document.querySelector('#modal [data-act=st-open][data-sku=skin_pm_aura_brine]')?.click());
 ok(await ev(() => window.__ui.modal === 'store' && !!document.querySelector('#modal [data-store]') && /SIMULATED/.test(document.querySelector('#modal').textContent)), 'Store opens from wardrobe with the SKU selected, labelled SIMULATED');

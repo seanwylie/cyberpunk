@@ -1,7 +1,8 @@
 // Analytics event layer (store funnel). Local ring buffer + pluggable sinks. No network by default.
 // Wire a real backend by adding a sink: addSink(httpSink('https://example/ingest')). See docs/STORE_SIM.md.
 export type AEventName = 'store_open' | 'sku_view' | 'purchase_start' | 'purchase_confirm' | 'purchase_success' | 'purchase_fail' | 'purchase_cancel'
-  | 'entitlement_granted' | 'storage_full_prompt' | 'wardrobe_locked_item_click' | 'purchase_duplicate_receipt';
+  | 'entitlement_granted' | 'storage_full_prompt' | 'wardrobe_locked_item_click' | 'purchase_duplicate_receipt'
+  | 'dr_preview' | 'dr_rotate' | 'dr_buy_intent' | 'dr_apply' | 'dr_revert' | 'dr_outfit_save' | 'dr_outfit_load';
 export interface AEvent { n: number; t: number; name: AEventName; sku?: string; data?: Record<string, any>; }
 export interface AnalyticsSink { name: string; write(e: AEvent): void; }
 export const RING_MAX = 500;
