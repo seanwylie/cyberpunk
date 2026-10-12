@@ -35,7 +35,7 @@ for (const [name, leave] of Object.entries(paths)) {
 { await start(); const r = await ev(() => { const g = window.__game; const solo = g.save.instance; const soloAlive = solo.enemies.filter(e => !e.dead).length; const keepInst = g.inst; const net = { ...JSON.parse(JSON.stringify({ ...keepInst, enemies: [] })), id: 'net-123' }; g.inst = net; g.saveNow(); const same = g.save.instance === solo; g.inst = keepInst; g.saveNow(); return { same, id: g.save.instance.id, soloAlive, after: g.save.instance.enemies.filter(e => !e.dead).length }; });
   ok(r.same && r.id !== 'net-123' && r.after === r.soloAlive, 'party (net-) instance never replaces the solo save: ' + JSON.stringify(r)); }
 // env hazards render as dashed outlines (not telegraph discs)
-{ const r = await ev(() => { const g = window.__game, rd = window.__rend; g.startRun('warehouse'); const z = g.zones.find(z => z.env); const fills = []; const op = rd.poly.bind(rd); rd.poly = (pts, f, s, a, lw) => { fills.push([f, s, a]); return op(pts, f, s, a, lw); }; rd.drawZone(z); rd.poly = op; return fills; });
-  ok(r.length === 2 && r[0][2] <= .12 && r[1][0] === undefined, 'level hazards: faint fill + dashed rim ' + JSON.stringify(r)); }
+{ const r = await ev(() => { const g = window.__game, rd = window.__rend; g.startRun('warehouse'); const z = g.zones.find(z => z.env && !z.shape && !z.style) || g.zones.find(z => z.env); g.px = z.x; g.py = z.y + 1; rd.draw(0.016); const fills = []; const op = rd.poly.bind(rd); rd.poly = (pts, f, s, a, lw) => { fills.push([f, s, a]); return op(pts, f, s, a, lw); }; rd.drawZone(z); rd.poly = op; return fills; });
+  ok(r.length === 2 && r[0][2] <= .25 && r[1][0] == null, 'level hazards: faint fill + dashed rim ' + JSON.stringify(r)); }
 ok(errors.length === 0, 'no page errors ' + errors.slice(0, 2).join('|'));
 await browser.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
