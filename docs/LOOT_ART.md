@@ -14,3 +14,9 @@ Code: `src/lootart.ts` (all drawing), hooks in `src/render.ts` (`drawDrop`, `flu
   - Runtime (`lootart.ts`): `ensureAtlas()` lazy-loads on the first icon request; until it lands (or if it fails / `?nolootatlas`) the procedural icons draw. `iconAt(spec,t,seed,fx)` picks the frame: orange 10 fps, purple 8 fps, blue 5 fps turntable, grey/green still (facing varies by seed), Reduced FX = still. Rarity outline/band, ground rings, beam, light, shimmer, pickup and labels stay code-drawn; code housing/gears (orange) and code gimbal rings (purple) are replaced by the 3D ones. Orange sprites sit on the ground (their platform replaces the hover).
   - Previews: `docs/art/loot3d/*.gif` (per rarity, `orange_signatures.gif`) and `contact_sheet.png`. Test: `tests/loot3d.mjs`.
   - Known limits: no baked shadow (the game's height-aware ground shadow is used); weapon hands share one model; green/blue/purple use the same grey-base models.
+
+## Painted icons (blue / purple / orange)
+Every blue, purple and orange item has a bespoke hand-painted icon (LoL / Arcane style) that overrides the 3D/procedural art in locker tiles, tooltips, the prestige drop banner and world drops.
+- Prompts: `tools/loot/painted_prompts.json` (`id: [rarity, subject, boss identity]`). Tier ladder: blue = plain, flat light, no glow; purple = simpler composition, cool rim, no sparks; orange = heroic composition, restrained ember glow.
+- Generate: `python tools/loot/gen_painted.py RAW [--rar=orange|--only=id,id]` (needs `OPENAI_API_KEY`; cached per id). Pack: `python tools/loot/pack_painted.py RAW` (run after `pack_loot.py`; writes `public/loot/painted.webp`, 128px cells, sprites `p_<id>`). Contact sheet: `python tools/loot/painted_sheet.py RAW orange out.png`.
+- New blue+ items need a prompt entry + a regen; items without one fall back to the 3D atlas.
