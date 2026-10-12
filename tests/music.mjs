@@ -10,7 +10,7 @@ const log = () => ev(() => window.__audio.music.log.map(l => ({ from: l.from, to
 const m = (s) => ev(s => window.__audio.setState(s), s);
 await m('town'); await sleep(300);
 let L = await log(); ok(L.length && L[L.length - 1].state === 'town' && /^(town|calm_)/.test(L[L.length - 1].to), 'initial town track');
-await m('traversal'); L = await log(); let e = L[L.length - 1]; ok(e.state === 'traversal' && /^(traversal_|calm_)/.test(e.to) && e.from === 'town' && e.dur >= 2.5, 'town->traversal crossfade with long fade-in: ' + JSON.stringify(e));
+await m('traversal'); L = await log(); let e = L[L.length - 1]; ok(e.state === 'traversal' && /^(traversal_|calm_)/.test(e.to) && /^(town|calm_)/.test(e.from) && e.dur >= 2.5, 'town->traversal crossfade with long fade-in: ' + JSON.stringify(e));
 // --- redesigned state logic: hard music only on elite/boss engagement, with dwell + exit delay (fake clock) ---
 await ev(() => { const mm = window.__audio.music; clearInterval(mm.timer); mm.__off = 0; const real = mm.now.bind(mm); mm.now = () => real() + mm.__off; });
 const adv = s => ev(s => { const mm = window.__audio.music; mm.__off += s; mm.tick(); }, s);

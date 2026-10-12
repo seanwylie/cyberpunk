@@ -19,23 +19,27 @@ export const ELITE2=['elite_chrome','elite_voltage','elite_claw','elite_gridlock
 /** Boss signature themes: one per top-tier boss, ONLY ever played in that boss's fight (not in any pool). `p2` plays from the first phase change. */
 export const SIGNATURE:Record<string,{main:string;p2?:string}>={ recall:{main:'boss_sig_recall',p2:'boss_sig_recall_p2'}, dispatcher:{main:'boss_sig_dispatcher',p2:'boss_sig_dispatcher_p2'}, widow:{main:'boss_sig_widow',p2:'boss_sig_widow_p2'}, resonance:{main:'boss_sig_resonance'}, courier:{main:'boss_sig_courier'}, rattle:{main:'boss_sig_rattle'}, breaker:{main:'boss_sig_breaker'}, liquidator:{main:'boss_sig_liquidator'} };
 export const SIG_TRACKS=Object.values(SIGNATURE).flatMap(x=>[x.main,...(x.p2?[x.p2]:[])]);
-export const CALM_LAZY=new Set([...CALM2,...CALM3,...CALM4]);
-export const LAZY=new Set([...CALM2,...CALM3,...CALM4,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]);
+/** Pack 5: town / hub moods (neon market, rain, lounge, synth haze, night shuttle). */
+export const CALM5_TOWN=['town_neonbazaar','town_raingutter','town_lounge','town_synthhaze','town_nightbus'], CALM5_HARROW=['harrow_rainworks','harrow_lounge','harrow_glowpipes','harrow_nightshift','harrow_neonforge'];
+export const CALM5=[...CALM5_TOWN,...CALM5_HARROW];
+Object.assign(FAMILY,{ town_neonbazaar:'pulse',town_raingutter:'noir',town_lounge:'noir',town_synthhaze:'drift',town_nightbus:'pulse',harrow_rainworks:'noir',harrow_lounge:'noir',harrow_glowpipes:'drift',harrow_nightshift:'industrial',harrow_neonforge:'pulse' });
+export const CALM_LAZY=new Set([...CALM2,...CALM3,...CALM4,...CALM5]);
+export const LAZY=new Set([...CALM2,...CALM3,...CALM4,...CALM5,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]);
 const T:Record<string,TrackDef>={ boss_reveal:{file:'boss_reveal',loop:false,keepPos:false}, clear:{file:'clear',loop:false,keepPos:false} };
 for(const n of STINGERS) T[n]={file:n,loop:false,keepPos:false};
-for(const n of [...LOOPS,...CALM2,...CALM3,...CALM4,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]) T[n]={file:n,loop:/^(combat_|boss_|elite_)/.test(n),keepPos:/^(combat_|boss_|elite_)/.test(n)}; // calm tracks never loop: rotation crossfades out before the end (a lone track is never repeated)
+for(const n of [...LOOPS,...CALM2,...CALM3,...CALM4,...CALM5,...BOSS4,...ELITE4,...ELITE2,...SIG_TRACKS]) T[n]={file:n,loop:/^(combat_|boss_|elite_)/.test(n),keepPos:/^(combat_|boss_|elite_)/.test(n)}; // calm tracks never loop: rotation crossfades out before the end (a lone track is never repeated)
 /** Tracks that must load for file music to activate; the rest load best-effort and are dropped from pools when missing. */
 export const CORE_TRACKS=['town','traversal_a','traversal_b','combat_a','combat_b','boss_reveal','boss_fight','clear'];
 /** Per-state track pools (rotation draws from these via a shuffle bag). */
 export const POOLS:Record<MState,string[]>={
-  town:['town','calm_drift','calm_rust','calm_vents','town_dusk','town_market','town_neonrain','town_rooftop','town_jukebox','town_dockside','town_dawnmarket','town_lastcall','town_scrapyard'],
+  town:['town','calm_drift','calm_rust','calm_vents','town_dusk','town_market','town_neonrain','town_rooftop','town_jukebox','town_dockside','town_dawnmarket','town_lastcall','town_scrapyard',...CALM5_TOWN],
   traversal:['traversal_a','traversal_b','calm_neon','calm_static','calm_drift','calm_rust','calm_vents','calm_tide','calm_ghost','calm_orbit','calm_hollow','calm_relay','calm_alley','calm_conduit','calm_afterglow','calm_stasis','calm_coldopen','calm_midshift','calm_deepcut','calm_exitroute','calm_breathing','calm_wires','calm_sodium'],
   combat:['combat_a','combat_b'],
   elite:['elite_siege','elite_hunt','boss_overclock','boss_meltdown',...ELITE2,...ELITE4],
   bossreveal:['boss_reveal'],
   bosscombat:['boss_fight','boss_overclock','boss_meltdown','boss_hydraulic','elite_siege','elite_hunt','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall',...BOSS4],
   resolution:['clear'] };
-export const TOWN_POOLS:Record<string,string[]>={ rustline:['town','calm_drift','calm_rust','calm_vents','town_dusk','town_market','town_neonrain','town_rooftop','town_jukebox','town_dockside','town_dawnmarket','town_lastcall','town_scrapyard'], harrow:['harrow_forge','harrow_ember','harrow_steam','harrow_dawn','harrow_cinder','harrow_smelter','harrow_lamplight','harrow_ash','harrow_shift','harrow_whistle','harrow_chapel','harrow_mill'] };
+export const TOWN_POOLS:Record<string,string[]>={ rustline:['town','calm_drift','calm_rust','calm_vents','town_dusk','town_market','town_neonrain','town_rooftop','town_jukebox','town_dockside','town_dawnmarket','town_lastcall','town_scrapyard',...CALM5_TOWN], harrow:['harrow_forge','harrow_ember','harrow_steam','harrow_dawn','harrow_cinder','harrow_smelter','harrow_lamplight','harrow_ash','harrow_shift','harrow_whistle','harrow_chapel','harrow_mill',...CALM5_HARROW] };
 /** Run areas (manufacturer of the dungeon): tracks written for an area get double weight there and are excluded elsewhere; everything else in the traversal pool is shared. */
 export const AREA_TRACKS:Record<string,string[]>={ HI:['area_hi_slag','area_hi_press','area_hi_ember','area_hi_coke','area_hi_bellring'], PS:['area_ps_sterile','area_ps_ward','area_ps_hush','area_ps_archive','area_ps_ledger'], MM:['area_mm_muzak','area_mm_aisles','area_mm_closing','area_mm_clearance','area_mm_freight'] };
 /** Traversal pool for an area with weights: [track, weight]. Unknown/empty area = shared pool only. */
@@ -81,12 +85,12 @@ export class MusicManager {
   private getTrack:((d:TrackDef)=>Promise<void>)|null=null; private asked=new Set<string>();
   /** constrained devices skip the preload of variety tracks (decoded PCM is ~10x the mp3); fetch just the track that is about to be needed */
   askedAt:Record<string,number>={};
-  ensure(file:string){ const d=Object.values(T).find(x=>x.file===file); if(!d||this.buffers[file]||!this.getTrack) return; if(this.asked.has(file)){ if(performance.now()-(this.askedAt[file]||0)<8000) return; } /* a request that has not landed after 8 s is retried (stalled fetch) */ this.askedAt[file]=performance.now(); if(typeof document!=='undefined'&&document.hidden&&!this.pend) return; /* no background decoding while the tab is hidden */ this.asked.add(file); this.getTrack(d).then(()=>this.trim()).catch(()=>this.asked.delete(file)); }
+  ensure(file:string){ const d=Object.values(T).find(x=>x.file===file); if(!d||this.buffers[file]||!this.getTrack) return; if(this.asked.has(file)){ if(performance.now()-(this.askedAt[file]||0)<8000) return; } /* a request that has not landed after 8 s is retried (stalled fetch) */ this.askedAt[file]=performance.now(); if(typeof document!=='undefined'&&document.hidden&&!this.pend) return; /* no background decoding while the tab is hidden */ this.asked.add(file); this.getTrack(d).then(()=>this.trim()).catch(()=>{ this.asked.delete(file); this.failed.add(file); if(this.pend?.name===file){ this.pend=null; this.lastSwitchAt=-1e9; } /* missing file: drop it from calm picks and rotate on to another track */ }); }
   async load(){ if(this.loading||this.ready) return; this.loading=true;
     try{ const get=async(d:TrackDef)=>{ const r=await fetch(this.base+d.file+'.mp3'); if(!r.ok) throw new Error(d.file+' '+r.status); const ab=await r.arrayBuffer(); this.buffers[d.file]=await this.ctx.decodeAudioData(ab); };
       this.getTrack=get;
-      if(ALL()) await Promise.all(Object.values(T).filter(d=>CORE_TRACKS.includes(d.file)).map(get));
-      else await get(T[this.want==='town'||!this.want?'town':'traversal_a']||T.town); // boot decodes ONE track (the one about to play); everything else is lazy
+      if(ALL()){ await Promise.all(Object.values(T).filter(d=>CORE_TRACKS.includes(d.file)).map(get)); if(this.want!=='traversal'){ const f=this.planFirst(); await get(T[f]).catch(()=>{ delete this.nextUp[this.bagKey('town')]; }); } }
+      else { const first=this.want==='traversal'?'traversal_a':this.planFirst(); try{ await get(T[first]); }catch{ delete this.nextUp[this.bagKey('town')]; await get(T.town); } } // boot decodes ONE track: a random first town track drawn from the persisted bag (never a fixed intro); everything else is lazy
       this.ready=true; this.timer=setInterval(()=>this.tick(),250); this.onReady?.(); if(ALL()&&Q.p.musicVariety) Promise.all(Object.values(T).filter(d=>!CORE_TRACKS.includes(d.file)&&!LAZY.has(d.file)).map(d=>get(d).catch(()=>{}))); } // variety tracks stream in after start
     catch(e){ console.warn('music files unavailable, using procedural fallback',e); this.loading=false; } }
   now(){ return this.ctx.currentTime; }
@@ -103,11 +107,14 @@ export class MusicManager {
   /** Shuffle-bag key per state (persisted in localStorage, so rotation order survives reloads/sessions). */
   bagKey(s:MState){ return s==='town'?'town:'+this.townId:s==='traversal'?'trav:'+(this.area||'-'):s; }
   bagFor(s:MState):ShuffleBag{ const k=this.bagKey(s); let b=this.bags[k as MState]; if(!b){ const items=s==='traversal'?areaPool(this.area):POOLS[s]; b=this.bags[k as MState]=new ShuffleBag(items,Math.random,'wv_music_bag:'+k); } return b; }
-  introDone=false; /** the intro/title track ('town') plays once per session as the first town track, then town rotates through the other tracks */
-  pick(s:MState):string{ const have=(n:string)=>!!this.buffers[n]&&!(n==='town'&&this.introDone&&s==='town');
+  /** No intro lock: the first town track of every session / town entry is a random draw from the persisted shuffle bag + recent history. Queued as nextUp so boot decodes exactly it. */
+  planFirst():string{ const k=this.bagKey('town'); const nu=this.nextUp[k]; if(nu&&T[nu]&&!this.failed.has(nu)) return nu; const n=this.chooseCalm(this.bagFor('town'),x=>!!T[x]&&!this.failed.has(x)&&x!==this.cur); this.nextUp[k]=n; return n; }
+  failed=new Set<string>(); /** set by enter() for a real town entry (boot / back from a run), not for rotation or the ended-track safety re-entry */ townEntry=false; wasTown=false;
+  pick(s:MState):string{ const have=(n:string)=>!!this.buffers[n];
     if(s==='bosscombat'){ if(!this.fightNext) this.planFight(); const r=this.fightNext!; this.fightNext=null; delete this.nextUp.boss; this.sig=this.key?SIGNATURE[this.key]||null:null; this.p2done=false; this.setHard(r); return r; }
     const pool=POOLS[s]; if(pool.length===1) return pool[0];
     if(s==='elite'){ const nu=this.nextUp.elite; if(nu&&have(nu)&&nu!==this.lastHard){ delete this.nextUp.elite; this.setHard(nu); return nu; } const bg=this.bagFor(s); const r=bg.next(this.fresh(bg.items,x=>have(x)&&x!==this.lastHard)); this.setHard(r); return r; } // hard entry is never gated: only decoded tracks are picked (lazy ones are prefetched in the background during runs)
+    if(s==='town'&&this.townEntry){ this.townEntry=false; const n=this.planFirst(); delete this.nextUp[this.bagKey('town')]; return n; } // every town ENTRY draws a random track from the persisted bag (may still be decoding: crossfade() keeps the old track until it is ready)
     const calm=s==='town'||s==='traversal'; if(calm){ const k=this.bagKey(s), nu=this.nextUp[k]; if(nu&&have(nu)){ delete this.nextUp[k]; return nu; } }
     return this.chooseCalm(this.bagFor(s),have); }
   /** Last N calm tracks played (persisted, so a new session does not repeat what just played). */
@@ -140,8 +147,8 @@ export class MusicManager {
   fresh(items:string[],ok:(x:string)=>boolean):((x:string)=>boolean){ const h=this.hardHist(); const f=(x:string)=>ok(x)&&!h.includes(x); return items.some(f)?f:ok; }
   townId='rustline';
   /** Switch the calm town pool (Rustline vs Harrow Reach). Crossfades immediately when currently in town. */
-  setTownTheme(id:string){ if(id===this.townId) return; this.townId=id; const pool=TOWN_POOLS[id]||TOWN_POOLS.rustline; POOLS.town.splice(0,POOLS.town.length,...pool); delete this.bags['town:'+id as MState]; delete this.nextUp['town:'+id]; if(!this.ready) return;
-    if(this.state==='town'||this.want==='town'){ const t=this.now(); const nx=this.pick('town'); this.lastSwitchAt=t; this.enteredAt=t; if(this.buffers[nx]) this.crossfade(nx,3,'town'); else if(this.state==='town') this.pend={name:nx,dur:3,s:'town',at:t}; } }
+  setTownTheme(id:string){ const pool=TOWN_POOLS[id]||TOWN_POOLS.rustline; POOLS.town.splice(0,POOLS.town.length,...pool); /* always sync the shared pool (another manager may have switched it) */ if(id===this.townId) return; this.townId=id; delete this.bags['town:'+id as MState]; delete this.nextUp['town:'+id]; if(!this.ready) return;
+    if(this.state==='town'||this.want==='town'){ const t=this.now(); const nx=this.planFirst(); delete this.nextUp[this.bagKey('town')]; this.lastSwitchAt=t; this.enteredAt=t; if(this.buffers[nx]) this.crossfade(nx,3,'town'); else if(this.state==='town') this.pend={name:nx,dur:3,s:'town',at:t}; } }
   /** Boss phase change / enrage: switch to a more intense track from the boss playlist (after PHASE_MIN s on the current one). */
   onPhase(n:number){ if(n<=this.phase){ this.phase=n; return; } this.phase=n; this.phaseDue=true; this.applyPhase(); }
   phaseDue=false;
@@ -174,7 +181,7 @@ export class MusicManager {
   pend:{name:string;dur:number;s:MState;at:number}|null=null;
   /** Entering hard music is never gated by dwell/cooldowns. If the wanted track isn't decoded yet it is fetched and started the moment it loads (any decoded hard track after 4 s). */
   private flushPending(t:number){ const p=this.pend; if(!p) return; if(this.state!==p.s){ this.pend=null; return; } let n=p.name; if(!this.buffers[n]){ this.ensure(n); if(t-p.at<4) return; const alt=POOLS[p.s].find(x=>this.buffers[x])||(p.s==='bosscombat'&&this.buffers.boss_fight?'boss_fight':''); if(!alt) return; n=alt; } this.pend=null; this.counts.entries++; this.crossfade(n,p.dur,p.s); }
-  private enter(s:MState){ const prev=this.state; if(s==='resolution'||s==='town') this.retry=false; if(s!=='bossreveal'&&s!=='bosscombat'){ this.phaseDue=false; this.fightNext=null; this.sig=null; this.phasePend=null; delete this.nextUp.boss; this.hold.clear(); } const t=this.now(); this.state=s; this.enteredAt=t; this.lastSwitchAt=t; this.leaveSince=-1; this.pend=null; const name=this.pick(s);
+  private enter(s:MState){ const prev=this.state; if(s==='resolution'||s==='town') this.retry=false; if(s!=='bossreveal'&&s!=='bosscombat'){ this.phaseDue=false; this.fightNext=null; this.sig=null; this.phasePend=null; delete this.nextUp.boss; this.hold.clear(); } const t=this.now(); this.townEntry=s==='town'&&prev!=='town'&&!(prev===null&&this.wasTown); this.wasTown=s==='town'; this.state=s; this.enteredAt=t; this.lastSwitchAt=t; this.leaveSince=-1; this.pend=null; const name=this.pick(s);
     let dur=2; if(s==='traversal'&&(prev===null||prev==='town')) dur=3; else if(s==='town') dur=3; else if(s==='bossreveal') dur=2.5; else if(s==='bosscombat') dur=1.5; else if(s==='resolution') dur=4; else if(s==='combat'||s==='elite') dur=1.5; else if(prev==='resolution') dur=2.5; else if(s==='traversal'&&(prev==='elite'||prev==='bosscombat'||prev==='combat'||prev==='bossreveal')) dur=4;
     if(!this.buffers[name]&&(s==='elite'||s==='bosscombat')){ this.ensure(name); this.pend={name,dur,s,at:t}; return; }
     if(s==='elite'||s==='bosscombat') this.counts.entries++; this.crossfade(name,dur,s,s==='resolution'?1.5:dur); }
@@ -183,7 +190,7 @@ export class MusicManager {
     if(name&&!this.buffers[name]){ this.pend={name,dur,s,at:t}; this.ensure(name); return; } // track not decoded yet: fade in once ready
     const out=this.live.filter(l=>!l.ending);
     for(const l of out){ l.ending=true; this.savePos(l,t); const g=l.gain.gain; g.cancelScheduledValues(t); const v=g.value; try{ g.setValueAtTime(v,t); }catch{} this.curve(g,v,0,t,dur); l.src.stop(t+dur+.05); setTimeout(()=>{ this.live=this.live.filter(x=>x!==l); this.evict(l.name); },(dur+.2)*1000); }
-    this.log.push({t,from:this.cur,to:name,dur,state:s}); if(this.cur==='town'&&s==='town'&&name!=='town') this.introDone=true; this.cur=name; if(!name) return; this.usedAt[name]=performance.now();
+    this.log.push({t,from:this.cur,to:name,dur,state:s}); this.cur=name; if(!name) return; this.usedAt[name]=performance.now();
     const d=T[name], buf=this.buffers[name]; const src=this.ctx.createBufferSource(); src.buffer=buf; src.loop=d.loop; const gain=this.ctx.createGain(); gain.gain.value=0; src.connect(gain); gain.connect(this.out);
     let off=d.keepPos?(this.pos[name]||0):0; if(off>=buf.duration-1) off=0; src.start(t,off); this.curve(gain.gain,0,1,t,inDur);
     if(!d.loop){ const rem=buf.duration-off, fd=Math.min(1.5,Math.max(.2,(rem-inDur)/2)); if(rem-fd>inDur) this.curve(gain.gain,1,0,t+rem-fd,fd); } // one-shots (reveal, clear) fade out before their natural end: never a hard cut
