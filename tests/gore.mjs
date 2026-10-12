@@ -23,7 +23,7 @@ await set('bloody'); await mk('cinderhound'); await kill(2, 'auto'); c = await k
 await mk('worker', -2, 1); const c2 = await kill(); ok(c2.chunks > c.chunks, 'Bloody robot kill: plates/limbs too ' + JSON.stringify(c2)); await sleep(350);
 await page.screenshot({ path: 'shots/gore/bloody_air.png' }); await sleep(2200); await page.screenshot({ path: 'shots/gore/bloody_settled.png' });
 // --- spectral = nothing
-await set('bloody'); await mk('hollowghost'); c = await kill(); ok(c.decals + c.chunks + c.drops === 0, 'Bloody: spectral/hologram entities show no gore ' + JSON.stringify(c));
+await set('bloody'); await mk(await ev(() => (window.__enemies.hollowghost ? 'hollowghost' : 'sootwisp')) /* bestiary mobs are data-only until registered; sootwisp is the registered spectral body */); c = await kill(); ok(c.decals + c.chunks + c.drops === 0, 'Bloody: spectral/hologram entities show no gore ' + JSON.stringify(c));
 // --- allies never gibbed
 await set('bloody'); await ev(() => { const g = window.__game; const e = g.spawnEnemy('worker', g.px + 2, g.py); e.faction = 'ally'; window.__e = e; }); c = await kill(); ok(c.decals + c.chunks + c.drops === 0, 'allies / non-enemies are never dismembered');
 // --- boss limb severing at 75/50/25
