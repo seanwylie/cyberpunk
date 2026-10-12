@@ -12,6 +12,8 @@ import { abxCast, abxTick, abxReset, abxIncoming, abxOutgoing, abxSpeedMul, abxP
 import { ABILITY_BY_ID } from './abilities/registry';
 import { ABILITY_ACQ, ABILITY_ITEMS, pickAbilityItem, pickCommonAbilityItem } from './abilities/hw';
 import { buildTownLevel, stationsOf } from './worldtowns';
+import { WORLD_BY_ID } from './world';
+import { visitTown, landmarkNear, outOfDepth, FACTION_MFR, FIRST_VISIT_REP } from './discovery';
 import { currentTown, refreshUnlocks, travelCheck, TOWN_INFO, townsOf, type TownId } from './towns';
 import { setTownStations, TOWN_STATIONS } from './stations';
 import { buildTown, Level, Interact } from './level';
@@ -80,9 +82,13 @@ export class Game {
     const wasRun=this.mode==='run'; this.settleCompleted();
     if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this); this.clearTransients();
     const tid=currentTown(this.save); this.townId=tid; setTownStations(stationsOf(tid)); this.mode='town'; this.level=buildTownLevel(tid); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.townFails=0; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
-    this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); this.emit('towntheme',tid); this.checkTownUnlocks(); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.'); if(!first&&wasRun) this.emit('beat',{dungeon:this.save.instance?.dungeon||undefined,run:this.save.instance?.id,result:this.save.instance?.flags?.bossDead?'Boss defeated':'Left the run early'});
+    this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); this.emit('towntheme',tid); this.checkTownUnlocks(); if(this.inst) persist(this.save); this.emit('mode','town'); this.worldArrive(); if(!first) this.toast('Back in town. Unload loot at the locker.'); if(!first&&wasRun) this.emit('beat',{dungeon:this.save.instance?.dungeon||undefined,run:this.save.instance?.id,result:this.save.instance?.flags?.bossDead?'Boss defeated':'Left the run early'});
   }
   townId:TownId='rustline';
+  /** world discovery (src/discovery.ts): first-visit XP + faction nod, the fixer's out-of-depth line, landmark log */
+  worldArrive(){ const id=this.townId, t=WORLD_BY_ID[id]; if(!t) return; const xp=visitTown(this.save,id); if(xp){ this.addXp(xp); const m=FACTION_MFR[t.faction]; if(m) this.save.rep[m]+=FIRST_VISIT_REP; this.toast(`Discovered ${t.name}: +${xp} XP${m?' · '+t.faction+' noticed you':''}.`); persist(this.save); }
+    const line=outOfDepth(this.save.level,id); if(line) this.emit('toast','Odalys: '+line); }
+  worldScan(){ const L:any=this.level; const xp=landmarkNear(this.save,this.townId,this.px,this.py,L.landmark); if(xp){ this.addXp(xp); this.toast(`Landmark logged: ${L.landmark.name} (+${xp} XP).`); persist(this.save); } }
   /** Unlock towns whose condition is newly met (clears, level ups, load). Returns the ids unlocked now. */
   checkTownUnlocks():TownId[]{ const n=refreshUnlocks(this.save); for(const id of n){ this.toast(`New destination: ${TOWN_INFO[id].name}. Take the Reach Line at the plaza tram stop.`); persist(this.save); } return n; }
   /** Ride the Reach Line to another town (free, instant; town only). */
@@ -263,7 +269,7 @@ export class Game {
     const dt=Math.min(dtRaw,.05); this.time+=dt;
     if(this.mode==='run'&&this.inst){ this.inst.elapsed+=dt; const rem=this.inst.expiresAt-this.now(); if(rem<=0){ this.expireInstance(); this.enterTown(); return; } if(!this.inst.warned&&rem<INSTANCE_WARN_MINUTES*60000){ this.inst.warned=true; this.toast('Instance expires in under '+INSTANCE_WARN_MINUTES+' minutes. Retrieve loot.'); } }
     if(this.grace&&this.mode==='run') this.tickGrace(dt); else if(this.grace) this.grace=null;
-    this.updatePlayer(dt); abxTick(this,dt); this.codexT-=dt; if(this.codexT<=0){ this.codexT=1; this.codexScan(); }
+    this.updatePlayer(dt); abxTick(this,dt); this.codexT-=dt; if(this.codexT<=0){ this.codexT=1; this.codexScan(); if(this.mode==='town') this.worldScan(); }
     if(this.mode==='run'){ if((this.sanT-=dt)<=0){ this.sanT=1; this.sanitizeGround(); } if((this.resT-=dt)<=0){ this.resT=.5; this.rescueStranded(); } this.updateEnemies(dt); this.updateProjs(dt); this.updateZones(dt); this.autoPickup(); this.updateRun(dt); this.updateMusic(dt); this.abilityHints(dt); this.saveT+=dt; if(this.saveT>4){ this.saveT=0; this.saveNow(); } }
     this.updatePrompt(); this.updateFx(dt);
   }

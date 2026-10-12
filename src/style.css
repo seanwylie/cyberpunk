@@ -668,3 +668,4 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 .cscard .csrow .csdel{ flex:0 0 36px; }
 .cscard input{ width:100%; min-width:0; box-sizing:border-box; }
 .csbody{ display:block; width:100%; flex:1 1 auto; min-width:0; }
+.wmlm{ font-size:max(var(--fmin),calc(12px*var(--fs))); color:#cfc6b0; } .wmlm b{ color:var(--tc); margin-right:4px; }
