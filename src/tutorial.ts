@@ -134,7 +134,7 @@ export class Tutorial {
         if(ui.sel!==st.slot) return { title:c.title, body:`Each tile is a body slot. Pick your ${slotName.toLowerCase()}.`, target:T(`#modal [data-act=sel][data-slot=${st.slot}]`) };
         const inst=s.items.find(i=>i.def===st.item&&!Object.values(s.installed).includes(i.uid));
         if(inst&&ui.pickUid!==inst.uid) return { title:c.title, body:`Storage holds spare parts. Pick the ${itemName}.`, target:T(`#modal [data-act=pick][data-uid=${inst.uid}]`) };
-        return { title:c.title, body:`${itemName} beats Standard Issue. Press Replace.`, target:T('#modal [data-act=replace]') }; }
+        return { title:c.title, body:`${itemName} beats Standard Issue. Press Equip.`, target:T('#modal [data-act=replace]') }; }
       case 'socket': {
         if(modal!=='locker') return { title:c.title, body:'Chips add stats, but each body part only takes the chips that fit it. Open the locker again.', target:{world:this.W('locker')} };
         if(ui.sel!==st.slot) return { title:c.title, body:`Select your ${slotName.toLowerCase()} again to see its sockets.`, target:T(`#modal [data-act=sel][data-slot=${st.slot}]`) };
