@@ -136,7 +136,7 @@ Now: `HARD_ROTATE` = 300 s, so hard fights keep the same track unless they last 
 
 | Pool | Before this pass | After |
 |---|---|---|
-| Calm / ambient (all towns + zones + areas) | 25 | **60** (Rustline town 13, Harrow Reach 12, shared exploration 23, area sets HI/PS/MM 5 each) |
+| Calm / ambient (all towns + zones + areas) | 25 | **70** (Rustline town 18, Harrow Reach 17, shared exploration 23, area sets HI/PS/MM 5 each) |
 | Boss pool (regular bosses) | 21 | **40** |
 | Boss signatures (reserved for the hardest 8 bosses, not in any pool) | 11 | 11 |
 | Elite pool | 14 | **25** |
@@ -245,3 +245,25 @@ Calm tracks (town, hub, traversal, Harrow, area sets) were created with `loop=tr
 - The intro/title track (`town`) plays once per session, then is removed from the town rotation.
 - Cadence is now ~62-140 s (track lengths are 71-146 s; the dwell is capped by track length).
 - `tests/town_music.mjs` (run first by `npm run test:music`): 30 simulated minutes in town for Rustline and Harrow Reach: >= 10 distinct tracks, no immediate repeat or repeat within 5, intro at most once, cadence 55-165 s, `loop === false` on every started source, one active track at the end.
+
+## Town music: random first track, persisted bag (pack 5)
+* **Why the town always started with the same track:**
+  * At boot the manager decoded only the `town` track.
+  * `pick()` only chose decoded tracks.
+  * An intro rule kept `town` as the first town track of every session.
+  * So the shuffle bag never got a say.
+* **Now there is no intro lock.**
+  * `planFirst()` draws the first town track from the persisted shuffle bag (`wv_music_bag:town:<theme>`) and the recent history (`wv_music_calm_hist`, last `HIST_N`=8). Both are kept in localStorage.
+  * The manager queues that track as `nextUp` and decodes exactly that one at boot.
+  * Every real town entry (boot, back from a run, town theme switch) draws a fresh random track the same way. If it is still decoding, `crossfade()` keeps the old track playing and fades over once it is ready, using the usual 3 s town fade.
+  * A track that fails to load is dropped from calm picks (`failed`).
+* **Pack 5 adds 10 tracks** (120 s, 80 kbps, `tools/gen_music.py` CALM5):
+  * Rustline: `town_neonbazaar` (neon night market), `town_raingutter` (rain on tin roofs), `town_lounge` (late-night synth lounge), `town_synthhaze` (beatless synth haze), `town_nightbus` (night shuttle).
+  * Harrow Reach: `harrow_rainworks` (rain over the foundry), `harrow_lounge` (after-shift lounge), `harrow_glowpipes` (synth ambient among heat pipes), `harrow_nightshift` (night-shift groove), `harrow_neonforge` (neon forge market).
+  * Town pools go from 13 to 18 tracks (Rustline) and from 12 to 17 (Harrow).
+* **Test:** `tests/town_music.mjs` covers:
+  * 30-minute rotation.
+  * First track varying across 12 seeded sessions and 8 fresh installs.
+  * Real seeded boots starting on different tracks.
+  * No repeat within the last 8 plays across sessions.
+  * No intro lock.
