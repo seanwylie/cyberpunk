@@ -99,12 +99,16 @@ deploy_client() {
   say "Client: upload to s3://$BUCKET"
   # Same cache rules as infra/ci/deploy.yml.template
   run aws s3 sync dist/assets "s3://${BUCKET}/assets" --cache-control "public,max-age=31536000,immutable"
-  run aws s3 sync dist "s3://${BUCKET}" --exclude "assets/*" --exclude "index.html" --exclude "sw.js" --exclude "*.webmanifest" --cache-control "public,max-age=3600"
+  run aws s3 sync dist "s3://${BUCKET}" --exclude "assets/*" --exclude "index.html" --exclude "sw.js" --exclude "version.json" --exclude "*.webmanifest" --cache-control "public,max-age=3600"
   run aws s3 cp dist/index.html "s3://${BUCKET}/index.html" --cache-control "no-cache"
   run aws s3 cp dist/sw.js "s3://${BUCKET}/sw.js" --cache-control "no-cache" --content-type "text/javascript"
+  run aws s3 cp dist/version.json "s3://${BUCKET}/version.json" --cache-control "no-cache, no-store, must-revalidate" --content-type "application/json"
   run aws s3 cp dist/manifest.webmanifest "s3://${BUCKET}/manifest.webmanifest" --cache-control "no-cache" --content-type "application/manifest+json"
   say "Client: CloudFront invalidation"
-  run aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*" --query "Invalidation.Id" --output text
+  if [ "$DRY" = 1 ]; then echo "[dry-run] aws cloudfront create-invalidation ... && aws cloudfront wait invalidation-completed"
+  else INV_ID="$(aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*" --query "Invalidation.Id" --output text)"; echo "invalidation $INV_ID started; waiting for it to complete (up to ~2 min)"
+    aws cloudfront wait invalidation-completed --distribution-id "$DISTRIBUTION_ID" --id "$INV_ID" && echo "invalidation $INV_ID completed" || echo "WARNING: invalidation $INV_ID not confirmed complete yet"; fi
+  BUILD_ID_LOCAL="$(node -e "console.log(require('./dist/version.json').id)" 2>/dev/null || echo '?')"
 }
 
 case "$TARGET" in
@@ -122,10 +126,14 @@ check() { # url label
 FAILED=0
 [ "$TARGET" != client ] && check "https://${SERVER_HOST}/healthz" "server"
 [ "$TARGET" != server ] && check "https://${CLIENT_HOST}/" "client"
+if [ "$TARGET" != server ] && [ "$DRY" != 1 ]; then
+  LIVE_ID="$(curl -fsS --max-time 15 -H 'Cache-Control: no-cache' "https://${CLIENT_HOST}/version.json?t=$(date +%s)" 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).id)}catch{console.log('?')}})" || echo '?')"
+  if [ "$LIVE_ID" = "${BUILD_ID_LOCAL:-?}" ]; then echo "OK    deployed build id $LIVE_ID is live"; else echo "WARN  live build id is '$LIVE_ID' but just built '${BUILD_ID_LOCAL:-?}' (CDN may still be propagating)"; FAILED=1; fi
+fi
 
 say "Summary"
 echo "git:     $SHA"
 [ "$TARGET" != client ] && echo "server:  ${ECR_URI}:${SHA} (linux/$ARCH) -> ${SERVICE}"
-[ "$TARGET" != server ] && echo "client:  https://${CLIENT_HOST}/ (CloudFront invalidation /* started; may take a minute)"
+[ "$TARGET" != server ] && echo "client:  https://${CLIENT_HOST}/ build ${BUILD_ID_LOCAL:-?} (CloudFront invalidation /* started; may take a minute)"
 [ "$DRY" = 1 ] && echo "(dry run: nothing was changed)"
 [ "$FAILED" = 0 ] || { echo "Some health checks failed: the new ECS task may still be starting, or the invalidation is pending. Re-check shortly."; exit 1; }

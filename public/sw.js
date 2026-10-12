@@ -6,6 +6,7 @@ self.addEventListener('activate', e => e.waitUntil((async () => { for (const k o
 const HEAVY = /\.(png|webp|jpg|jpeg|mp3|ogg|woff2?|json)$/i;
 self.addEventListener('fetch', e => {
   const r = e.request; if (r.method !== 'GET' || r.headers.has('range')) return; const u = new URL(r.url); if (u.origin !== location.origin) return;
+  if (/version\.json$/.test(u.pathname)) return; // always straight to the network
   if (HEAVY.test(u.pathname) && !/manifest/.test(u.pathname)) {
     e.respondWith(caches.open(CACHE).then(async c => { const hit = await c.match(r); if (hit) return hit; const res = await fetch(r); if (res.ok && res.status === 200) c.put(r, res.clone()).catch(() => { }); return res; }));
   } else {

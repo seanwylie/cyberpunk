@@ -99,9 +99,10 @@ function storyHtml(ui:UIx):string{ const st=ui.g.save.settings, l=st.llm; const 
   +`<div class="srow"><span class="stx"><b>Test connection</b><small>${(l.enabled&&l.url&&l.key)?'Sends one tiny request to your endpoint.':'Checks the offline mock (always available).'}</small></span><span class="sctl"><button type="button" class="btn" data-act="s-test" ${S.testBusy?'disabled':''}>${S.testBusy?'Testing…':'Test connection'}</button></span></div>`
   +`<div class="stest" role="status" aria-live="polite">${esc(S.test)}</div><p class="sd">Stored only in this browser's localStorage and sent only to the endpoint you enter.</p>`; }
 
+import { buildLabel } from './version';
 function aboutHtml(ui:UIx):string{ const st=ui.g.save.settings;
   return head('About & Data','')
-  +`<div class="scard"><b>Warranty Void</b><small>An isometric cyberpunk loot-ARPG prototype. Void where prohibited.</small><span class="abt">${BVG}</span></div>`
+  +`<div class="scard"><b>Warranty Void</b><small>An isometric cyberpunk loot-ARPG prototype. Void where prohibited.</small><span class="abt">${BVG}</span><small id="buildid">Build ${buildLabel()}</small></div>`
   +`<h3 class="sh2">Save data</h3>`
   +row('Wipe save','Permanently deletes your character, gear, credits and story progress from this browser, then reloads.',`<button type="button" class="btn dng" data-act="s-ask" data-c="wipe1">Wipe save…</button>`)
   +confirmBox('wipe1','This deletes <b>everything</b> saved in this browser. Continue?','s-wipe-2','Continue')

@@ -571,3 +571,7 @@ body.reducefx .lockerwin .slot.tile.eqflash{ animation:none; outline:3px solid #
 .undobar,.lkhint{ display:flex; align-items:center; gap:8px; justify-content:space-between; flex-wrap:wrap; margin:4px 0; padding:4px 8px; border-radius:3px; font-size:max(var(--fmin),calc(11px*var(--fs))); overflow-wrap:anywhere; } .undobar{ background:#1f3320; border:1px solid #4f8a4b; } .lkhint{ background:#2a2b1e; border:1px solid #8a8a4b; } .undobar .btn,.lkhint .btn{ margin:0; flex:none; }
 .keepchips{ display:flex; gap:6px; align-items:center; margin:6px 0 2px; font-size:max(var(--fmin),calc(12px*var(--fs))); } .keepchips input{ width:18px; height:18px; flex:none; }
 .btn.eqbtn{ background:#2d6a33; border-color:#8df29a; color:#fff; font-weight:700; } .btn.eqbtn:hover,.btn.eqbtn:focus-visible{ background:#3a8541; }
+
+#newver{ position:fixed; left:50%; bottom:max(14px,env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:10050; display:flex; gap:10px; align-items:center; padding:8px 12px; background:rgba(12,14,18,.94); color:#f4f1e6; border:1px solid #d6a642; border-radius:10px; font:600 13px/1.2 system-ui,sans-serif; max-width:calc(100vw - 16px); }
+#newver button{ font:inherit; color:#111; background:#d6a642; border:0; border-radius:6px; padding:4px 10px; cursor:pointer; }
+#newver #newver-x{ background:transparent; color:#f4f1e6; padding:0 4px; }
