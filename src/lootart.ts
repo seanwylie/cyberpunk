@@ -20,7 +20,7 @@ function applyVariant(src:HTMLCanvasElement,v:number,seed:number):HTMLCanvasElem
 export function specOf(d:DropLike):LootSpec {
   if(d.kind==='item'){ const it=ITEM_BY_ID[d.inst!.def]; const sig=!!(it as any).authoredException; return { id:it.id, kind:'item', slot:it.slot, mfr:it.mfr, rar:it.rarity, name:it.name, sig, weapon:it.weapon, amount:1, key:`i|${it.slot}|${it.mfr}|${it.rarity}|${it.weapon||''}|${sig?1:0}${it.rarity==='orange'?'|'+it.id:'|v'+lootVariant(it.id)}` }; }
   if(d.kind==='chip'){ const c=(CHIPS as any)[d.chip!]; return { kind:'chip', rar:c.rarity, name:c.name, sig:false, amount:1, key:`c|${c.rarity}` }; }
-  if(d.kind==='stim') return { kind:'stim', rar:'green', name:'Stim injector', sig:false, amount:1, key:'s|green' };
+  if(d.kind==='stim') return { kind:'stim', rar:'green', name:'Nano-patch', sig:false, amount:1, key:'s|green' };
   const n=d.amount>=60?3:d.amount>=15?2:1; return { kind:'credits', rar:'grey', name:d.amount+' credits', sig:false, amount:n, key:'$|'+n };
 }
 // ---------------------------------------------------------------- palettes
@@ -129,7 +129,7 @@ export function atlasRef(s:LootSpec):{name:string;mirror:boolean;orange:boolean}
   if(!MAN||forceProcedural) return null; const has=(n:string)=>!!MAN!.sprites[n];
   let name='', mirror=false; const orange=s.rar==='orange';
   if(s.kind==='credits') name='credits_'+Math.min(3,Math.max(1,s.amount));
-  else if(s.kind==='stim') name='stim';
+  else if(s.kind==='stim') name='patch';
   else if(s.kind==='chip') name=orange&&has('orange_chip')?'orange_chip':'chip';
   else { const b=(s.slot||'').replace(/[LR]$/,''); mirror=/L$/.test(s.slot||''); const sn=s.id?'sig_'+s.id.replace(/^sig_/,''):''; name=orange&&sn&&has(sn)?sn:orange?`orange_${b}_${s.mfr}`:`base_${b}_${s.mfr}`; }
   if(!has(name)) return null; return { name, mirror, orange: name.startsWith('orange_')||name.startsWith('sig_') };

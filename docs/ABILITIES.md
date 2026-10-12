@@ -117,7 +117,7 @@ Goal: getting an ability augment is common at first; rare abilities are rare.
 - **Uncommon (blue):** elites and bosses mostly, vendor (300c), level 14+.
 - **Rare (purple):** elites/bosses only, low weight, level 20+ and **manufacturer reputation rank >= 1**.
 - **Signature (orange):** **boss drops only**, low weight, level 27+, reputation rank >= 2, and the dungeon's item-level cap (Foundry and above).
-- **Respects `DROP_RATE_SCALE`:** conversion *replaces* a rolled item/chip/stim; it never adds rolls, so the volume cut stays. Ability augments simply become a larger share of early drops.
+- **Respects `DROP_RATE_SCALE`:** conversion *replaces* a rolled item/chip/patch; it never adds rolls, so the volume cut stays. Ability augments simply become a larger share of early drops.
 - **Pity timer:** the very first item roll of a new save, and the first roll of any run following 1 finished run(s) without an ability-bearing pickup, is forced to a *common* augment (prefers abilities you have not discovered). Counters live in `save.abAcq`.
 - **Discovery:** the first time hardware granting an ability reaches storage or your pack, a toast announces *New ability discovered: name (rarity)* and it is recorded in the **Abilities codex** (locker > Abilities codex) listing discovered and undiscovered abilities by rarity with drop hints.
 

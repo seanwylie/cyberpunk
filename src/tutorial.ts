@@ -78,7 +78,7 @@ export class Tutorial {
   latch(id:string){ if(!this.st.done.includes(id)){ this.st.done.push(id); persist(this.g.save); this.key=''; } }
   private skipStep(){ const v=this.cur(); if(!v) return; this.st.skipped.push(v.id); this.latch(v.id); if(v.id==='gate'||v.id==='controls'||v.id==='fight') { /* run steps re-prompt nothing */ } }
   private ack(){ const v=this.cur(); if(!v) return; if(v.id==='controls') this.flags.ctrlack=true; if(v.id==='recs'){ this.latch('recs'); return; } }
-  private finish(how:'done'|'skipped'){ const s=this.g.save; this.st.status=how; if(how==='done'&&!this.st.rewarded){ this.st.rewarded=true; s.credits+=REWARD.credits; s.stims+=REWARD.stims; this.ui.toast(`Tutorial complete: +${REWARD.credits}c, +${REWARD.stims} stim. Replay it any time in Settings > Gameplay.`); }
+  private finish(how:'done'|'skipped'){ const s=this.g.save; this.st.status=how; if(how==='done'&&!this.st.rewarded){ this.st.rewarded=true; s.credits+=REWARD.credits; s.stims+=REWARD.stims; this.ui.toast(`Tutorial complete: +${REWARD.credits}c, +${REWARD.stims} patch. Replay it any time in Settings > Gameplay.`); }
     else if(how==='done') this.ui.toast('Tutorial complete. Replay it any time in Settings > Gameplay.'); else this.ui.toast('Tutorial skipped. Replay it any time in Settings > Gameplay.'); persist(s); this.hideAll(); }
   /** Called for every game event (before the UI sees it). */
   event(t:string,p:any){ if(this.st.status!=='active') return;
@@ -149,7 +149,7 @@ export class Tutorial {
       case 'gate': { if(modal==='gate') return { title:c.title, body:'Dungeons unlock in tiers. Pick the Reclamation Annex and enter.', target:T('#modal [data-act=enter][data-id=annex]') };
         return { title:c.title, body:t?'Walk to the Annex gate and tap the prompt.':'Walk to the Annex gate and press F to pick a dungeon.', target:{world:this.W('annex')} }; }
       case 'controls': { const f=this.flags, all=!!(f.cast&&f.dodge);
-        const list=[{t:t?'Cast: hold an ability, drag to aim, release':'Cast: hold Q, E or R, aim, release',ok:!!f.cast},{t:t?'Dodge: tap the Dodge button':'Dodge: Space',ok:!!f.dodge},{t:t?'Stim: tap the stim button (optional)':'Stim: T (optional)',ok:!!f.stim},{t:t?'Interact: tap the prompt (optional)':'Interact: F (optional)',ok:!!f.interact}];
+        const list=[{t:t?'Cast: hold an ability, drag to aim, release':'Cast: hold Q, E or R, aim, release',ok:!!f.cast},{t:t?'Dodge: tap the Dodge button':'Dodge: Space',ok:!!f.dodge},{t:t?'Patch: tap the patch button (optional)':'Patch: T (optional)',ok:!!f.stim},{t:t?'Interact: tap the prompt (optional)':'Interact: F (optional)',ok:!!f.interact}];
         if(all) return { title:c.title, body:'The Objective tracker and minimap point the way. Press '+key('minimap')+' to toggle the minimap.', list, target:T('#objective'), ack:'Got it' };
         return { title:c.title, body:t?'Abilities are your main damage. Long-press one to read what it does.':'Abilities are your main damage. Hover one to read what it does.', list, target:T(f.cast?'#dodge':'#abilities') }; }
       case 'fight': { const left=Math.max(0,KILLS_NEEDED-st.kills); const en=g.enemies.filter(e=>!e.dead&&e.faction==='enemy').sort((a,b)=>Math.hypot(a.x-g.px,a.y-g.py)-Math.hypot(b.x-g.px,b.y-g.py))[0];

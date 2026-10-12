@@ -13,12 +13,12 @@ The tutorial **observes** the game and never drives it. Progress is a set of lat
 | 4 | Socket a chip | chips on installed gear rise after Apply (a fitting chip is guaranteed in stock) |
 | 5 | Vendor and repair | vendor open 2.5 s |
 | 6 | Enter the Annex | a run starts |
-| 7 | Your combat kit | ability cast event + dodge, then "Got it" (stim / interact are optional ticks) |
+| 7 | Your combat kit | ability cast event + dodge, then "Got it" (patch / interact are optional ticks) |
 | 8 | Clear the pack | 3 kills + a pickup (item or credits) |
 | 9 | Back to town | town return from a run |
 | 10 | Spend it | "Finish and claim reward" (locker/vendor Recommended panel is spotlit) |
 
-Reward: 150c + 1 stim, once (replays never re-reward). The card always shows "Step X of 10" and "Skip tutorial" (needs a second tap within 3.5 s to confirm).
+Reward: 150c + 1 patch, once (replays never re-reward). The card always shows "Step X of 10" and "Skip tutorial" (needs a second tap within 3.5 s to confirm).
 
 ## UI
 - Card: top-left under the HUD bars (picks a spot that overlaps no HUD element); docked bottom bar while a panel is open (the panel shrinks via `--tutdock`).

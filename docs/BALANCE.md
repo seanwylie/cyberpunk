@@ -3,7 +3,7 @@
 Headless bot harness + tuning table + regression test. All numbers below come from `tools/balance` (6 seeds per cell, 888 runs per sweep).
 
 ## Tooling
-- `tools/balance/harness.mjs`: runs the real sim (`src/sim.ts`, no rendering, 30 Hz steps, seeded `Math.random`) in a headless page with a simple bot: BFS navigation along `g.objective()` (kills gate guard and lock elite, takes the controller, enters the boss arena), fights the nearest alerted enemy (priority: boss pylons, healers/summoners, boss adds), casts abilities when 2+ enemies or an elite/boss are within 6 tiles, uses a stim under 40% HP (the run's 2 stims), dodges telegraphed melee windups and incoming projectiles, steps out of telegraphed boss zones (but walks through environment hazards), respawns at the checkpoint when downed (a run fails after 4 deaths, 1100 s, or when stuck). It records clear, time-to-clear, deaths, damage taken by source (`mob:attack`, `env`, boss mechanic), boss TTK, mob TTK, ability casts and max single hit. A tiny `dmgSrc` label in `sim.ts` attributes projectile/zone damage.
+- `tools/balance/harness.mjs`: runs the real sim (`src/sim.ts`, no rendering, 30 Hz steps, seeded `Math.random`) in a headless page with a simple bot: BFS navigation along `g.objective()` (kills gate guard and lock elite, takes the controller, enters the boss arena), fights the nearest alerted enemy (priority: boss pylons, healers/summoners, boss adds), casts abilities when 2+ enemies or an elite/boss are within 6 tiles, uses a patch under 40% HP (the run's 2 patches), dodges telegraphed melee windups and incoming projectiles, steps out of telegraphed boss zones (but walks through environment hazards), respawns at the checkpoint when downed (a run fails after 4 deaths, 1100 s, or when stuck). It records clear, time-to-clear, deaths, damage taken by source (`mob:attack`, `env`, boss mechanic), boss TTK, mob TTK, ability casts and max single hit. A tiny `dmgSrc` label in `sim.ts` attributes projectile/zone damage.
 - Kits: `starter` (stock gear), `mid` (best green/blue per slot, half the sockets, <= blue chips), `blue` (same items, all sockets), `purple` (best <= purple, full <= purple chips), `orange` (the `idkfa` cheat). Player level = midpoint of the dungeon's level range.
 - **Par kit** (the kit a player is expected to bring; target 70-90% clear): annex/warehouse mid, foundry blue, clinic purple, tier I mid, tier II blue, tier III purple, tier IV purple.
 - `node tools/balance/run.mjs [--seeds 6] [--workers 4] [--mobs] [--par] [--kits a,b]` (needs a dev server, `URL=http://localhost:5173/`), `report.mjs`, `why.mjs` (per-level failure causes), `compare.mjs before.json after.json` (tables below). Raw sweeps are in `tools/balance/out/` (`before_final.json`, `after_final.json`).
@@ -147,18 +147,18 @@ sweep 18.3, cloak 7.6, control 16.3, bladeburst 18.5, reposition 15.0, brace 0.7
 - Balance numbers are still placeholders until human playtesting.
 
 ## Drop rates (`DROP_RATE_SCALE`, `src/config.ts`)
-Complaint: loot was far too frequent. Measured with `node tools/balance/drops.mjs --seeds 24 [--scale 1]` (kills every enemy in each dungeon at its max level on a seeded RNG; counts ground items, chips, stims, credits; raw tables in `tools/balance/out/drops_before.json|txt` and `drops_after.*`). `tests/drops.mjs` asserts the per-run range and the elite/boss guarantees.
+Complaint: loot was far too frequent. Measured with `node tools/balance/drops.mjs --seeds 24 [--scale 1]` (kills every enemy in each dungeon at its max level on a seeded RNG; counts ground items, chips, patches, credits; raw tables in `tools/balance/out/drops_before.json|txt` and `drops_after.*`). `tests/drops.mjs` asserts the per-run range and the elite/boss guarantees.
 
 What changed (`DROP` object; `DROP_RATE_SCALE` = 0.3):
-- Ordinary mobs: item/chip/stim chance 0.16 -> 0.16 x 0.3. Credit piles: chance 0.5 -> 0.5 x 0.3, pile size x(0.5/0.3), so ordinary credit income is about half (and ground piles go from ~45 to ~15 per Annex run).
+- Ordinary mobs: item/chip/patch chance 0.16 -> 0.16 x 0.3. Credit piles: chance 0.5 -> 0.5 x 0.3, pile size x(0.5/0.3), so ordinary credit income is about half (and ground piles go from ~45 to ~15 per Annex run).
 - Elites (def or affixed): 1 guaranteed roll + 1 extra at 40% (was 2 guaranteed). Bosses: 2 guaranteed rolls + 1 extra at 40% (was 3). Extras scale with `DROP.scale / DROP_RATE_SCALE`; signature drops, rarity weights (purple/orange stay rare), tutorial grants and idkfa are untouched. `DROP.scale = 1` restores old ordinary behaviour for comparisons.
 
-Gear drops per run (items + chips + stims), before -> after (full table in the out files):
+Gear drops per run (items + chips + patches), before -> after (full table in the out files):
 - Annex 13.2 -> 5.4 (items 6.0 -> 2.8); Foundry 15.6 -> 7.0; Clinic 12.3 -> 5.3; Warehouse 13.0 -> 6.0.
 - Tier I levels ~18.4 -> ~8.1 avg; tier II ~19 -> ~8.5; tier III ~22 -> ~10.8; tier IV Recall Yard 27.9 -> 14.5. Overall total is ~47% of before (items alone ~52%).
 - Purple items per run stay 0-1.7 and orange ~0 (rarity curve unchanged).
 
-Economy check: sell-all value of an Annex run (credits + selling every item) 858c -> 483c; vendor blue gear costs 300c, install 80/400c for blue/purple removals, stim 30c, so a run still funds roughly one blue purchase; tier III/IV runs give 1.6-3.6k. Credit income overall is ~76% of before because elite/boss credit piles are unchanged. Still placeholders pending human playtests.
+Economy check: sell-all value of an Annex run (credits + selling every item) 858c -> 483c; vendor blue gear costs 300c, install 80/400c for blue/purple removals, patch 30c, so a run still funds roughly one blue purchase; tier III/IV runs give 1.6-3.6k. Credit income overall is ~76% of before because elite/boss credit piles are unchanged. Still placeholders pending human playtests.
 
 ## Ability power pass (abilities are the main damage)
 
@@ -203,7 +203,7 @@ Tuning notes: the bot found that Control could turn the Overseer's pylons (boss 
 
 Tuning lives in `src/content/hardmode.ts` (HARD) plus `DROP`/`DROP_RATE_SCALE` in `config.ts`.
 
-**Bosses punish passivity** (`pressureTick` in `content/mechanics.ts`): camping within body radius + 3.2 for 2 s triggers a telegraphed quake ring (18% max HP, knockback 3.4); a hazard is placed under the player every ~6.5 s (9% max HP, faster under 50% boss HP); 2 ranged adds every 26 s; after 140 s the boss enrages (damage and tempo ramp up to 2x). Class multipliers: boss hp x1.05 dmg x1.05, elite x1.25/x1.3, mob x1.05/x1.15, times a per-tier factor. Sustain: stim heals 32 (was 45) with a 9 s cooldown, run regen halved. Packs aggro together (10 tiles with LOS, or whole group). Death costs 35% of carried credits and repair x1.5.
+**Bosses punish passivity** (`pressureTick` in `content/mechanics.ts`): camping within body radius + 3.2 for 2 s triggers a telegraphed quake ring (18% max HP, knockback 3.4); a hazard is placed under the player every ~6.5 s (9% max HP, faster under 50% boss HP); 2 ranged adds every 26 s; after 140 s the boss enrages (damage and tempo ramp up to 2x). Class multipliers: boss hp x1.05 dmg x1.05, elite x1.25/x1.3, mob x1.05/x1.15, times a per-tier factor. Sustain: patch heals 32 (was 45) with a 9 s cooldown, run regen halved. Packs aggro together (10 tiles with LOS, or whole group). Death costs 35% of carried credits and repair x1.5.
 
 **Bot results** (boss fights only, par kits, `tools/balance/run.mjs --boss --profile tank|skilled`, `bosssum.mjs`):
 
@@ -212,7 +212,7 @@ Tuning lives in `src/content/hardmode.ts` (HARD) plus `DROP`/`DROP_RATE_SCALE` i
 | tank-and-spank bot loses | 65% | 100% (tests/hardmode.mjs asserts >80%) |
 | skilled bot clears (<=1 death) | not measured (old full-run par clear 63-96%) | 63-67% overall; per tier 79/54/55/69/50% (T0..T4) |
 
-**Drops** (`tools/balance/drops.mjs`): Annex items+chips+stims per run 14.3 -> 3.3 (ground piles 33 -> 7); other dungeons 3.5-5.7, tier IV 7-8. Rarity: re-roll keep chance blue .35, purple .06, orange 0 (signature drops only). Affixed pack leaders roll .25; true elites 1 guaranteed; bosses 2 guaranteed with the second mostly a chip/stim. Grey items auto-sell on pickup (Settings > Gameplay "Auto-sell junk").
+**Drops** (`tools/balance/drops.mjs`): Annex items+chips+patches per run 14.3 -> 3.3 (ground piles 33 -> 7); other dungeons 3.5-5.7, tier IV 7-8. Rarity: re-roll keep chance blue .35, purple .06, orange 0 (signature drops only). Affixed pack leaders roll .25; true elites 1 guaranteed; bosses 2 guaranteed with the second mostly a chip/patch. Grey items auto-sell on pickup (Settings > Gameplay "Auto-sell junk").
 
 
 ## Heat pass (heat is the primary limiter, cooldown the secondary one)
@@ -236,10 +236,10 @@ Sean: "Heat is not an issue ever, cooldowns make it so heat isn't an issue ... i
 | Heat-efficiency tax | none | ability damage x(1 - 0.30 x reduction - 0.12 x cooling fraction): a maxed heat spec deals about 12-16% less |
 | Overheat | abilities offline, recover at 35 | 2.5 s minimum lockout, recover at 50, dissipation x0.8, +25% damage taken, autos at half rate/damage, auto heat x0.25, slower movement |
 | Vent (new) | n/a | `V` key or tap the heat bar: 1 s channel (abilities and autos offline, move x0.6), dumps 30 heat (45 when heat >= 75), 12 s cooldown, works while overheated |
-| Stim | heal | heal + vents 25 heat |
+| Patch | heal | heal + vents 25 heat |
 | Toggles, vent abilities | authored | scaled by the same x1.8 so heat-control builds keep their value |
 
-**Meaningful play:** hold heat under ~80, spend it on the right ability (cost tracks power), vent early in a lull (waiting for 75+ pays a bigger hot vent but risks overheating into a telegraph), save the stim for when both HP and heat are low, and use the existing enemy heat sources (hazard zones, hex spikes, boss floor patterns) as pressure that forces a vent. Heat-reduction chips and COOL gear are real but bounded; the damage tax means a pure heat spec is a sustain spec, not a spam spec.
+**Meaningful play:** hold heat under ~80, spend it on the right ability (cost tracks power), vent early in a lull (waiting for 75+ pays a bigger hot vent but risks overheating into a telegraph), save the patch for when both HP and heat are low, and use the existing enemy heat sources (hazard zones, hex spikes, boss floor patterns) as pressure that forces a vent. Heat-reduction chips and COOL gear are real but bounded; the damage tax means a pure heat spec is a sustain spec, not a spam spec.
 
 **HUD:** the heat bar reads `HEAT n`, turns amber at 60% (`warm`), orange at 80% (`HOT n`, plus a `V` hint when vent is ready) and red at overheat (`OVERHEATED - V VENT`, the existing 1 Hz pulse). Warm and hot are steady colours (no flashing; `tests/flash.mjs` still applies). The bar tooltip shows the live dissipation rate and vent state; ability buttons mark `!` when a cast would overheat; tooltips show the real cost after gear.
 

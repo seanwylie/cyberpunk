@@ -58,7 +58,7 @@ export function settingsHtml(ui:UIx):string{
     +krow(kb('X'),'Clear target')
     +krow(kb('F'),'Interact','Doors, caches, terminals')
     +krow(kb('C'),'Contacts','In town')
-    +krow(kb('T'),'Use stim')
+    +krow(kb('T'),'Use patch')
     +krow(kb('B'),'Return to town','Channelled; moving or taking damage interrupts')
     +krow(kb('I'),'Live pack','Items carried in a run')
     +krow(kb('M'),'Mute music')
