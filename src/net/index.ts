@@ -1,3 +1,4 @@
+import { partyName } from '../chars';
 // Multiplayer bootstrap. Offline/solo is the default: nothing connects until the player presses Connect in the Party panel
 // (or follows an invite link). Safe to import when no server exists.
 import type { Game } from '../sim';
@@ -11,7 +12,7 @@ export function initNet(g: Game, rend: Renderer) {
   let url = configuredServer(); const invite = (new URLSearchParams(location.search).get('party') || '').toUpperCase();
   if (!url && !isDev) return null; // production static build without a configured server: no multiplayer UI at all
   let net: NetClient | null = null; let sess: NetSession | null = null; let ui: PartyUI;
-  const name = () => { try { return localStorage.getItem('wv_name') || 'Guest'; } catch { return 'Guest'; } };
+  const name = () => partyName();
   const connect = (u: string) => {
     try { localStorage.setItem('wv_server', u); } catch {}
     net?.close(); if (sess?.active) sess.exit('reconnect', true);

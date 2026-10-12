@@ -654,3 +654,17 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 .wmnode span{ font:700 max(var(--fmin),calc(10px*var(--fs))) "Roboto Condensed",sans-serif; letter-spacing:.06em; white-space:nowrap; text-shadow:0 1px 2px #000; }
 .wmnode.new span{ opacity:.7; } .wmnode.sel i{ outline:2px solid #fff; outline-offset:2px; } .wmnode.here i{ width:16px; height:16px; } .wmnode.above i{ border-style:dashed; }
 .wmmeta,.wmrow{ display:flex; flex-wrap:wrap; gap:4px; } .wmst{ font:700 max(var(--fmin),calc(10px*var(--fs))) "Roboto Condensed",sans-serif; color:var(--sc); border:1px solid var(--sc); border-radius:3px; padding:1px 5px; letter-spacing:.05em; }
+/* character select (src/charselui.ts) */
+.charswin{ max-width:min(860px,96vw); }
+.csintro{ margin:0 0 8px; }
+.csgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+.cscard{ display:flex; flex-direction:column; gap:4px; min-height:88px; padding:8px; border:1px solid rgba(120,220,255,.25); border-radius:6px; background:rgba(10,16,24,.7); color:inherit; font:inherit; text-align:left; min-width:0; }
+.cscard.on{ border-color:#3ef0ff; box-shadow:0 0 0 1px #3ef0ff inset; }
+.cscard .csn,.cscard small{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cscard.csempty{ align-items:center; justify-content:center; cursor:pointer; opacity:.85; }
+.cscard.dim{ opacity:.3; cursor:default; }
+.cscard .csrow{ display:flex; gap:6px; margin-top:auto; }
+.cscard .csrow .btn{ flex:1; min-height:32px; }
+.cscard .csrow .csdel{ flex:0 0 36px; }
+.cscard input{ width:100%; min-width:0; box-sizing:border-box; }
+.csbody{ display:block; width:100%; flex:1 1 auto; min-width:0; }

@@ -27,6 +27,7 @@ const krow=(keys:string,what:string,note='')=>`<div class="krow">${keys}<span cl
 export function settingsHtml(ui:UIx):string{
   const g=ui.g, st=g.save.settings, tab=S.tab; let c='';
   if(tab==='gameplay') c=head('Gameplay','How combat looks and what the game tells you about loot.')
+    +row('Characters','Switch, create (free, up to 10) or delete characters. Each has its own level, traits and gear.',`<button type="button" class="btn" data-act="s-chars">Characters</button>`)
     +row('Replay tutorial','Walk through the first-run guide again: contracts, the locker, the vendor and your first run.',`<button type="button" class="btn" data-act="replaytut">Replay tutorial</button>`)
     +row('Upgrade recommendations','Show the Recommended panel and ▲ badges in the locker and vendor.',sw('rechide',st.recHidden!==true,'Upgrade recommendations'),{tag:'label',id:'s-rechide'})
     +row('Show station markers','Town wayfinding: arrows at the screen edge pointing to Job Board, Implant Parts, Gate and the other stations that are off screen.',sw('stationmk',st.stationMarkers!==false,'Show station markers'),{tag:'label',id:'s-stationmk'})
@@ -152,7 +153,7 @@ export function settingsInput(ui:UIx,e:Event):boolean{ if(ui.modal!=='settings')
   if(t.type==='checkbox'){ apply(ui,k,t.checked); if(k==='llmon'||k==='devreset'||k==='reduced'||k==='music'||k==='dmgnum'||k==='joyfixed'){ if(k==='llmon'||k==='devreset') keep(ui,t); } return true; }
   apply(ui,k,t.value); if(k.startsWith('llm')){ const b=document.querySelector('.sbadge'); if(b) b.outerHTML=badgeHtml(ui.g.save.settings.llm); } return true; }
 
-export function settingsClick(ui:UIx,el:HTMLElement,a:string):boolean{ const g=ui.g; ui.audio.resume();
+export function settingsClick(ui:UIx,el:HTMLElement,a:string):boolean{ const g=ui.g; ui.audio.resume(); if(a==='s-chars'){ ui.open('chars'); return true; }
   switch(a){
     case 's-tab': setTab(ui,el.dataset.tab!); return true;
     case 's-seg': apply(ui,el.dataset.in!,el.dataset.v!); keep(ui,el); return true;

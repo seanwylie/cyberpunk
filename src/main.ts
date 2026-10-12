@@ -15,6 +15,7 @@ import { Q } from './quality';
 import { initMobile, registerSW } from './mobile';
 import { Tutorial } from './tutorial';
 import { initNet } from './net';
+import { showCharsOnLoad } from './charselui';
 
 try{ (document as any).fonts?.load('600 14px "Roboto Condensed"'); }catch{}
 import { buildTownLevel } from './worldtowns';
@@ -46,4 +47,4 @@ window.addEventListener('keydown',e=>{ if(e.key==='F3'){ e.preventDefault(); Q.s
 function frame(now:number){ const dt=(now-last)/1000; last=now; Q.sample(dt*1000); const fo=fpsOn||Q.showFps; if(fo!==(fpsEl.style.display==='block')) fpsEl.style.display=fo?'block':'none'; if(!document.hidden){ input.tick(); game.update(dt); rend.draw(dt); ui.hud(); tut?.tick(); } frames++; ft+=dt; wMax=Math.max(wMax,dt*1000); if(ft>=1){ fps=frames/ft; if(fo) fpsEl.textContent=fps.toFixed(0)+' fps  worst '+wMax.toFixed(0)+'ms  '+rend.canvas.width+'x'+rend.canvas.height+'  '+Q.tier+(Q.pref==='auto'?'*':''); wMax=0; frames=0; ft=0; (window as any).__fps=fps; } requestAnimationFrame(frame); }
 requestAnimationFrame(frame);
 import('./version').then(v=>v.startVersionWatch());
-(window as any).__game=game; (window as any).__ui=ui; { const sync=()=>{ const b=document.getElementById('idkfabadge'); if(b) b.style.display=idkfaActive(game.save)?'inline-block':'none'; }; sync(); setInterval(sync,500); } { const bc=new URLSearchParams(location.search).get('build'); if(bc) setTimeout(()=>viewCode(ui,bc),800); } (window as any).__tut=tut; (window as any).__rend=rend; (window as any).__audio=audio; (window as any).__enemies=ENEMIES;
+(window as any).__game=game; (window as any).__ui=ui; { const sync=()=>{ const b=document.getElementById('idkfabadge'); if(b) b.style.display=idkfaActive(game.save)?'inline-block':'none'; }; sync(); setInterval(sync,500); } if(showCharsOnLoad()) setTimeout(()=>{ if(!ui.modal) ui.open('chars'); },50); { const bc=new URLSearchParams(location.search).get('build'); if(bc) setTimeout(()=>viewCode(ui,bc),800); } (window as any).__tut=tut; (window as any).__rend=rend; (window as any).__audio=audio; (window as any).__enemies=ENEMIES;

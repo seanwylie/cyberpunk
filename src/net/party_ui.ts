@@ -1,3 +1,4 @@
+import { partyName, setPartyName } from '../chars';
 // Party button (top-right tray) + compact party panel (progressive disclosure: closed by default; code / invite / members / chat inside).
 import type { NetClient } from './client';
 import type { NetSession } from './session';
@@ -41,7 +42,7 @@ export class PartyUI {
   private inviteLink() { const u = new URL(location.href); u.search = ''; u.searchParams.set('server', this.url); u.searchParams.set('party', this.net!.party!.code); return u.toString(); }
   private onClick(e: Event) {
     const t = (e.target as HTMLElement).closest('[data-a]') as HTMLElement | null; if (!t) return; const a = t.dataset.a!; const $ = (id: string) => (this.panel.querySelector('#' + id) as HTMLInputElement | null)?.value || ''; const n = this.net;
-    if (a === 'connect') { const u = $('pp-url').trim(); if (u) { try { localStorage.setItem('wv_name', $('pp-name').trim()); } catch {} this.url = u; this.connect(u); } return; }
+    if (a === 'connect') { const u = $('pp-url').trim(); if (u) { try { setPartyName($('pp-name').trim()); } catch {} this.url = u; this.connect(u); } return; }
     if (a === 'forget') { this.forget(); return; } if (!n) return;
     if (a === 'create') { this.saveName(); n.createParty(); } else if (a === 'join') { this.saveName(); n.joinParty($('pp-code')); } else if (a === 'leave') { n.leaveParty(); if (this.sess?.active) this.sess.exit('left party', true); }
     else if (a === 'ready') n.setReady(!(n.party?.members.find(m => m.id === n.id)?.ready)); else if (a === 'start') n.start(); else if (a === 'kick') n.kick(t.dataset.id!);
@@ -49,10 +50,10 @@ export class PartyUI {
     else if (a === 'chat') { const v = $('pp-chat').trim(); if (v) { n.chat(v); (this.panel.querySelector('#pp-chat') as HTMLInputElement).value = ''; } }
     else if (a === 'leaveinst') { this.sess?.exit('left', true); n.send({ t: 'leave_instance' }); }
   }
-  private saveName() { const nm = (this.panel.querySelector('#pp-name') as HTMLInputElement)?.value.trim(); if (nm) { try { localStorage.setItem('wv_name', nm); } catch {} this.net!.profile(nm, Math.max(1, (this.g.save as any).level || 1), this.sess?.look()); } }
+  private saveName() { const nm = (this.panel.querySelector('#pp-name') as HTMLInputElement)?.value.trim(); if (nm) { try { setPartyName(nm); } catch {} this.net!.profile(nm, Math.max(1, (this.g.save as any).level || 1), this.sess?.look()); } }
   render() {
     this.syncBtn(); const n = this.net; const p = this.panel; if (!this.open) return; const keep = { chat: (p.querySelector('#pp-chat') as HTMLInputElement | null)?.value, name: (p.querySelector('#pp-name') as HTMLInputElement | null)?.value, url: (p.querySelector('#pp-url') as HTMLInputElement | null)?.value, code: (p.querySelector('#pp-code') as HTMLInputElement | null)?.value }; const focus = document.activeElement?.id;
-    const name = keep.name ?? (localStorage.getItem('wv_name') || 'Guest-' + Math.floor(1000 + Math.random() * 9000)); let h = '';
+    const name = keep.name ?? (partyName() || 'Guest-' + Math.floor(1000 + Math.random() * 9000)); let h = '';
     if (!n || n.state !== 'online') {
       h = `<h4>Multiplayer <span class="mut">offline</span></h4><div class="mut">Solo play is unaffected. Connect to a server to play in a party (2-4) and see other players in town.</div>
       <div class="row"><input id="pp-name" maxlength="16" value="${esc(name)}" aria-label="Display name"></div><div class="row"><input id="pp-url" value="${esc(keep.url ?? this.url ?? '')}" placeholder="ws://localhost:8787" aria-label="Server URL"><button data-a="connect" class="go">${n?.state === 'connecting' ? 'Connecting…' : 'Connect'}</button></div>${n?.lastErr ? `<div class="mut">${esc(n.lastErr)}</div>` : ''}${this.url ? '<div class="row"><button data-a="forget">Forget server</button></div>' : ''}`;
