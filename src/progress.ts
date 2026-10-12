@@ -30,23 +30,28 @@ function tileNear(sim:Sim,px:number,py:number,need:number):{x:number;y:number}|n
 export function pullTo(sim:Sim,e:any,need:number):boolean{ const p=tileNear(sim,sim.px,sim.py,need); if(!p) return false; e.x=p.x; e.y=p.y; e.home={x:p.x,y:p.y}; e.alert=true; return true; }
 
 /** called once per world tick from Sim.updateWorldRun */
-export function progressTick(sim:Sim,dt:number){ const inst=sim.inst; if(!inst||sim.mode!=='run') return; const f=inst.flags; if(f.bossSpawned||f.bossDead||sim.grace) { sim.progT=0; return; } // the calm-start grace never counts as a stall
+export function progressTick(sim:Sim,dt:number){ const C=sim.progCfg||PROG; const inst=sim.inst; if(!inst||sim.mode!=='run') return; const f=inst.flags; if(f.bossSpawned||f.bossDead||sim.grace) { sim.progT=0; return; } // the calm-start grace never counts as a stall
+  // boss reveal fallback: standing inside the open boss chamber for 1.5 s always starts the fight, even when the exact reveal spot/line is blocked by a pillar
+  if(f.controller&&sim.zoneAt(sim.px,sim.py)==='boss'){ sim.progBossT=(sim.progBossT||0)+dt; if(sim.progBossT>1.5){ sim.progBossT=0; sim.spawnBoss(); return; } } else sim.progBossT=0;
   const kills=Object.values(inst.kills||{}).reduce((a:number,b:any)=>a+(b as number),0); const key=[f.gate1,f.lock2,f.controller,kills].join('|');
   if(key!==sim.progKey){ sim.progKey=key; sim.progT=0; sim.progPulled=false; }
   sim.progT=(sim.progT||0)+dt; sim.progScan=(sim.progScan||0)-dt; const g=gating(sim); if(!g.door) return;
-  if(sim.progScan<=0){ sim.progScan=PROG.scanS; const L:Level=sim.level;
+  if(sim.progScan<=0){ sim.progScan=C.scanS; const L:Level=sim.level;
     for(const e of g.mobs){ if(stageNear(L,e.x,e.y)<=g.need) continue; if(pullTo(sim,e,g.need)){ sim.progFixed=(sim.progFixed||0)+1; sim.toast(ENEMIES[e.type].name+' was out of reach: it comes to you.'); } else { sim.killEnemy(e); sim.progFixed=(sim.progFixed||0)+1; } } }
-  if(g.mobs.length&&sim.progT>PROG.pullS&&!sim.progPulled){ sim.progPulled=true; let n=0; for(const e of g.mobs) if(pullTo(sim,e,g.need)) n++; if(n) sim.toast(n>1?'The remaining guards come for you.':'The last guard comes for you.'); }
-  if(sim.progT>PROG.forceS&&(g.door==='gate1'||g.door==='lock2')){ f[g.door]=true; sim.openDoor(g.door); sim.progT=0; sim.progForced=(sim.progForced||0)+1; sim.toast('Emergency override: '+(sim.level.doors.find((d:any)=>d.id===g.door)?.label||'door')+' opened.'); sim.saveNow?.(); }
+  if(g.mobs.length&&sim.progT>C.pullS&&!sim.progPulled){ sim.progPulled=true; let n=0; for(const e of g.mobs) if(pullTo(sim,e,g.need)) n++; if(n) sim.toast(n>1?'The remaining guards come for you.':'The last guard comes for you.'); }
+  if(sim.progT>C.forceS&&(g.door==='gate1'||g.door==='lock2')){ f[g.door]=true; sim.openDoor(g.door); sim.progT=0; sim.progForced=(sim.progForced||0)+1; sim.toast('Emergency override: '+(sim.level.doors.find((d:any)=>d.id===g.door)?.label||'door')+' opened.'); sim.saveNow?.(); }
 }
 
 /** HUD step for the stages before the lock: null hands back to the legacy objective chain */
 export function objectiveStep(sim:Sim):{text:string;x:number;y:number;kind:string}|null{ const f=sim.inst.flags, L:Level=sim.level;
-  const door=(id:string)=>{ const d=L.doors.find(d=>d.id===id); if(!d||!d.tiles.length) return null; let sx=0,sy=0; for(const [x,y] of d.tiles){ sx+=x; sy+=y; } return {x:sx/d.tiles.length+.5,y:sy/d.tiles.length+.5}; };
-  const here=stageNear(L,sim.px,sim.py);
+  /** a floor tile just past the door on the next-stage side (so walking to the arrow takes the player through, not onto, the doorway) */
+  const door=(id:string,k:number)=>{ const d=L.doors.find(d=>d.id===id); if(!d||!d.tiles.length) return null; let sx=0,sy=0; for(const [x,y] of d.tiles){ sx+=x; sy+=y; } const cx=sx/d.tiles.length+.5, cy=sy/d.tiles.length+.5; const st=stages(L); let best:{x:number;y:number}|null=null, bd=-1;
+    for(let y=hf(cy)-4;y<=cy+4;y++)for(let x=hf(cx)-4;x<=cx+4;x++){ if(x<0||y<0||x>=L.w||y>=L.h) continue; const i=y*L.w+x; if(L.solid[i]||st[i]!==k||d.tiles.some(t=>t[0]===x&&t[1]===y)) continue; const dd=Math.hypot(x+.5-cx,y+.5-cy); if(dd<=3.2&&dd>bd){ bd=dd; best={x:x+.5,y:y+.5}; } }
+    return best; }; // null: the door does not separate anything (e.g. the Annex cloak passage already joins both sides)
+  const here=stageAt(L,sim.px,sim.py);
   if(!f.gate1){ const g=gating(sim).mobs; if(!g.length) return null; let b=g[0],bd=1e9; for(const e of g){ const d=Math.hypot(e.x-sim.px,e.y-sim.py); if(d<bd){ bd=d; b=e; } } return {text:'Next: destroy the gate guard'+(g.length>1?'s ('+g.length+' left)':' ('+ENEMIES[b.type].name+')'),x:b.x,y:b.y,kind:'guard'}; }
-  if(here<1){ const p=door('gate1'); if(p) return {text:'Next: go through the open gate',x:p.x,y:p.y,kind:'gate'}; }
-  if(f.lock2&&here<2){ const p=door('lock2'); if(p) return {text:'Next: go through the open lock',x:p.x,y:p.y,kind:'gate'}; }
+  if(here<1){ const p=door('gate1',1); if(p) return {text:'Next: go through the open gate',x:p.x,y:p.y,kind:'gate'}; }
+  if(f.lock2&&here<2){ const p=door('lock2',2); if(p) return {text:'Next: go through the open lock',x:p.x,y:p.y,kind:'gate'}; }
   return null; }
 
 /** Settings > Unstuck: snap to walkable ground on the reachable side, pull any gating mob to the player, and open the next door outright when nothing gates it. */

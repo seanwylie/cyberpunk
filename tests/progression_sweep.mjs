@@ -30,15 +30,21 @@ if(!nodeOnly){
       const g1=await ev(id=>{ const g=window.__game; const e=g.enemies.find(x=>x.id===id); g.killEnemy(e); g.update(0.05); return {gate:g.inst.flags.gate1,obj:g.objective()?.text}; },r.id);
       ok(g1.gate&&/go through the open gate/.test(g1.obj),id+': killing it opens the gate and the arrow points at it ("'+g1.obj+'")');
       // watchdog: lock elite left idle and nothing happens -> pulled at PROG.pullS, door forced at PROG.forceS
-      const w=await ev(async()=>{ const g=window.__game; const P=await import('/src/progress.ts'); P.PROG.pullS=3; P.PROG.forceS=6; const L=g.level; const st=P.stages(L); let t=-1; for(let i=0;i<st.length;i++) if(st[i]===1&&!L.solid[i]&&!L.solid[i+1]&&!L.solid[i-1]){ t=i; break; } g.px=(t%L.w)+.5; g.py=((t/L.w)|0)+.5; g.dbg.god=true;
+      const w=await ev(async()=>{ const g=window.__game; const P=await import('/src/progress.ts'); g.progCfg={pullS:3,forceS:6,scanS:1}; const L=g.level; const st=P.stages(L); let t=-1; for(let i=0;i<st.length;i++) if(st[i]===1&&!L.solid[i]&&!L.solid[i+1]&&!L.solid[i-1]){ t=i; break; } g.px=(t%L.w)+.5; g.py=((t/L.w)|0)+.5; g.dbg.god=true;
         const le=g.enemies.filter(e=>!e.dead&&e.type===g.dd.lockElite); for(const e of g.enemies) if(!e.dead&&e.type!==g.dd.lockElite&&!window.__wvBoss?.(e)) e.dead=true; const d0=le.length?Math.hypot(le[0].x-g.px,le[0].y-g.py):0; g.progT=0;
-        for(let i=0;i<80;i++) g.update(0.05); const d1=le.length?Math.hypot(le[0].x-g.px,le[0].y-g.py):0; for(const e of le){ e.hp=1e9; e.maxHp=1e9; } for(let i=0;i<100;i++){ g.update(0.05); } P.PROG.pullS=75; P.PROG.forceS=180; return {d0,d1,lock:g.inst.flags.lock2,n:le.length}; });
+        for(let i=0;i<80;i++) g.update(0.05); const d1=le.length?Math.hypot(le[0].x-g.px,le[0].y-g.py):0; for(const e of le){ e.hp=1e9; e.maxHp=1e9; } for(let i=0;i<100;i++){ g.update(0.05); } g.progCfg=null; return {d0,d1,lock:g.inst.flags.lock2,n:le.length}; });
       ok(w.n===0||w.d1<w.d0||w.d1<12,id+': stall watchdog pulls the lock elite to the player ('+w.d0.toFixed(1)+' -> '+w.d1.toFixed(1)+')');
       ok(w.lock,id+': stall watchdog force-opens the lock after the timeout');
     }
     // Unstuck from Settings
     await start('warehouse',7); const u=await ev(()=>{ const g=window.__game; for(const e of g.enemies) if(e.type===g.dd.gateGuard) e.dead=true; g.inst.flags.gate1=false; for(const d of g.level.doors) if(d.id==='gate1') for(const [x,y] of d.tiles) g.level.solid[y*g.level.w+x]=1; const fu=g.update.bind(g); const m=g.unstuck(); return {m,gate:g.inst.flags.gate1}; });
     ok(u.gate,'Unstuck opens the next gate when nothing is left to fight ("'+u.m+'")');
+    // bot run-through (tools/balance/harness.mjs): the bot must never get stuck. Fast: the three balance-stuck cases; --full: every dungeon x 2 seeds.
+    { const { runJob }=await import('../tools/balance/harness.mjs'); const D=await ev(async()=>(await import('/src/content/dungeons.ts')).DUNGEON_LIST.map(d=>[d.id,d.tier||0]));
+      const kitOf=t=>['mid','mid','blue','purple','purple'][t]||'mid', lvOf=t=>[15,18,26,35,44][t]||18;
+      const jobs=full?D.flatMap(([id,t])=>[4000,4053].map(seed=>({id,t,seed}))):[{id:'annex',t:0,seed:4053},{id:'foundry',t:0,seed:4106},{id:'coke_ovens',t:1,seed:4000}];
+      const stuck=[]; for(const j of jobs){ const f=await launch({query:'?splash=hold'}); try{ const r=await f.page.evaluate(runJob,{mode:'level',id:j.id,kit:j.id==='foundry'?'blue':kitOf(j.t),level:j.id==='foundry'?24:lvOf(j.t),seed:j.seed,maxT:1100,maxDeaths:4}); if(r.stuck||r.error) stuck.push(j.id+'@'+j.seed+(r.stuckAt?' at '+r.stuckAt.pos+' ('+r.stuckAt.obj?.text+')':'')+(r.error?' '+r.error:'')); } finally{ await f.browser.close(); } }
+      ok(!stuck.length,'bot run-through never stuck ('+jobs.length+' runs) '+stuck.join(' | ')); }
     ok(!errors.length,'no page errors '+errors.slice(0,2).join(' | '));
     await browser.close(); }
 }
