@@ -1,3 +1,4 @@
+import { feature } from './features';
 // Settings modal: tabbed panel (left rail) with consistent rows, switches, sliders and segmented controls.
 // Kept out of ui.ts so the main UI file stays small; ui.ts only hosts the hooks (settings(), input(), click(), esc(), render()).
 import { key, RARITY_COLOR, applyUiScale } from './config';
@@ -42,7 +43,10 @@ export function settingsHtml(ui:UIx):string{
     +row('FPS overlay','Show frame rate and render resolution (F3 on desktop).',sw('showfps',!!st.showFps,'FPS overlay'),{tag:'label',id:'s-showfps'})
     +row('Announce legendaries','When you find an orange or season exclusive, post one short line to your party (or town chat when solo online). Never more than once a minute.',sw('announce',st.announceDrops!==false,'Announce legendaries'),{tag:'label',id:'s-announce'})
     +row('Auto-sell junk','Grey (junk) items are sold for credits the moment you pick them up, so they never fill your bag.',sw('autosell',st.autoSellGrey!==false,'Auto-sell junk'),{tag:'label',id:'s-autosell'})
-    +row('Reduced incidental effects','Tones down flashes, shake and ambient particles. Combat telegraphs stay.',sw('reduced',!!st.reducedFx,'Reduced incidental effects'),{tag:'label',id:'s-reduced'});
+    +row('Reduced incidental effects','Tones down flashes, shake and ambient particles. Combat telegraphs stay.',sw('reduced',!!st.reducedFx,'Reduced incidental effects'),{tag:'label',id:'s-reduced'})
+    +row('Moment cards','Once per session the game saves your best moment (nemesis kill, orange drop, gateway clear, flawless boss) as a shareable card.',sw('fmoments',feature('moments',st),'Moment cards'),{tag:'label',id:'s-fmoments'})
+    +row('Clip buffer','Keeps the last few seconds of play (max 3 MB) so a moment can include a short clip. Off by default; uses some battery.',sw('fclip',feature('momentClip',st),'Clip buffer'),{tag:'label',id:'s-fclip'})
+    +row('Nemesis voice','Nemesis taunts play a short voice line. Subtitles always show.',sw('fvoice',feature('nemesisVoice',st),'Nemesis voice'),{tag:'label',id:'s-fvoice'});
   else if(tab==='content') c=head('Content','Optional mature content. Off by default; applies only in dungeons, never in town.')
     +row('Blood & gore','Off: nothing. Mild: small droplets and a pool where an enemy falls. Bloody: wet hit bursts, floor splatter, gibs, severed limbs and boss limb breaks; robots spark and leak coolant instead. Intended for players 16+. It never affects players or NPCs, and each person in a party uses their own setting.',seg('gore',st.gore||'off',[['off','Off'],['mild','Mild'],['bloody','Bloody']],'Blood and gore'))
     +`<p class="sd">Reduced incidental effects also hides airborne gore and the screen-edge spray; floor stains stay and fade away on their own.</p>`;
@@ -132,7 +136,7 @@ function keep(ui:UIx,focusEl?:HTMLElement|null,reset=false){ const sb=document.q
 export function settingsTab(ui:UIx,id:string){ setTab(ui,id,false); }
 function setTab(ui:UIx,id:string,focus=true){ if(!TABS.some(t=>t[0]===id)) return; S.tab=id; S.confirm=null; try{ localStorage.setItem(TAB_KEY,id); }catch{} S.focus=focus?'#stab-'+id:''; S.scroll=0; ui.render(); }
 
-const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','autosell','recnudge','stationmk','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','storyai','storytype','llmurl','llmkey','llmmodel','devreset']);
+const KEYS=new Set(['quality','showfps','gore','dmgnum','lootlabels','lootmin','uisize','reduced','rechide','autosell','recnudge','stationmk','minimap','joyfixed','music','vol','musicvol','sfxvol','llmon','storyai','storytype','llmurl','llmkey','llmmodel','devreset','fmoments','fclip','fvoice']);
 /** returns true if handled. v is the new value (string for selects/ranges/text, boolean for switches) */
 function apply(ui:UIx,k:string,v:any,final=true){ const g=ui.g, s=g.save, st=s.settings;
   switch(k){
@@ -144,6 +148,7 @@ function apply(ui:UIx,k:string,v:any,final=true){ const g=ui.g, s=g.save, st=s.s
     case 'sfxvol': st.sfxVol=+v; ui.audio.setSfxVolume(st.sfxVol); if(final) preview(ui); break;
     case 'storyai': st.storyAi=!!v; break; case 'citypub': st.cityPublic=!!v; (globalThis as any).__net?.session?.sendProfile?.(); break; case 'storytype': st.storyTypewriter=!!v; break; case 'llmon': st.llm.enabled=!!v; break; case 'llmurl': st.llm.url=v; break; case 'llmkey': st.llm.key=v; break; case 'llmmodel': st.llm.model=v; break;
     case 'rechide': st.recHidden=!v; break; case 'recnudge': st.recNudge=!!v; break; case 'stationmk': st.stationMarkers=!!v; break;
+    case 'fmoments': (st.features??={}).moments=!!v; break; case 'fclip': (st.features??={}).momentClip=!!v; (window as any).__moments?.syncClip(); break; case 'fvoice': (st.features??={}).nemesisVoice=!!v; break;
     case 'quality': st.quality=v; Q.setPref(v); break; case 'showfps': st.showFps=!!v; Q.showFps=!!v; break;
     case 'minimap': ui.setMinimap(!!v); return;
     case 'devreset': st.devFreeReset=!!v; break; }

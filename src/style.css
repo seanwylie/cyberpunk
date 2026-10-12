@@ -737,3 +737,23 @@ img.splash{width:84px;height:112px;object-fit:cover;border-radius:4px;border:1px
 .cnwrap{display:flex;flex-direction:column;gap:10px;min-width:0}.cnhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-left:3px solid var(--fc);padding-left:8px}
 .cnlist{display:flex;flex-direction:column;gap:8px}.cnitem{padding:8px 10px;background:rgba(255,255,255,.04);border-radius:3px;overflow-wrap:anywhere}.cnitem b{display:block;color:#f2d79a;margin-bottom:2px}
 .cbark{font-style:italic;opacity:.92}
+/* nemesis card (docs/NEMESIS.md): painterly, restrained */
+.nem-card{position:fixed;left:50%;top:26%;transform:translate(-50%,-8px);max-width:min(420px,92vw);padding:12px 18px 12px;background:linear-gradient(160deg,rgba(28,22,18,.94),rgba(14,12,12,.94));border:1px solid #6b5636;border-radius:6px;box-shadow:0 10px 30px rgba(0,0,0,.55),inset 0 0 24px rgba(201,164,106,.08);color:#e8dcc4;font-family:"Roboto Condensed",sans-serif;opacity:0;pointer-events:none;transition:opacity .35s,transform .35s;z-index:60;text-align:center;overflow:hidden}
+.nem-card.on{opacity:1;transform:translate(-50%,0)}
+.nem-head{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#b9a27a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nem-name{font-size:20px;font-weight:700;color:#e3c27a;margin-top:2px;overflow-wrap:anywhere}
+.nem-title{font-size:12px;font-weight:600;color:#b9a27a}
+.nem-trophy{font-size:12px;color:#c8b48e;margin-top:2px;overflow-wrap:anywhere}
+.nem-line{font-size:14px;font-style:italic;margin-top:6px;color:#efe6d2;overflow-wrap:anywhere}
+.nem-mods{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+.nem-mod{font-size:11px;padding:1px 7px;border:1px solid #5a4a30;border-radius:10px;color:#d8c49a;white-space:nowrap;pointer-events:auto}
+/* moments (docs/MOMENTS.md) */
+.moment-btn{position:fixed;right:12px;bottom:calc(150px + env(safe-area-inset-bottom));z-index:55;padding:5px 12px;font:600 12px "Roboto Condensed",sans-serif;color:#e8dcc4;background:rgba(24,20,16,.9);border:1px solid #6b5636;border-radius:14px;cursor:pointer;white-space:nowrap}
+.moment-btn.new{box-shadow:0 0 0 1px #c9a46a,0 0 12px rgba(201,164,106,.35)}
+.moment-panel{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(6,5,5,.7);z-index:70}
+.mp-box{width:min(720px,94vw);max-height:92vh;overflow:auto;background:#15110e;border:1px solid #6b5636;border-radius:6px;padding:12px;color:#e8dcc4;font-family:"Roboto Condensed",sans-serif}
+.mp-head{display:flex;justify-content:space-between;align-items:center;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#c9a46a;margin-bottom:8px}
+.mp-x{background:none;border:0;color:#c9b48e;font-size:16px;cursor:pointer}
+.mp-img,.mp-clip{display:block;width:100%;height:auto;border-radius:3px}.mp-clip{margin-top:8px}
+.mp-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.mp-row button{flex:1 1 90px;min-width:0;padding:7px 8px;font:600 13px "Roboto Condensed",sans-serif;color:#efe4cc;background:#2a221a;border:1px solid #6b5636;border-radius:4px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mp-msg{min-height:16px;font-size:12px;color:#b9a27a;margin-top:6px}

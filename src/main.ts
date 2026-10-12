@@ -1,3 +1,5 @@
+import { feature } from './features';
+import { Moments } from './moments_ui';
 import { idkfaActive } from './idkfa_toggle';
 import { viewCode } from './buildui';
 import './memtrack';
@@ -25,11 +27,11 @@ applyUiScale(save.settings.uiSize||'M'); const audio=new AudioSys(); audio.vol=s
 if((save as any)._chipMigrated){ persist(save); }
 Q.setPref(save.settings.quality||'auto'); Q.showFps=!!save.settings.showFps;
 let ui:UI; let tut:Tutorial|undefined; let beats:StoryBeats|undefined;
-cityInit(); let cityG:any=null;
-const game=new Game(save,(t,p)=>{ tut?.event(t,p); if(cityG) cityEvent(cityG,t,p); if(t==='sfx') audio.sfx(p); else if(t==='musickey') audio.setMusicKey(p); else if(t==='musicretry') audio.noteMusicRetry(); else if(t==='musicphase') audio.setMusicPhase(p); else if(t==='musicint') audio.setMusicIntensity(p); else if(t==='stinger') audio.stinger(p); else if(t==='musicnudge') audio.nudgeMusic(); else if(t==='musicarea') audio.setMusicArea(p); else if(t==='towntheme') audio.setTownTheme(p); else if(t==='music') audio.setState(p); else if(t==='beat') beats?.fire(p); else ui?.handle(t,p); });
+cityInit(); let cityG:any=null; let moments:any=null;
+const game=new Game(save,(t,p)=>{ tut?.event(t,p); if(cityG) cityEvent(cityG,t,p); if(t==='nemesis') import('./nemesis_ui').then(m=>m.showNemesis(game,p)); else if(t==='moment') moments?.event(p); if(t==='sfx') audio.sfx(p); else if(t==='musickey') audio.setMusicKey(p); else if(t==='musicretry') audio.noteMusicRetry(); else if(t==='musicphase') audio.setMusicPhase(p); else if(t==='musicint') audio.setMusicIntensity(p); else if(t==='stinger') audio.stinger(p); else if(t==='musicnudge') audio.nudgeMusic(); else if(t==='musicarea') audio.setMusicArea(p); else if(t==='towntheme') audio.setTownTheme(p); else if(t==='music') audio.setState(p); else if(t==='beat') beats?.fire(p); else ui?.handle(t,p); });
 cityG=game; ui=new UI(game,audio);
 beats=new StoryBeats(()=>game.save); ui.beats=beats; beats.onEntry=e=>{ ui.syncStoryDot(); showStoryCard(e,()=>game.mode==='town'&&!ui.modal&&!(tut&&!tut.disabled&&game.save.tutorial?.status==='active'),document.getElementById('toasts'),en=>ui.openStory(en)); if(ui.modal==='fixer') ui.render(); }; (window as any).__beats=beats;
-const canvas=document.getElementById('game') as HTMLCanvasElement; const rend=new Renderer(canvas,game);
+const canvas=document.getElementById('game') as HTMLCanvasElement; const rend=new Renderer(canvas,game); if(feature('moments',save.settings)||feature('momentClip',save.settings)){ moments=new Moments(game,canvas); } (window as any).__moments=moments||{ syncClip(){ if(!moments){ moments=new Moments(game,canvas); (window as any).__moments=moments; } } };
 tut=new Tutorial(game,ui,rend); ui.tut=tut; try{ initNet(game,rend); }catch(e){ console.warn('multiplayer init failed (solo unaffected)',e); }
 game.townPreload=async id=>{ if(id!=='rustline') await rend.preloadTown(id,buildTownLevel(id)); };
 const input=new Input(game,rend,audio,{ modalOpen:()=>ui.modalOpen(), onToggleInv:()=>ui.toggleLive(), onEsc:()=>ui.esc() },canvas);
