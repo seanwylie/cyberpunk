@@ -13,6 +13,8 @@ for (const [w, h] of SIZES) for (const rate of [1, 4]) for (let att = 1; att <= 
   const { browser, page, ctx, errors } = await launch({ viewport: { width: w, height: h } });
   const cdp = await ctx.newCDPSession(page); await page.waitForFunction(() => window.__rend?.town?.ready, null, { timeout: 60000 }); await sleep(1500);
   if (TOWN) { await page.evaluate(t => { const w = (window.__game.save.world ??= { visited: {}, landmarks: {} }); (w.unlocked ??= {})[t] = 1; window.__game.travel(t); }, TOWN); await page.waitForFunction(t => window.__game.townId === t && window.__rend.town?.ready, TOWN, { timeout: 60000 }); await sleep(1500); }
+  // worst case look: every orange cosmetic slot worn (rarity FX on: crown, embers, signature layers, trail) + orange gear glints. COS=0 skips.
+  if (process.env.COS !== '0') await page.evaluate(async () => { const A = await import('/src/content/appearance.ts'); const s = window.__game.save; s.cosmetics = A.newCos(); for (const d of A.COSMETICS.filter(d => d.rarity === 'orange')) { A.grantCos(s, d.id); A.equipCos(s, d.id); } });
   if (rate > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate });
   const r = await page.evaluate(async ({ prof }) => {
     const g = window.__game, R = window.__rend; const sec = {}; const gl = document.createElement('canvas').getContext('webgl'); const ext = gl && gl.getExtension('WEBGL_debug_renderer_info'); const sw = !gl || /swiftshader|llvmpipe|software/i.test(ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : 'swiftshader'); const S = [];
