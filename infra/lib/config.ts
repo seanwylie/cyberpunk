@@ -12,6 +12,7 @@ export interface WvConfig {
   maxRooms: number; maxParties: number; maxConns: number;
   githubRepo?: string; createOidcRole: boolean;
   azs?: string[]; imageTag: string; enableStoryInService: boolean;
+  storyLimits: { regenCooldownSec: number; regenPerDay: number; genPerDay: number; ipPerDay: number; globalPerDay: number; maxTokens: number; concurrency: number; alarmPerHour: number };
 }
 export function readConfig(app: App): WvConfig {
   const c = (k: string, d?: any) => app.node.tryGetContext(k) ?? process.env['WV_' + k.toUpperCase()] ?? d;
@@ -27,6 +28,8 @@ export function readConfig(app: App): WvConfig {
     maxRooms: num('maxRooms', 100), maxParties: num('maxParties', 500), maxConns: num('maxConns', 500),
     githubRepo: c('githubRepo', 'seanwylie/cyberpunk'), createOidcRole: String(c('createOidcRole', 'false')) === 'true',
     azs: c('azs') ? String(c('azs')).split(',') : undefined, imageTag: c('imageTag', 'latest'), enableStoryInService: String(c('storyInService', 'false')) === 'true',
+    // Story abuse limits (docs/STORY_LIMITS.md). Override: cdk deploy WvStory -c storyGenPerDay=30  (or env WV_STORYGENPERDAY=30)
+    storyLimits: { regenCooldownSec: num('storyRegenCooldownSec', 60), regenPerDay: num('storyRegenPerDay', 5), genPerDay: num('storyGenPerDay', 20), ipPerDay: num('storyIpPerDay', 60), globalPerDay: num('storyGlobalPerDay', 2000), maxTokens: num('storyMaxTokens', 400), concurrency: num('storyConcurrency', 3), alarmPerHour: num('storyAlarmPerHour', 300) },
   };
 }
 export const clientHost = (c: WvConfig) => (c.domainName ? `${c.clientSubdomain}.${c.domainName}` : undefined);

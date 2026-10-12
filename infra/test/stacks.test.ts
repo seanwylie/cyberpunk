@@ -35,7 +35,9 @@ test('server: alarms and SNS email', () => { const { app, cfg } = base(domain); 
 test('server: in-service story proxy is opt-in and pulls the key from Secrets Manager', () => { const { app, cfg } = base({ ...domain, enableStoryInService: true }); const t = Template.fromStack(buildApp(app, cfg).server); t.hasResourceProperties('AWS::ECS::TaskDefinition', { ContainerDefinitions: [Match.objectLike({ Secrets: [Match.objectLike({ Name: 'OPENAI_API_KEY' })] })] }); });
 test('story lambda: Function URL with CORS to the client, reserved concurrency, secret read only', () => {
   const { app, cfg } = base(domain); const t = Template.fromStack(buildApp(app, cfg).story);
-  t.hasResourceProperties('AWS::Lambda::Function', { Runtime: 'nodejs22.x', Architectures: ['arm64'], ReservedConcurrentExecutions: 5, Environment: { Variables: Match.objectLike({ OPENAI_SECRET_ID: Match.anyValue() }) } });
+  t.hasResourceProperties('AWS::Lambda::Function', { Runtime: 'nodejs22.x', Architectures: ['arm64'], ReservedConcurrentExecutions: 3, Environment: { Variables: Match.objectLike({ OPENAI_SECRET_ID: Match.anyValue(), STORY_TABLE: Match.anyValue(), STORY_REGEN_COOLDOWN_SEC: '60', STORY_REGEN_PER_DAY: '5', STORY_GEN_PER_DAY: '20', STORY_MAX_TOKENS: '400' }) } });
+  t.hasResourceProperties('AWS::DynamoDB::Table', { BillingMode: 'PAY_PER_REQUEST', TimeToLiveSpecification: { AttributeName: 'exp', Enabled: true } });
+  t.resourceCountIs('AWS::CloudWatch::Alarm', 1);
   t.hasResourceProperties('AWS::Lambda::Url', { AuthType: 'NONE', Cors: Match.objectLike({ AllowOrigins: ['https://play.example.com'], AllowMethods: ['POST'] }) });
   const json = JSON.stringify(t.toJSON()); assert.ok(!/sk-[A-Za-z0-9]{10}/.test(json));
 });
