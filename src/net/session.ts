@@ -9,6 +9,10 @@ import { dungeonOf } from '../content/dungeons';
 import { ENEMIES } from '../config';
 import { NetClient, InstanceClient } from './client';
 import { RemoteDrawer, RemoteP } from './remote_render';
+import { cosOf } from '../content/appearance';
+import { isExclusive } from '../retire';
+import { showcaseOf } from '../monet';
+import { openInspect } from '../inspectui';
 import { SHARED_FLAGS } from './shared';
 import { bodyOf } from '../bodyvariants';
 import { equippedCos } from '../content/appearance';
@@ -25,6 +29,8 @@ export class NetSession {
   private applying = false; private claimed = new Map<number, En>(); private hurtBy = new Set<number>(); private flagSeen: Record<string, any> = {}; private flagT = 0; private holdT = 0; private holdId = ''; private origKill: ((e: En) => void) | null = null; private pendingClear: En | null = null;
   constructor(public g: Game, public rend: Renderer, public net: NetClient) {
     this.draw = new RemoteDrawer(rend);
+    // click / tap another player to inspect their exclusives (town and party)
+    try { rend.canvas.addEventListener('click', ev => { const r = rend.canvas.getBoundingClientRect(); const x = (ev.clientX - r.left) * rend.canvas.width / r.width, y = (ev.clientY - r.top) * rend.canvas.height / r.height; const p = this.draw.hitTest(x, y); if (p) openInspect(p as any); }); } catch { /* headless */ }
     (g as any).netHook = (dt: number) => this.hook(dt); (rend as any).netItems = (items: any[]) => this.items(items);
     net.on('instance_start', (ic: InstanceClient) => this.enter(ic));
     net.on('instance_end', (why: string) => { if (this.active) this.exit(why, false); });
@@ -76,7 +82,8 @@ export class NetSession {
     if (g.mode === 'run') g.enterTown(); g.recompute(); g.hp = g.maxHp; persist(g.save); if (!local) g.toast('Left the party dungeon (' + reason + ').'); this.onExit?.(reason);
   }
   /** the player's look for others to render: body variants + equipped cosmetics ids */
-  look() { try { return { body: bodyOf(this.g.save) as any, cos: equippedCos(this.g.save).map(c => c.id), gear: encodeGear(gearFxOf(this.g.save)) }; } catch { return undefined; } }
+  look() { try { const s = this.g.save as any; const own = cosOf(s).owned; const ex = Object.keys(own).filter(isExclusive).sort((a, b) => own[a] - own[b]).slice(0, 8).map(id => [id, own[id]] as [string, number]); const sc = showcaseOf(s);
+    return { body: bodyOf(this.g.save) as any, cos: equippedCos(this.g.save).map(c => c.id), gear: encodeGear(gearFxOf(this.g.save)), ...(ex.length ? { ex } : {}), ...(sc ? { sc } : {}) }; } catch { return undefined; } }
   sendProfile() { const s = this.g.save as any; this.net.profile(this.net.o.name || 'Guest', Math.max(1, Math.min(60, s.level || 1)), this.look());  }
   // ---------- per-frame hook: the game's own update always runs (return false); this only does the network side, all non-blocking
   private hook(dtRaw: number): boolean {
