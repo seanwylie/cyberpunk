@@ -22,11 +22,17 @@ export function makeSign(st: Station): HTMLCanvasElement {
   c.fillStyle = '#17191c'; c.fillRect(W / 2 - 9, 138, 18, 392); c.fillStyle = col; c.globalAlpha = .75; c.fillRect(W / 2 - 2, 138, 4, 392); c.globalAlpha = 1; c.fillStyle = '#26292d'; c.fillRect(W / 2 - 34, 520, 68, 18);
   // panel with glow
   c.save(); c.shadowColor = col; c.shadowBlur = 26; c.fillStyle = '#0a0c0f'; c.strokeStyle = col; c.lineWidth = 7; const r = 16, x0 = 12, y0 = 18, pw = W - 24, ph = 120; c.beginPath(); c.moveTo(x0 + r, y0); c.arcTo(x0 + pw, y0, x0 + pw, y0 + ph, r); c.arcTo(x0 + pw, y0 + ph, x0, y0 + ph, r); c.arcTo(x0, y0 + ph, x0, y0, r); c.arcTo(x0, y0, x0 + pw, y0, r); c.closePath(); c.fill(); c.stroke(); c.restore();
-  // colour band + icon medallion
-  c.fillStyle = `rgba(${st.rgb},.18)`; c.fillRect(x0 + 6, y0 + 6, 150, ph - 12); c.save(); c.shadowColor = col; c.shadowBlur = 14; drawIcon(c, st.icon, x0 + 81, y0 + ph / 2, 52, col, 8); c.restore();
+  // colour band (icon cell) + icon medallion. Cell is 132px wide; the label is laid out in the region between the cell's right edge and the panel's inner right edge,
+  // sized and centred by its rasterised INK extents (actualBoundingBox) so left/right padding are equal and the text never touches the border.
+  const BW = 132, inL = x0 + 6 + BW, inR = x0 + pw - 3.5, PAD = 26, avail = inR - inL - 2 * PAD;
+  c.fillStyle = `rgba(${st.rgb},.18)`; c.fillRect(x0 + 6, y0 + 6, BW, ph - 12); c.save(); c.shadowColor = col; c.shadowBlur = 14; drawIcon(c, st.icon, x0 + 6 + BW / 2, y0 + ph / 2, 50, col, 8); c.restore();
   // text
-  c.textAlign = 'left'; c.textBaseline = 'middle'; let fs = 70; c.font = `800 ${fs}px ${FONTS}`; const label = st.name.toUpperCase(); while (c.measureText(label).width > 290 && fs > 36) { fs -= 4; c.font = `800 ${fs}px ${FONTS}`; }
-  c.save(); c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = '#fff'; c.fillText(label, x0 + 170, y0 + ph / 2 + 2); c.restore();
+  c.textAlign = 'left'; c.textBaseline = 'alphabetic'; let fs = 70; const label = st.name.toUpperCase();
+  // ink box from rasterised pixels (alpha > 96) so padding is true glyph-to-edge, independent of font side bearings
+  const ink = () => { const f = `800 ${fs}px ${FONTS}`; const t = mk(Math.ceil(fs * 12), Math.ceil(fs * 2)), k = t.getContext('2d')!; k.font = f; k.textBaseline = 'alphabetic'; k.fillStyle = '#fff'; const ox = 20, oy = Math.round(fs * 1.4); k.fillText(label, ox, oy); const d = k.getImageData(0, 0, t.width, t.height).data; let l = 1e9, r = -1, tp = 1e9, bt = -1; for (let y = 0; y < t.height; y++) for (let x = 0; x < t.width; x++) if (d[(y * t.width + x) * 4 + 3] > 96) { if (x < l) l = x; if (x > r) r = x; if (y < tp) tp = y; if (y > bt) bt = y; } c.font = f; return { l: ox - l, w: r - l + 1, up: oy - tp, dn: bt + 1 - oy }; };
+  let ik = ink(); while (ik.w > avail && fs > 28) { fs -= 2; ik = ink(); }
+  const tx = Math.round(inL + PAD + (avail - ik.w) / 2 + ik.l), ty = Math.round(y0 + ph / 2 + (ik.up - ik.dn) / 2);
+  c.save(); c.shadowColor = col; c.shadowBlur = 12; c.fillStyle = '#fff'; c.fillText(label, tx, ty); c.restore();
   if (false) { let vs = 34; c.font = `600 ${vs}px ${FONTS}`; while (c.measureText(st.verb.toUpperCase()).width > 285 && vs > 20) { vs -= 2; c.font = `600 ${vs}px ${FONTS}`; } c.fillStyle = col; c.fillText(st.verb.toUpperCase(), x0 + 170, y0 + 126); }
   // rivets
   c.fillStyle = '#2c3035'; for (const [rx, ry] of [[24, 30], [W - 24, 30], [24, y0 + ph - 12], [W - 24, y0 + ph - 12]]) { c.beginPath(); c.arc(rx, ry, 5, 0, 7); c.fill(); }
@@ -48,6 +54,7 @@ export class TownArt {
   loaded = 0; total = 1;
   async load() { const PL = this.cfg.props || TOWN_PROPS, GL = this.cfg.ground || GROUND; this.total = PL.length + GL.length; const tick = () => { this.loaded++; (window as any).__loadPct = this.loaded / this.total; };
     await Promise.all([...PL.map(async n => { let i = await loadImg(`${this.base}props/${n}.png`); if (!i && this.cfg.fallbackBase) i = await loadImg(`${this.cfg.fallbackBase}props/${n}.png`); if (i) this.img[n] = i; tick(); }), ...GL.map(async n => { const i = await loadImg(`${this.base}ground/${n}.jpg`); if (i) this.gimg[n] = i; tick(); })]);
+    try { await (document as any).fonts?.load('800 70px "Roboto Condensed"'); } catch {} /* sign sprites are rasterised once: wait for the webfont so ink metrics are final */
     for (const st of this.stations) this.img['sign_' + st.key] = makeSign(st) as any;
     this.img['bank_vault'] = makeVault() as any;
     this.ready = !!this.gimg[this.cfg.g?.base || 'cobble'] && Object.keys(this.img).length > 8;
