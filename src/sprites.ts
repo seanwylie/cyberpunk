@@ -148,8 +148,8 @@ export class PlayerAnimator {
     for(const an of order){
       const d=A.anims[an]; if(!d||!d.layers||!d.order) continue; if(this.bodySig!==sig&&!this.bodyCache.has(sig)) return;
       const ims=await Promise.all(d.layers.map(async(l,i)=>{ const v=vars[names.indexOf(l.name)]||'base'; let im:HTMLImageElement|null=null;
-        if(v!=='base'){ const ext=l.image.slice(l.image.lastIndexOf('.')); im=await load(`${base}v/${v}/${an}_${l.name}${ext}`); if(im) this.bodyStats.loaded++; }
-        return im||await load(base+l.image); }));
+        const [vb,ck]=v.split('@'); if(vb!=='base'){ const ext=l.image.slice(l.image.lastIndexOf('.')); im=await load(`${base}v/${vb}/${an}_${l.name}${ext}`); if(im) this.bodyStats.loaded++; }
+        const src=im||await load(base+l.image); return ck&&src?tintLayer(src,ck):src; }));
       if(ims.some(i=>!i)) continue;
       const cv=document.createElement('canvas'); cv.width=W*d.frames; cv.height=H*d.dirs; const x=cv.getContext('2d')!;
       for(let row=0;row<d.dirs;row++) for(let f=0;f<d.frames;f++) for(const li of d.order[row][f]) x.drawImage(ims[li]!,f*W,row*H,W,H,f*W,row*H,W,H);
@@ -176,4 +176,10 @@ export class PlayerAnimator {
     else this.blit(c,cur,1,s);
     c.restore(); return true;
   }
+}
+
+/** Chroma: bake a CSS filter into a layer sheet once at compose time (cached by body signature, no per-frame cost). */
+import { CHROMA_FILTER } from './content/skinlines';
+function tintLayer(im:CanvasImageSource&{width:number;height:number},key:string):any{
+  const f=CHROMA_FILTER[key]; if(!f) return im; const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d')!; x.filter=f; x.drawImage(im,0,0); return cv;
 }

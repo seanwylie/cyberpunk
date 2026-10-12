@@ -2,6 +2,10 @@
 // nothing changes on your character until Apply. Store skins can be tried on and bought in place through the simulated store
 // (src/store.ts startPurchase -> confirmPurchase). Saved outfits, sets with a combined price, analytics hooks. See docs/DRESSING_ROOM.md.
 import { RARITIES, RARITY_COLOR, Rarity } from './config';
+import { TIER, LINE_BY_ID } from './content/skinlines';
+import { showcaseOf, setShowcase } from './monet';
+import { playEmote, playRecall } from './pmfx';
+import { badgeOf as xBadge, isExclusive, provenance, fmtDate } from './retire';
 import { COSMETICS, COS_BY_ID, COS_SLOTS, COS_SLOT_ICON, COS_SLOT_LABEL, COS_THEME_LABEL, CosDef, CosSlot, buyCos, checkAchievements, cosOf, equipCos, ownsCos, ACHIEVEMENTS } from './content/appearance';
 import { applyCosmeticVariants, bodyOf } from './bodyvariants';
 import { drawCosmetics, drawTrail } from './cosmetics';
@@ -34,13 +38,23 @@ const SRC_HINT = (d: CosDef): string => { const s = d.src; switch (s.k) {
   case 'bossId': return 'Drops from one specific boss';
   case 'ach': return 'Achievement: ' + (ACHIEVEMENTS.find(a => a.key === s.key)?.label || s.key);
   case 'premium': return 'Store skin: try it on, then Buy ' + fmtUsd(s.cents) + ' (SIMULATED)';
-  case 'event': return 'Limited: a tiny chance on any boss kill'; } };
+  case 'event': return 'Limited: a tiny chance on any boss kill';
+  case 'shop': return TIER[s.tier].label + ' store skin: try it on, then Buy ' + fmtUsd(s.cents) + ' (SIMULATED)';
+  case 'chroma': return 'Chroma: needs ' + (COS_BY_ID[s.of]?.name || 'the base skin') + ', ' + fmtUsd(s.cents) + ' (SIMULATED)';
+  case 'pass': return 'Season pass ' + s.track + ' track, level ' + s.level;
+  case 'collection': return 'Collection reward: own every ' + (LINE_BY_ID[s.line]?.name || s.line) + ' skin';
+  case 'starter': return 'Runner Starter Pack';
+  case 'bundled': return 'Included with ' + (COS_BY_ID[s.with]?.name || 'a Legendary skin');
+  case 'exclusive': return 'Exclusive, earn only: ' + s.how + ' (' + fmtDate(s.window.from) + ' – ' + fmtDate(s.window.until) + ')';
+  default: return ''; } };
+/** Store SKU for a cosmetic (classic premium pieces or line skins / chromas / extras). */
+export const storeSkuOf = (d: CosDef): string | null => d.src.k === 'premium' ? 'skin_' + d.id : (d.src.k === 'shop' || d.src.k === 'chroma') ? 'line_' + d.id : null;
 /** Discovery: owned, sold by the vendor, or a store skin is "known"; everything else shows only slot/rarity/source until found. */
-export const isKnown = (s: any, d: CosDef) => ownsCos(s, d.id) || d.src.k === 'vendor' || d.src.k === 'premium';
-const isStore = (d: CosDef) => d.src.k === 'premium' || d.src.k === 'vendor';
+export const isKnown = (s: any, d: CosDef) => ownsCos(s, d.id) || d.src.k === 'vendor' || !!storeSkuOf(d) || isExclusive(d.id) || d.src.k === 'pass' || d.src.k === 'collection';
+const isStore = (d: CosDef) => !!storeSkuOf(d) || d.src.k === 'vendor';
 const isNew = (s: any, d: CosDef) => { const c = cosOf(s), t = c.owned[d.id]; return !!t && t > 1 && Date.now() - t < NEW_DAYS * 864e5 && !(c.seen![d.id] >= t); };
-const badgeOf = (s: any, d: CosDef): [string, string, string] | null => !ownsCos(s, d.id) && d.src.k === 'event' ? ['ltd', 'LTD', 'Limited'] : isNew(s, d) ? ['new', 'NEW', 'New: not previewed yet'] : !ownsCos(s, d.id) && FEATURED.has(d.id) ? ['feat', '★', 'Featured in a set'] : null;
-const priceOf = (d: CosDef) => d.src.k === 'premium' ? fmtUsd(d.src.cents) : d.src.k === 'vendor' ? d.src.price + 'c' : '';
+const badgeOf = (s: any, d: CosDef): [string, string, string] | null => xBadge(d.id) ? ['ex', xBadge(d.id) === 'Founder' ? 'F' : xBadge(d.id) === 'Retired' ? 'R' : 'X', xBadge(d.id) + (ownsCos(s, d.id) ? ': ' + provenance(d.id, cosOf(s).owned[d.id]) : '')] : !ownsCos(s, d.id) && d.src.k === 'event' ? ['ltd', 'LTD', 'Limited'] : isNew(s, d) ? ['new', 'NEW', 'New: not previewed yet'] : !ownsCos(s, d.id) && FEATURED.has(d.id) ? ['feat', '★', 'Featured in a set'] : null;
+const priceOf = (d: CosDef) => storeSkuOf(d) ? fmtUsd((d.src as any).cents) : d.src.k === 'vendor' ? d.src.price + 'c' : '';
 const tipOf = (s: any, d: CosDef) => { const known = isKnown(s, d), own = ownsCos(s, d.id); return `<b style="color:${rc(d.rarity)}">${known ? esc(d.name) : '???'}</b><br>${esc(COS_SLOT_LABEL[d.slot])} · ${d.rarity}${known ? ' · ' + esc(COS_THEME_LABEL[d.theme]) : ''}<br>` + (known ? `${esc(d.desc)}<br><span class="mut">${esc(d.lore)}</span><br>` : '') + `<span class="mut">${own ? 'Owned' : esc(SRC_HINT(d))}</span><br><i>Click: try on (preview only)</i>`; };
 const swatch = (d: CosDef, known: boolean) => known ? `<span class="cosw" style="--c:${d.c};--c2:${d.c2 || d.c}">${COS_SLOT_ICON[d.slot]}</span>` : `<span class="cosw unk">?</span>`;
 
@@ -54,7 +68,7 @@ const unownedInPreview = (s: any) => Object.values(previewLook(s)).filter(id => 
 
 /** Stage one item (try on). Re-staging what you already wear clears the override. */
 export function stageItem(s: any, id: string) { const d = COS_BY_ID[id]; if (!d) return; WD.sel = id; WD.set = ''; if (wornLook(s)[d.slot] === id) delete WD.staged[d.slot]; else WD.staged[d.slot] = id;
-  const c = cosOf(s); if (c.owned[id]) c.seen![id] = Date.now(); track('dr_preview', isStore(d) && !ownsCos(s, id) ? (d.src.k === 'premium' ? 'skin_' + id : undefined) : undefined, { id, slot: d.slot, owned: ownsCos(s, id), rarity: d.rarity, src: d.src.k });
+  const c = cosOf(s); if (c.owned[id]) c.seen![id] = Date.now(); track('dr_preview', isStore(d) && !ownsCos(s, id) ? (storeSkuOf(d) || undefined) : undefined, { id, slot: d.slot, owned: ownsCos(s, id), rarity: d.rarity, src: d.src.k });
   if (!ownsCos(s, id)) track('wardrobe_locked_item_click', id, { src: d.src.k, rarity: d.rarity }); }
 /** Stage a store set (bundle) for preview. */
 export function stageSet(s: any, skuId: string) { const k = SKU_BY_ID[skuId]; if (!k?.items) return; for (const id of k.items) { const d = COS_BY_ID[id]; WD.staged[d.slot] = id; } WD.set = skuId; WD.sel = k.items[0]; track('dr_preview', skuId, { set: true, n: k.items.length }); }
@@ -70,7 +84,7 @@ export function rotate(step: number, via = 'button') { WD.dir = (((WD.dir + step
 export function buyTarget(s: any): { kind: 'sku'; sku: Sku } | { kind: 'credits'; d: CosDef } | null {
   if (WD.set && skuAvail(s, WD.set).ok) return { kind: 'sku', sku: SKU_BY_ID[WD.set] };
   const d = WD.sel ? COS_BY_ID[WD.sel] : null; if (!d || ownsCos(s, d.id)) return null;
-  if (d.src.k === 'premium') { const k = SKU_BY_ID['skin_' + d.id]; return k && skuAvail(s, k.id).ok ? { kind: 'sku', sku: k } : null; }
+  const sk = storeSkuOf(d); if (sk) { const k = SKU_BY_ID[sk]; return k && skuAvail(s, k.id).ok ? { kind: 'sku', sku: k } : null; }
   if (d.src.k === 'vendor') return { kind: 'credits', d }; return null; }
 export function saveOutfit(s: any, i: number): boolean { const c = cosOf(s); const look = previewLook(s); if (Object.values(look).some(id => id && !ownsCos(s, id))) return false; c.outfits = c.outfits || []; while (c.outfits.length < OUTFIT_SLOTS) c.outfits.push(null); c.outfits[i] = { n: 'Look ' + (i + 1), eq: look }; persist(s); track('dr_outfit_save', undefined, { slot: i, n: Object.keys(look).length }); return true; }
 export function loadOutfit(s: any, i: number): boolean { const o = cosOf(s).outfits?.[i]; if (!o) return false; const worn = wornLook(s); WD.staged = {}; WD.set = ''; for (const sl of COS_SLOTS) { const want = o.eq[sl] && ownsCos(s, o.eq[sl]!) ? o.eq[sl]! : undefined; if (want !== worn[sl]) WD.staged[sl] = want ?? null; } track('dr_outfit_load', undefined, { slot: i }); return true; }
@@ -91,11 +105,11 @@ export function wardrobeHtml(ui: UIx): string {
     const vis = (d: CosDef) => WD.show === 'owned' ? ownsCos(s, d.id) : WD.show === 'store' ? isStore(d) && !ownsCos(s, d.id) : true;
     const list = COSMETICS.filter(d => inTab(d) && vis(d)).sort((a, b) => +ownsCos(s, b.id) - +ownsCos(s, a.id) || RARITIES.indexOf(b.rarity) - RARITIES.indexOf(a.rarity) || a.name.localeCompare(b.name));
     grid = list.map(d => { const own = ownsCos(s, d.id), on = worn[d.slot] === d.id, tried = look[d.slot] === d.id && !on, known = isKnown(s, d), b = badgeOf(s, d);
-      return `<button class="slot tile st cos r-${d.rarity} ${WD.sel === d.id ? 'sel' : ''} ${own ? 'own' : 'off'} ${on ? 'worn' : ''} ${tried ? 'tried' : ''}" data-act="wd-sel" data-id="${d.id}" data-tip="${esc(tipOf(s, d))}" aria-label="${esc((known ? d.name : 'Undiscovered ' + COS_SLOT_LABEL[d.slot]) + ', ' + d.rarity + (own ? (on ? ', equipped' : ', owned') : ', not owned') + (tried ? ', previewing' : ''))}" style="border-color:${rc(d.rarity)};--rc:${rc(d.rarity)}"><span class="ticon">${swatch(d, known)}</span>${on ? '<i class="wornb" title="Wearing">●</i>' : ''}${own ? '<i class="drb own" title="Owned">✓</i>' : b ? `<i class="drb ${b[0]}" title="${b[2]}">${b[1]}</i>` : ''}${!own && priceOf(d) ? `<i class="pricb">${priceOf(d)}</i>` : ''}</button>`; }).join('') || '<div class="mut">Nothing here. Try "All".</div>';
+      return `<button class="slot tile st cos r-${d.rarity} ${WD.sel === d.id ? 'sel' : ''} ${own ? 'own' : 'off'} ${on ? 'worn' : ''} ${tried ? 'tried' : ''}" data-act="wd-sel" data-id="${d.id}" data-tip="${esc(tipOf(s, d))}" aria-label="${esc((known ? d.name : 'Undiscovered ' + COS_SLOT_LABEL[d.slot]) + ', ' + d.rarity + (own ? (on ? ', equipped' : ', owned') : ', not owned') + (tried ? ', previewing' : ''))}" style="border-color:${rc(d.rarity)};--rc:${rc(d.rarity)}"><span class="ticon">${swatch(d, known)}</span>${on ? '<i class="wornb" title="Wearing">●</i>' : ''}${b && b[0] === 'ex' ? `<i class="drb ex wdb" data-tip="${esc(b[2])}">${b[1]}</i>` : own ? '<i class="drb own" title="Owned">✓</i>' : b ? `<i class="drb ${b[0]}" title="${b[2]}">${b[1]}</i>` : ''}${!own && priceOf(d) ? `<i class="pricb">${priceOf(d)}</i>` : ''}</button>`; }).join('') || '<div class="mut">Nothing here. Try "All".</div>';
   }
   // detail of the selected piece (short; the rest is in tooltips)
   const d = WD.sel ? COS_BY_ID[WD.sel] : null;
-  const det = d ? `<div class="drdet"><b style="color:${rc(d.rarity)}" class="cap" data-tip="${esc(tipOf(s, d))}">${isKnown(s, d) ? esc(d.name) : '???'}</b> <span class="tag" style="border-color:${rc(d.rarity)}">${d.rarity}</span> <span class="mut">${ownsCos(s, d.id) ? 'Owned' : d.src.k === 'premium' ? 'Previewing · store skin' : d.src.k === 'vendor' ? 'Previewing · sold here' : esc(SRC_HINT(d))}</span>${look[d.slot] === d.id ? ` <button class="btn" data-act="wd-off" data-slot="${d.slot}" data-tip="Preview without this slot">Take off</button>` : ''}${d.src.k === 'premium' && !ownsCos(s, d.id) ? ` <button class="btn" data-act="st-open" data-sku="skin_${d.id}" data-tip="Open this skin in the Outfitter">Store</button>` : ''}</div>` : '<div class="drdet mut">Pick an item to try it on. Nothing changes until Apply.</div>';
+  const det = d ? `<div class="drdet"><b style="color:${rc(d.rarity)}" class="cap" data-tip="${esc(tipOf(s, d))}">${isKnown(s, d) ? esc(d.name) : '???'}</b> <span class="tag" style="border-color:${rc(d.rarity)}">${d.rarity}</span> <span class="mut">${ownsCos(s, d.id) ? 'Owned' : storeSkuOf(d) ? 'Previewing · store skin' : d.src.k === 'vendor' ? 'Previewing · sold here' : esc(SRC_HINT(d))}</span>${look[d.slot] === d.id ? ` <button class="btn" data-act="wd-off" data-slot="${d.slot}" data-tip="Preview without this slot">Take off</button>` : ''}${ownsCos(s, d.id) && isExclusive(d.id) ? ` <button class="btn" data-act="wd-pin" data-id="${d.id}" data-tip="${esc(showcaseOf(s) === d.id ? 'Unpin from your nameplate and inspect card' : 'Pin to your nameplate and inspect card so other players see it')}">${showcaseOf(s) === d.id ? 'Unpin' : 'Showcase'}</button><div class="xi-prov mut" data-prov>${esc(provenance(d.id, cosOf(s).owned[d.id]))}</div>` : ''}${d.slot === 'emote' || d.slot === 'recall' || (d.slot === 'skin' && (d.tier === 'legendary' || d.tier === 'ultimate')) ? ` <button class="btn" data-act="wd-play" data-id="${d.id}" data-tip="Play this on the preview model">▶ ${d.slot === 'emote' ? 'Emote' : 'Recall'}</button>` : ''}${storeSkuOf(d) && !ownsCos(s, d.id) ? ` <button class="btn" data-act="st-open" data-sku="${storeSkuOf(d)}" data-tip="Open this skin in the Outfitter">Store</button>` : ''}</div>` : '<div class="drdet mut">Pick an item to try it on. Nothing changes until Apply.</div>';
   // diff vs current look
   const nm = (id?: string) => id ? esc(COS_BY_ID[id].name) : 'none';
   const diffHtml = diff.length ? diff.map(x => `<span class="drdiff ${x.to && !ownsCos(s, x.to) ? 'buy' : ''}" data-tip="${esc('<b>' + COS_SLOT_LABEL[x.slot] + '</b><br>' + nm(x.from) + ' → ' + nm(x.to))}">${COS_SLOT_ICON[x.slot]} ${x.to ? (ownsCos(s, x.to) ? '+' : '$') : '−'}</span>`).join('') : '<span class="mut">Matches your current look</span>';
@@ -126,6 +140,8 @@ export function wardrobeClick(ui: UIx, el: HTMLElement, a: string): boolean {
     case 'wd-sel': if (WD.phase !== 'idle') return true; stageItem(s, el.dataset.id!); WD.msg = ''; break;
     case 'wd-set': if (WD.phase !== 'idle') return true; stageSet(s, el.dataset.id!); WD.msg = ''; break;
     case 'wd-off': WD.staged[el.dataset.slot as CosSlot] = wornLook(s)[el.dataset.slot as CosSlot] ? null : undefined as any; if (WD.staged[el.dataset.slot as CosSlot] === undefined) delete WD.staged[el.dataset.slot as CosSlot]; break;
+    case 'wd-pin': { const id = el.dataset.id!; setShowcase(s, showcaseOf(s) === id ? null : id); persist(s); break; }
+    case 'wd-play': { const d = COS_BY_ID[el.dataset.id!]; if (d) { if (d.slot === 'emote') { playEmote([d], 'dr'); track('emote_play', d.id); } else { playRecall(d.slot === 'recall' ? [d] : [d], 'dr'); track('recall_play', d.id); } } break; }
     case 'wd-unslot': WD.staged[el.dataset.slot as CosSlot] = null; break;
     case 'wd-apply': case 'wd-equip': { const r = applyLook(s); WD.msg = r.applied ? 'Applied.' + (r.needBuy ? ' ' + r.needBuy + ' store piece(s) still preview only.' : '') : r.needBuy ? 'Buy the previewed store pieces first.' : ''; if (r.applied) g.toast?.('Look applied'); break; }
     case 'wd-revert': revert(s); break;

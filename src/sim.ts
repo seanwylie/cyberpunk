@@ -36,6 +36,9 @@ import { BAL } from './content/balance';
 import { altPrompt, altInteract, relay as altRelay, hackTier, applyPayoff, altTick, altDmgMul, altTown } from './altsim';
 import { recordAbility, recordAuto, recordDodge, recordHack, closeRun, refreshOffer, traitEffects, famBonus, statBonus } from './traitstate';
 import { traitPrior } from './traithooks';
+import { passXp, onClear as monetClear } from './monet';
+import { playRecall } from './pmfx';
+import { equippedCos as eqCos, COS_BY_ID as COS_PM } from './content/appearance';
 import type { Effect } from './traits';
 import { record, newStory, EventKind } from './story';
 
@@ -84,7 +87,7 @@ export class Game {
 
   // ---------- mode transitions ----------
   enterTown(first=false){
-    const wasRun=this.mode==='run'; this.settleCompleted(); if(wasRun){ altTown(this); closeRun(this.save); refreshOffer(this.save,traitPrior(this)); this.emit('traitcheck','town'); }
+    const wasRun=this.mode==='run'; this.settleCompleted(); if(!first){ try{ playRecall(eqCos(this.save)); }catch{} } if(wasRun){ altTown(this); closeRun(this.save); refreshOffer(this.save,traitPrior(this)); this.emit('traitcheck','town'); }
     if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this); this.clearTransients();
     const tid=currentTown(this.save); this.townId=tid; setTownStations(stationsOf(tid)); this.mode='town'; this.level=buildTownLevel(tid); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.townFails=0; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); this.emit('towntheme',tid); this.checkTownUnlocks(); if(this.inst) persist(this.save); this.emit('mode','town'); this.worldArrive(); if(!first) this.toast('Back in town. Unload loot at the locker.'); if(!first&&wasRun) this.emit('beat',{dungeon:this.save.instance?.dungeon||undefined,run:this.save.instance?.id,result:this.save.instance?.flags?.bossDead?'Boss defeated':'Left the run early'});
@@ -705,7 +708,7 @@ export class Game {
     if(def.boss) this.onBossDead(e);
   }
   /** Per-player kill rewards: counters, XP, reputation, contract credit and this player's OWN loot/cosmetic/ability rolls. Solo calls it once; a party calls it once per participating member (each with their own save, pity timers and rng). */
-  grantKill(e:En){ const def=ENEMIES[e.type]; const inst=this.inst!; this.kills++; this.save.stats.kills++; inst.kills[e.type]=(inst.kills[e.type]||0)+1;
+  grantKill(e:En){ const def=ENEMIES[e.type]; const inst=this.inst!; this.kills++; this.save.stats.kills++; try{ passXp(this.save,(e as any).boss?'boss':(e as any).elite?'elite':'kill'); }catch{} inst.kills[e.type]=(inst.kills[e.type]||0)+1;
     { const xpv=def.xp*((e as any).affix?.length?2.5:1); this.addXp(xpv); inst.xpEarned+=xpv; } this.save.rep[def.mfr]+=def.rep; record(this.story(),'kill_mfr',def.mfr); this.contractEvent('kill_mfr',def.mfr); this.contractEvent('kill_type',e.type);
     this.rollLoot(e); }
   addXp(n:number){ const s=this.save; s.xp+=n; while(s.level<PROGRESSION.maxLevel&&s.xp>=PROGRESSION.xpForLevel(s.level)){  s.xp-=PROGRESSION.xpForLevel(s.level); s.level++; this.emit('musicnudge',null); this.emit('stinger','levelup'); this.toast('Level up! Level '+s.level); this.recompute(); } this.checkTownUnlocks(); }
@@ -776,7 +779,7 @@ export class Game {
     const inst=this.inst!; const f=inst.flags; if(!f.bossDead){ f.bossDead=true; f.completed=true; this.projs=[]; this.zones=[]; clearBossAdds(this); } this.grantClear(e); }
   /** Per-player clear rewards (clear XP, lockout, contracts, achievements). */
   grantClear(e:En){ const inst=this.inst!; const f=inst.flags; if((inst as any)._cg) return; (inst as any)._cg=true; f.completed=true; this.save.cleared={...(this.save.cleared||{}),[this.dd.id]:Date.now()}; this.gatewayClear();
-    if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Return to town any time: your pack is banked and you can start another dungeon.'); }
+    if(!f.rewardsGranted){ f.rewardsGranted=true; setLockDay(this.save,this.dd.id,todayStr()); this.save.stats.clears++; try{ for(const x of monetClear(this.save,this.dd.id,!!GATEWAY_BY_DUNGEON[this.dd.id])) this.toast('Exclusive earned: '+(COS_PM[x]?.name||x)); }catch{} this.addXp(this.dd.clearXp); this.note('boss_defeated',e.type); this.note('run_cleared',f.cond||'none'); this.toast('MISSION COMPLETE ('+this.dd.short+'). Daily clear consumed. Return to town any time: your pack is banked and you can start another dungeon.'); }
     for(const d of checkAchievements(this.save)) this.toast('Wardrobe unlocked: '+d.name+' ('+d.rarity+')'); this.emit('boss-dead'); this.emit('stinger','complete'); this.resPending=5; this.saveNow();
   }
   /** Settings > Unstuck (docs/PROGRESSION.md) */ unstuck(){ const m=unstuck(this); this.toast(m); return m; }

@@ -715,3 +715,19 @@ body.reducefx .tile.r-orange,body.reducefx .tile.r-orange::after,body.reducefx .
 #interact .alticon{margin-right:4px;color:#e7c88a}
 .stspot{ margin:4px 0; padding:4px 6px; border:1px solid #6a4e12; border-radius:6px; background:linear-gradient(90deg,rgba(255,154,31,.10),rgba(180,107,255,.08)); } .stspot>.mut{ font-weight:700; color:#ffd27a; } .stspot .spotgrid{ max-height:none; overflow:visible; }
 .stgrid .tile{ position:relative; }
+/* ---- monetization: exclusives, inspect card, store hero/splash (docs/MONETIZATION.md) ---- */
+.xbadge{display:inline-block;font-size:10px;line-height:14px;padding:0 5px;border-radius:3px;border:1px solid #b8955a;color:#f3dca8;background:rgba(60,44,20,.7);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.xb-founder{border-color:#e0a84a;color:#ffd58a}.xb-retired{border-color:#9a8f86;color:#e3d9cf;background:rgba(40,36,34,.75)}.xb-limited{border-color:#6fb7e8;color:#cfeaff}
+.wdb.xb-founder,.wdb.xb-retired,.wdb.xb-limited,.wdb.xb-exclusive{position:absolute;top:1px;left:2px;font-size:9px;line-height:11px;padding:0 3px;border-radius:2px;background:rgba(40,30,14,.85);color:#ffd58a;border:1px solid #b8955a}
+.xinspect{position:fixed;right:12px;top:72px;width:min(320px,calc(100vw - 24px));max-height:60vh;overflow:auto;z-index:60;padding:10px 12px;background:rgba(16,15,14,.94);border:1px solid rgba(232,196,106,.45);border-radius:6px;display:none;box-sizing:border-box}
+.xinspect .xi-head{display:flex;align-items:center;gap:6px;min-width:0}.xinspect .xi-head b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.xinspect .xi-x{margin-left:auto}
+.xinspect .xi-show{margin:6px 0;color:#ffd58a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xinspect .xi-list{list-style:none;margin:6px 0 0;padding:0}.xinspect .xi-row{padding:4px 0;border-top:1px solid rgba(255,255,255,.06);min-width:0}
+.xi-name{display:inline-block;max-width:68%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.xi-prov{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sthero{gap:10px;align-items:center;min-width:0}.sthero>span{min-width:0;overflow:hidden}.sthero b{white-space:nowrap}
+img.splash{width:84px;height:112px;object-fit:cover;border-radius:4px;border:1px solid rgba(232,196,106,.4);flex:0 0 auto;float:left;margin-right:8px}
+.wdsel img.splash{width:96px;height:128px}
+.stwhen{font-size:12px;color:#ffd58a;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stlines{flex-wrap:wrap;gap:4px;margin-bottom:4px}.ststarter{gap:8px;border:1px dashed rgba(232,196,106,.35);padding:6px;border-radius:4px}.ststarter>span{min-width:0}
+.drb.ex{background:rgba(40,30,14,.9);color:#ffd58a;border:1px solid #b8955a}

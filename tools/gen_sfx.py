@@ -27,6 +27,13 @@ F = {
  'hack':    {'windup': ('data uplink, rising digital glitch chirps', .5), 'cast': ('hacking intrusion, digital glitch burst and data modem sweep', .7), 'impact': ('digital glitch zap, short corrupted bitcrush blip', .4)},
  'blast':   {'windup': ('explosive charge arming, rapid escalating beeps', .6), 'cast': ('orbital strike impact, huge explosion boom with debris', 1.3), 'impact': ('grenade explosion, crack and low boom', .8)},
  'summon':  {'windup': ('machinery assembling, clanks and ratchets', .6), 'cast': ('heavy robot drop-in landing, metal slam and servo boot-up', .9), 'impact': ('turret firing a burst of small energy shots', .5), 'travel': ('automated turret ticking and swivelling, loopable', .7)},
+ # premium skin lines (src/pmfx.ts, docs/MONETIZATION.md): recall + ability flourish per Legendary/Ultimate, shared emotes/pet/exclusive chime
+ 'pm':      {'hextech_recall': ('hextech crystal teleport, bright crystalline chime chord swelling into a soft golden shimmer and airy whoosh, regal', 1.8), 'hextech_flourish': ('short crystalline hextech chime with a soft glassy ring', .7),
+             'bloom_recall': ('organic iridescent teleport, petals unfurling with a glassy shimmer and a soft breathy swell', 1.8), 'bloom_flourish': ('soft iridescent bloom shimmer, petal flutter and gentle glass chime', .7),
+             'ronin_recall': ('katana sheathing with a crisp click, then a neon electric hum rising into a clean teleport zip', 1.6), 'ronin_flourish': ('quick katana draw ring with a faint neon buzz', .6),
+             'founder_recall': ('warm brass mechanism turning, deep resonant bell tone and a low filament hum fading into a teleport whoosh', 1.8), 'founder_flourish': ('small brass click and warm resonant bell ping', .6),
+             'emote': ('playful short electronic flourish, three rising synth blips and a sparkle', .8), 'pet': ('tiny friendly hover drone chirp, two soft beeps and a servo whirr', .5),
+             'exclusive': ('very subtle rare item chime, single soft crystalline ping with a warm tail', .8)},
  # cosmetic rarity sounds (src/cosfx.ts): legendary (orange) equip + idle flourish, epic (purple) equip
  'cos':     {'equip_orange': ('legendary item equip, huge rising plasma swell into a bright crystalline shimmer burst and deep sub boom, epic and triumphant', 1.6), 'flourish_orange': ('soft magical plasma shimmer flourish, airy sparkle sweep with a warm hum, subtle', 1.0), 'equip_purple': ('epic item equip, rising glassy shimmer and a resonant chime with a soft whoosh', 1.0)},
 }

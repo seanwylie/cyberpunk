@@ -8,7 +8,8 @@ import { equippedCos, COS_BODY_LAYERS, COS_BY_ID } from './content/appearance';
  * Parts are per slot, so mixed-brand builds give mixed-brand bodies. All variants are rendered on the same rig and animation set,
  * so layers composite cleanly; sheets live in public/sprites/v/<variant>/ and are only fetched when something non-stock is equipped.
  */
-export type Variant='base'|'heavy'|'surgical'|'market';
+/** 'base'|'heavy'|'surgical'|'market', premium bodies ('hextech'|'bloom'|'ronin'|'founder'), optionally '@<chroma>' (src/content/skinlines.ts CHROMA_FILTER). */
+export type Variant='base'|'heavy'|'surgical'|'market'|(string&{});
 export const VARIANTS:Variant[]=['base','heavy','surgical','market'];
 /** Visible layers (no layer for the 'brain' slot). Same names as the sprite atlas layers. */
 export const BODY_SLOTS=['face','torso','armL','handL','armR','handR','legL','footL','legR','footR'] as const;
@@ -34,7 +35,9 @@ export function bodyOf(save:Save, forced:Body|null=forcedBody()):Body{
 /** Appearance-only body parts: an equipped cosmetic with a `variant` swaps that slot's prebaked layers (real art) without changing hardware or stats.
  *  `extra` previews an unequipped cosmetic def id in the wardrobe. */
 export function applyCosmeticVariants(b:Body,save:Pick<Save,'cosmetics'>,extra?:string[]):Body{
-  const out={...b}; for(const d of equippedCos(save)){ const L=COS_BODY_LAYERS[d.slot]; if(d.variant&&L) for(const l of L) (out as any)[l]=d.variant; }
+  const out={...b}; const eq=equippedCos(save); const full=eq.find(d=>d.body); if(full) for(const l of BODY_SLOTS) (out as any)[l]=full.body; // premium full-body skin first, per-slot variants on top
+  for(const d of eq){ const L=COS_BODY_LAYERS[d.slot]; if(d.variant&&L) for(const l of L) (out as any)[l]=d.variant; }
+  if(extra) for(const id of extra){ const d0=COS_BY_ID[id] as any; if(d0?.body) for(const l of BODY_SLOTS) (out as any)[l]=d0.body; }
   if(extra) for(const id of extra){ const d=COS_BY_ID[id] as any; const L=d&&COS_BODY_LAYERS[d.slot as keyof typeof COS_BODY_LAYERS]; if(d?.variant&&L) for(const l of L) (out as any)[l]=d.variant; }
   return out;
 }
