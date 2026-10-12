@@ -64,8 +64,8 @@ const PET: Record<string, Fn> = {
 // ---------------------------------------------------------------- main entry (called from drawCosmetics)
 export function drawPm(k: PmCtx, list: CosDef[], phase: 'back' | 'front') {
   const { c, x, y, u, t } = k; const id = k.id || 'me'; const o = own(id); const red = reduced();
-  if (k.cast && !o.lastCast) o.flo = t; o.lastCast = !!k.cast; o.lastT = t;
-  const sk = lineOf(list); const pal = sk ? LINE_BY_ID[sk.line!].pal : null;
+  const sk = lineOf(list);
+  if (k.cast && !o.lastCast) { o.flo = t; if (id === 'me' && sk?.body && (sk.tier === 'legendary' || sk.tier === 'ultimate')) playCosSfx('pm_' + sk.body.split('@')[0] + '_flourish', .4); } o.lastCast = !!k.cast; o.lastT = t; const pal = sk ? LINE_BY_ID[sk.line!].pal : null;
   const pet = list.find(d => d.slot === 'pet');
   if (pet && PET[pet.style]) { const a = t * .9; const px = x + Math.cos(a) * 15 * u, py = y - (34 + Math.sin(t * 2.1) * 2) * u + Math.sin(a) * 5 * u; const behind = Math.sin(a) < 0; if ((phase === 'back') === behind) { c.save(); c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(px, y + Math.sin(a) * 5 * u, 3 * u, 1.2 * u, 0, 0, 7); c.fill(); PET[pet.style]({ ...k, x: px, y: py }, pet, []); c.restore(); } }
   if (phase === 'back') {
