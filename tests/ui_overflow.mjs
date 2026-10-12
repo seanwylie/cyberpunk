@@ -5,7 +5,7 @@ import { launch, sleep } from './lib.mjs'; import fs from 'fs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 fs.mkdirSync('shots/ui_overflow', { recursive: true });
 const VPS = [[1280, 720, 'desktop', false], [844, 390, 'phone', true]];
-const PANELS = (process.env.PANELS || 'story,locker,store,vendor,bank,wardrobe,fixer,guild,travel,chars').split(',');
+const PANELS = (process.env.PANELS || 'story,locker,store,vendor,bank,wardrobe,fixer,guild,travel,chars,traits').split(',');
 for (const [w, h, tag, touch] of VPS) {
   const { browser, page, errors } = await launch({ viewport: { width: w, height: h }, touch, query: '?splash=hold' });
   await page.route('**/api/story-beat', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, text: 'Fresh line.' }) }));

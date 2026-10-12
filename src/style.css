@@ -669,3 +669,19 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 .cscard input{ width:100%; min-width:0; box-sizing:border-box; }
 .csbody{ display:block; width:100%; flex:1 1 auto; min-width:0; }
 .wmlm{ font-size:max(var(--fmin),calc(12px*var(--fs))); color:#cfc6b0; } .wmlm b{ color:var(--tc); margin-right:4px; }
+/* traits (src/traitui.ts) */
+.traitswin{ max-width:min(900px,96vw); }
+.trbody{ display:block; width:100%; flex:1 1 auto; min-width:0; }
+.trlead{ margin:0 0 8px; }
+.trgrid,.trhave{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-bottom:8px; }
+.trcard{ display:flex; flex-direction:column; gap:4px; padding:10px; border:1px solid rgba(120,220,255,.25); border-radius:6px; background:rgba(10,16,24,.75); min-width:0; }
+.trcard.sel{ border-color:#ff5cc8; } .trcard.on{ border-color:#3ef0ff; }
+.trcard .trn,.trcard .trf{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.trcard .trf{ color:#8fd8e8; }
+.trcard ul{ margin:2px 0; padding-left:16px; } .trcard .trline{ margin:2px 0; font-style:italic; opacity:.85; }
+.trwarn{ border:1px solid #ff5cc8; border-radius:4px; padding:6px; background:rgba(255,92,200,.08); }
+.trbtns{ display:flex; gap:6px; margin-top:auto; } .trbtns .btn{ flex:1; min-height:34px; }
+.trfoot{ display:flex; align-items:center; gap:8px; }
+.trfix{ display:flex; flex-direction:column; gap:6px; margin:8px 0; } .trrow{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.trchip{ display:inline-block; padding:1px 8px; border:1px solid #3ef0ff; border-radius:10px; font-size:.9em; white-space:nowrap; }
+.trrecog{ font-style:italic; }
