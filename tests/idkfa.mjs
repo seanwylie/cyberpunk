@@ -25,7 +25,8 @@ ok(await ev(() => !window.__game.save.cheated), 'ignored while typing in a text 
 await ev(() => document.getElementById('tmpin').remove());
 // works in a run
 await ev(() => { const g = window.__game; g.startRun(); g.revealing = false; });
+await page.keyboard.type('idkfa'); await sleep(100); ok(await ev(() => !window.__game.save.idkfa.on), 'typing it again (in a run) turns it OFF');
 await page.keyboard.type('idkfa'); await sleep(100);
-ok(await ev(() => window.__game.save.cheated === true && window.__game.hp === window.__game.maxHp), 'works in a run');
+ok(await ev(() => window.__game.save.cheated === true && window.__game.save.idkfa.on && window.__game.hp === window.__game.maxHp), 'works in a run (ON again, full heal)');
 ok(errors.length === 0, 'no page errors ' + errors.join('|'));
 await browser.close(); process.exit(fails ? 1 : 0);
