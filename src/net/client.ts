@@ -95,7 +95,7 @@ export class NetClient {
   createParty() { this.send({ t: 'party_create' }); } joinParty(code: string) { this.send({ t: 'party_join', code }); } leaveParty() { this.send({ t: 'party_leave' }); this.party = null; }
   setReady(r: boolean) { this.onBuild?.(); this.send({ t: 'party_ready', ready: r }); } onBuild?: () => void; setDungeon(d: string) { this.send({ t: 'party_dungeon', dungeon: d }); } start() { this.send({ t: 'party_start' }); }
   kick(id: string) { this.send({ t: 'party_kick', id }); } chat(text: string, scope: 'party' | 'town' = 'party') { this.send({ t: 'chat', text, scope }); } mark(x: number, y: number) { this.send({ t: 'mark', x, y }); }
-  profile(name: string, lvl: number, look?: Look) { this.o.name = name; this.o.lvl = lvl; this.o.look = look; this.send({ t: 'profile', name, lvl, look }); }
+  profile(name: string, lvl: number, look?: Look, pub?: 0 | 1) { this.o.name = name; this.o.lvl = lvl; this.o.look = look; this.send({ t: 'profile', name, lvl, look, pub: pub ?? 0 }); }
   /** the validated-on-server combat build (installed hardware, chips, rep, pity) */
   build(profile: any) { this.send({ t: 'build', profile }); }
   get isLeader() { return !!this.party && this.party.members.some(m => m.id === this.id && m.leader); }

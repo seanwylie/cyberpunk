@@ -16,6 +16,7 @@ import { initMobile, registerSW } from './mobile';
 import { Tutorial } from './tutorial';
 import { initNet } from './net';
 import { showCharsOnLoad } from './charselui';
+import { cityEvent, cityInit } from './cityclient';
 
 try{ (document as any).fonts?.load('600 14px "Roboto Condensed"'); }catch{}
 import { buildTownLevel } from './worldtowns';
@@ -24,7 +25,8 @@ applyUiScale(save.settings.uiSize||'M'); const audio=new AudioSys(); audio.vol=s
 if((save as any)._chipMigrated){ persist(save); }
 Q.setPref(save.settings.quality||'auto'); Q.showFps=!!save.settings.showFps;
 let ui:UI; let tut:Tutorial|undefined; let beats:StoryBeats|undefined;
-const game=new Game(save,(t,p)=>{ tut?.event(t,p); if(t==='sfx') audio.sfx(p); else if(t==='musickey') audio.setMusicKey(p); else if(t==='musicretry') audio.noteMusicRetry(); else if(t==='musicphase') audio.setMusicPhase(p); else if(t==='stinger') audio.stinger(p); else if(t==='musicnudge') audio.nudgeMusic(); else if(t==='musicarea') audio.setMusicArea(p); else if(t==='towntheme') audio.setTownTheme(p); else if(t==='music') audio.setState(p); else if(t==='beat') beats?.fire(p); else ui?.handle(t,p); });
+cityInit();
+const game=new Game(save,(t,p)=>{ tut?.event(t,p); cityEvent(game,t,p); if(t==='sfx') audio.sfx(p); else if(t==='musickey') audio.setMusicKey(p); else if(t==='musicretry') audio.noteMusicRetry(); else if(t==='musicphase') audio.setMusicPhase(p); else if(t==='stinger') audio.stinger(p); else if(t==='musicnudge') audio.nudgeMusic(); else if(t==='musicarea') audio.setMusicArea(p); else if(t==='towntheme') audio.setTownTheme(p); else if(t==='music') audio.setState(p); else if(t==='beat') beats?.fire(p); else ui?.handle(t,p); });
 ui=new UI(game,audio);
 beats=new StoryBeats(()=>game.save); ui.beats=beats; beats.onEntry=e=>{ ui.syncStoryDot(); showStoryCard(e,()=>game.mode==='town'&&!ui.modal&&!(tut&&!tut.disabled&&game.save.tutorial?.status==='active'),document.getElementById('toasts'),en=>ui.openStory(en)); if(ui.modal==='fixer') ui.render(); }; (window as any).__beats=beats;
 const canvas=document.getElementById('game') as HTMLCanvasElement; const rend=new Renderer(canvas,game);
@@ -47,4 +49,6 @@ window.addEventListener('keydown',e=>{ if(e.key==='F3'){ e.preventDefault(); Q.s
 function frame(now:number){ const dt=(now-last)/1000; last=now; Q.sample(dt*1000); const fo=fpsOn||Q.showFps; if(fo!==(fpsEl.style.display==='block')) fpsEl.style.display=fo?'block':'none'; if(!document.hidden){ input.tick(); game.update(dt); rend.draw(dt); ui.hud(); tut?.tick(); } frames++; ft+=dt; wMax=Math.max(wMax,dt*1000); if(ft>=1){ fps=frames/ft; if(fo) fpsEl.textContent=fps.toFixed(0)+' fps  worst '+wMax.toFixed(0)+'ms  '+rend.canvas.width+'x'+rend.canvas.height+'  '+Q.tier+(Q.pref==='auto'?'*':''); wMax=0; frames=0; ft=0; (window as any).__fps=fps; } requestAnimationFrame(frame); }
 requestAnimationFrame(frame);
 import('./version').then(v=>v.startVersionWatch());
+// living city UI (faction banner, news panel, street chatter): lazy, after first paint; news + chatter are behind feature flags inside
+setTimeout(()=>{ import('./cityui').then(m=>m.initCityUi(game,ui)).catch(e=>console.warn('city ui failed (game unaffected)',e)); },2500);
 (window as any).__game=game; (window as any).__ui=ui; { const sync=()=>{ const b=document.getElementById('idkfabadge'); if(b) b.style.display=idkfaActive(game.save)?'inline-block':'none'; }; sync(); setInterval(sync,500); } if(showCharsOnLoad()) setTimeout(()=>{ if(!ui.modal) ui.open('chars'); },50); { const bc=new URLSearchParams(location.search).get('build'); if(bc) setTimeout(()=>viewCode(ui,bc),800); } (window as any).__tut=tut; (window as any).__rend=rend; (window as any).__audio=audio; (window as any).__enemies=ENEMIES;

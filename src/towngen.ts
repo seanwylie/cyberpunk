@@ -28,6 +28,9 @@ const hubOf = (t: WorldTown) => [Math.floor(t.gen!.w / 2), Math.floor(t.gen!.h /
 const radii = (t: WorldTown) => { const g = t.gen!; return { rx: g.w / 2 - 6, ry: g.h / 2 - 6 }; };
 const stCache: Record<string, Station[]> = {};
 /** deterministic station list for a generated town (also used by the stations registry before the level is built) */
+import { cityDecor } from './cityclient';
+/** controlling-faction signs (coloured in the faction colour) shown first when someone other than the home faction holds the district */
+function cityNeon(id: string): [string, string][] { const d = cityDecor(id), t = WORLD_BY_ID[id]; if (!d || !t || d.color === undefined) return []; return d.signs[0] && !t.gen?.signage.includes(d.signs[0]) ? d.signs.map(x => [x, d.color] as [string, string]) : []; }
 export function genStations(id: string): Station[] {
   if (stCache[id]) return stCache[id]; const t = WORLD_BY_ID[id], g = t.gen!; const [CX, CY] = hubOf(t); const { rx, ry } = radii(t); const R = rr(g.seed);
   const n = g.stations.length, off = R() * Math.PI * 2; const out: Station[] = [];
@@ -44,7 +47,7 @@ export function genCfg(id: string): TownCfg {
   const props = new Set<string>(['npc1', 'npc2', 'npc3', 'npc4', 'np_kneel_l', 'np_kneel_r', 'np_pair_talk', 'np_guard_l', 'np_guard_r', 'np_porter', 'np_hooded_wall', 'np_lantern_l', 'np_lantern_r', 'np_kid_l', 'np_kid_r', 'lamp', 'awn_red', 'awn_blue', 'swag1', 'swag2', 'bulbs', 'fixer_booth', 'noticeboard', 'steam_drums', 'crates', 'barrels', 'barrier', 'vending']);
   for (const k of g.stations) props.add(FOCAL[k][0]); for (const p of g.perimeter) props.add(p[0]); for (const p of g.hub) props.add(p[0]); props.add(g.landmark.spr); props.delete('bank_vault');
   return { stations: st, hub: [CX + .5, CY + .5], props: [...props], ground: [...new Set([g.ground.base, g.ground.planks, g.ground.plaza, g.ground.debris || g.ground.base])], fallbackBase: './town2/', puddles: g.puddles, plazaSize: 18,
-    g: { base: g.ground.base, planks: g.ground.planks, plaza: g.ground.plaza, debris: g.ground.debris || 'none' }, recolor: g.recolor, theme: id, lamp: g.lamp, neon: g.signage.map(s => [s, t.color] as [string, string]) } as TownCfg;
+    g: { base: g.ground.base, planks: g.ground.planks, plaza: g.ground.plaza, debris: g.ground.debris || 'none' }, recolor: g.recolor, theme: id, lamp: g.lamp, neon: [...cityNeon(id), ...g.signage].map(s => (typeof s === 'string' ? [s, t.color] : s) as [string, string]) } as TownCfg;
 }
 
 export function buildGenTown(id: string): Level {
@@ -108,6 +111,8 @@ export function buildGenTown(id: string): Level {
     npcs.push(N(spr, x, y, R() * 6, spr === 'np_porter' || spr === 'np_lantern_l' || spr === 'np_kid_l' ? { wander: [x + (R() - .5) * 8, y + (R() - .5) * 6], speed: .3 } : {})); }
   for (const s of ST) { const x = s.x + (R() < .5 ? -2.6 : 2.6), y = s.y - 1; if (walk(x, y)) npcs.push(N(pool[(R() * 4) | 0], x, y, R() * 6, { h: 1.25 })); }
   const elites: { x: number; y: number }[] = []; if (gt) for (const dx of [-2.6, 2.6]) { const x = gt.x + dx, y = gt.y - 1.6; if (walk(x, y)) { npcs.push(N(dx < 0 ? 'np_guard_l' : 'np_guard_r', x, y, 1, { h: 1.42 })); elites.push({ x, y }); } }
+  // living city: the controlling faction posts extra guards on the plaza ring (docs/LIVING_CITY.md)
+  { const xg = Math.max(0, (cityDecor(id)?.guards ?? 2) - 2); for (let i = 0, k = 0; i < 24 && k < xg; i++) { const a = i * 2.39, x = CX + .5 + Math.cos(a) * 6.5, y = CY + .5 + Math.sin(a) * 5; if (!walk(x, y)) continue; npcs.push(N(i % 2 ? 'np_guard_l' : 'np_guard_r', x, y, 1, { h: 1.42 })); elites.push({ x, y }); k++; } }
   for (const e of elites) lights.push({ x: e.x, y: e.y, z: 1, r: 3, c: 'cool', a: .35, flick: .02 });
   const interacts: Interact[] = ST.map(s => ({ id: s.id, x: s.x, y: s.y, r: 2.4, label: stationPrompt(s), kind: s.kind, opens: s.opens, station: s.key }));
   return { w, h, solid, zone, doors: [], props: [], interacts, spawns: [], checkpoints: [], sensors: { x0: 0, y0: 0, x1: 0, y1: 0 }, spawn, returnSpawn, zoneNames: ZONES, bossSpawn: { x: 0, y: 0 }, revealX: 0, salvage: { x: 0, y: 0 }, kind: 'town', theme: id, decor, npcs, lights, hide, overhead, landmark, elites } as unknown as Level;

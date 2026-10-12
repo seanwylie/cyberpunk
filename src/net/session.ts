@@ -1,3 +1,4 @@
+import { cityVersion } from '../cityclient';
 // Glue between the single-player Game and the multiplayer client. Active ONLY while a party instance runs (Game.netHook returns true)
 // or while the player is in a town shard. Single-player behaviour is untouched when no server is configured/connected.
 import { Game } from '../sim';
@@ -84,7 +85,7 @@ export class NetSession {
   /** the player's look for others to render: body variants + equipped cosmetics ids */
   look() { try { const s = this.g.save as any; const own = cosOf(s).owned; const ex = Object.keys(own).filter(isExclusive).sort((a, b) => own[a] - own[b]).slice(0, 8).map(id => [id, own[id]] as [string, number]); const sc = showcaseOf(s);
     return { body: bodyOf(this.g.save) as any, cos: equippedCos(this.g.save).map(c => c.id), gear: encodeGear(gearFxOf(this.g.save)), ...(ex.length ? { ex } : {}), ...(sc ? { sc } : {}) }; } catch { return undefined; } }
-  sendProfile() { const s = this.g.save as any; this.net.profile(this.net.o.name || 'Guest', Math.max(1, Math.min(60, s.level || 1)), this.look());  }
+  sendProfile() { const s = this.g.save as any; this.net.profile(this.net.o.name || 'Guest', Math.max(1, Math.min(60, s.level || 1)), this.look(), s.settings?.cityPublic ? 1 : 0);  }
   // ---------- per-frame hook: the game's own update always runs (return false); this only does the network side, all non-blocking
   private hook(dtRaw: number): boolean {
     if (!this.active || !this.ic) return false; const g = this.g, ic = this.ic;
@@ -120,7 +121,7 @@ export class NetSession {
   // ---------- town presence
   private townTick() {
     const g = this.g, n = this.net; if (n.state !== 'online' || this.active) return;
-    if (g.mode === 'town') { const key = g.townId; if (key !== this.lastTownKey) { this.lastTownKey = key; n.send({ t: 'town_join', town: key }); n.townPlayers.clear(); } n.send({ t: 'town_pos', x: +g.px.toFixed(2), y: +g.py.toFixed(2), face: +g.face.toFixed(2), moving: !!g.moving }); }
+    if (g.mode === 'town') { const key = g.townId; if (key !== this.lastTownKey) { this.lastTownKey = key; n.send({ t: 'town_join', town: key, cv: cityVersion() }); n.townPlayers.clear(); } n.send({ t: 'town_pos', x: +g.px.toFixed(2), y: +g.py.toFixed(2), face: +g.face.toFixed(2), moving: !!g.moving }); }
     else if (this.lastTownKey) { this.lastTownKey = ''; n.send({ t: 'town_leave' }); }
   }
   // ---------- rendering

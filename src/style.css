@@ -731,3 +731,9 @@ img.splash{width:84px;height:112px;object-fit:cover;border-radius:4px;border:1px
 .stwhen{font-size:12px;color:#ffd58a;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stlines{flex-wrap:wrap;gap:4px;margin-bottom:4px}.ststarter{gap:8px;border:1px dashed rgba(232,196,106,.35);padding:6px;border-radius:4px}.ststarter>span{min-width:0}
 .drb.ex{background:rgba(40,30,14,.9);color:#ffd58a;border:1px solid #b8955a}
+/* living city (docs/LIVING_CITY.md) */
+.citybanner{position:fixed;top:calc(8px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:30;max-width:46vw;padding:3px 12px;border:1px solid var(--fc,#888);border-radius:3px;background:linear-gradient(180deg,rgba(14,12,18,.86),rgba(8,8,12,.86));color:#efe3cf;font:600 12px "Roboto Condensed",sans-serif;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:inset 0 -2px 0 var(--fc,#888),0 0 14px -6px var(--fc,#888);cursor:pointer}
+.citybanner[data-mood=hot]{box-shadow:inset 0 -2px 0 var(--fc),0 0 18px -4px #ff4a3a}
+.cnwrap{display:flex;flex-direction:column;gap:10px;min-width:0}.cnhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-left:3px solid var(--fc);padding-left:8px}
+.cnlist{display:flex;flex-direction:column;gap:8px}.cnitem{padding:8px 10px;background:rgba(255,255,255,.04);border-radius:3px;overflow-wrap:anywhere}.cnitem b{display:block;color:#f2d79a;margin-bottom:2px}
+.cbark{font-style:italic;opacity:.92}
