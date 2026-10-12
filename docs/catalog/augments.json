@@ -1,6 +1,6 @@
 {
  "version": 1,
- "catalogVersion": "86b051c4b6a0",
+ "catalogVersion": "a8e0184eede8",
  "generatedBy": "tools/gen_catalog.mjs",
  "stats": {
   "augments": 169,
@@ -1241,7 +1241,7 @@
    "maker": "HI",
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "grey",
-   "level": 6,
+   "level": 1,
    "humanity": 1,
    "stats": {
     "dmg": 0.02,
@@ -1349,13 +1349,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 6,
+     "minLevel": 1,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 6"
+     "note": "any dungeon whose level cap >= 1"
     },
     {
      "kind": "store",
-     "minLevel": 6,
+     "minLevel": 1,
      "towns": [
       {
        "town": "rustline",
@@ -1800,7 +1800,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 7,
+   "level": 2,
    "humanity": 1,
    "stats": {
     "dmg": 0.02,
@@ -1902,13 +1902,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 7,
+     "minLevel": 2,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 7"
+     "note": "any dungeon whose level cap >= 2"
     },
     {
      "kind": "store",
-     "minLevel": 7,
+     "minLevel": 2,
      "towns": [
       {
        "town": "rustline",
@@ -1932,7 +1932,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 6,
+   "level": 1,
    "humanity": 1,
    "stats": {
     "dmg": 0.02,
@@ -2038,13 +2038,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 6,
+     "minLevel": 1,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 6"
+     "note": "any dungeon whose level cap >= 1"
     },
     {
      "kind": "store",
-     "minLevel": 6,
+     "minLevel": 1,
      "towns": [
       {
        "town": "rustline",
@@ -2474,7 +2474,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -2486,7 +2486,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -2501,7 +2501,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -2513,7 +2513,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -2528,7 +2528,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -2540,7 +2540,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -2914,8 +2914,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "boss",
      "share": 0.069,
@@ -3037,8 +3037,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "ordinary",
      "share": 0.017
@@ -4609,7 +4609,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 9,
+   "level": 4,
    "humanity": 1,
    "stats": {
     "dmg": 0.02,
@@ -4711,13 +4711,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 9,
+     "minLevel": 4,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 9"
+     "note": "any dungeon whose level cap >= 4"
     },
     {
      "kind": "store",
-     "minLevel": 9,
+     "minLevel": 4,
      "towns": [
       {
        "town": "rustline",
@@ -4741,7 +4741,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 9,
+   "level": 4,
    "humanity": 1,
    "stats": {
     "dmg": 0.02,
@@ -4859,13 +4859,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 9,
+     "minLevel": 4,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 9"
+     "note": "any dungeon whose level cap >= 4"
     },
     {
      "kind": "store",
-     "minLevel": 9,
+     "minLevel": 4,
      "towns": [
       {
        "town": "rustline",
@@ -5136,8 +5136,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.054
@@ -5270,8 +5270,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.032
@@ -5282,8 +5282,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "boss",
      "share": 0.034,
@@ -5321,7 +5321,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -5333,7 +5333,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -5345,7 +5345,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -5357,7 +5357,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -5369,7 +5369,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -5381,7 +5381,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -5760,7 +5760,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -5772,7 +5772,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -5787,7 +5787,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -5799,7 +5799,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -5814,7 +5814,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -5826,7 +5826,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -6100,7 +6100,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
-   "level": 6,
+   "level": 3,
    "humanity": 1,
    "stats": {
     "maxHp": 6
@@ -6183,7 +6183,7 @@
    "sources": [
     {
      "kind": "store",
-     "minLevel": 6,
+     "minLevel": 3,
      "towns": [
       {
        "town": "rustline",
@@ -6207,7 +6207,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
-   "level": 9,
+   "level": 3,
    "humanity": 1,
    "stats": {
     "maxHp": 8,
@@ -6295,8 +6295,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "ordinary",
      "share": 0.075
@@ -6307,7 +6307,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -6435,7 +6435,7 @@
     },
     {
      "kind": "store",
-     "minLevel": 9,
+     "minLevel": 3,
      "towns": [
       {
        "town": "rustline",
@@ -6555,8 +6555,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.054
@@ -7522,7 +7522,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 6,
+   "level": 1,
    "humanity": 1,
    "stats": {
     "cooling": 0.03,
@@ -7604,13 +7604,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 6,
+     "minLevel": 1,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 6"
+     "note": "any dungeon whose level cap >= 1"
     },
     {
      "kind": "store",
-     "minLevel": 6,
+     "minLevel": 1,
      "towns": [
       {
        "town": "rustline",
@@ -8638,8 +8638,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "elite",
      "share": 0.07
@@ -8650,8 +8650,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "boss",
      "share": 0.136,
@@ -8667,7 +8667,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -8679,7 +8679,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -9061,8 +9061,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.054
@@ -10662,7 +10662,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -10674,7 +10674,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -10686,7 +10686,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -10927,7 +10927,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
-   "level": 10,
+   "level": 5,
    "humanity": 1,
    "stats": {
     "pickup": 0.5
@@ -10989,8 +10989,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "ordinary",
      "share": 0.057
@@ -11001,7 +11001,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -11129,7 +11129,7 @@
     },
     {
      "kind": "store",
-     "minLevel": 10,
+     "minLevel": 5,
      "towns": [
       {
        "town": "rustline",
@@ -11215,8 +11215,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "ordinary",
      "share": 0.073
@@ -12153,8 +12153,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "ordinary",
      "share": 0.017
@@ -12591,7 +12591,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 7,
+   "level": 2,
    "humanity": 1,
    "stats": {
     "move": 0.01,
@@ -12661,13 +12661,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 7,
+     "minLevel": 2,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 7"
+     "note": "any dungeon whose level cap >= 2"
     },
     {
      "kind": "store",
-     "minLevel": 7,
+     "minLevel": 2,
      "towns": [
       {
        "town": "rustline",
@@ -12770,7 +12770,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -12782,7 +12782,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -12794,7 +12794,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -12806,7 +12806,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -12818,7 +12818,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -12830,7 +12830,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -13357,7 +13357,7 @@
    "maker": "HI",
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "grey",
-   "level": 7,
+   "level": 2,
    "humanity": 1,
    "stats": {
     "dmg": 0.02,
@@ -13465,13 +13465,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 7,
+     "minLevel": 2,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 7"
+     "note": "any dungeon whose level cap >= 2"
     },
     {
      "kind": "store",
-     "minLevel": 7,
+     "minLevel": 2,
      "towns": [
       {
        "town": "rustline",
@@ -13495,7 +13495,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 9,
+   "level": 4,
    "humanity": 1,
    "stats": {
     "dmg": 0.02,
@@ -13601,13 +13601,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 9,
+     "minLevel": 4,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 9"
+     "note": "any dungeon whose level cap >= 4"
     },
     {
      "kind": "store",
-     "minLevel": 9,
+     "minLevel": 4,
      "towns": [
       {
        "town": "rustline",
@@ -13922,7 +13922,7 @@
    "maker": "HI",
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
-   "level": 8,
+   "level": 1,
    "humanity": 1,
    "stats": {
     "armor": 2,
@@ -14006,7 +14006,7 @@
    "sources": [
     {
      "kind": "store",
-     "minLevel": 8,
+     "minLevel": 1,
      "towns": [
       {
        "town": "rustline",
@@ -14164,7 +14164,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
-   "level": 9,
+   "level": 3,
    "humanity": 1,
    "stats": {
     "armor": 1,
@@ -14252,8 +14252,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "ordinary",
      "share": 0.057
@@ -14264,7 +14264,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -14392,7 +14392,7 @@
     },
     {
      "kind": "store",
-     "minLevel": 9,
+     "minLevel": 3,
      "towns": [
       {
        "town": "rustline",
@@ -14504,8 +14504,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "boss",
      "share": 0.069,
@@ -15079,7 +15079,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 8,
+   "level": 3,
    "humanity": 1,
    "stats": {
     "dmg": 0.02,
@@ -15197,13 +15197,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 8,
+     "minLevel": 3,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 8"
+     "note": "any dungeon whose level cap >= 3"
     },
     {
      "kind": "store",
-     "minLevel": 8,
+     "minLevel": 3,
      "towns": [
       {
        "town": "rustline",
@@ -15742,8 +15742,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.054
@@ -15894,7 +15894,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -15906,7 +15906,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -15918,7 +15918,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -15930,7 +15930,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -15942,7 +15942,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -15954,7 +15954,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -16318,7 +16318,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -16333,7 +16333,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -16348,7 +16348,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -16624,7 +16624,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
-   "level": 6,
+   "level": 4,
    "humanity": 2,
    "stats": {
     "atkSpeed": 0.03
@@ -16723,8 +16723,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "ordinary",
      "share": 0.047
@@ -16735,8 +16735,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "ordinary",
      "share": 0.017
@@ -16747,7 +16747,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -16875,7 +16875,7 @@
     },
     {
      "kind": "store",
-     "minLevel": 6,
+     "minLevel": 4,
      "towns": [
       {
        "town": "rustline",
@@ -16999,8 +16999,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "elite",
      "share": 0.07
@@ -17011,8 +17011,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "boss",
      "share": 0.091,
@@ -17028,7 +17028,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -17040,7 +17040,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -17441,8 +17441,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "elite",
      "share": 0.093
@@ -17453,8 +17453,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "boss",
      "share": 0.136,
@@ -17470,7 +17470,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -17482,7 +17482,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -17787,7 +17787,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
-   "level": 12,
+   "level": 7,
    "humanity": 2,
    "stats": {
     "dmg": 0.05
@@ -17885,8 +17885,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "ordinary",
      "share": 0.028
@@ -17897,8 +17897,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "elite",
      "share": 0.093
@@ -17909,7 +17909,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -17921,7 +17921,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -18169,7 +18169,7 @@
     },
     {
      "kind": "store",
-     "minLevel": 12,
+     "minLevel": 7,
      "towns": [
       {
        "town": "rustline",
@@ -18291,8 +18291,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "elite",
      "share": 0.07
@@ -18303,8 +18303,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "boss",
      "share": 0.091,
@@ -18320,8 +18320,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.032
@@ -18332,7 +18332,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -18344,7 +18344,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -18747,8 +18747,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "boss",
      "share": 0.069,
@@ -18878,8 +18878,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "ordinary",
      "share": 0.004
@@ -18890,8 +18890,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.022
@@ -19508,8 +19508,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "boss",
      "share": 0.069,
@@ -19644,8 +19644,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.032
@@ -19656,8 +19656,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "boss",
      "share": 0.034,
@@ -20465,7 +20465,7 @@
    "maker": "HI",
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "grey",
-   "level": 8,
+   "level": 3,
    "humanity": 1,
    "stats": {
     "maxHp": 5,
@@ -20560,13 +20560,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 8,
+     "minLevel": 3,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 8"
+     "note": "any dungeon whose level cap >= 3"
     },
     {
      "kind": "store",
-     "minLevel": 8,
+     "minLevel": 3,
      "towns": [
       {
        "town": "rustline",
@@ -21224,7 +21224,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -21236,7 +21236,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -21248,7 +21248,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -21263,7 +21263,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -21275,7 +21275,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -21287,7 +21287,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -21302,7 +21302,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -21314,7 +21314,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -21326,7 +21326,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -21789,8 +21789,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "ordinary",
      "share": 0.044
@@ -21934,7 +21934,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
-   "level": 10,
+   "level": 4,
    "humanity": 1,
    "stats": {
     "maxHp": 12,
@@ -22015,8 +22015,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "ordinary",
      "share": 0.057
@@ -22027,7 +22027,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -22155,7 +22155,7 @@
     },
     {
      "kind": "store",
-     "minLevel": 10,
+     "minLevel": 4,
      "towns": [
       {
        "town": "rustline",
@@ -22259,8 +22259,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "ordinary",
      "share": 0.087
@@ -23034,8 +23034,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.054
@@ -23395,7 +23395,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 6,
+   "level": 1,
    "humanity": 1,
    "stats": {
     "maxHp": 3,
@@ -23491,13 +23491,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 6,
+     "minLevel": 1,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 6"
+     "note": "any dungeon whose level cap >= 1"
     },
     {
      "kind": "store",
-     "minLevel": 6,
+     "minLevel": 1,
      "towns": [
       {
        "town": "rustline",
@@ -23898,7 +23898,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -23910,7 +23910,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -23922,7 +23922,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -23937,7 +23937,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -23949,7 +23949,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -23961,7 +23961,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -23976,7 +23976,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -23988,7 +23988,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -24000,7 +24000,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -24463,8 +24463,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "ordinary",
      "share": 0.044
@@ -24495,7 +24495,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "green",
-   "level": 10,
+   "level": 4,
    "humanity": 1,
    "stats": {
     "maxHp": 12,
@@ -24576,8 +24576,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "ordinary",
      "share": 0.057
@@ -24588,7 +24588,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -24716,7 +24716,7 @@
     },
     {
      "kind": "store",
-     "minLevel": 10,
+     "minLevel": 4,
      "towns": [
       {
        "town": "rustline",
@@ -25909,7 +25909,7 @@
    "maker": "HI",
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "grey",
-   "level": 7,
+   "level": 2,
    "humanity": 1,
    "stats": {
     "maxHp": 6,
@@ -26015,13 +26015,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 7,
+     "minLevel": 2,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 7"
+     "note": "any dungeon whose level cap >= 2"
     },
     {
      "kind": "store",
-     "minLevel": 7,
+     "minLevel": 2,
      "towns": [
       {
        "town": "rustline",
@@ -26575,7 +26575,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 7,
+   "level": 2,
    "humanity": 1,
    "stats": {
     "maxHp": 4,
@@ -26679,13 +26679,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 7,
+     "minLevel": 2,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 7"
+     "note": "any dungeon whose level cap >= 2"
     },
     {
      "kind": "store",
-     "minLevel": 7,
+     "minLevel": 2,
      "towns": [
       {
        "town": "rustline",
@@ -27262,7 +27262,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 9,
+   "level": 4,
    "humanity": 1,
    "stats": {
     "maxHp": 4,
@@ -27378,13 +27378,13 @@
       "ordinary",
       "elite"
      ],
-     "minLevel": 9,
+     "minLevel": 4,
      "repRank": 0,
-     "note": "any dungeon whose level cap >= 9"
+     "note": "any dungeon whose level cap >= 4"
     },
     {
      "kind": "store",
-     "minLevel": 9,
+     "minLevel": 4,
      "towns": [
       {
        "town": "rustline",
@@ -28106,7 +28106,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -28118,7 +28118,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -28133,7 +28133,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -28145,7 +28145,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -28160,7 +28160,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -28172,7 +28172,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -28551,7 +28551,7 @@
      "dungeonName": "Basin Slag Ovens",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -28563,7 +28563,7 @@
      "dungeonName": "Substation 12",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -28575,7 +28575,7 @@
      "dungeonName": "Tailings Pit 3",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -28822,8 +28822,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "boss",
      "share": 0.103,
@@ -28857,7 +28857,7 @@
    "maker": "HI",
    "makerName": "Harrow-Brandt Heavy Works",
    "rarity": "green",
-   "level": 6,
+   "level": 5,
    "humanity": 1,
    "stats": {
     "maxHp": 24,
@@ -28946,15 +28946,15 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "ordinary",
      "share": 0.044
     },
     {
      "kind": "store",
-     "minLevel": 6,
+     "minLevel": 5,
      "towns": [
       {
        "town": "rustline",
@@ -28978,7 +28978,7 @@
    "maker": "MM",
    "makerName": "Kestrel Value Systems",
    "rarity": "grey",
-   "level": 8,
+   "level": 2,
    "humanity": 0,
    "stats": {
     "maxHp": 16
@@ -29066,8 +29066,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "ordinary",
      "share": 0.113
@@ -29078,7 +29078,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "ordinary",
@@ -29206,7 +29206,7 @@
     },
     {
      "kind": "store",
-     "minLevel": 8,
+     "minLevel": 2,
      "towns": [
       {
        "town": "rustline",
@@ -29338,8 +29338,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "elite",
      "share": 0.093
@@ -29350,8 +29350,8 @@
      "dungeonName": "Kestrel Distribution Hub 9",
      "dungeonTier": 0,
      "levels": [
-      8,
-      18
+      3,
+      14
      ],
      "tier": "boss",
      "share": 0.136,
@@ -29367,7 +29367,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "elite",
@@ -29379,7 +29379,7 @@
      "dungeonName": "Rustline Scrap Gantry",
      "dungeonTier": 1,
      "levels": [
-      12,
+      8,
       24
      ],
      "tier": "boss",
@@ -29792,8 +29792,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "boss",
      "share": 0.069,
@@ -29915,8 +29915,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "ordinary",
      "share": 0.087
@@ -30037,8 +30037,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.016
@@ -30049,8 +30049,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "boss",
      "share": 0.034,
@@ -30975,8 +30975,8 @@
      "dungeonName": "Reclamation Annex",
      "dungeonTier": 0,
      "levels": [
-      10,
-      20
+      1,
+      10
      ],
      "tier": "elite",
      "share": 0.054

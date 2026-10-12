@@ -55,7 +55,7 @@ Recorded per character (`save.traits`), weights in parentheses:
 | Sparse history | balanced set (Freelancer first) + equipped abilities as a weak prior | `TRAIT_CFG.sparseMin/priorWeight` |
 | Seasons | traits persist with the character; **seasonal characters are an open question (TBD)** | - |
 | Character count | 10 | `CHAR_LIMIT` in `src/chars.ts` |
-| New characters start at level 12 (`PROGRESSION.startLevel`) | so the level 10 pick is available immediately, but with sparse history; the recognition hints nudge players to play a few runs first | - |
+| New characters start at **level 1** (`PROGRESSION.startLevel`; Sean, Oct 12 2026) | the level 10 pick comes from real play, so by the time it is offered the action log holds a full history of levels 1–9 and the ranking reflects how the character actually plays. Characters migrated from the single-save era keep their stored level (often 12+) and can pick immediately | - |
 
 ## Effects in the sim
 

@@ -19,7 +19,7 @@ await page.evaluate(() => window.__ui.open('chars')); await sleep(150);
 await page.click('[data-act="cs-new"]'); await page.fill('#csname', 'Wren'); await page.evaluate(() => document.getElementById('splash')?.remove()); await page.screenshot({ path: 'shots/chars/create.png' });
 await Promise.all([page.waitForEvent('load'), page.click('[data-act="cs-create"]')]); await page.waitForFunction(() => window.__game); await page.evaluate(() => document.getElementById('splash')?.remove()); await sleep(400);
 const c2 = await page.evaluate(() => { const r = JSON.parse(localStorage.getItem('wv_roster_v1')); const s = window.__game.save; return { n: r.chars.length, name: r.chars.find(c => c.id === r.active).name, lvl: s.level, cr: s.credits, rep: s.rep.HI, story: s.story?.marker, lb: s.purchases.lockerBlocks, own: !!s.cosmetics?.owned?.hat_x, modal: window.__ui.modal }; });
-ok(c2.n === 2 && c2.name === 'Wren' && c2.lvl === 12 && c2.rep === 0 && c2.story !== 'legacy', 'create: free new character starts fresh (start level 12, no rep, own story)');
+ok(c2.n === 2 && c2.name === 'Wren' && c2.lvl === 1 && c2.rep === 0 && c2.story !== 'legacy', 'create: free new character starts fresh (start level 1, no rep, own story)');
 ok(c2.lb === 2 && c2.own, 'account-wide: locker purchases and cosmetic unlocks shared with the new character');
 ok(c2.modal === 'chars', '2+ characters: selector shown on load');
 await page.evaluate(() => document.getElementById('splash')?.remove()); await page.screenshot({ path: 'shots/chars/select_desktop.png' });

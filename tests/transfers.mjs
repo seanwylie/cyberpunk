@@ -9,7 +9,7 @@ const boot = async () => { await page.waitForFunction(() => window.__game); awai
 await ev(() => document.getElementById('splash')?.remove());
 const a = await ev(async () => { const C = await import('/src/chars.ts'), St = await import('/src/state.ts'), Cf = await import('/src/config.ts'), S = await import('/src/traitstate.ts');
   const g = window.__game, s = g.save; g.enterTown(true); const r = C.createChar('Bea', St.newSave); const A = C.ensureRoster().active;
-  const low = Cf.ITEMS.find(i => !i.id.startsWith('stock_') && i.lvl <= 12 && i.slot === 'legL'), high = Cf.ITEMS.find(i => i.lvl > 20 && !i.id.startsWith('idkfa_') && !i.id.startsWith('sig_'));
+  const low = Cf.ITEMS.find(i => !i.id.startsWith('stock_') && i.lvl <= 1 && /^leg/.test(i.slot)), high = Cf.ITEMS.find(i => i.lvl > 20 && !i.id.startsWith('idkfa_') && !i.id.startsWith('sig_'));
   const iL = St.mkInst(s, low.id), iH = St.mkInst(s, high.id), iC = St.mkInst(s, low.id); iC.chips = ['speed']; s.items.push(iL, iH, iC); const chips0 = s.lockerChips.speed || 0;
   S.traitsOf(s).l10 = { id: 'netrunner', at: 1, level: 12 }; s.cheated = false; St.persist(s); window.__ids = { iL: iL.uid, iH: iH.uid, iC: iC.uid };
   const M = await import('/src/mail.ts'); const eq = Object.values(s.installed)[0];

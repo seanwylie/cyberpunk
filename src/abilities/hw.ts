@@ -34,7 +34,7 @@ const P:Record<Mf,string>={ HI:'HB', PS:'AS', MM:'KV' };
 const SLOTS_OF:Record<Grp,Slot[]>={ arm:['armR','armL'], hand:['handR','handL'], leg:['legL','legR'], foot:['footL','footR'], torso:['torso'], face:['face'], brain:['brain'] };
 const NOUN:Record<Slot,string>={ armR:'Arm (R)', armL:'Arm (L)', handR:'Hand (R)', handL:'Hand (L)', legL:'Leg (L)', legR:'Leg (R)', footL:'Foot (L)', footR:'Foot (R)', torso:'Torso', face:'Visor', brain:'Core' };
 const U:Record<Rar,number>={ grey:.5, green:1, blue:1.8, purple:3, orange:5 };
-const LVL:Record<Rar,number>={ grey:6, green:9, blue:14, purple:20, orange:27 };
+const LVL:Record<Rar,number>={ grey:1, green:9, blue:14, purple:20, orange:27 };
 const r2=(v:number)=>Math.round(v*100)/100;
 function stats(g:Grp,m:Mf,rar:Rar):Partial<Stats>{ const u=U[rar]; let s:Partial<Stats>={};
   if(g==='arm'||g==='hand') s={dmg:.03*u}; else if(g==='leg') s={maxHp:Math.round(5*u),move:.012*u}; else if(g==='foot') s={move:.015*u,armor:.3*u}; else if(g==='torso') s={maxHp:Math.round(8*u),armor:.4*u}; else if(g==='brain') s={cooling:.05*u,dmg:.01*u}; else s={armor:.3*u,dmg:.015*u};

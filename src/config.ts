@@ -126,11 +126,11 @@ export const ITEMS: ItemDef[] = [
   // --- Heavy industrial (ripper + cooling) ---
   H('hi_ripper_arm','HB-40 Ripper Arm','armR','HI','blue',10,{dmg:.08,armor:2},{abilities:['sweep'],caps:['force'],blurb:'Shoulder-mounted saw assembly. Opens armory shutters.'}),
   H('hi_cutting_head','HB-12 Cutting Head','handR','HI','blue',10,{atkSpeed:.05},{weapon:'ripper',blurb:'Attachment-convention test: separate cutting head on the arm.'}),
-  H('hi_clamp','HB-9 Bellows Clamp','handL','HI','green',8,{armor:2,maxHp:8}),
+  H('hi_clamp','HB-9 Bellows Clamp','handL','HI','green',1,{armor:2,maxHp:8}),
   H('hi_legs_l','HB Loadbearer Leg (L)','legL','HI','green',8,{maxHp:14,armor:1}),
   H('hi_legs_r','HB Loadbearer Leg (R)','legR','HI','green',8,{maxHp:14,armor:1}),
   H('hi_torso_cool','HB Thermal Exchange Chassis','torso','HI','blue',10,{cooling:.25,maxHp:20,regen:.6},{abilities:['brace','forcedcool'],blurb:'Cooling torso: bracing frame plus forced venting.'}),
-  H('hi_torso_green','HB Frame Mk1','torso','HI','green',6,{maxHp:24,armor:1}),
+  H('hi_torso_green','HB Frame Mk1','torso','HI','green',5,{maxHp:24,armor:1}),
   // --- Precision surgical (cloak + blade) ---
   H('ps_blade_arm','AS Fan-Blade Arm','armR','PS','blue',10,{dmg:.06},{abilities:['bladeburst'],blurb:'Flush ceramic shell with a blade-ended assembly.'}),
   H('ps_blade_hand_r','AS Scalpel Hand (R)','handR','PS','blue',10,{atkSpeed:.1},{weapon:'blade'}),
@@ -144,7 +144,7 @@ export const ITEMS: ItemDef[] = [
   H('mm_slug_hand','Kestrel Slug Driver','handR','MM','green',8,{dmg:.04},{weapon:'slug',blurb:'Heavy ranged tool: must stand still to fire.'}),
   H('mm_arm_l','Kestrel Refab Emitter Arm','armL','MM','green',8,{cooling:.05},{abilities:['pulse']}),
   H('mm_torso_defib','Kestrel Defib Rack','torso','MM','green',8,{maxHp:12,regen:.3},{abilities:['revive','defib'],caps:['defib']}),
-  H('mm_arm_r','Kestrel Refab Arm (R)','armR','MM','green',6,{maxHp:6}),
+  H('mm_arm_r','Kestrel Refab Arm (R)','armR','MM','green',3,{maxHp:6}),
   // --- Authored signature items (boss drops; authored Easter-egg exceptions to the high-level-only orange rule) ---
   H('sig_audit_core','Audit Core','brain','PS','orange',12,{cooling:.3,dmg:.1,regen:.5},{abilities:['control','pulse'],caps:['hack'],authoredException:true,blurb:'Neural Warden signature. Control + pulse in one brain.'}),
   H('sig_reclaimer_ripper','Reclaimer Ripper','armR','HI','orange',12,{dmg:.2,armor:4},{abilities:['sweep','bladeburst'],caps:['force'],authoredException:true,blurb:'Reclamation Enforcer signature. Sweep and lunge.'}),
@@ -211,7 +211,7 @@ export const ENEMY_DMG: Record<string,number> = { swing:12, shot:10, turretshot:
 for(const k of ['overseer','teague','surgeon','stockmgr']){ const m=BAL.boss[k], d=ENEMIES[k]; if(m&&d){ d.hp=Math.round(d.hp*(m.hp??1)); d.dmgMul=(d.dmgMul??1)*(m.dmg??1); } }
 
 // Progression placeholders (NOT a 100h curve; see README).
-export const PROGRESSION = { startLevel:12, maxLevel:60, xpForLevel:(l:number)=>Math.round(60*Math.pow(l,1.45)) };
+export const PROGRESSION = { startLevel:1, maxLevel:60, xpForLevel:(l:number)=>Math.round(60*Math.pow(l,1.45)) };
 export const DUNGEON_TIER_MAX_ITEM_LEVEL = 20;
 export const INSTANCE_RETENTION_HOURS = 24;
 export const INSTANCE_WARN_MINUTES = 30;

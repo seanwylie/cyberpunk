@@ -19,9 +19,9 @@ const R = await page.evaluate(async () => {
       g.save.items.push(...g.inst.carried.items.splice(0)); gear += gThis; abItems += abThis; perRun.push(abThis);
       const before = Object.keys(g.save.codex || {}).length; g.codexScan(); const nf = Object.keys(g.save.codex || {}).length - before; if (nf > 0 && runsToFirst === null) runsToFirst = r + 1; newFound += Math.max(0, nf); g.enterTown(); }
     Math.random = real; return { name, runs: n, gear: gear / n, abItems: abItems / n, share: gear ? abItems / gear : 0, rarCount, newFound, runsToFirst, runsWithAb: perRun.filter(x => x > 0).length, perRun }; };
-  // many seeds for "runs to first ability" on a brand-new save (level 12, no reputation)
-  const firsts = []; for (let k = 0; k < 25; k++) { const s = stage('first' + k, 12, 0, 'annex', 6, 1000 + k * 17); firsts.push(s.runsToFirst ?? 99); } out.firsts = firsts;
-  out.stages.early = stage('early (L12, rep 0, Annex)', 12, 0, 'annex', 50, 11);
+  // many seeds for "runs to first ability" on a brand-new save (level 1, no reputation)
+  const firsts = []; for (let k = 0; k < 25; k++) { const s = stage('first' + k, 1, 0, 'annex', 6, 1000 + k * 17); firsts.push(s.runsToFirst ?? 99); } out.firsts = firsts;
+  out.stages.early = stage('early (L1, rep 0, Annex)', 1, 0, 'annex', 50, 11);
   const ids = Object.keys((await import('/src/content/dungeons.ts')).DUNGEONS || {}); out.dungeons = ids;
   const DM = await import('/src/content/dungeons.ts'); g.save.cleared = Object.fromEntries(DM.DUNGEON_IDS.map(i => [i, 1]));
   out.stages.mid = stage('mid (L24, rank 1, Foundry)', 24, 1, 'foundry', 100, 111);

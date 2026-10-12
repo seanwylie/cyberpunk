@@ -3,7 +3,7 @@
 import type { ItemDef, Mfr, Rarity, Slot, Stats } from '../config';
 const H=(id:string,name:string,slot:Slot,mfr:Mfr,rarity:Rarity,lvl:number,stats:Partial<Stats>,x:Partial<ItemDef>={}):ItemDef=>({id,name,slot,mfr,rarity,lvl,stats,...x});
 export const WEAPON_ITEMS:ItemDef[] = [
-  H('mm_autopistol','Kestrel Pocket Auto','handR','MM','green',6,{atkSpeed:.03},{weapon:'autopistol',blurb:'Cheap auto-pistol. Fires on the move.'}),
+  H('mm_autopistol','Kestrel Pocket Auto','handR','MM','green',4,{atkSpeed:.03},{weapon:'autopistol',blurb:'Cheap auto-pistol. Fires on the move.'}),
   H('mm_autopistol_b','Kestrel Pocket Auto II','handR','MM','blue',14,{atkSpeed:.05,dmg:.03},{weapon:'autopistol'}),
   H('mm_shocktack','Kestrel Shock-Tack Caster','handR','MM','green',12,{dmg:.02},{weapon:'arc',blurb:'Budget chain-arc. Short chain, lots of heat.'}),
   H('ps_needle_rifle','AS Needle Burst Rifle','handR','PS','blue',14,{atkSpeed:.04},{weapon:'burst',blurb:'Three-round burst, efficient heat, long reach.'}),

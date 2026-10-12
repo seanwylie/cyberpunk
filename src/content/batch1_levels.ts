@@ -16,7 +16,7 @@ export interface LevelSpec {
   objective:{ label:string; relay:string; toast:string; bonus:string }; zoneLabels:Record<string,string>; props:{ crate:number; machine:number; rack:number; conveyor:number };
   unlock:{ after:string[] }; creditMul:number; xp:number; chips:[string,string]; loot:'HI'|'PS'|'MM'|'mix'; intro:string;
 }
-const T=(t:1|2|3|4)=>({1:{min:12,max:24},2:{min:20,max:32},3:{min:28,max:42},4:{min:38,max:50}}[t]);
+const T=(t:1|2|3|4)=>({1:{min:8,max:24},2:{min:20,max:32},3:{min:28,max:42},4:{min:38,max:50}}[t]);
 export const LEVELS:LevelSpec[]=[
  { id:'coke_ovens', name:'Basin Slag Ovens', short:'Slag Ovens', boss:'voss', mfr:'HI', faction:'Harrow-Brandt', district:'Harrow Reach', tier:1, minLevel:T(1).min, maxLevel:T(1).max, est:[6,9], theme:'coke_ovens',
    blurb:'Condemned oven batteries that never stopped firing. Ember beds, charging rails and a battery floor for Marguerite Voss.',
