@@ -25,7 +25,7 @@ await page.screenshot({ path: 'shots/gore/bloody_air.png' }); await sleep(2200);
 // --- spectral = nothing
 await set('bloody'); await mk(await ev(() => (window.__enemies.hollowghost ? 'hollowghost' : 'sootwisp')) /* bestiary mobs are data-only until registered; sootwisp is the registered spectral body */); c = await kill(); ok(c.decals + c.chunks + c.drops === 0, 'Bloody: spectral/hologram entities show no gore ' + JSON.stringify(c));
 // --- allies never gibbed
-await set('bloody'); await ev(() => { const g = window.__game; const e = g.spawnEnemy('worker', g.px + 2, g.py); e.faction = 'ally'; window.__e = e; }); c = await kill(); ok(c.decals + c.chunks + c.drops === 0, 'allies / non-enemies are never dismembered');
+await set('bloody'); await ev(() => { const g = window.__game; const e = g.spawnEnemy('worker', g.px + 2, g.py); e.faction = 'ally'; e.ctrlT = 99; /* a controlled mob reverts to enemy when ctrlT runs out */ window.__e = e; }); c = await kill(); ok(c.decals + c.chunks + c.drops === 0, 'allies / non-enemies are never dismembered');
 // --- boss limb severing at 75/50/25
 await set('bloody'); await ev(() => { const g = window.__game; g.enemies.splice(0); const b = g.spawnEnemy('overseer', g.px + 3, g.py + 1); b._rt.reveal = 0; window.__e = b; window.__mx = b.maxHp; });
 const hb = async f => ev(([f]) => { const g = window.__game, b = window.__e; g.curTag = 'pulse'; g.hurtEnemy(b, Math.max(1, b.hp - b.maxHp * f), g.px, g.py, 0); g.curTag = 'auto'; return window.__gore.chunks.filter(k => k.big).length; }, [f]);
