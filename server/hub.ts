@@ -8,8 +8,9 @@ import { dungeonOf } from '../src/content/dungeons';
 import { PROTO, STATE_HZ, SHARED_FLAGS, MAX_MOVE_SPEED, MOVE_BUDGET, partyHpMul, partyDmgMul, TOWN_HZ, MAX_PARTY, TOWN_SHARD_CAP, cleanName, cleanChat, cleanLook, clamp, r2, Look, PartyState } from '../src/net/shared';
 import { DUNGEONS } from '../src/content/dungeons';
 import { COMBAT } from '../src/config';
+import { CityHub, CITY_SYNC_MS, CITY_SAVE_MS, CITY_NEWS_MS } from './city_srv';
 
-export interface HubOpts { /** allowed browser Origins (exact match, or '*.example.com'); empty/undefined = allow all (dev). Requests with no Origin header (bots/CLI) are allowed only when `allowNoOrigin` */ /** optional extra HTTP route handler (e.g. story proxy); return true when handled */ extra?: (req: any, res: any) => boolean; origins?: string[]; allowNoOrigin?: boolean; /** max concurrent instance rooms / parties (server refuses new ones when full) */ maxRooms?: number; maxParties?: number; port?: number; dev?: boolean; dmgMul?: number; host?: string; maxConns?: number; log?: boolean }
+export interface HubOpts { /** allowed browser Origins (exact match, or '*.example.com'); empty/undefined = allow all (dev). Requests with no Origin header (bots/CLI) are allowed only when `allowNoOrigin` */ /** optional extra HTTP route handler (e.g. story proxy); return true when handled */ extra?: (req: any, res: any) => boolean; origins?: string[]; allowNoOrigin?: boolean; /** max concurrent instance rooms / parties (server refuses new ones when full) */ maxRooms?: number; maxParties?: number; port?: number; dev?: boolean; dmgMul?: number; host?: string; maxConns?: number; log?: boolean; /** living city (docs/LIVING_CITY.md); omitted = off */ city?: CityHub | null; citySyncMs?: number }
 class Bucket { tokens: number; last = Date.now(); constructor(public rate: number, public burst: number) { this.tokens = burst; } take() { const n = Date.now(); this.tokens = Math.min(this.burst, this.tokens + (n - this.last) / 1000 * this.rate); this.last = n; if (this.tokens < 1) return false; this.tokens--; return true; } }
 interface Guest { id: string; token: string; name: string; lvl: number; look?: Look; build?: any; ws: WebSocket | null; party: Party | null; shard: Shard | null; pos: { x: number; y: number; face: number; moving: boolean; t: number; town: string }; ready: boolean; b: { all: Bucket; input: Bucket; chat: Bucket; ping: Bucket; pos: Bucket }; viol: number }
 interface Party { code: string; leader: string; members: Guest[]; dungeon: string | null; room: Room | null; ready: Set<string> }
@@ -25,6 +26,7 @@ export function startHub(o: HubOpts = {}) {
   let draining = false;
   const http = createServer((req, res) => { if (o.extra?.(req, res)) return; // health + metrics on the same port as the ALB target (no auth, no secrets)
     if (req.url === '/healthz') { res.writeHead(draining ? 503 : 200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ ok: !draining, conns: wss.clients.size, rooms: rooms.size, parties: parties.size })); return; }
+    const city = o.city; if (city && req.method === 'GET' && (req.url === '/city/news' || req.url === '/city/state')) { const body = req.url === '/city/news' ? (city.news || { ok: false }) : city.full(); res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=300', 'access-control-allow-origin': '*' }); res.end(JSON.stringify(body)); return; }
     if (req.url === '/metrics') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ conns: wss.clients.size, rooms: rooms.size, parties: parties.size, shards: shards.size, ...stats })); return; }
     res.writeHead(404); res.end();
   });
@@ -95,7 +97,7 @@ export function startHub(o: HubOpts = {}) {
     const bad = () => { r.stats.killsRejected++; stats.rejected++; };
     if (id === 0) { if (r.bossDead || !r.flags.bossSpawned) return bad(); }
     else { if (id < 1 || id > r.homes.length) return bad(); if (r.killed.has(id)) return; /* duplicate: someone else already won the claim */ const h = r.homes[id - 1]; if (Math.hypot(q.x - h.x, q.y - h.y) > 70) return bad(); }
-    if (id === 0) { r.bossDead = true; r.completed = true; r.flags.bossDead = true; r.flags.completed = true; } else r.killed.add(id);
+    if (id === 0) { r.bossDead = true; r.completed = true; r.flags.bossDead = true; r.flags.completed = true; try { o.city?.roomCompleted(r.dungeon, [...r.players.values()], r.killed.size); } catch {} } else r.killed.add(id);
     r.stats.kills++; q.kills++; toRoom(r, { t: 'ekill', id, by: g.id, k: r.killed.size });
   }
   /** shared objective flags (doors/locks/condition/boss spawned): whitelist, monotonic (set once), relayed to the others */
@@ -123,7 +125,7 @@ export function startHub(o: HubOpts = {}) {
     switch (m.t) {
       case 'ping': send(g, { t: 'pong', c: m.c, s: Date.now() }); break;
       case 'build': break; // protocol v1 leftover: gameplay is client-side now, the server keeps no build
-      case 'profile': g.name = cleanName(m.name, g.name); g.lvl = clamp(Math.floor(+m.lvl) || 1, 1, 50); g.look = cleanLook(m.look) ?? g.look; if (g.party) bcastParty(g.party); break;
+      case 'profile': g.name = cleanName(m.name, g.name); if (m.pub !== undefined) o.city?.setPublic(g.id, cleanName(m.name, g.name), m.pub === 1); g.lvl = clamp(Math.floor(+m.lvl) || 1, 1, 50); g.look = cleanLook(m.look) ?? g.look; if (g.party) bcastParty(g.party); break;
       case 'party_create': { if (parties.size >= (o.maxParties ?? 500) && !g.party) { stats.roomCapHits++; return err(g, 'busy', 'Server is full, try again later.'); } if (g.party) leaveParty(g); const p: Party = { code: newCode(), leader: g.id, members: [g], dungeon: null, room: null, ready: new Set() }; parties.set(p.code, p); g.party = p; bcastParty(p); break; }
       case 'party_join': { const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); const p = parties.get(code); if (!p) return err(g, 'nocode', 'No party with that code.'); if (g.party === p) return; if (p.members.length >= MAX_PARTY) return err(g, 'full', 'Party is full (4 max).'); if (p.room) return err(g, 'started', 'That party is already in a dungeon.'); if (g.party) leaveParty(g); p.members.push(g); g.party = p; bcastParty(p); for (const x of p.members) if (x !== g) send(x, { t: 'sys', msg: g.name + ' joined the party.' }); break; }
       case 'party_leave': leaveParty(g); break;
@@ -139,7 +141,8 @@ export function startHub(o: HubOpts = {}) {
       case 'chat': { if (!g.b.chat.take()) { stats.rateLimited++; return err(g, 'slow', 'Slow down.'); } const text = cleanChat(m.text); if (!text) return; const scope = m.scope === 'town' ? 'town' : 'party'; const msg = { t: 'chat', scope, from: g.id, name: g.name, text, at: Date.now() };
         if (scope === 'party' && g.party) for (const x of g.party.members) send(x, msg); else if (scope === 'town' && g.shard) for (const x of g.shard.members) send(x, msg); break; }
       case 'mark': { if (!g.b.ping.take()) return; const r = g.party?.room; if (!r) return; const x = +m.x, y = +m.y; if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > r.w || y > r.h) return; for (const q of g.party!.members) send(q, { t: 'mark', from: g.id, name: g.name, x: r2(x), y: r2(y) }); break; }
-      case 'town_join': joinShard(g, ['rustline', 'harrow'].includes(m.town) ? m.town : 'rustline'); break;
+      case 'town_join': joinShard(g, ['rustline', 'harrow'].includes(m.town) ? m.town : 'rustline'); if (o.city && m.cv !== o.city.s.v) send(g, o.city.full()); break;
+      case 'cev': { if (!o.city) return; const r = o.city.claim(g.id, m, { inRoom: g.party?.room?.id ?? null }); if (!r.ok) stats.rejected++; break; }
       case 'town_leave': leaveShard(g); break;
       case 'town_pos': { if (!g.shard || !g.b.pos.take()) return; const x = +m.x, y = +m.y; if (!Number.isFinite(x) || !Number.isFinite(y)) return; const now = Date.now(), dt = Math.min(1, (now - g.pos.t) / 1000); const max = COMBAT.playerSpeed * 1.6 * Math.max(dt, .05) + 1.2; // speed gate: no teleporting
         if (g.pos.t && Math.hypot(x - g.pos.x, y - g.pos.y) > max) { stats.rejected++; send(g, { t: 'town_correct', x: g.pos.x, y: g.pos.y }); return; } if (x < 0 || y < 0 || x > 200 || y > 200) return; g.pos = { x, y, face: clamp(+m.face || 0, -7, 7), moving: !!m.moving, t: now, town: g.pos.town }; break; }
@@ -171,13 +174,17 @@ export function startHub(o: HubOpts = {}) {
   const townTimer = setInterval(() => {
     for (const sh of shards.values()) { const list = [...sh.members].filter(m => m.pos.t).map(m => ({ id: m.id, name: m.name, x: r2(m.pos.x), y: r2(m.pos.y), face: r2(m.pos.face), moving: m.pos.moving, look: m.look, lvl: m.lvl })); for (const m of sh.members) send(m, { t: 'town_snap', players: list.filter(p => p.id !== m.id), pop: sh.members.size }); }
   }, 1000 / TOWN_HZ);
-  wss.on('close', () => { clearInterval(simTimer); clearInterval(townTimer); });
+  // living city: one slow timer. Diffs only (changed districts), every citySyncMs, to town shard members; persistence + news refresh are async best effort.
+  let lastSave = Date.now(), lastNews = 0;
+  const cityTimer = o.city ? setInterval(() => { const c = o.city!; c.tick(); const d = c.takeDiff(); if (d) { const sj = JSON.stringify(d); for (const sh of shards.values()) for (const m of sh.members) if (m.ws && m.ws.readyState === WebSocket.OPEN) { m.ws.send(sj); c.stats.bytes += sj.length; } }
+    const now = Date.now(); if (now - lastSave >= CITY_SAVE_MS) { lastSave = now; void c.persist(); } if (now - lastNews >= CITY_NEWS_MS) { lastNews = now; void c.refreshNews(); } }, o.citySyncMs ?? CITY_SYNC_MS) : null; (cityTimer as any)?.unref?.();
+  wss.on('close', () => { clearInterval(simTimer); clearInterval(townTimer); if (cityTimer) clearInterval(cityTimer); });
   const ready = new Promise<void>(res => http.on('listening', () => res()));
   const api: any = {
-    ready,    port: () => (http.address() as any).port as number, drain: () => { draining = true; }, stats, guests, parties, rooms, shards,
+    ready, city: o.city,    port: () => (http.address() as any).port as number, drain: () => { draining = true; }, stats, guests, parties, rooms, shards,
     /** graceful shutdown: stop accepting, tell clients, give them a moment, then close */
-    shutdown: async (graceMs = 5000) => { draining = true; for (const g of guests.values()) send(g, { t: 'sys', msg: 'Server restarting, you will be returned to town.' }); for (const r of [...rooms.values()]) endInstance(r.party, 'server restart'); await new Promise(r => setTimeout(r, graceMs)); await api.close(); },
-    close: () => new Promise<void>(res => { clearInterval(simTimer); clearInterval(townTimer); for (const c of wss.clients) c.terminate(); wss.close(() => http.close(() => res())); }),
+    shutdown: async (graceMs = 5000) => { draining = true; for (const g of guests.values()) send(g, { t: 'sys', msg: 'Server restarting, you will be returned to town.' }); for (const r of [...rooms.values()]) endInstance(r.party, 'server restart'); await new Promise(r => setTimeout(r, graceMs)); await o.city?.persist(); await api.close(); },
+    close: () => new Promise<void>(res => { clearInterval(simTimer); clearInterval(townTimer); if (cityTimer) clearInterval(cityTimer); for (const c of wss.clients) c.terminate(); wss.close(() => http.close(() => res())); }),
   };
   return api;
 }
