@@ -7,6 +7,7 @@ const C = await vs.ssrLoadModule('/src/config.ts'), N = await vs.ssrLoadModule('
 const firstTok = {}; for (const i of C.ITEMS) { const m = /^([A-Z]{2,3})(?:-\d+)?\s/.exec(i.name); if (m) { const k = i.mfr + ':' + m[1]; firstTok[k] = (firstTok[k] || 0) + 1; } }
 const prefixes = {}; for (const [k, n] of Object.entries(firstTok)) if (n >= 3) { const [mfr, tok] = k.split(':'); prefixes[tok] = mfr; }
 const stripName = (n) => { for (const t of Object.keys(prefixes)) { const r = new RegExp('^' + t + '(?:-\\d+)?\\s+'); if (r.test(n)) return n.replace(r, ''); } return n; };
+const H = await vs.ssrLoadModule('/src/content/story_hints.ts'), K = await vs.ssrLoadModule('/src/content/boss_kits.ts');
 const cat = {
   /** abbreviations the story output filter rejects: manufacturer codes plus the derived item-name prefixes */ codeTokens: [...Object.keys(C.MFR), ...Object.keys(prefixes)],
   mfr: Object.fromEntries(Object.entries(C.MFR).map(([k, v]) => [k, v.name])),
@@ -17,6 +18,11 @@ const cat = {
   contacts: Object.fromEntries(N.CONTACTS.map(c => [c.id, { name: c.name, role: c.role, bio: c.bio }])),
   contracts: Object.fromEntries(Object.values(N.CONTRACT_BY_ID).map(k => [k.id, { title: k.title, contact: k.contact }])),
   dungeons: Object.fromEntries(D.DUNGEON_IDS.map(id => [id, D.DUNGEONS[id].name])),
+  /** story hints (src/content/story_hints.ts): boss kits, mechanic counters, gear gaps, reward pools. The model only sees these facts. */
+  bosses: Object.fromEntries(Object.entries(K.KITS).map(([id, k]) => [id, { name: H.bossName(id), mechs: k.mechs.map(m => m.m) }])),
+  mechs: Object.fromEntries(Object.entries(H.MECH_HINT).map(([id, m]) => [id, { name: K.MECH_INFO[id].name, keyword: m.keyword, counter: m.counter, tell: K.MECH_INFO[id].tell }])),
+  gaps: Object.fromEntries(Object.entries(H.GAP_TEXT).map(([k, g]) => [k, { parts: g.parts, text: g.text }])),
+  jobs: Object.fromEntries(D.DUNGEON_IDS.filter(id => K.KITS[H.bossOf(id)]).map(id => [id, { boss: H.bossOf(id), rewards: (D.DUNGEONS[id].loot?.boss || []).filter(e => e.item && C.ITEM_BY_ID[e.item]).map(e => e.item) }])),
 };
 for (const m of ['items', 'chips', 'abilities', 'cosmetics', 'contracts', 'dungeons']) console.log(m, Object.keys(cat[m]).length);
 fs.writeFileSync(new URL('../server/story_catalog.json', import.meta.url), JSON.stringify(cat, null, 1) + '\n'); await vs.close();

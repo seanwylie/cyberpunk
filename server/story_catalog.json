@@ -1353,5 +1353,656 @@
   "breaker_yard": "Kellan Breaker Yard",
   "radio_mast": "Basin Radio Mast",
   "recall_yard": "Recall Authority Yard"
+ },
+ "bosses": {
+  "teague": {
+   "name": "Crucible Foreman Aldric Teague",
+   "mechs": [
+    "conveyor",
+    "bombs"
+   ]
+  },
+  "brannoch": {
+   "name": "Ladle-Tyrant Brannoch",
+   "mechs": [
+    "shockring",
+    "scythe"
+   ]
+  },
+  "ore9": {
+   "name": "Governor ORE-9",
+   "mechs": [
+    "grid",
+    "pylons"
+   ]
+  },
+  "surgeon": {
+   "name": "Chief Surgeon Aurelio Vance",
+   "mechs": [
+    "strike",
+    "scythe",
+    "shield"
+   ]
+  },
+  "autosurgeon": {
+   "name": "Theatre Autosurgeon GEMINI",
+   "mechs": [
+    "beam",
+    "tiles"
+   ]
+  },
+  "recovered": {
+   "name": "The Recovered (Patient Eleven)",
+   "mechs": [
+    "strike",
+    "vortex",
+    "buffers"
+   ]
+  },
+  "stockmgr": {
+   "name": "Regional Stock Manager Wendell Rusk",
+   "mechs": [
+    "ricochet",
+    "bombs"
+   ]
+  },
+  "retrieval": {
+   "name": "Retrieval Unit R-0",
+   "mechs": [
+    "gaze",
+    "vortex"
+   ]
+  },
+  "reclaimer": {
+   "name": "Returns Reclaimer LAZARUS-LITE",
+   "mechs": [
+    "buffers",
+    "ricochet",
+    "safe"
+   ]
+  },
+  "overseer": {
+   "name": "Annex Overseer",
+   "mechs": [
+    "pylons",
+    "shockring"
+   ]
+  },
+  "warden": {
+   "name": "Neural Warden",
+   "mechs": [
+    "safe",
+    "tiles",
+    "gaze"
+   ]
+  },
+  "enforcer": {
+   "name": "Reclamation Enforcer",
+   "mechs": [
+    "conveyor",
+    "scythe",
+    "ricochet"
+   ]
+  },
+  "voss": {
+   "name": "Oven-Tender Marguerite Voss",
+   "mechs": [
+    "beam",
+    "overload"
+   ]
+  },
+  "lineman": {
+   "name": "Lineman Tomasz Brandt",
+   "mechs": [
+    "gaze",
+    "pylons",
+    "grid"
+   ]
+  },
+  "gantrymother": {
+   "name": "Gantry-Mother Ngozi Adeyemi",
+   "mechs": [
+    "conveyor",
+    "grid",
+    "buffers"
+   ]
+  },
+  "pitboss": {
+   "name": "Pit Boss Karl Ossendrecht",
+   "mechs": [
+    "vortex",
+    "shockring",
+    "ricochet"
+   ]
+  },
+  "bellfounder": {
+   "name": "Bell-Founder Vesper Calloway",
+   "mechs": [
+    "safe",
+    "shield",
+    "shockring"
+   ]
+  },
+  "cryo": {
+   "name": "Cryo-Archivist Linnea Frost",
+   "mechs": [
+    "grid",
+    "shield",
+    "tiles"
+   ]
+  },
+  "auditor": {
+   "name": "Compliance Officer Hale Thornquist",
+   "mechs": [
+    "tiles",
+    "strike"
+   ]
+  },
+  "mirrorpt": {
+   "name": "The Mirror Patient",
+   "mechs": [
+    "strike",
+    "gaze"
+   ]
+  },
+  "apothecary": {
+   "name": "Formulator Dessa Quill",
+   "mechs": [
+    "bombs",
+    "overload"
+   ]
+  },
+  "resonance": {
+   "name": "Resonance Engineer Obi Lindqvist",
+   "mechs": [
+    "beam",
+    "safe",
+    "shockring"
+   ]
+  },
+  "clearance": {
+   "name": "Clearance Manager Bryce Tolliver",
+   "mechs": [
+    "conveyor",
+    "ricochet",
+    "tiles"
+   ]
+  },
+  "liquidator": {
+   "name": "Liquidator Prime",
+   "mechs": [
+    "bombs",
+    "grid"
+   ]
+  },
+  "courier": {
+   "name": "Courier-Queen Marisol Pike",
+   "mechs": [
+    "strike",
+    "conveyor",
+    "ricochet"
+   ]
+  },
+  "dispatcher": {
+   "name": "Fleet Dispatcher AUTO-7",
+   "mechs": [
+    "beam",
+    "pylons",
+    "buffers"
+   ]
+  },
+  "warrantor": {
+   "name": "Warrantor Edda Marsh",
+   "mechs": [
+    "safe",
+    "pylons",
+    "tiles"
+   ]
+  },
+  "tidewarden": {
+   "name": "Pump-Warden Alva Strand",
+   "mechs": [
+    "vortex",
+    "conveyor",
+    "shockring"
+   ]
+  },
+  "rattle": {
+   "name": "Quiet Shift Foreman 'Rattle'",
+   "mechs": [
+    "strike",
+    "shockring"
+   ]
+  },
+  "breaker": {
+   "name": "Breaker-King Joss Kellan",
+   "mechs": [
+    "scythe",
+    "ricochet",
+    "vortex"
+   ]
+  },
+  "widow": {
+   "name": "Signal Widow Perpetua",
+   "mechs": [
+    "beam",
+    "gaze",
+    "pylons"
+   ]
+  },
+  "recall": {
+   "name": "Recall Engine R-ALL",
+   "mechs": [
+    "overload",
+    "grid"
+   ]
+  }
+ },
+ "mechs": {
+  "beam": {
+   "name": "Rotating beam",
+   "keyword": "beam",
+   "counter": "circle with the beam and stay ahead of its turn",
+   "tell": "Dashed line with rotation arrows, hairline brightens, then the beam turns"
+  },
+  "grid": {
+   "name": "Laser grid",
+   "keyword": "laser grid",
+   "counter": "step into a dark cell before the lines flash",
+   "tell": "Thin hairline lattice with safe cells; lit lines flash white"
+  },
+  "scythe": {
+   "name": "Scythe sweep",
+   "keyword": "scythe",
+   "counter": "get behind the sweep, not away from it",
+   "tell": "Swept sector outline with chevrons showing direction"
+  },
+  "vortex": {
+   "name": "Gravity vortex",
+   "keyword": "vortex",
+   "counter": "walk against the pull and keep off the core",
+   "tell": "Concentric rings with arrows in (pull) or out (push), core saw"
+  },
+  "conveyor": {
+   "name": "Conveyor floor",
+   "keyword": "conveyor",
+   "counter": "walk against the belt and never stand at the shredder end",
+   "tell": "Marching chevron belt, shredder teeth at the end"
+  },
+  "ricochet": {
+   "name": "Ricochet roller",
+   "keyword": "roller",
+   "counter": "read the dotted bounce path and step off it",
+   "tell": "Dotted bounce path with a spinning gear at the start"
+  },
+  "pylons": {
+   "name": "Tether pylons + snipes",
+   "keyword": "pylons",
+   "counter": "kill the pylons first, the snipes stop with them",
+   "tell": "Locked crosshair lines from each live pylon"
+  },
+  "safe": {
+   "name": "Safe zones",
+   "keyword": "safe zones",
+   "counter": "run to a green beacon before the countdown ends",
+   "tell": "Whole arena hatched, green beacon rings with a countdown"
+  },
+  "gaze": {
+   "name": "Line-of-sight gaze",
+   "keyword": "gaze",
+   "counter": "break line of sight behind a pillar",
+   "tell": "Eye glyph, tracking line that freezes, blocked by pillars"
+  },
+  "tiles": {
+   "name": "Tile sequence",
+   "keyword": "tiles",
+   "counter": "stand on the tiles that already went off",
+   "tell": "Numbered floor tiles light in order, then detonate in order"
+  },
+  "bombs": {
+   "name": "Chain bombs",
+   "keyword": "bombs",
+   "counter": "spread the fuses out so the chain breaks",
+   "tell": "Fuse rings with countdown digits and tether links"
+  },
+  "strike": {
+   "name": "Afterimage strike",
+   "keyword": "afterimage",
+   "counter": "side-step the lunge lane, then hit it while it recovers",
+   "tell": "Ghost silhouettes, lunge lane, then a slash cone at the landing spot"
+  },
+  "overload": {
+   "name": "Heat overload",
+   "keyword": "heat",
+   "counter": "stand in the cyan coolant rings",
+   "tell": "Shimmering heat haze with cyan coolant rings"
+  },
+  "buffers": {
+   "name": "Buff nodes",
+   "keyword": "nodes",
+   "counter": "cut the violet nodes before you hit the boss",
+   "tell": "Violet tethers from nodes to the boss, boss takes less damage"
+  },
+  "shockring": {
+   "name": "Gapped shockwave",
+   "keyword": "shockwave",
+   "counter": "run for the green gap in the ring",
+   "tell": "Dashed full-size ring with one green gap arrow"
+  },
+  "shield": {
+   "name": "Shield-break window",
+   "keyword": "shield",
+   "counter": "break the hex shield to open a stagger window",
+   "tell": "Hex shield around the boss; break it for a stagger window"
+  }
+ },
+ "gaps": {
+  "move": {
+   "parts": "legs and feet",
+   "text": "your legs are too slow for it"
+  },
+  "hp": {
+   "parts": "torso",
+   "text": "your torso will not soak many hits"
+  },
+  "dmg": {
+   "parts": "arms and hands",
+   "text": "your arms hit too soft to break it fast"
+  }
+ },
+ "jobs": {
+  "warehouse": {
+   "boss": "stockmgr",
+   "rewards": [
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "annex": {
+   "boss": "overseer",
+   "rewards": []
+  },
+  "foundry": {
+   "boss": "teague",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r"
+   ]
+  },
+  "clinic": {
+   "boss": "surgeon",
+   "rewards": [
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain"
+   ]
+  },
+  "coke_ovens": {
+   "boss": "voss",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r"
+   ]
+  },
+  "substation_12": {
+   "boss": "lineman",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r"
+   ]
+  },
+  "scrap_gantry": {
+   "boss": "gantrymother",
+   "rewards": [
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "tailings_pit": {
+   "boss": "pitboss",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r"
+   ]
+  },
+  "bell_foundry": {
+   "boss": "bellfounder",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r"
+   ]
+  },
+  "cold_archive": {
+   "boss": "cryo",
+   "rewards": [
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain"
+   ]
+  },
+  "audit_tower": {
+   "boss": "auditor",
+   "rewards": [
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain"
+   ]
+  },
+  "aesthetic_ward": {
+   "boss": "mirrorpt",
+   "rewards": [
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain"
+   ]
+  },
+  "pharmacy_vault": {
+   "boss": "apothecary",
+   "rewards": [
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain"
+   ]
+  },
+  "outlet_mall": {
+   "boss": "clearance",
+   "rewards": [
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "drained_reservoir": {
+   "boss": "tidewarden",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r",
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain",
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "anechoic_lab": {
+   "boss": "resonance",
+   "rewards": [
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain"
+   ]
+  },
+  "liquidation_floor": {
+   "boss": "liquidator",
+   "rewards": [
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "parcel_tower": {
+   "boss": "courier",
+   "rewards": [
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "freight_depot": {
+   "boss": "dispatcher",
+   "rewards": [
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "warranty_vault": {
+   "boss": "warrantor",
+   "rewards": [
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "night_tunnels": {
+   "boss": "rattle",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r",
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain",
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "breaker_yard": {
+   "boss": "breaker",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r"
+   ]
+  },
+  "radio_mast": {
+   "boss": "widow",
+   "rewards": [
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain"
+   ]
+  },
+  "recall_yard": {
+   "boss": "recall",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r",
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain",
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  }
  }
 }
