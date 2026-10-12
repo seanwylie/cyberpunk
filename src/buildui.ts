@@ -33,7 +33,7 @@ export function buildHtml(ui:UIx):string{ const g=ui.g, s=g.save, st=bd(ui); con
       :`<div class="bdnotice${d.some(x=>x.incompatible)?' warn':''}" role="alert"><b>What changed</b> since catalog ${esc(b.cat)} (now ${CATALOG_VERSION}): ${d.length?`<ul>${d.map(x=>`<li class="${x.incompatible?'bdinc':''}" data-kind="${x.kind}">${x.incompatible?'<b>Incompatible:</b> ':''}${esc(x.text)}</li>`).join('')}</ul>`:'nothing that affects this build.'}</div>`; }
   else if(preview&&b.game!==ui.buildId) notice=`<div class="bdnotice" role="status">Made with game ${esc(b.game)}; same catalog, so augments behave the same.</div>`;
   return `<div class="col bdcol">${preview?`<div class="bdmode"><b>Shared build</b> · read-only preview, nothing is granted <button class="btn mini" data-act="bd-mine">Back to my build</button></div>`:''}
-    <div class="mut bdver">Level ${b.lvl} · game ${esc(b.game)} · catalog ${esc(b.cat)}</div>${notice}
+    ${b.cheat?'<div class="bdnotice warn bdcheat" role="status"><b>IDKFA cheat build</b>: made with dev cheat gear, not a real loadout.</div>':''}<div class="mut bdver">Level ${b.lvl} · game ${esc(b.game)} · catalog ${esc(b.cat)}</div>${notice}
     <div class="bdgrid">${SLOTS.map(tile).join('')}</div>
     <h3 class="sh">Abilities</h3><div class="bdabs">${abs||'<span class="mut">none</span>'}</div>
     <h3 class="sh">Totals</h3><div class="bdtot" data-tip="${esc(totals+'<br>Weapon: '+esc(r.weaponName))}">${esc(totals)}</div>

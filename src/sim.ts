@@ -29,7 +29,7 @@ import { mobTick, mobDeath, mobAfterHit, resolveMobAttack, mobPattern, MOB_COND 
 import { MOB_ATK } from './content/batch2_mobs';
 import { CONTRACT_BY_ID, Goal } from './content/npcs';
 import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState, capacityUsed } from './state';
-import { IDKFA_SET, IDKFA_CHIPS, IDKFA_PICK } from './content/idkfa';
+import { idkfaActive, idkfaEnable, idkfaDisable } from './idkfa_toggle';
 import { BAL } from './content/balance';
 import { record, newStory, EventKind } from './story';
 
@@ -240,14 +240,12 @@ export class Game {
   townReturn(){ if(this.mode!=='run') return; if(this.channel&&this.channel.kind==='town'){ if(this.channel.hard){ this.toast('Emergency exit in progress: cannot be cancelled'); return; } this.channel=null; this.toast('Town return cancelled'); return; }
     const hard=this.townFails>0||this.downed; const done0=()=>{ this.townFails=0; const done=this.instDone(this.inst); let got=0; if(done&&!this.downed) got=this.autoCollectAll(); const left=this.inst?this.inst.drops.length:0; this.downed=false; this.saveNow(); this.enterTown(); if(done&&got) this.toast('Auto-collected '+got+' drop(s) on the way out.'); if(done&&left&&this.save.instance) this.toast(left+' item(s) left in the cleared instance (pack full). Re-enter to pick them up; starting another dungeon discards them.'); };
     this.channel={kind:'town',t:0,dur:hard?8:COMBAT.townChannel,hard,cb:done0}; this.toast(hard?'EMERGENCY EXIT: 8 s, cannot be interrupted. You stay vulnerable.':this.instDone(this.inst)&&this.inst!.drops.length?'Returning to town... loot on the ground is auto-collected if it fits.':'Returning to town... movement or damage interrupts. No invulnerability.'); this.emit('sfx','channel'); }
-  /** Dev cheat (typed "idkfa"): orange hardware + best chips in every slot, stims/credits top-up, full heal. Old gear goes to storage. Marks the save cheated. */
-  cheatIdkfa(){ const s=this.save; const keep=new Set<string>();
-    for(const sl of SLOTS){ const def=IDKFA_SET[sl]; let it=s.items.find(i=>i.def===def&&s.installed[sl]===i.uid); if(!it) it=mkInst(s,def); if(!s.items.includes(it)) s.items.push(it); it.chips=[...IDKFA_CHIPS[sl]]; s.installed[sl]=it.uid; keep.add(it.uid); }
-    for(const d of ABILITY_ITEMS){ if((d.rarity==='purple'||d.rarity==='orange')&&!s.items.some(i=>i.def===d.id)) s.items.push(mkInst(s,d.id)); } s.lockerCap=Math.max(s.lockerCap,s.items.length+20); s.abPick=[...IDKFA_PICK];
-    s.level=Math.max(s.level,30); s.credits=Math.max(s.credits,99999); s.stims=Math.max(s.stims,20); s.repairBill=0;
-    if(this.inst){ this.inst.broken=[]; this.inst.carried.stims=Math.max(this.inst.carried.stims,10); }
-    s.cheated=true; (s.cheatLog=s.cheatLog||[]).push('idkfa@'+new Date().toISOString());
-    this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.downed=false; this.emit('inv'); this.toast('IDKFA: best gear equipped'); this.saveNow(); return true; }
+  /** Dev cheat (typed "idkfa"), a TOGGLE (src/idkfa_toggle.ts). ON: snapshot the real state, then orange hardware + best chips in every slot, stims/credits
+   *  top-up, full heal. OFF: restore the snapshot exactly, strip cheat items, keep real loot picked up meanwhile. Snapshot persists in the save. */
+  cheatIdkfa(){ const s=this.save; const inst=this.inst as any;
+    if(idkfaActive(s)){ const r=idkfaDisable(s,{inst:inst||null}); this.recompute(); if(!this.downed){ this.hp=Math.min(this.maxHp,r.hp!=null&&inst?r.hp:this.hp); if(this.hp<=0) this.hp=1; } this.emit('inv'); this.emit('idkfa',false); this.toast('IDKFA OFF: your gear is back'); this.saveNow(); return false; }
+    idkfaEnable(s,{hp:inst?this.hp:null,inst:inst||null});
+    this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.downed=false; this.emit('inv'); this.emit('idkfa',true); this.toast('IDKFA ON: best gear equipped (type idkfa again to revert)'); this.saveNow(); return true; }
   stimCd=0;
   /** Manual vent (V / tap the heat bar). Channel: abilities and autos offline for vent.lockT, slower movement; dumps heat (more when already hot). Works while overheated: recovers faster, still needs the lockout window. */
   ventNow(){ if(this.mode!=='run'||this.downed||this.revealing||this.ventCd>0||this.ventLock>0){ if(this.mode==='run'&&this.ventCd>0&&!this.downed) this.toast(`Vent recharging (${Math.ceil(this.ventCd)}s)`); return false; } if(this.heat<10&&!this.overheated){ this.toast('Heat is already low'); return false; }

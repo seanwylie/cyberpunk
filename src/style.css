@@ -642,3 +642,5 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 .bdtot{ font-size:max(12px,calc(12px*var(--fs))); } .bdimp input{ flex:1; min-width:0; background:#151517; color:inherit; border:1px solid #444; padding:4px 6px; }
 .bdnotice{ border:1px solid rgba(255,174,43,.5); background:rgba(255,174,43,.08); padding:6px 8px; border-radius:4px; font-size:max(12px,calc(12px*var(--fs))); } .bdnotice.warn{ border-color:#ff6b4a; background:rgba(255,80,60,.1); }
 .bdnotice ul{ margin:4px 0 0 18px; padding:0; } .bdinc{ color:#ffb3a3; } .bdmode{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+#idkfabadge{ background:#ff2d6f; color:#fff; font-weight:700; font-size:12px; letter-spacing:.06em; padding:0 5px; border-radius:3px; }
