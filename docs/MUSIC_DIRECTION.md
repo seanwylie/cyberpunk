@@ -40,7 +40,7 @@ Regenerate with `python3 tools/gen_music.py --pack7 --force` (needs `ELEVENLABS_
 
 | Track | Use | Measured |
 |---|---|---|
-| `theme_lofi_dust`, `theme_lofi_rain`, `theme_lofi_tape` | Rustline and Harrow town pools. On the first town track of a session, there's a 60% chance (`BOOT_THEME`) one of them plays. | D minor, 83 bpm |
+| `theme_lofi_dust`, `theme_lofi_rain`, `theme_lofi_tape` | Rustline and Harrow town pools. On the first town track of a session, there's a 60% chance (`BOOT_THEME`) one of them plays, unless it is in the recent-play history. | D minor, 83 bpm |
 | `boss_theme_wall`, `boss_theme_siege`, `boss_theme_storm` | Boss pool (intensity 4, 3 and 4). `storm` is also an elite escalation stem. | D minor or D, double or triplet readings of the same pulse |
 
 A variation is regenerated when it drifts. It passes when it has the same key, or a chroma correlation of at least 0.8 with the theme, and a tempo within 6% of 84 bpm at a half, 2/3, 1, 4/3, 1.5 or 2 multiple. The first takes of `theme_lofi_rain` (B♭ major) and `boss_theme_siege` (C minor) drifted and were regenerated.
