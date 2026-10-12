@@ -70,7 +70,7 @@ ok(r.js === r.f.views + 3 + 2 + 1 + 1 + 1 + 1 || r.js > 0, 'export has events') 
 r = await ev(async () => { const A = await import('/src/analytics.ts'); const got = []; A.addSink({ name: 't', write: e => got.push(e.name) }); A.addSink({ name: 'bad', write: () => { throw new Error('x'); } }); A.track('store_open'); for (let i = 0; i < 700; i++) A.track('sku_view', 'x'); return { got: got.length, ring: A.events().length, max: A.RING_MAX }; });
 ok(r.got === 701 && r.ring === r.max, 'pluggable sinks receive events (bad sink ignored); ring buffer capped at ' + r.max);
 // UI flow
-await ev(async () => { const A = await import('/src/analytics.ts'); A.resetAnalytics(); const S = await import('/src/store.ts'); S.configureMock({ delayMs: 300, failureRate: 0 }); S.resetOrders(); window.__game.enterTown(); window.__game.save.cosmetics.owned = {}; window.__game.save.cosmetics.equipped = {}; window.__ui.open('wardrobe'); });
+await ev(async () => { const A = await import('/src/analytics.ts'); A.resetAnalytics(); const S = await import('/src/store.ts'); S.configureMock({ delayMs: 2500, failureRate: 0 }); S.resetOrders(); window.__game.enterTown(); window.__game.save.cosmetics.owned = {}; window.__game.save.cosmetics.equipped = {}; window.__ui.open('wardrobe'); });
 await page.evaluate(() => { document.querySelector('#modal [data-act=wd-show]')?.click(); });
 await ev(() => document.querySelector('#modal [data-act=wd-sel][data-id=pm_aura_brine]')?.click());
 r = await ev(() => ({ buy: !!document.querySelector('#modal [data-act=st-open][data-sku=skin_pm_aura_brine]'), lock: window.wvStore.funnel().prompts.lockedClicks, txt: document.querySelector('#modal .wdsel')?.textContent }));
@@ -79,9 +79,9 @@ await ev(() => document.querySelector('#modal [data-act=st-open][data-sku=skin_p
 ok(await ev(() => window.__ui.modal === 'store' && !!document.querySelector('#modal [data-store]') && /SIMULATED/.test(document.querySelector('#modal').textContent)), 'Store opens from wardrobe with the SKU selected, labelled SIMULATED');
 await ev(() => document.querySelector('#modal [data-act=st-buy]')?.click());
 ok(await ev(() => !!document.querySelector('#modal [data-act=st-confirm]') && /no real charge/i.test(document.querySelector('#modal').textContent)), 'confirm step shown before any processing');
-await ev(() => document.querySelector('#modal [data-act=st-confirm]')?.click()); await sleep(80);
+await ev(() => document.querySelector('#modal [data-act=st-confirm]')?.click()); await page.waitForFunction(() => /Processing/.test(document.querySelector("#modal")?.textContent || ""), null, { timeout: 2000 }); /* wait on the state itself; the 2.5 s fake delay keeps it visible long enough */
 ok(await ev(() => /Processing/.test(document.querySelector('#modal').textContent)), 'processing state visible during the fake delay');
-await sleep(500);
+await page.waitForFunction(() => !!window.__game.save.cosmetics.owned.pm_aura_brine && document.querySelector("#modal .bkmsg"), null, { timeout: 8000 });
 r = await ev(() => ({ owned: !!window.__game.save.cosmetics.owned.pm_aura_brine, msg: document.querySelector('#modal .bkmsg')?.textContent, f: window.wvStore.funnel() }));
 ok(r.owned && /complete/i.test(r.msg) && r.f.successes === 1 && r.f.opens >= 1, 'UI purchase succeeds, result message shown, funnel updated');
 await ev(() => { document.querySelector('#modal [data-act=st-funnel]')?.click(); });
