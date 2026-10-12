@@ -1,3 +1,4 @@
+import { thinHazards } from '../level';
 // Dungeon registry: the Reclamation Annex plus three manufacturer-themed dungeons (data + procedural layouts).
 // Layouts reuse the Annex structure (entry -> gate -> hall -> lock -> control -> boss door -> boss) so the proven run logic
 // (guard-gate, elite-or-hack lock, objective controller, boss reveal, checkpoints, daily lockout) applies unchanged.
@@ -92,6 +93,8 @@ export const DUNGEONS:Record<string,DungeonDef> = {
     generalClue:'Shrinkage at Hub 9 is up again. Cole says the numbers do not add up in either direction.', needsArt:['Warehouse floor/wall textures per warehouse.jpg (loading dock decals, shelving, stamped plate)','Enemy sprites: picker, loader, forkbot, scanner, camgun, shiftlead, hobbs','Boss sprites: stockmgr, retrieval (large mech per sheet), reclaimer','Gantry-crane/stamping-press hazard rendering','Signature orange animations: Lazarus Rack, R-0 Lifter'] },
 };
 for(const sp of LEVELS) DUNGEONS[sp.id]=makeBatch1Dungeon(sp);
+/** every dungeon's generated level goes through the hazard budget (no overlaps, capped count) */
+for(const d of Object.values(DUNGEONS)){ const b=d.build; d.build=(seed?:number)=>thinHazards(b(seed)); }
 export const BATCH1_IDS=LEVELS.map(l=>l.id);
 export const DUNGEON_LIST:DungeonDef[]=[...['warehouse','annex','foundry','clinic'].map(k=>DUNGEONS[k]),...[...LEVELS].sort((a,b)=>a.tier-b.tier||a.minLevel-b.minLevel).map(l=>DUNGEONS[l.id])];
 export const DUNGEON_IDS=DUNGEON_LIST.map(d=>d.id);

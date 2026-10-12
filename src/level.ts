@@ -151,3 +151,9 @@ export function buildTown():Level {
   const interacts:Interact[]=STATIONS.map(s=>({ id:s.id, x:s.x, y:s.y, r:2.4, label:stationPrompt(s), kind:s.kind, opens:s.opens, station:s.key }));
   return { w,h,solid,zone,doors:[],props,interacts,spawns:[],checkpoints:[],sensors:{x0:0,y0:0,x1:0,y1:0}, spawn:{...SPAWN}, returnSpawn:{...RETURN_SPAWN}, zoneNames:ZONES, bossSpawn:{x:0,y:0}, revealX:0, salvage:{x:0,y:0}, kind:'town', decor, npcs, lights, hide, overhead };
 }
+
+/** Hazard budget per room/level: zones never overlap (centres >= (r1+r2)*SPACING apart) and a level has at most HAZARD_CAP of them. Thins long chains evenly instead of cutting one end. */
+export const HAZARD_CAP=16, HAZARD_SPACING=1.0;
+export function thinHazards<T extends {hazards?:Hazard[]}>(L:T):T{ const h=L.hazards; if(!h||!h.length) return L; const keep:Hazard[]=[];
+  for(const z of h){ if(keep.every(k=>Math.hypot(k.x-z.x,k.y-z.y)>=(k.r+z.r)*HAZARD_SPACING)) keep.push(z); }
+  if(keep.length>HAZARD_CAP){ const out:Hazard[]=[]; for(let i=0;i<HAZARD_CAP;i++) out.push(keep[Math.floor((i+.5)*keep.length/HAZARD_CAP)]); L.hazards=out; } else L.hazards=keep; return L; }

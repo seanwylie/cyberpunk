@@ -395,10 +395,22 @@ export class Renderer {
     const seen=new Set<string>(); let n=0; const warm=async(spr:string,w:number)=>{ const k=spr+'|'+w; if(seen.has(k)) return; seen.add(k); t.scaled(spr,w,this.dpr); if(++n%6===0) await new Promise(r=>setTimeout(r,0)); };
     for(const d of L.decor||[]) await warm(d.spr,d.sw*this.TW); for(const o of L.overhead||[]) await warm(o.spr,o.sw*this.TW); }
   /** Generic ground hazard / telegraph. Hostile zones (dps>0) are red/orange and pulse; temporary ones show a shrinking timer ring and fade out; level hazards are dashed amber; neutral zones (dps<=0) are cool and faint. */
+  /** Permanent level hazard as integrated floor art (never an outline): scorch decal, hazard-stripe patch, vent grate, animated heat shimmer / steam. Distinct from telegraphs, which are solid red/orange fills. */
+  hazardFloor(z:{x:number;y:number;r:number}){ const c=this.ctx, T=this.g.time, red=!!this.g.save.settings.reducedFx; const a=this.sx(z.x,z.y), b=this.sy(z.x,z.y), rx=z.r*this.TW/2*Math.SQRT2, ry=z.r*this.TW/4*Math.SQRT2; if(a<-rx*2||a>this.w+rx*2||b<-ry*3||b>this.h+ry*3) return;
+    c.save(); c.beginPath(); c.ellipse(a,b,rx*1.08,ry*1.08,0,0,7); c.clip();
+    const gr=c.createRadialGradient(a,b,rx*.1,a,b,rx*1.1); gr.addColorStop(0,'rgba(18,12,8,.62)'); gr.addColorStop(.6,'rgba(24,16,10,.42)'); gr.addColorStop(1,'rgba(24,16,10,0)'); c.fillStyle=gr; c.fillRect(a-rx*1.2,b-ry*1.2,rx*2.4,ry*2.4);
+    c.strokeStyle='rgba(200,150,40,.30)'; c.lineWidth=Math.max(2,this.TW*.045); for(let k=-6;k<=6;k++){ c.beginPath(); c.moveTo(a+k*rx*.28-rx*.5,b+ry); c.lineTo(a+k*rx*.28+rx*.5,b-ry); c.stroke(); }
+    c.strokeStyle='rgba(8,6,5,.55)'; c.lineWidth=1.5; for(let k=-3;k<=3;k++){ c.beginPath(); c.moveTo(a-rx*.55,b+k*ry*.22); c.lineTo(a+rx*.55,b+k*ry*.22); c.stroke(); }
+    if(!red){ for(let i=0;i<3;i++){ const ph=((T*.5+i/3+z.x*.13)%1); c.globalAlpha=.16*Math.sin(ph*Math.PI); c.fillStyle='#e8d8b8'; c.beginPath(); c.ellipse(a+Math.sin(T*1.7+i*2+z.y)*rx*.25,b-ph*ry*2.2,rx*(.22+.1*ph),ry*(.2+.15*ph),0,0,7); c.fill(); } }
+    c.restore(); }
+  /** Danger cue shown only when the player is near a permanent hazard: pulsing amber rim, hatch ring and an "!" glyph (shape cue for colour-blind players). */
+  hazardCue(z:{x:number;y:number;r:number}){ const g=this.g; const d=Math.hypot(g.px-z.x,g.py-z.y); const near=z.r+3.2; if(d>near) return; const k=Math.min(1,(near-d)/2.2), c=this.ctx, T=g.time; const a=this.sx(z.x,z.y), b=this.sy(z.x,z.y);
+    this.poly(this.circle(z.x,z.y,z.r),'#c8741e','#ffc060',(.1+.1*(.5+.5*Math.sin(T*6)))*k,2); c.save(); c.setLineDash([7,5]); this.poly(this.circle(z.x,z.y,z.r),undefined,'#ffd27a',.75*k,2); c.restore();
+    c.save(); c.globalAlpha=.9*k; c.fillStyle='#ffd27a'; c.strokeStyle='#1a120a'; c.lineWidth=3; const s=Math.max(9,this.TW*.16); c.beginPath(); c.moveTo(a,b-s*1.1); c.lineTo(a+s,b+s*.7); c.lineTo(a-s,b+s*.7); c.closePath(); c.stroke(); c.fill(); c.fillStyle='#1a120a'; c.font='bold '+Math.round(s*1.1)+'px sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('!',a,b+s*.12); c.restore(); }
   private drawZone(z:{x:number;y:number;r:number;t:number;life:number;dps:number;windup:number;env?:boolean}){ const warn=z.t<z.windup; const hostile=z.dps>0; const T=this.g.time; const red=!!this.g.save.settings.reducedFx; const left=z.env?1:Math.max(0,Math.min(1,(z.life-z.t)/.7)); const pulse=red?.5:.5+.5*Math.sin(T*6+z.x*3);
     if(warn){ const p=z.t/z.windup; this.poly(this.circle(z.x,z.y,z.r),'#b5483a','#ffd9a0',.18+.25*p,2); this.poly(this.circle(z.x,z.y,z.r*p),'#d8502a',undefined,.35); return; }
     if(!hostile){ this.poly(this.circle(z.x,z.y,z.r),'#4f5f78','#9aa8b8',.22*left,2); return; }
-    if(z.env){ /* permanent level hazard: faint fill + dashed amber rim, clearly not a telegraph */ const c=this.ctx; this.poly(this.circle(z.x,z.y,z.r),'#c8741e',undefined,.07+.03*pulse,1); c.save(); c.setLineDash([6,5]); this.poly(this.circle(z.x,z.y,z.r),undefined,'#ffc060',.55,1.5); c.restore(); return; }
+    if(z.env){ this.hazardFloor(z); this.hazardCue(z); return; }
     const fill='#d8421e'; this.poly(this.circle(z.x,z.y,z.r),fill,'#ff8a50',(.16+.14*pulse)*left,2);
     if(!z.env){ const f=Math.max(.02,Math.min(1,(z.life-z.t)/Math.max(.5,z.life-z.windup))); this.poly(this.circle(z.x,z.y,z.r*f),'#ff6a30',undefined,.1*left); } }
   private syncTown(L:Level){ if(!this.env) return; const want=L.theme==='harrow'?(this.town2??=new TownArt('./town2/',harrowCfg())):this.town1; if(want&&this.town!==want) this.town=want; }

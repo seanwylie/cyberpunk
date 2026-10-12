@@ -179,8 +179,8 @@ export class DungeonArt {
         case 'shelf': this.shelf(c, z, t); break;
         case 'crane': this.crane(c, z, t); break;
       }
-      if (z.env || true) { c.globalAlpha = .28 * fade; c.strokeStyle = 'rgba(176,150,70,1)'; c.lineWidth = .05; c.setLineDash([.28, .22]); c.lineDashOffset = -t * .25; c.beginPath(); c.arc(z.x, z.y, z.r + .03, 0, 7); c.stroke(); c.setLineDash([]); }
     });
+    if (z.env) (r as any).hazardCue(z); // outline/pulse/glyph only when the player is close (the art itself is the always-on language)
     if (kind === 'crane') { const c = r.ctx, a = r.sx(z.x, z.y), b = r.sy(z.x, z.y), TW = r.TW; const sw = Math.sin(t * .9 + z.x) * TW * .1; const hy = b - TW * (1.7 + Math.sin(t * 1.3 + z.y) * .08); c.save(); c.strokeStyle = 'rgba(20,20,20,.85)'; c.lineWidth = Math.max(2, TW * .04); c.beginPath(); c.moveTo(a + sw * .3, b - TW * 5); c.lineTo(a + sw, hy); c.stroke(); c.fillStyle = '#3a3532'; c.fillRect(a + sw - TW * .09, hy, TW * .18, TW * .14); c.strokeStyle = '#8a8070'; c.lineWidth = Math.max(2, TW * .045); c.beginPath(); c.arc(a + sw, hy + TW * .26, TW * .12, -.4, Math.PI * 1.1); c.stroke(); c.restore(); }
     void red; return true;
   }
@@ -215,7 +215,7 @@ export class DungeonArt {
     const rp = (t * .4) % 1; c.strokeStyle = `rgba(200,220,232,${.3 * (1 - rp)})`; c.lineWidth = .03; c.beginPath(); c.ellipse(z.x, z.y, z.r * (.2 + rp * .75), z.r * (.15 + rp * .6), .5, 0, 7); c.stroke(); c.restore();
   }
   private saw(c: CanvasRenderingContext2D, z: Zone, t: number) {
-    const rad = z.r; c.fillStyle = 'rgba(10,10,12,.82)'; this.circ(c, z.x, z.y, rad * 1.1); c.fill(); c.strokeStyle = 'rgba(176,150,70,.5)'; c.lineWidth = .06; c.setLineDash([.18, .14]); this.circ(c, z.x, z.y, rad * 1.1); c.stroke(); c.setLineDash([]);
+    const rad = z.r; c.fillStyle = 'rgba(10,10,12,.82)'; this.circ(c, z.x, z.y, rad * 1.1); c.fill(); 
     const a0 = t * 11 + z.x; const teeth = 14; c.fillStyle = 'rgb(150,156,160)'; c.strokeStyle = 'rgba(20,20,22,.9)'; c.lineWidth = .03; c.beginPath(); for (let i = 0; i < teeth * 2; i++) { const a = a0 + i / (teeth * 2) * 6.283, rr = (i % 2 ? .78 : 1) * rad * .95; i ? c.lineTo(z.x + Math.cos(a) * rr, z.y + Math.sin(a) * rr) : c.moveTo(z.x + Math.cos(a) * rr, z.y + Math.sin(a) * rr); } c.closePath(); c.fill(); c.stroke();
     c.fillStyle = 'rgba(30,32,36,.9)'; this.circ(c, z.x, z.y, rad * .55); c.fill(); c.strokeStyle = 'rgba(215,220,225,.35)'; c.lineWidth = .04; for (let i = 0; i < 3; i++) { const a = a0 * 1.3 + i * 2.094; c.beginPath(); c.arc(z.x, z.y, rad * .75, a, a + .7); c.stroke(); }
     c.fillStyle = 'rgb(86,92,98)'; this.circ(c, z.x, z.y, rad * .18); c.fill();
@@ -231,7 +231,7 @@ export class DungeonArt {
     const dp = Math.sin(t * .8 + z.x) * .5 + .5; c.fillStyle = `rgba(190,185,165,${.08 + dp * .06})`; this.circ(c, z.x + Math.sin(t * .3) * .2, z.y, z.r * .8); c.fill(); c.restore();
   }
   private crane(c: CanvasRenderingContext2D, z: Zone, t: number) {
-    c.fillStyle = 'rgba(8,8,9,.38)'; this.circ(c, z.x, z.y, z.r); c.fill(); c.strokeStyle = 'rgba(176,150,70,.55)'; c.lineWidth = .1; c.setLineDash([.4, .3]); c.lineDashOffset = -t * .3; this.circ(c, z.x, z.y, z.r * .94); c.stroke(); c.setLineDash([]); c.strokeStyle = 'rgba(176,150,70,.35)'; c.lineWidth = .06; c.beginPath(); c.moveTo(z.x - z.r * .7, z.y); c.lineTo(z.x + z.r * .7, z.y); c.moveTo(z.x, z.y - z.r * .7); c.lineTo(z.x, z.y + z.r * .7); c.stroke(); this.circ(c, z.x, z.y, z.r * .45); c.stroke();
+    c.fillStyle = 'rgba(8,8,9,.38)'; this.circ(c, z.x, z.y, z.r); c.fill();  c.strokeStyle = 'rgba(176,150,70,.35)'; c.lineWidth = .06; c.beginPath(); c.moveTo(z.x - z.r * .7, z.y); c.lineTo(z.x + z.r * .7, z.y); c.moveTo(z.x, z.y - z.r * .7); c.lineTo(z.x, z.y + z.r * .7); c.stroke(); this.circ(c, z.x, z.y, z.r * .45); c.stroke();
   }
 
   // ============================ arena decals ============================
