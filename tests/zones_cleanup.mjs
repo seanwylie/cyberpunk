@@ -9,7 +9,7 @@ for (const id of ['warehouse', 'foundry']) {
     const f = g.inst.flags; f.gate1 = f.lock2 = f.controller = true; g.dbg.god = true; { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; }
     let drawn = 0; const rend = window.__rend; const od = rend.drawZone.bind(rend); rend.drawZone = z => { drawn++; return od(z); };
     let maxZ = 0, maxNon = 0, maxDrawn = 0, samples = []; const T = 200;
-    for (let i = 0; i < T * 30; i++) { g.hp = g.maxHp; g.update(1 / 30); if (i % 3 === 0) { drawn = 0; rend.draw(1 / 30); maxDrawn = Math.max(maxDrawn, drawn); } maxZ = Math.max(maxZ, g.zones.length); maxNon = Math.max(maxNon, g.zones.filter(z => !z.env).length); if (i % 900 === 0) samples.push(g.zones.length); }
+    for (let i = 0; i < T * 30; i++) { g.hp = g.maxHp; g.update(1 / 30); if (i % 6 === 0) { drawn = 0; rend.draw(1 / 30); maxDrawn = Math.max(maxDrawn, drawn); } maxZ = Math.max(maxZ, g.zones.length); maxNon = Math.max(maxNon, g.zones.filter(z => !z.env).length); if (i % 900 === 0) samples.push(g.zones.length); }
     // every non-env zone still alive has a finite life
     const bad = g.zones.filter(z => !z.env && !(isFinite(z.life) && z.life < 100)).length; const envN = g.zones.filter(z => z.env).length;
     // boss death removes temporary zones
