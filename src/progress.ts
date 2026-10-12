@@ -50,6 +50,8 @@ export function objectiveStep(sim:Sim):{text:string;x:number;y:number;kind:strin
     return best; }; // null: the door does not separate anything (e.g. the Annex cloak passage already joins both sides)
   const here=stageAt(L,sim.px,sim.py);
   if(!f.gate1){ const g=gating(sim).mobs; if(!g.length) return null; let b=g[0],bd=1e9; for(const e of g){ const d=Math.hypot(e.x-sim.px,e.y-sim.py); if(d<bd){ bd=d; b=e; } } return {text:'Next: destroy the gate guard'+(g.length>1?'s ('+g.length+' left)':' ('+ENEMIES[b.type].name+')'),x:b.x,y:b.y,kind:'guard'}; }
+  // only point at a doorway when the next objective really lies beyond it (some layouts join rooms around a door; never pull the player away from a reachable objective)
+  const ctl=L.interacts.find(i=>i.id==='controller'); const goal=f.controller?(L.reveal||L.bossSpawn):ctl; if(goal&&stageAt(L,goal.x,goal.y)<=here) return null;
   if(here<1){ const p=door('gate1',1); if(p) return {text:'Next: go through the open gate',x:p.x,y:p.y,kind:'gate'}; }
   if(f.lock2&&here<2){ const p=door('lock2',2); if(p) return {text:'Next: go through the open lock',x:p.x,y:p.y,kind:'gate'}; }
   return null; }
