@@ -1,5 +1,6 @@
 {
  "version": 1,
+ "catalogVersion": "1c19def59389",
  "generatedBy": "tools/gen_catalog.mjs",
  "stats": {
   "augments": 166,
