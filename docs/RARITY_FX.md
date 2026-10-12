@@ -17,3 +17,4 @@ The v1 rings, pillars, embers, scanlines and spark bursts are gone.
   - Flourish sound plays at gain .22, at most once every 25 s.
 - **Budget:** shared pool of 240. Reduced FX turns off the trails and flourish particles. Perf test: 12 orange characters at 1.6 ms/frame against a 4 ms budget.
 - **Tests and media:** `tests/rarity_fx.mjs` writes to `shots/rarity_fx/`; v1 "before" copies are in `shots/rarity_fx/before/`.
+- **Flag:** `?skinfx=0` or `localStorage['flag.skinfx']='0'` turns off all skin and gear FX (`setSkinFx`). Use it as a kill switch if the perf gate trips.

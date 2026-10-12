@@ -8,7 +8,7 @@ await ev(async () => { const g = window.__game; g.enterTown(); window.__S = awai
 // catalog + rarity policy
 let r = await ev(() => { const S = window.__S, AP = window.__AP; const prem = AP.COSMETICS.filter(d => d.src.k === 'premium');
   return { n: prem.length, rar: [...new Set(prem.map(d => d.rarity))].sort(), noStats: prem.every(d => !('stats' in d)), skus: S.CATALOG.length, ids: new Set(S.CATALOG.map(s => s.id)).size, tiers: S.LOCKER_TIER_CENTS, bundleItems: S.CATALOG.filter(k => k.kind === 'bundle').every(k => k.items.every(i => AP.COS_BY_ID[i]?.src.k === 'premium')) }; });
-ok(r.n >= 6 && r.rar.every(x => ['grey', 'green', 'blue'].includes(x)) && r.noStats, 'premium skins: ' + r.n + ' items, ' + r.rar + ' only, no stats');
+ok(r.n >= 6 && r.rar.every(x => ['grey', 'green', 'blue', 'purple', 'orange'].includes(x)) && r.noStats, 'premium skins: ' + r.n + ' items, ' + r.rar + ' only, no stats');
 ok(r.skus === r.ids && r.bundleItems && r.tiers.every((c, i) => i === 0 || c > r.tiers[i - 1]), 'catalog ids unique, bundles reference premium skins, locker prices escalate');
 // premium never drops
 r = await ev(() => { const AP = window.__AP; let rs = 1; const rnd = () => (rs = (rs * 1664525 + 1013904223) >>> 0) / 4294967296; let bad = 0; for (let i = 0; i < 20000; i++) { const x = AP.rollCosmetic({}, i % 3 ? 'boss' : 'elite', 'auditor', 3, rnd); if (x?.def?.src.k === 'premium') bad++; } return bad; });

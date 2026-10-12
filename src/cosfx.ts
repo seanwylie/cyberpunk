@@ -91,7 +91,11 @@ export function flourish(owner = 'me', at?: number) { const o = owners.get(owner
 export const flourishAge = (owner = 'me') => { const o = owners.get(owner); return o ? o.t - o.flo : 1e9; };
 
 // ------------------------------------------------------------------ main entry
+/** Feature flag: ?skinfx=0 or localStorage 'flag.skinfx'='0' turns all skin/gear FX off (cosmetics still draw). */
+export let SKIN_FX_ON = (() => { try { const q = new URLSearchParams(location.search).get('skinfx'); if (q != null) return q !== '0'; return localStorage.getItem('flag.skinfx') !== '0'; } catch { return true; } })();
+export function setSkinFx(on: boolean) { SKIN_FX_ON = on; }
 export function drawRarityFx(k: FxCtx, list: CosDef[], phase: 'back' | 'front') {
+  if (!SKIN_FX_ON) return;
   const tier = topTier(list); if (!tier) return; const id = k.id || 'me'; const { c, x, y, u } = k; const red = reduced(), B = budget();
   const t = red ? 0 : k.t;
   let o = owners.get(id); if (!o) { o = { t: k.t, acc: 0, tacc: 0, flo: -1e9, ax: x, ay: y, tier }; owners.set(id, o); if (owners.size > 64) owners.delete(owners.keys().next().value as string); }
@@ -192,6 +196,7 @@ export const GEAR_GLINTS = 4, GEAR_RATE = 1;
 export function encodeGear(g: GearFx[]): string[] { return g.map(x => x.slot + ':' + (x.r === 'orange' ? 'o' : 'p')); }
 export function decodeGear(a?: string[]): GearFx[] { return (a || []).map(s => { const [slot, r] = String(s).split(':'); return PART[slot] && (r === 'o' || r === 'p') ? { slot, r: r === 'o' ? 'orange' : 'purple' } as GearFx : null; }).filter(Boolean) as GearFx[]; }
 export function drawGearFx(k: FxCtx, gear: GearFx[], cosTier: 'orange' | 'purple' | null) {
+  if (!SKIN_FX_ON) return;
   if (!gear.length) return; const { c, x, y, u } = k; const red = reduced(), t = red ? 0 : k.t, B = budget(); const id = (k.id || 'me') + ':gear';
   const list = [...gear].sort((a, b) => (b.r === 'orange' ? 1 : 0) - (a.r === 'orange' ? 1 : 0)).slice(0, GEAR_GLINTS);
   let o = owners.get(id); if (!o) { o = { t: k.t, acc: 0, tacc: 0, flo: 0, ax: x, ay: y, tier: null }; owners.set(id, o); } const dt = Math.max(0, Math.min(.1, k.t - o.t)); o.t = k.t; const dx = x - o.ax, dy = y - o.ay; o.ax = x; o.ay = y;
