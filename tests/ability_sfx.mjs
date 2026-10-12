@@ -31,5 +31,5 @@ if (!lz.skip) { ok(lz.loaded > 0, `${lz.loaded} sample buffers lazy-loaded on de
 const au = fs.readFileSync(new URL('../src/audio.ts', import.meta.url), 'utf8'), sim = fs.readFileSync(new URL('../src/sim.ts', import.meta.url), 'utf8');
 ok(['attack', 'defense', 'hacking', 'mobility'].every(t => au.includes(`'ab_ready_${t}'`)), 'per-type cooldown-ready pings'); ok(au.includes("'amb_hot'") && sim.includes("'amb_hot'"), 'overheat warning cue'); ok(fs.existsSync(new URL('../tools/gen_sfx.py', import.meta.url)), 'sfx generator script present');
 const files = fs.existsSync(new URL('../public/audio/sfx/', import.meta.url)) ? fs.readdirSync(new URL('../public/audio/sfx/', import.meta.url)) : []; const bytes = files.reduce((a, f) => a + fs.statSync(new URL('../public/audio/sfx/' + f, import.meta.url)).size, 0); ok(bytes < 1.5e6, `generated sfx samples: ${files.length} files, ${(bytes / 1e3).toFixed(0)} KB (< 1.5 MB)`);
-ok(errors.filter(e => !/429/.test(e)).length === 0, 'no page errors ' + errors.join('|'));
+ok(errors.length === 0, 'no page errors ' + errors.join('|'));
 await browser.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);
