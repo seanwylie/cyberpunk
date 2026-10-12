@@ -20,6 +20,16 @@ Every boss (12 original, 20 from content batch 1) has a **kit** of 2-3 themed me
 | **Gravity vortex** (`vortex`) | disc / vortex | Concentric rings with arrows in (pull) or out (push), core saw | `bk:vortex:tell` / `:fire` |
 | **Conveyor floor** (`conveyor`) | line / belt | Marching chevron belt, shredder teeth at the end | `bk:belt:tell` / `:fire` |
 | **Ricochet roller** (`ricochet`) | disc / roller | Dotted bounce path with a spinning gear at the start | `bk:roll:tell` / `:fire` |
+| **Tether pylons + snipes** (`pylons`) | line / snipe | Locked crosshair lines from each live pylon | `bk:pylon:tell` / `:fire` |
+| **Safe zones** (`safe`) | safe / beacon | Whole arena hatched, green beacon rings with a countdown | `bk:safe:tell` / `:fire` |
+| **Line-of-sight gaze** (`gaze`) | line / gaze | Eye glyph, tracking line that freezes, blocked by pillars | `bk:gaze:tell` / `:fire` |
+| **Tile sequence** (`tiles`) | tile / rune | Numbered floor tiles light in order, then detonate in order | `bk:tile:tell` / `:fire` |
+| **Chain bombs** (`bombs`) | disc / bomb | Fuse rings with countdown digits and tether links | `bk:bomb:tell` / `:fire` |
+| **Afterimage strike** (`strike`) | line / lunge | Ghost silhouettes, lunge lane, then a slash cone at the landing spot | `bk:strike:tell` / `:fire` |
+| **Heat overload** (`overload`) | safe / coolant | Shimmering heat haze with cyan coolant rings | `bk:heat:tell` / `:fire` |
+| **Buff nodes** (`buffers`) | ghost / tether | Violet tethers from nodes to the boss, boss takes less damage | `bk:buff:tell` / `:fire` |
+| **Gapped shockwave** (`shockring`) | ring / toll | Dashed full-size ring with one green gap arrow | `bk:toll:tell` / `:fire` |
+| **Shield-break window** (`shield`) | ghost / hex | Hex shield around the boss; break it for a stagger window | `bk:shield:tell` / `:fire` |
 
 ## Kits per boss
 
@@ -53,20 +63,20 @@ Every boss (12 original, 20 from content batch 1) has a **kit** of 2-3 themed me
 | `pitboss` | The Pit | bronze | Gravity vortex (14); Gapped shockwave (12); Ricochet roller (15) |
 | `bellfounder` | Foundry Bell | gold | Safe zones (19); Shield-break window (34, <=70% HP); Gapped shockwave (11) |
 | `cryo` | Deep Freeze | ice | Laser grid (13); Shield-break window (34, <=75% HP); Tile sequence (14) |
-| `auditor` | Audit Trail | blue | Tile sequence (12); Afterimage strike (12); Shield-break window (36, <=60% HP) |
+| `auditor` | Audit Trail | blue | Tile sequence (13); Afterimage strike (13) |
 | `mirrorpt` | Hall of Mirrors | orchid | Afterimage strike (11); Line-of-sight gaze (13); Buff nodes (34, <=70% HP) |
-| `apothecary` | Dispensary | magenta | Chain bombs (12); Heat overload (22); Tether pylons + snipes (30, <=70% HP) |
+| `apothecary` | Dispensary | magenta | Chain bombs (14); Heat overload (24) |
 | `resonance` | Anechoic Cell | white | Rotating beam (12); Safe zones (19); Gapped shockwave (13) |
 | `clearance` | Final Markdown | coral | Conveyor floor (14); Ricochet roller (12); Tile sequence (15) |
-| `liquidator` | Liquidation | bronze | Chain bombs (12); Shield-break window (30, <=80% HP); Laser grid (16) |
+| `liquidator` | Liquidation | bronze | Chain bombs (18); Laser grid (20) |
 | `courier` | Express Route | yellow | Afterimage strike (9); Conveyor floor (16); Ricochet roller (13) |
 | `dispatcher` | Fleet Uplink | cyan | Rotating beam (13); Tether pylons + snipes (30); Buff nodes (32, <=80% HP) |
 | `warrantor` | Warranty Seal | gold | Safe zones (19); Tether pylons + snipes (30); Tile sequence (14) |
 | `tidewarden` | Pump Hall | blue | Gravity vortex (14); Conveyor floor (16); Gapped shockwave (12) |
-| `rattle` | Night Shift | coral | Afterimage strike (10); Buff nodes (32); Scythe sweep (11) |
+| `rattle` | Night Shift | coral | Afterimage strike (12); Gapped shockwave (14) |
 | `breaker` | Chain Yard | amber | Scythe sweep (10); Ricochet roller (13); Gravity vortex (16) |
 | `widow` | Signal Web | violet | Rotating beam (12); Line-of-sight gaze (12); Tether pylons + snipes (30) |
-| `recall` | Recall Everything | magenta | Shield-break window (30); Tether pylons + snipes (30, <=80% HP); Heat overload (22, <=60% HP); Laser grid (15, <=50% HP) |
+| `recall` | Recall Everything | magenta | Heat overload (24, <=70% HP); Laser grid (16, <=50% HP) |
 
 ## Balance check
 `URL=http://127.0.0.1:PORT/ node tools/balance/bosskits_ab.mjs out.json 3` runs boss-only fights per boss at par kit; run it against a baseline dev server and the new one and compare clear rate / deaths. The harness bot is shape-aware (flees lines/cones/rings, walks to safe circles). Tests: `tests/boss_kits.mjs`, screenshots `tests/boss_shots.mjs` -> `shots/bosses/`.
@@ -80,3 +90,8 @@ Every ground telegraph of all 32 bosses is instrumented during a 110 s fight (HP
 Findings fixed: the gapped shockwave probe artefact (ring band moves, probe now follows it); fan/gapring volleys count as resolved by their projectiles; breaker sigils cancelled by the zone cap. Final run: 222 telegraph kinds audited across 32 bosses, 0 flagged (see the test output).
 
 Pylons: cast once per HP phase, destroyable (1.8x HP), self-shut-down after 20 s, snipe cadence 11 s so a fight can never stall on them. Kit cadence is scaled by `KIT_CD_SCALE` (2.0) with `KIT_FIRST_ADD` (8 s).
+
+
+## Hit caps
+- No single kit hit exceeds `KIT_HIT_CAP` (30%) of max HP; hard mode scales kit damage at half rate.
+- No single boss melee/projectile hit exceeds `BOSS_HIT_CAP` (42%) of max HP (`src/sim.ts`). Rattle's riposte under hard-mode scaling used to reach 60%.

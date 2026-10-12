@@ -634,7 +634,7 @@ export class Game {
     }
     return out; }
   resolveAttack(e:En,a:string,tx:number,ty:number){
-    const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1)*(rt.hardDmg||1); this.dmgSrc=e.type+':'+a;
+    const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg0=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1)*(rt.hardDmg||1); const dmg=def.boss&&fac==='enemy'?Math.min(dmg0,BOSS_HIT_CAP*this.maxHp):dmg0; /* docs/BALANCE.md: no boss melee/projectile hit takes more than BOSS_HIT_CAP of max HP */ this.dmgSrc=e.type+':'+a;
     const cone=(r:number,arc:number)=>{ this.fx.push({kind:'slash',x:e.x,y:e.y,a:ang,r,t:0,life:.25,w:arc,c:'#b8b09a'}); for(const o of this.opponents(fac)){ if(dist(e.x,e.y,o.x,o.y)-o.r<=r&&Math.abs(angDiff(Math.atan2(o.y-e.y,o.x-e.x),ang))<=arc/2) o.hurt(dmg,e.x,e.y); } this.emit('sfx','enemy_swing'); };
     const proj=(aa:number,speed:number)=>{ this.projs.push({x:e.x+Math.cos(aa)*.6,y:e.y+Math.sin(aa)*.6,vx:Math.cos(aa)*speed,vy:Math.sin(aa)*speed,dmg,r:.22,life:1.6,faction:fac==='ally'?'ally':'enemy',kind:'bolt'}); this.emit('sfx','enemy_shot'); };
     if(MOB_ATK[a]){ resolveMobAttack(this,e,a,tx,ty,dmg); return; }
@@ -792,6 +792,8 @@ export class Game {
   }
 }
 export interface AtkDef { w:number; rec:number; cd:number; min:number; max:number; lock?:boolean; ranged?:boolean }
+/** largest share of the player's max HP a single boss attack may take (riposte x hard-mode reached 60%) */
+export const BOSS_HIT_CAP=.42;
 export const ATK:Record<string,AtkDef> = {
   swing:{w:.55,rec:.5,cd:1.1,min:0,max:1.4}, shot:{w:.8,rec:.6,cd:2.6,min:0,max:9,lock:true,ranged:true}, turretshot:{w:1.1,rec:.4,cd:2.8,min:0,max:10,lock:true,ranged:true},
   cleave:{w:.9,rec:.7,cd:2.2,min:0,max:2.6}, charge:{w:1.1,rec:1.4,cd:7,min:3.2,max:10,lock:true}, slam:{w:1.1,rec:.9,cd:5,min:0,max:3.4}, summon:{w:.9,rec:.8,cd:26,min:0,max:40},
