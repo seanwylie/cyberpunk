@@ -1,18 +1,30 @@
 // Travel (Reach Line) and Guild Counter modals. Hooked from ui.ts through `tv-*` / `gd-*` actions.
 import { CHIPS, ChipId, RARITY_COLOR, STARTING } from './config';
-import { TOWN_IDS, TOWN_INFO, currentTown, isUnlocked, travelCheck, unlockProgress, type TownId } from './towns';
+import { TOWN_INFO, currentTown, travelCheck, type TownId } from './towns';
 import { bankOverflowChip, lockerFree } from './bank';
 import { persist } from './state';
+import { WORLD, WORLD_BY_ID, FIRST_VISIT_XP } from './world';
+import { stationsOf } from './worldtowns';
+import { worldOf, dungeonsAt } from './discovery';
 type UIx = any;
 const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-export const TV = { msg: '' };
+export const TV: { msg: string; sel: string } = { msg: '', sel: '' };
+/** Reach Line transit screen: a world map of every district (short labels, full details on hover/tap) plus a detail card for the selected town. */
 export function travelHtml(ui: UIx): string {
-  const s = ui.g.save, here = currentTown(s);
-  const cards = TOWN_IDS.map((id: TownId) => { const I = TOWN_INFO[id], un = isUnlocked(s, id), pr = unlockProgress(s, id), cur = here === id;
-    return `<div class="tvcard ${cur ? 'here' : ''} ${un ? '' : 'locked'}" style="--tc:${I.color}" data-town="${id}"><div class="tvhead"><b>${esc(I.name)}</b>${cur ? '<span class="tag">You are here</span>' : un ? '<span class="tag ok">Open</span>' : '<span class="tag lock">Locked</span>'}</div>
-      <p>${esc(I.blurb)}</p>${un ? '' : `<div class="tvprog"><b>To unlock</b>${pr.lines.map(l => `<div>${esc(l)}</div>`).join('')}</div>`}
-      <button class="btn ${cur ? '' : 'primary'}" data-act="tv-go" data-id="${id}" ${cur || !un ? 'disabled' : ''}>${cur ? 'Current town' : un ? 'Ride the Reach Line' : 'Locked'}</button></div>`; }).join('');
-  return `<div class="travelwrap"><div class="mut">The Reach Line runs freight and passengers between the towns. Travel is free and instant. Your instance and loot stay where they are; Tier III and IV dungeon gates are at Harrow Reach.</div>${TV.msg ? `<div class="bkmsg" role="status">${esc(TV.msg)}</div>` : ''}<div class="tvlist">${cards}</div></div>`;
+  const s = ui.g.save, here = currentTown(s); const sel = TV.sel && WORLD_BY_ID[TV.sel] ? TV.sel : here; const lv = s.level; const W = worldOf(s);
+  const links = WORLD.flatMap((a, i) => WORLD.slice(i + 1).filter(b => Math.hypot(a.map[0] - b.map[0], a.map[1] - b.map[1]) < 32).map(b => `<line x1="${a.map[0]}" y1="${a.map[1]}" x2="${b.map[0]}" y2="${b.map[1]}"/>`)).join('');
+  const nodes = WORLD.map(t => { const cur = t.id === here, seen = !!W.visited[t.id], above = lv < t.band[0];
+    const tip = `<b style="color:${t.color}">${esc(t.name)}</b><br>Lv ${t.band[0]}–${t.band[1]} · ${esc(t.faction)}<br>${esc(t.theme)}${above ? '<br><i>Above your level: safe to visit</i>' : ''}${seen ? '' : '<br>Not visited yet'}`;
+    return `<button class="wmnode ${cur ? 'here' : ''} ${t.id === sel ? 'sel' : ''} ${seen ? 'seen' : 'new'} ${above ? 'above' : ''}" style="left:${t.map[0]}%;top:${t.map[1]}%;--tc:${t.color}" data-act="tv-sel" data-id="${t.id}" data-tip="${esc(tip)}" aria-label="${esc(t.name)}"><i></i><span>${esc(t.short)}</span></button>`; }).join('');
+  const t = WORLD_BY_ID[sel], cur = sel === here, above = lv < t.band[0];
+  const st = stationsOf(sel).map(x => `<span class="wmst" style="--sc:${x.color}" data-tip="${esc(x.name)}" aria-label="${esc(x.name)}">${esc(x.short)}</span>`).join('');
+  const dg = dungeonsAt(sel).map(d => `<span class="tag ${lv < d.minLevel ? 'lock' : ''}" data-tip="${esc(d.name + ' · Lv ' + d.minLevel + '–' + d.maxLevel)}">${esc(d.short || d.name)}</span>`).join('');
+  const card = `<div class="tvcard ${cur ? 'here' : ''}" style="--tc:${t.color}" data-town="${t.id}"><div class="tvhead"><b>${esc(t.name)}</b>${cur ? '<span class="tag">You are here</span>' : above ? '<span class="tag lock" data-tip="Towns are safe at any level. The gear and gates here are for later.">Above your level</span>' : '<span class="tag ok">Open</span>'}</div>
+    <div class="wmmeta"><span class="tag">Lv ${t.band[0]}–${t.band[1]}</span><span class="tag" data-tip="Faction">${esc(t.faction)}</span><span class="tag">${esc(t.theme)}</span>${W.visited[t.id] || t.id === 'rustline' ? '' : `<span class="tag ok" data-tip="First visit bonus">+${FIRST_VISIT_XP(t)} XP</span>`}</div>
+    <p>${esc(t.blurb)}</p><div class="wmrow">${st}</div>${dg ? `<div class="wmrow">${dg}</div>` : ''}
+    <button class="btn ${cur ? '' : 'primary'}" data-act="tv-go" data-id="${t.id}" ${cur ? 'disabled' : ''}>${cur ? 'Current town' : 'Ride the Reach Line'}</button></div>`;
+  return `<div class="travelwrap"><div class="mut">The Reach Line links every district. Travel is free and instant, and towns are safe at any level.</div>${TV.msg ? `<div class="bkmsg" role="status">${esc(TV.msg)}</div>` : ''}
+    <div class="wmgrid"><div class="wmap" role="list"><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${links}</svg>${nodes}</div>${card}</div></div>`;
 }
 /** Guild Counter: the Line 7 Retirees' Guild reclaims chips from shift lockers. Blue and purple chips for credits; purple needs level 18. */
 export const GUILD_PRICE: Record<string, number> = { blue: 240, purple: 950 };
@@ -26,6 +38,7 @@ export function guildHtml(ui: UIx): string {
 }
 export function townClick(ui: UIx, el: HTMLElement, a: string): boolean {
   const g = ui.g, s = g.save; const done = (m: string) => { TV.msg = m; persist(s); ui.render(); return true; };
+  if (a === 'tv-sel') { TV.sel = el.dataset.id || ''; TV.msg = ''; ui.render(); return true; }
   if (a === 'tv-go') { const id = el.dataset.id as TownId; const c = travelCheck(s, id); if (!c.ok) return done(c.why); TV.msg = ''; rideTram(ui, id); return true; }
   if (a === 'gd-buy') { const c = el.dataset.chip as ChipId, d = CHIPS[c], p = GUILD_PRICE[d.rarity];
     if (d.rarity === 'purple' && s.level < GUILD_PURPLE_LEVEL) return done(`${d.name} needs level ${GUILD_PURPLE_LEVEL}.`); if (s.credits < p) return done(`Needs ${p}c.`);

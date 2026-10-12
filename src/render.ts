@@ -13,6 +13,7 @@ import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
 import type { Level } from './level';
 import { TownArt, GP, decorDepth } from './town';
 import { harrowCfg } from './town2';
+import { artOf, isGenTown } from './worldtowns';
 import { gradeOf } from './town_variety';
 import { STATIONS, STATION_BY_ID, drawIcon } from './stations';
 import { Organic } from './organic';
@@ -394,7 +395,7 @@ export class Renderer {
   private groundBuilt:HTMLCanvasElement|null=null;
   /** use the art set that belongs to the current town (Rustline vs Harrow Reach); Harrow art loads lazily on first visit */
   /** Warm Harrow Reach (props, baked ground, pre-scaled sprites) while the tram travel screen is up, so arrival has no pop-in. */
-  async preloadTown(id:string,L:Level):Promise<void>{ if(!this.env||id!=='harrow') return; const t=(this.town2??=new TownArt('./town2/',harrowCfg())); const t0=performance.now(); while(!t.ready&&performance.now()-t0<8000) await new Promise(r=>setTimeout(r,50)); if(!t.ready) return; await new Promise(r=>setTimeout(r,0)); if(!t.ground) t.buildGround(L);
+  async preloadTown(id:string,L:Level):Promise<void>{ if(!this.env||id==='rustline') return; const t=this.artFor(id); const t0=performance.now(); while(!t.ready&&performance.now()-t0<8000) await new Promise(r=>setTimeout(r,50)); if(!t.ready) return; await new Promise(r=>setTimeout(r,0)); if(!t.ground) t.buildGround(L);
     const seen=new Set<string>(); let n=0; const warm=async(spr:string,w:number)=>{ const k=spr+'|'+w; if(seen.has(k)) return; seen.add(k); t.scaled(spr,w,this.dpr); if(++n%6===0) await new Promise(r=>setTimeout(r,0)); };
     for(const d of L.decor||[]) await warm(d.spr,d.sw*this.TW); for(const o of L.overhead||[]) await warm(o.spr,o.sw*this.TW); }
   /** Generic ground hazard / telegraph. Hostile zones (dps>0) are red/orange and pulse; temporary ones show a shrinking timer ring and fade out; level hazards are dashed amber; neutral zones (dps<=0) are cool and faint. */
@@ -416,7 +417,10 @@ export class Renderer {
     if(z.env){ this.hazardFloor(z); this.hazardCue(z); return; }
     const fill='#d8421e'; this.poly(this.circle(z.x,z.y,z.r),fill,'#ff8a50',(.16+.14*pulse)*left,2);
     if(!z.env){ const f=Math.max(.02,Math.min(1,(z.life-z.t)/Math.max(.5,z.life-z.windup))); this.poly(this.circle(z.x,z.y,z.r*f),'#ff6a30',undefined,.1*left); } }
-  private syncTown(L:Level){ if(!this.env) return; const want=L.theme==='harrow'?(this.town2??=new TownArt('./town2/',harrowCfg())):this.town1; if(want&&this.town!==want) this.town=want; }
+  /** lazily created art per town (assets + music load only on first visit/preload). Generated districts keep at most two art sets alive (memory budget). */
+  townArts:Record<string,TownArt>={}; private artOrder:string[]=[];
+  artFor(id:string):TownArt{ if(id==='harrow') return (this.town2??=new TownArt('./town2/',harrowCfg())); if(!isGenTown(id)) return this.town1!; let t=this.townArts[id]; if(!t){ const a=artOf(id); t=this.townArts[id]=new TownArt(a.base,a.cfg); } this.artOrder=[id,...this.artOrder.filter(x=>x!==id)]; while(this.artOrder.length>2){ const old=this.artOrder.pop()!; if(this.townArts[old]!==this.town) delete this.townArts[old]; } return t; }
+  private syncTown(L:Level){ if(!this.env) return; const want=this.artFor(String(L.theme||'rustline')); if(want&&this.town!==want) this.town=want; }
   private drawTownGround(){ const t=this.town!, L=this.g.level; if(!t.ground) t.buildGround(L); const gr=t.ground!; const CH=5, kk=this.TW/GP; const R=Math.ceil(Math.max(this.w,this.h)/this.TW*1.1)+4; const g=this.g;
     const cx0=Math.max(0,Math.floor((g.px-R)/CH)), cx1=Math.min(Math.ceil(L.w/CH)-1,Math.floor((g.px+R)/CH)), cy0=Math.max(0,Math.floor((g.py-R)/CH)), cy1=Math.min(Math.ceil(L.h/CH)-1,Math.floor((g.py+R)/CH));
     for(let cy=cy0;cy<=cy1;cy++)for(let cx=cx0;cx<=cx1;cx++){ const sw=Math.min(CH*GP,gr.width-cx*CH*GP), sh=Math.min(CH*GP,gr.height-cy*CH*GP); if(sw<=0||sh<=0) continue; this.bakeBlit(gr,cx*CH*GP,cy*CH*GP,sw,sh,kk/2,kk/4,-kk/2,kk/4,this.sx(cx*CH,cy*CH),this.sy(cx*CH,cy*CH),0,1); } }

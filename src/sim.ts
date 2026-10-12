@@ -11,7 +11,7 @@ import { computeBuild, installedLayout, BuildResult, abPickRef, repRank } from '
 import { abxCast, abxTick, abxReset, abxIncoming, abxOutgoing, abxSpeedMul, abxPlayerSpeed, newAbx, Abx } from './abilities/engine';
 import { ABILITY_BY_ID } from './abilities/registry';
 import { ABILITY_ACQ, ABILITY_ITEMS, pickAbilityItem, pickCommonAbilityItem } from './abilities/hw';
-import { buildHarrow } from './town2';
+import { buildTownLevel, stationsOf } from './worldtowns';
 import { currentTown, refreshUnlocks, travelCheck, TOWN_INFO, townsOf, type TownId } from './towns';
 import { setTownStations, TOWN_STATIONS } from './stations';
 import { buildTown, Level, Interact } from './level';
@@ -79,7 +79,7 @@ export class Game {
   enterTown(first=false){
     const wasRun=this.mode==='run'; this.settleCompleted();
     if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this); this.clearTransients();
-    const tid=currentTown(this.save); this.townId=tid; setTownStations(TOWN_STATIONS[tid]); this.mode='town'; this.level=tid==='harrow'?buildHarrow():buildTown(); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.townFails=0; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
+    const tid=currentTown(this.save); this.townId=tid; setTownStations(stationsOf(tid)); this.mode='town'; this.level=buildTownLevel(tid); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.townFails=0; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); this.emit('towntheme',tid); this.checkTownUnlocks(); if(this.inst) persist(this.save); this.emit('mode','town'); if(!first) this.toast('Back in town. Unload loot at the locker.'); if(!first&&wasRun) this.emit('beat',{dungeon:this.save.instance?.dungeon||undefined,run:this.save.instance?.id,result:this.save.instance?.flags?.bossDead?'Boss defeated':'Left the run early'});
   }
   townId:TownId='rustline';

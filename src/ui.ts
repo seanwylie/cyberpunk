@@ -28,6 +28,7 @@ import { fitAbLabel } from './ablabel';
 import { abTip, abFallbackIcon, abSlotsHtml, abChipX, codexHtml, cyclePicks } from './abilities/ui_ext';
 import { bankItemsOf, depositItem } from './bank';
 import { currentTown, dungeonAccess, isUnlocked, unlockProgress } from './towns';
+import { WORLD_BY_ID } from './world';
 import { travelHtml, guildHtml, townClick, TV } from './townui';
 import { bankHtml, bankClick, bankInput, BK } from './bankui';
 import { wardrobeHtml, wardrobeClick, wardrobeAfter } from './wardrobeui';
@@ -472,7 +473,7 @@ export class UI {
   gate():string{ const g=this.g, s=g.save, inst=s.instance; const live=!!inst&&inst.expiresAt>Date.now(); const cur=live?(inst!.dungeon||'annex'):null; const doneCur=live&&g.instDone(inst);
     const town=currentTown(s); const hiddenT=DUNGEON_LIST.filter(d=>!dungeonAccess(d.id,town).ok&&cur!==d.id); const all=DUNGEON_LIST.filter(d=>dungeonAccess(d.id,town).ok||cur===d.id); const shown=all.filter(d=>this.showAll||inBand(d,s.level)||cur===d.id);
     let h=`<div class="col wide"><h3>Dungeon select</h3><div class="mut">Level ${s.level}. Each dungeon has its own daily clear (boss completion consumes it; entry alone does not). One live instance at a time. Hardware is locked once you enter.</div>
-      ${hiddenT.length?`<div class="draftbar" style="border-color:#ff6a3a"><b>${hiddenT.length} Tier III–IV dungeons are not on this gate.</b> <span class="mut">They open only at Harrow Reach${isUnlocked(s,'harrow')?': take the Reach Line from the plaza tram stop.':'. Unlock it by clearing a Tier II dungeon or reaching level 20.'}</span></div>`:''}<label><input type="checkbox" data-in="dshowall" ${this.showAll?'checked':''}/> Show all dungeons (${all.length-all.filter(d=>inBand(d,s.level)).length} outside your level band)</label>`;
+      ${hiddenT.length?(WORLD_BY_ID[town]?.gen?`<div class="draftbar" style="border-color:#ff6a3a"><b>${hiddenT.length} other dungeons have gates in other districts.</b> <span class="mut">The Reach Line map shows which town hosts each gate.</span></div>`:`<div class="draftbar" style="border-color:#ff6a3a"><b>${hiddenT.length} Tier III–IV dungeons are not on this gate.</b> <span class="mut">They open at Harrow Reach and other districts: take the Reach Line from the plaza tram stop.</span></div>`):''}<label><input type="checkbox" data-in="dshowall" ${this.showAll?'checked':''}/> Show all dungeons (${all.length-all.filter(d=>inBand(d,s.level)).length} outside your level band)</label>`;
     if(!shown.length) h+='<div class="row mut">No dungeons in your level band. Tick "Show all".</div>';
     for(const d of shown){ const locked=g.dailyLocked(d.id); const isLive=cur===d.id; const lowL=s.level<d.minLevel, hiL=s.level>d.maxLevel; const mf=MFR[d.mfr];
       h+=`<div class="draftbar" style="margin-top:8px;border-color:${mf.accent}"><b>${esc(d.name)}</b> <span class="tag" style="border-color:${mf.accent}">${mf.short}</span> <span class="tag">${esc(d.district)}</span> ${d.tier?`<span class="tag" title="Content tier">Tier ${['','I','II','III','IV'][d.tier]}</span>`:''}<span class="tag">Lv ${d.minLevel}–${d.maxLevel}</span> <span class="tag">~${d.estMinutes[0]}–${d.estMinutes[1]} min</span>

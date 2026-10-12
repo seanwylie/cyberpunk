@@ -35,6 +35,7 @@ export const HARROW_STATIONS: Station[] = [
   { key: 'h_locker', id: 'h_locker', opens: 'locker', name: 'Locker', short: 'LOCKER', verb: 'swap gear and chips', color: '#46e08a', rgb: '70,224,138', icon: 'locker', x: 38, y: 47.5, lx: 36, ly: 48, sx: 33, sy: 45, kind: 'locker', ambient: 'scan' },
   { key: 'h_guild', id: 'h_guild', opens: 'guild', name: 'Guild Counter', short: 'GUILD', verb: 'reclaimed chips', color: '#ff5cc8', rgb: '255,92,200', icon: 'guild', x: 21.5, y: 46.5, lx: 17, ly: 43.5, sx: 20, sy: 40, kind: 'vendor', ambient: 'neon' },
 ];
+/** generated districts register their stations lazily (src/towngen.ts) via TOWN_STATIONS[id] getters */
 export const TOWN_STATIONS: Record<string, Station[]> = { rustline: RUSTLINE_STATIONS, harrow: HARROW_STATIONS };
 export const stationPrompt = (s: Station) => `${s.name}: ${s.verb}`;
 /** minimum allowed distance between any two station interact points */

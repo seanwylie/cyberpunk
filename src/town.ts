@@ -14,6 +14,10 @@ const rng = (seed: number) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; l
 const mk = (w: number, h: number) => { const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; };
 const loadImg = (src: string) => new Promise<HTMLImageElement | null>(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
 
+/** neon wall sign for generated districts: text in a glowing tube frame, baked once */
+export function makeNeon(text: string, col: string): HTMLCanvasElement {
+  const W = 420, H = 300, cv = mk(W, H), c = cv.getContext('2d')!; c.font = `800 64px ${FONTS}`; const tw = Math.min(W - 60, c.measureText(text).width); c.save(); c.shadowColor = col; c.shadowBlur = 22; c.strokeStyle = col; c.lineWidth = 6; c.fillStyle = 'rgba(8,8,12,.85)'; c.beginPath(); c.roundRect(W / 2 - tw / 2 - 22, 40, tw + 44, 96, 14); c.fill(); c.stroke(); c.fillStyle = col; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(text, W / 2, 90, W - 60); c.restore(); c.fillStyle = '#16181b'; c.fillRect(W / 2 - 6, 136, 12, 150); return cv;
+}
 const FONTS = '"Roboto Condensed","Bahnschrift","Arial Narrow",Impact,sans-serif';
 /** world-space station sign (pole + neon panel with the shared icon + big label), baked once to a canvas; 100px per tile */
 export function makeSign(st: Station): HTMLCanvasElement {
@@ -42,7 +46,7 @@ export const GP = 40; // ground canvas pixels per world tile
 export interface Part { x: number; y: number; z: number; vx: number; vy: number; vz: number; t: number; life: number; k: 'steam' | 'ember' | 'dust'; s: number; col?: string; }
 
 /** Per-town art configuration. Defaults reproduce Rustline Market exactly. */
-export interface TownCfg { stations?: Station[]; hub?: [number, number]; props?: string[]; ground?: string[]; /** logical ground slots -> file names */ g?: Partial<Record<'base' | 'debris' | 'planks' | 'plaza', string>>; /** secondary prop dir used for files missing in `base` */ fallbackBase?: string; puddles?: boolean; plazaSize?: number; /** extra ground passes drawn after the plaza (ember cracks etc.) */ extra?: (x: CanvasRenderingContext2D, W: number, H: number, art: TownArt) => void; }
+export interface TownCfg { /** generated districts (src/towngen.ts): CSS filter baked into every non-NPC prop + ground, theme id for ground detail/grade, lamp glow rgb, neon sign texts */ recolor?: string; theme?: string; lamp?: string; neon?: [string, string][]; stations?: Station[]; hub?: [number, number]; props?: string[]; ground?: string[]; /** logical ground slots -> file names */ g?: Partial<Record<'base' | 'debris' | 'planks' | 'plaza', string>>; /** secondary prop dir used for files missing in `base` */ fallbackBase?: string; puddles?: boolean; plazaSize?: number; /** extra ground passes drawn after the plaza (ember cracks etc.) */ extra?: (x: CanvasRenderingContext2D, W: number, H: number, art: TownArt) => void; }
 export class TownArt {
   img: Record<string, HTMLImageElement> = {}; gimg: Record<string, HTMLImageElement> = {}; ready = false; ground: HTMLCanvasElement | null = null;
   glows: Record<string, HTMLCanvasElement> = {}; parts: Part[] = []; private sc = new Map<string, HTMLCanvasElement>(); private scKey = ''; private em = 0; private R = rng(7);
@@ -50,10 +54,12 @@ export class TownArt {
   folk: Townfolk | null = null; folkLevel: Level | null = null; folkActive = false;
   npcPos: { x: number; y: number; flip: boolean; moving: boolean }[] = [];
   stations: Station[]; hub: [number, number];
-  constructor(private base = './town/', public cfg: TownCfg = {}) { this.stations = cfg.stations || RUSTLINE_STATIONS; this.hub = cfg.hub || [30.5, 22.5]; this.load(); for (const [k, c] of [['warm', '255,176,96'], ['fire', '255,128,52'], ['cool', '120,150,160'], ['puff', '190,194,192'], ...this.stations.map(st => [st.key, st.rgb] as const)] as const) { const cv = mk(128, 128), x = cv.getContext('2d')!; const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, `rgba(${c},1)`); g.addColorStop(.35, `rgba(${c},.38)`); g.addColorStop(1, `rgba(${c},0)`); x.fillStyle = g; x.fillRect(0, 0, 128, 128); this.glows[k] = cv; } }
+  constructor(private base = './town/', public cfg: TownCfg = {}) { this.stations = cfg.stations || RUSTLINE_STATIONS; this.hub = cfg.hub || [30.5, 22.5]; this.load(); for (const [k, c] of [['warm', '255,176,96'], ['fire', '255,128,52'], ['cool', '120,150,160'], ['puff', '190,194,192'], ['lamp', cfg.lamp || '255,176,96'], ...this.stations.map(st => [st.key, st.rgb] as const)] as const) { const cv = mk(128, 128), x = cv.getContext('2d')!; const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, `rgba(${c},1)`); g.addColorStop(.35, `rgba(${c},.38)`); g.addColorStop(1, `rgba(${c},0)`); x.fillStyle = g; x.fillRect(0, 0, 128, 128); this.glows[k] = cv; } }
   loaded = 0; total = 1;
   async load() { const PL = this.cfg.props || TOWN_PROPS, GL = this.cfg.ground || GROUND; this.total = PL.length + GL.length; const tick = () => { this.loaded++; (window as any).__loadPct = this.loaded / this.total; };
-    await Promise.all([...PL.map(async n => { let i = await loadImg(`${this.base}props/${n}.png`); if (!i && this.cfg.fallbackBase) i = await loadImg(`${this.cfg.fallbackBase}props/${n}.png`); if (i) this.img[n] = i; tick(); }), ...GL.map(async n => { const i = await loadImg(`${this.base}ground/${n}.jpg`); if (i) this.gimg[n] = i; tick(); })]);
+    await Promise.all([...PL.map(async n => { let i = await loadImg(`${this.base}props/${n}.png`); if (!i && this.cfg.fallbackBase) i = await loadImg(`${this.cfg.fallbackBase}props/${n}.png`); if (i) this.img[n] = i; tick(); }), ...GL.map(async n => { let i = await loadImg(`${this.base}ground/${n}.jpg`); if (!i && this.cfg.fallbackBase) i = await loadImg(`${this.cfg.fallbackBase}ground/${n}.jpg`); if (i) this.gimg[n] = i; tick(); })]);
+    if (this.cfg.recolor) { const f = this.cfg.recolor; const rc = (im: HTMLImageElement) => { const c = mk(im.width, im.height), x = c.getContext('2d')!; x.filter = f; x.drawImage(im, 0, 0); return c as any; }; for (const k of Object.keys(this.img)) if (!/^np/.test(k)) this.img[k] = rc(this.img[k]); for (const k of Object.keys(this.gimg)) this.gimg[k] = rc(this.gimg[k]); }
+    (this.cfg.neon || []).forEach(([t, col], i) => { this.img['neon_' + i] = makeNeon(t, col) as any; });
     try { await (document as any).fonts?.load('800 70px "Roboto Condensed"'); } catch {} /* sign sprites are rasterised once: wait for the webfont so ink metrics are final */
     for (const st of this.stations) this.img['sign_' + st.key] = makeSign(st) as any;
     this.img['bank_vault'] = makeVault() as any;
@@ -92,7 +98,7 @@ export class TownArt {
     this.cfg.extra?.(x, W, H, this);
     // 5. painted markings and wear
     this.paintStationDecals(x);
-    groundDetail(x, (L as any).theme === 'harrow' ? 'harrow' : 'rustline', W, H, GP, this.hub, (tx, ty) => !!L.solid[ty * L.w + tx]);
+    groundDetail(x, this.cfg.theme || ((L as any).theme === 'harrow' ? 'harrow' : 'rustline'), W, H, GP, this.hub, (tx, ty) => !!L.solid[ty * L.w + tx]);
     // 6. puddles with cool sheen
     for (let i = 0; this.cfg.puddles !== false && i < 14; i++) { const px = (10 + R() * 40) * GP, py = (8 + R() * 28) * GP, rx = (.5 + R() * 1.4) * GP, ry = rx * (.45 + R() * .3); const g = x.createRadialGradient(px, py, 0, px, py, rx); g.addColorStop(0, 'rgba(40,52,60,.55)'); g.addColorStop(.7, 'rgba(30,38,44,.35)'); g.addColorStop(1, 'rgba(30,38,44,0)'); x.save(); x.translate(px, py); x.rotate(R() * 3); x.scale(1, ry / rx); x.translate(-px, -py); x.fillStyle = g; x.beginPath(); x.arc(px, py, rx, 0, 7); x.fill(); x.fillStyle = 'rgba(170,185,195,.1)'; x.beginPath(); x.arc(px - rx * .2, py - rx * .15, rx * .45, 0, 7); x.fill(); x.restore(); }
     // 7. soft contact shadows under every decor footprint, and rim darkening toward solid tiles

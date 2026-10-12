@@ -644,3 +644,13 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 .bdnotice ul{ margin:4px 0 0 18px; padding:0; } .bdinc{ color:#ffb3a3; } .bdmode{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
 
 #idkfabadge{ background:#ff2d6f; color:#fff; font-weight:700; font-size:12px; letter-spacing:.06em; padding:0 5px; border-radius:3px; }
+
+/* world map (Reach Line transit screen, src/townui.ts) */
+.wmgrid{ display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:10px; align-items:start; } @media (max-width:760px){ .wmgrid{ grid-template-columns:minmax(0,1.2fr) minmax(0,1fr); } }
+.wmap{ position:relative; aspect-ratio:16/11; min-height:180px; background:radial-gradient(ellipse at 55% 45%,#1d2430,#0c0f14 70%); border:1px solid #3a3f46; border-radius:4px; overflow:hidden; }
+.wmap svg{ position:absolute; inset:0; width:100%; height:100%; } .wmap line{ stroke:#4b5563; stroke-width:.5; stroke-dasharray:1.4 1.2; vector-effect:non-scaling-stroke; }
+.wmnode{ position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:0; padding:2px; cursor:pointer; color:#d8d2c4; min-width:44px; min-height:34px; }
+.wmnode i{ width:12px; height:12px; border-radius:50%; background:var(--tc); box-shadow:0 0 8px var(--tc); border:2px solid #0c0f14; }
+.wmnode span{ font:700 max(var(--fmin),calc(10px*var(--fs))) "Roboto Condensed",sans-serif; letter-spacing:.06em; white-space:nowrap; text-shadow:0 1px 2px #000; }
+.wmnode.new span{ opacity:.7; } .wmnode.sel i{ outline:2px solid #fff; outline-offset:2px; } .wmnode.here i{ width:16px; height:16px; } .wmnode.above i{ border-style:dashed; }
+.wmmeta,.wmrow{ display:flex; flex-wrap:wrap; gap:4px; } .wmst{ font:700 max(var(--fmin),calc(10px*var(--fs))) "Roboto Condensed",sans-serif; color:var(--sc); border:1px solid var(--sc); border-radius:3px; padding:1px 5px; letter-spacing:.05em; }

@@ -1,5 +1,5 @@
 // The trigger IS the drawn pad: the interact point/radius equals the ring the renderer draws, the label's tail points at the trigger centre, the station's focal prop sits right behind it,
-// the pad is walkable, and the prompt flips exactly at the ring edge. Every station, both towns.
+// the pad is walkable, and the prompt flips exactly at the ring edge. Every station, every town in src/world.ts.
 import { launch, sleep } from './lib.mjs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 import fs from 'node:fs';
@@ -9,7 +9,8 @@ for (const vp of [{ name: 'desktop', viewport: { width: 1920, height: 1080 } }, 
 const { browser, page, errors } = await launch({ viewport: vp.viewport, touch: vp.touch, dpr: vp.dpr, query: '?splash=hold' }); const ev = (f, a) => page.evaluate(f, a);
 await ev(() => document.getElementById('splash')?.remove()); await page.waitForFunction(() => window.__rend?.town?.ready, null, { timeout: 60000 });
 const MAX_EDGE = 2.4, MAX_TAIL_TILES = 3.2; // focal prop footprint edge within 2.2 tiles of the pad; tail within ~3 tiles of screen-x of the pad centre
-for (const town of ['rustline', 'harrow']) {
+const TOWNS = process.env.TOWNS ? process.env.TOWNS.split(',') : await ev(async () => (await import('/src/world.ts')).WORLD.map(t => t.id));
+for (const town of TOWNS) {
   await ev(async town => { const g = window.__game; g.save.level = 30; g.checkTownUnlocks(); if (g.townId !== town) g.travel(town); window.__ui.open(null); g.save.settings.stationMarkers = false; }, town);
   await page.waitForFunction(t => window.__rend.town?.ready && window.__game.townId === t, town, { timeout: 30000 }); await sleep(1000);
   const sts = await ev(async () => { const S = await import('/src/stations.ts'); const g = window.__game, L = g.level; return L.interacts.filter(i => S.STATIONS.some(q => q.key === i.station)).map(i => { const s = S.STATIONS.find(q => q.key === i.station); const own = L.decor.filter(d => d.station === s.key && !String(d.spr).startsWith('sign_')); const f = own.find(d => Math.abs(d.x - s.lx) < .01 && Math.abs(d.y - s.ly) < .01) || own[0]; if (!f) return { id: i.id, key: s.key, nof: true }; const dx = Math.max(f.x - i.x, 0, i.x - (f.x + f.fw)), dy = Math.max(f.y - i.y, 0, i.y - (f.y + f.fd)); return { id: i.id, key: s.key, x: i.x, y: i.y, r: i.r, edge: Math.hypot(dx, dy), sdx: (i.x - i.y) - ((f.x + f.fw / 2) - (f.y + f.fd / 2)), solid: g.solidAt(i.x, i.y), sx: s.x, sy: s.y }; }); });

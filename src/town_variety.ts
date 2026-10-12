@@ -3,11 +3,13 @@
 //    and Harrow Reach (slag terraces, safety paint, ember cracks) stop sharing the same floor dressing.
 //  - TOWN_GRADE: per-town colour grade (replaces the one shared dusk tint).
 //  - outfitPaint(): NPC outfit variants (hi-vis vest, scarf, cap, work trousers, apron, two-tone) painted onto the tinted walker frame before it is alpha-masked.
+import { GEN_TOWNS } from './world';
 type X = CanvasRenderingContext2D;
 export const TOWN_GRADE: Record<string, { tint: string; vig: string }> = {
   rustline: { tint: 'rgba(14,12,22,.2)', vig: 'rgba(6,7,10,.72)' },
   harrow: { tint: 'rgba(48,22,10,.15)', vig: 'rgba(14,6,3,.74)' },
 };
+for (const t of GEN_TOWNS) TOWN_GRADE[t.id] = t.gen!.grade;
 export const gradeOf = (th: string) => TOWN_GRADE[th] || TOWN_GRADE.rustline;
 export const OUTFITS = 8;
 const ACC = ['#e0782a', '#c9a02a', '#4a8a9a', '#a04a4a', '#6a8a4a', '#8a5aa0'];
