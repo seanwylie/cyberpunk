@@ -130,7 +130,7 @@ export class UI {
     else if(type==='hurt'){ if(flashAllowed(!!g.save.settings.reducedFx)){ (window as any).__flashes=((window as any).__flashes||0)+1; document.body.animate([{boxShadow:'inset 0 0 60px rgba(143,59,46,'+FLASH_ALPHA_CAP+')'},{boxShadow:'inset 0 0 0 rgba(0,0,0,0)'}],{duration:300}); } }
     void g;
   }
-  toast(s:string){ if(!this.tutorialToast(s)) return; const el=document.createElement('div'); el.className='toast'; el.textContent=s; const box=$('toasts'); box.appendChild(el); while(box.children.length>4) box.removeChild(box.firstChild!); setTimeout(()=>el.remove(),5600); }
+  toast(s:string){ if(!this.tutorialToast(s)) return; const el=document.createElement('div'); const pri=/^IDKFA /.test(s); el.className='toast'+(pri?' pri':''); el.textContent=s; const box=$('toasts'); box.appendChild(el); /* priority lane: cheat-state toasts are never evicted by bursts of ordinary toasts */ while(box.children.length>4){ const old=[...box.children].find(c=>!c.classList.contains('pri')); if(!old) break; box.removeChild(old); } setTimeout(()=>el.remove(),5600); }
   graceNote=0;
   banner(t:string,sub:string,secs=4){ const b=$('banner'); b.innerHTML=esc(t)+'<small>'+esc(sub)+'</small>'; b.classList.add('show'); this.bannerT=secs; }
   hideBanner(){ $('banner').classList.remove('show'); }
