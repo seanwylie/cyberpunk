@@ -101,7 +101,7 @@ export class Game {
     const line=outOfDepth(this.save.level,id); if(line) this.emit('toast','Odalys: '+line); }
   /** epic gateway clear: opens the Reach Line to the destination for this character (each party member runs this on their own save) */
   gatewayClear(){ const gw=GATEWAY_BY_DUNGEON[this.dd.id]; if(!gw) return; const w:any=(this.save as any).world??={visited:{},landmarks:{}}; if(w.unlocked?.[gw.to]) return; (w.unlocked??={})[gw.to]=Date.now(); w.arrival=gw.to; const t=WORLD_BY_ID[gw.to];
-    this.toast(`GATEWAY CLEARED: ${gw.title}. ${gw.arrival} The Reach Line to ${t.name} is open.`); this.emit('stinger','complete'); this.emit('gateway',gw.to); persist(this.save); }
+    this.toast(`GATEWAY CLEARED: ${gw.title}. ${gw.arrival} The Reach Line to ${t.name} is open.`); this.emit('stinger','ascent'); this.emit('gateway',gw.to); persist(this.save); }
   worldScan(){ const L:any=this.level; const xp=landmarkNear(this.save,this.townId,this.px,this.py,L.landmark); if(xp){ this.addXp(xp); this.toast(`Landmark logged: ${L.landmark.name} (+${xp} XP).`); persist(this.save); } }
   /** Unlock towns whose condition is newly met (clears, level ups, load). Returns the ids unlocked now. */
   checkTownUnlocks():TownId[]{ const n=refreshUnlocks(this.save); for(const id of n){ this.toast(`New destination: ${TOWN_INFO[id].name}. Take the Reach Line at the plaza tram stop.`); persist(this.save); } return n; }
@@ -819,12 +819,13 @@ export class Game {
   eliteExchange(){ this.eliteEng=8; }
   isElite(e:En){ return !!(ENEMIES[e.type].elite||(e as any).affix?.length); }
   /** Music state (docs/AUDIO.md): only 'traversal' (calm pool), 'elite' (hit/hurt by an elite in the last 8 s), 'bossreveal'/'bosscombat' (boss encounter) and 'resolution'. Ordinary mobs, proximity, alert and map position never change it. */
-  lastKey=''; lastPh=0; updateMusic(dt:number){
+  lastKey=''; lastPh=0; lastInt=0; updateMusic(dt:number){
     let st='traversal'; if(this.combatHold>0) this.combatHold-=dt; if(this.eliteEng>0) this.eliteEng-=dt; const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal<=0&&this.inst!.flags.bossSpawned);
     const bossRev=this.enemies.some(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal>0);
     if(this.resPending>0){ this.resPending-=dt; st='resolution'; } else if(bossRev) st='bossreveal'; else if(boss) st='bosscombat'; else if(this.eliteEng>0&&this.enemies.some(e=>!e.dead&&e.faction==='enemy'&&this.isElite(e)&&!ENEMIES[e.type].boss)) st='elite';
     if(st==='bosscombat'&&boss&&this.lastKey!==boss.type){ this.lastKey=boss.type; this.emit('musickey',boss.type); this.lastPh=0; }
     if(st==='bosscombat'&&boss){ const ph=(boss as any).phase||0; if(ph!==this.lastPh){ this.lastPh=ph; this.emit('musicphase',ph); } }
+    if(st==='elite'){ const n=Math.min(4,this.enemies.filter(e=>!e.dead&&e.faction==='enemy'&&this.isElite(e)&&!ENEMIES[e.type].boss&&Math.hypot(e.x-this.px,e.y-this.py)<10).length); if(n!==this.lastInt){ this.lastInt=n; this.emit('musicint',n); } } else if(this.lastInt){ this.lastInt=0; this.emit('musicint',0); }
     this.musicSet(st);
   }
 }
