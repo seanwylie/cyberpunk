@@ -3,7 +3,7 @@ import { STATIONS, STATION_BY_ID, drawIcon, type Station } from './stations';
 const _ico:Record<string,string>={}; function stationIconURL(st:Station){ return _ico[st.key]||(_ico[st.key]=(()=>{ const cv=document.createElement('canvas'); cv.width=cv.height=48; const c=cv.getContext('2d')!; drawIcon(c,st.icon,24,24,17,st.color,3); return cv.toDataURL(); })()); }
 import { Game } from './sim';
 import { helpHtml } from './helpui';
-import { applyUiScale, key } from './config';
+import { applyUiScale, key, uiFs } from './config';
 import { specOf, iconCanvas } from './lootart';
 import { AudioSys } from './audio';
 import { chipFits, chipFitLabel, chipReason, CHIP_FITS, SLOT_GROUP, GROUP_LABEL, ABILITIES, ABILITY_TYPE_COLOR, ABILITY_TYPE_LABEL, CHIPS, ChipId, COMBAT, ENEMIES, INSTALL_COST, ITEM_BY_ID, ITEMS, MFR, RARITY_COLOR, REP_DISCOUNT_PER_RANK, SELL_VALUE, SLOT_LABEL, SLOT_SOCKETS, SLOTS, Slot, Stats, REPAIR_COST, RARITIES, STARTING, PROGRESSION, ItemDef, WEAPONS, WEAPON_RARITY_MUL } from './config';
@@ -18,6 +18,7 @@ import { CONTACTS, CONTACT_BY_ID, CONTRACT_BY_ID, MAX_ACTIVE_CONTRACTS, Contract
 import { EXTRA_ITEMS } from './content/items';
 import { WEAPON_ITEMS } from './content/weapons';
 import { lockDay, contractState } from './state';
+import { fitAbLabel } from './ablabel';
 import { abTip, abFallbackIcon, abSlotsHtml, abChipX, codexHtml, cyclePicks } from './abilities/ui_ext';
 import { bankItemsOf, depositItem } from './bank';
 import { currentTown, dungeonAccess, isUnlocked, unlockProgress } from './towns';
@@ -167,10 +168,11 @@ export class UI {
       (btn.querySelector('.mark') as HTMLElement).textContent=offline?'\u2715':short?'!':'';
       (btn.querySelector('.mark') as HTMLElement).title=offline?'Offline: overheated':short?'Would overheat':'';
     });
+    { const fk=uiFs()+'|'+innerWidth+'|'+innerHeight+'|'+g.build.abilities.join(','); if(fk!==this.abFitKey){ this.abFitKey=fk; requestAnimationFrame(()=>document.querySelectorAll<HTMLElement>('.abtn .aname,#dodge .aname').forEach(e=>fitAbLabel(e))); } }
     const dd=$('dodge'); (dd.querySelector('.cdsweep') as HTMLElement).style.setProperty('--cd',(Math.max(0,g.dodgeCd/COMBAT.dodge.cd)*360).toFixed(1)+'deg'); dd.classList.toggle('cd',g.dodgeCd>0);
     if(this.dodgePrev>0&&g.dodgeCd<=0){ dd.classList.remove('ready'); void dd.offsetWidth; dd.classList.add('ready'); setTimeout(()=>dd.classList.remove('ready'),700); } this.dodgePrev=g.dodgeCd;
   }
-  private dodgePrev=0;
+  private dodgePrev=0; private abFitKey='';
   /** Hover (desktop) / long-press (touch) tooltip for HUD ability buttons. */
   bindAbilityTips(){
     const tip=$('abtip'); const show=(btn:HTMLElement)=>{ const i=+(btn.dataset.idx??-1); const id=btn.id==='dodge'?null:this.g.build.abilities[i]; const d=id?ABILITIES[id]:null;
