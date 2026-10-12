@@ -9,7 +9,7 @@ import { STARTING } from './config';
 import { funnel, funnelText, events, exportJson, track, resetAnalytics, addSink, httpSink, fmtUsd } from './analytics';
 
 export type SkuKind = 'skin' | 'bundle' | 'storage_locker' | 'storage_bank';
-export interface Sku { id: string; kind: SkuKind; name: string; desc: string; cents: number; items?: string[]; tier?: number; }
+export interface Sku { id: string; kind: SkuKind; name: string; desc: string; cents: number; items?: string[]; tier?: number; /** store spotlight slot */ featured?: boolean; }
 export interface Receipt { id: string; sku: string; cents: number; ts: number; orderId: string; granted: string[]; }
 export interface StoreState { v: 1; receipts: Record<string, Receipt>; counters: { locker: number; bank: number }; spentCents: number; orderN: number; }
 
@@ -23,10 +23,18 @@ const SKINS: Sku[] = COSMETICS.filter(d => d.src.k === 'premium').map(d => ({ id
 const BUNDLES: Sku[] = [
   { id: 'bundle_hazard', kind: 'bundle', name: 'Hazard Crew Bundle', desc: 'Jade skin, hazard cape and lime lenses.', cents: 399, items: ['pm_skin_jade', 'pm_back_hazard', 'pm_eyes_lime'] },
   { id: 'bundle_nightshift', kind: 'bundle', name: 'Night Shift Bundle', desc: 'Violet visor, brine mist aura and sodium trail.', cents: 599, items: ['pm_head_nightvisor', 'pm_aura_brine', 'pm_trail_sodium'] },
+  { id: 'bundle_legend', kind: 'bundle', name: 'Legend Set', desc: 'Plasma-Vein Dermis, Nanoswarm Halo and Liquid-Chrome Wings.', cents: 2499, items: ['pm_skin_plasma', 'pm_aura_swarm', 'pm_back_chrome'], featured: true },
+  { id: 'bundle_epic', kind: 'bundle', name: 'Epic Violet Set', desc: 'Prism-Fibre Mane, Vigil Halo, Lattice Plate and Violet Static Trail.', cents: 1499, items: ['pm_hair_prism', 'pm_head_vigil', 'pm_torso_lattice', 'pm_trail_violet'], featured: true },
   { id: 'bundle_signal', kind: 'bundle', name: 'Signal Bundle', desc: 'Cobalt anodize skin and flare crest.', cents: 449, items: ['pm_skin_cobalt', 'pm_hair_signal'] } ];
 const LOCKER: Sku[] = LOCKER_TIER_CENTS.map((c, i) => ({ id: 'locker_slots_' + (i + 1), kind: 'storage_locker' as const, name: `Locker +${LOCKER_SLOTS_PER_TIER} slots`, desc: `Permanent extra locker space (tier ${i + 1} of ${LOCKER_TIER_CENTS.length}).`, cents: c, tier: i + 1 }));
 const BANK: Sku[] = BANK_TIER_CENTS.map((c, i) => ({ id: 'bank_tab_' + (i + 1), kind: 'storage_bank' as const, name: 'Bank +1 tab (60 slots)', desc: `Opens one more bank tab (tier ${i + 1} of ${BANK_TIER_CENTS.length}).`, cents: c, tier: i + 1 }));
 export const CATALOG: Sku[] = [...SKINS, ...BUNDLES, ...LOCKER, ...BANK];
+/** Earn-only legendaries: never sold, never in a SKU (tests/store_premium.mjs). */
+export const EARN_ONLY = COSMETICS.filter(d => d.rarity === 'orange' && d.src.k !== 'premium').map(d => d.id);
+/** Limited slot: one premium legendary/epic skin rotates each week (deterministic from the week number, same for everyone). */
+export const WEEK_MS = 7 * 864e5;
+export function limitedSku(now = Date.now()): { sku: Sku; endsAt: number } { const L = CATALOG.filter(k => k.kind === 'skin' && ['orange', 'purple'].includes(COS_BY_ID[k.items![0]].rarity)); const w = Math.floor(now / WEEK_MS); return { sku: L[w % L.length], endsAt: (w + 1) * WEEK_MS }; }
+export const featuredSkus = () => CATALOG.filter(k => k.featured || (k.kind === 'skin' && COS_BY_ID[k.items![0]].rarity === 'orange'));
 export const SKU_BY_ID: Record<string, Sku> = Object.fromEntries(CATALOG.map(s => [s.id, s]));
 
 export function storeOf(s: Save): StoreState {

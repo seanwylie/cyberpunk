@@ -50,3 +50,13 @@ Ring buffer of the last 500 events in memory, plus a localStorage sink (last 200
 4. Move entitlements server-side (accounts) before real money: saves are local today, so a player can edit `Save.store` or cosmetics. Do not ship real payments on local saves alone.
 5. Replace the `SIMULATED` labels and `cents` placeholder prices with store-localised prices (`Order.currency`).
 6. Add an `httpSink` to your analytics endpoint and drop the console sink.
+
+## Premium rarity tier
+- **Purple (sold):** pm_hair_prism $4.99, pm_head_vigil $4.99, pm_torso_lattice $4.99, pm_trail_violet $3.99.
+- **Orange (sold):** pm_skin_plasma $9.99, pm_aura_swarm $9.99, pm_back_chrome $12.99.
+- **Bundles (featured):**
+  - bundle_legend $24.99
+  - bundle_epic $14.99
+- **Limited slot:** `limitedSku()` rotates weekly through the purple/orange skins.
+- **Earn-only orange (never sold, `EARN_ONLY`):** hair_flame, head_cowl, eyes_sun, torso_nova, back_wings, skin_holo, aura_nova.
+- **Tiles:** animated rarity tiles with LTD/★ badges and a Featured strip. ▶ Showcase opens the dressing room reveal.

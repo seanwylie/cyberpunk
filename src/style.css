@@ -713,3 +713,5 @@ body.reducefx .tile.r-orange,body.reducefx .tile.r-orange::after,body.reducefx .
 #altmini .amzone{position:absolute;top:0;bottom:0;border-radius:6px;background:linear-gradient(180deg,#e7c88a,#b98f4c)}
 #altmini .amcur{position:absolute;top:-4px;width:3px;height:20px;margin-left:-1px;background:#f4efe4;border-radius:2px}
 #interact .alticon{margin-right:4px;color:#e7c88a}
+.stspot{ margin:4px 0; padding:4px 6px; border:1px solid #6a4e12; border-radius:6px; background:linear-gradient(90deg,rgba(255,154,31,.10),rgba(180,107,255,.08)); } .stspot>.mut{ font-weight:700; color:#ffd27a; } .stspot .spotgrid{ max-height:none; overflow:visible; }
+.stgrid .tile{ position:relative; }

@@ -16,7 +16,7 @@ export type CosTheme = 'HI'|'PS'|'MM'|'ST'|'EV';
 export const COS_THEME_LABEL: Record<CosTheme,string> = { HI:'Harrow-Brandt Heavy Works', PS:'Aldane Surgical', MM:'Kestrel Value Systems', ST:'Independent / street', EV:'Basin legends & events' };
 export type CosSource =
   | { k:'vendor'; price:number }          // Outfitter / Wardrobe counter, credits
-  | { k:'premium'; cents:number }         // simulated IAP skin (src/store.ts). grey/green/blue only, never purple/orange, never rolled from drops
+  | { k:'premium'; cents:number }         // simulated IAP skin (src/store.ts). grey..orange (premium tier pm_* only); never rolled from drops; earn-only orange is never sold
   | { k:'drop' }                          // any elite/boss/ordinary cosmetic roll
   | { k:'elite' }                         // elite+ rolls only
   | { k:'boss' }                          // any boss kill
@@ -159,6 +159,14 @@ const R:Row[]=[
 ['pm_back_hazard','Hazard-Stripe Cape','back','green','ST','cape','#d0a020','','A yellow-black striped safety cape.','Cheaper than a warning sign.','p:199'],
 ['pm_head_nightvisor','Night-Shift Visor','head','blue','MM','visor','#c060e0','#f0d0ff','A violet visor for the long shift.','Kestrel night crews swear by the tint.','p:299'],
 ['pm_eyes_lime','Lime Diagnostic Lenses','eyes','green','PS','dots','#a0e040','','Bright lime lenses with a scan flicker.','Calibration green, never meant to be a look.','p:199'],
+// ---- PREMIUM EPIC / LEGENDARY (simulated store, see docs/STORE_SIM.md "Premium tier"). The 7 earn-only orange pieces are NEVER sold. ----
+['pm_hair_prism','Prism-Fibre Mane','hair','purple','MM','long','#b46bff','#ffd0ff','Long fibre-optic hair that shifts through violet.','Kestrel display stock, recut for heads.','p:499'],
+['pm_head_vigil','Vigil Halo','head','purple','PS','halo','#c9a0ff','#ffffff','A floating violet halo that ticks like a watch.','Aldane night-ward staff wear them off shift.','p:499'],
+['pm_torso_lattice','Lattice Plate','torso','purple','HI','panel','#7a4ad0','#d8c0ff','A violet lattice chest plate with lit seams.','Heavy Works parade armour, never issued.','p:499'],
+['pm_trail_violet','Violet Static Trail','trail','purple','MM','glitch','#c070ff','','Violet glitch blocks stutter behind you.','A broadcast that never ended.','p:399'],
+['pm_skin_plasma','Plasma-Vein Dermis','skin','orange','EV','holo','#ff8a1f','#fff1c4','Molten plasma veins run under a dark glass skin.','A legend you can buy. The Basin still argues about it.','p:999'],
+['pm_aura_swarm','Nanoswarm Halo','aura','orange','EV','nova','#ffb347','#e8f4ff','A glittering swarm of nanites orbits you.','Repair nanites that forgot what to fix.','p:999'],
+['pm_back_chrome','Liquid-Chrome Wings','back','orange','EV','wings','#e8f4ff','#ff9a1f','Wings of flowing liquid chrome edged in fire.','Poured once, never set.','p:1299'],
 ];
 
 function parseSrc(s:string):CosSource{ if(s.startsWith('v:')) return {k:'vendor',price:+s.slice(2)}; if(s.startsWith('p:')) return {k:'premium',cents:+s.slice(2)}; if(s==='d') return {k:'drop'}; if(s==='e') return {k:'elite'}; if(s==='b') return {k:'boss'}; if(s.startsWith('b:')) return {k:'bossId',boss:s.slice(2)}; if(s.startsWith('a:')) return {k:'ach',key:s.slice(2)}; return {k:'event',key:s.slice(3)}; }

@@ -10,7 +10,7 @@ const R = await page.evaluate(async () => {
   out.uniq = new Set(L.map(d => d.id)).size === L.length; out.noStats = L.every(d => !('stats' in d) && !('dmg' in d));
   out.slots = [...new Set(L.map(d => d.slot))].length; out.rar = L.every(d => Cfg.RARITIES.includes(d.rarity));
   const bosses = Object.keys(Cfg.ENEMIES).filter(k => Cfg.ENEMIES[k].boss); out.badBoss = L.filter(d => d.src.k === 'bossId' && !bosses.includes(d.src.boss)).map(d => d.id);
-  out.orangeSrc = L.filter(d => d.rarity === 'orange').map(d => d.src.k); out.purpleSrc = [...new Set(L.filter(d => d.rarity === 'purple').map(d => d.src.k))];
+  out.orangeSrc = L.filter(d => d.rarity === 'orange' && d.src.k !== 'premium').map(d => d.src.k); out.purpleSrc = [...new Set(L.filter(d => d.rarity === 'purple' && d.src.k !== 'premium').map(d => d.src.k))]; out.premHi = L.filter(d => d.src.k === 'premium' && (d.rarity === 'purple' || d.rarity === 'orange')).every(d => d.id.startsWith('pm_'));
   out.vendorPurple = L.filter(d => d.src.k === 'vendor' && Cfg.RARITY_RANK[d.rarity] >= 3).length;
   out.w = ['ordinary', 'elite', 'boss'].every(t => { const w = A.COS_RARITY_W[t]; return w.orange < w.purple && w.purple < w.green && w.orange * 10 <= w.purple; });
   out.fields = L.every(d => d.name && d.desc && d.lore && d.style && d.c && d.slot && d.src);
@@ -38,7 +38,7 @@ ok(R.n >= 80, 'at least 80 cosmetics: ' + R.n + ' ' + JSON.stringify(R.per));
 ok(R.uniq && R.noStats && R.rar && R.fields, 'unique ids, no stat fields, known rarities, all fields filled');
 ok(R.slots >= 12, 'covers 12 slots: ' + R.slots);
 ok(!R.badBoss.length, 'every boss-specific source is a real boss ' + R.badBoss);
-ok(R.orangeSrc.every(k => k === 'event' || k === 'ach') && R.per.orange <= 8 && R.per.orange >= 4, 'orange only from events/achievements and few: ' + R.orangeSrc);
+ok(R.orangeSrc.every(k => k === 'event' || k === 'ach') && R.orangeSrc.length <= 8 && R.orangeSrc.length >= 4 && R.premHi, 'earned orange only from events/achievements and few (premium pm_* tier separate: ' + R.premHi + '): ' + R.orangeSrc);
 ok(R.purpleSrc.every(k => k === 'boss' || k === 'bossId' || k === 'ach'), 'purple only from bosses/achievements: ' + R.purpleSrc);
 ok(R.vendorPurple === 0, 'no purple/orange sold by the vendor');
 ok(R.w, 'rarity weights: orange <= purple/10 < green in every tier');

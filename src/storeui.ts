@@ -2,11 +2,12 @@
 // All logic lives in src/store.ts; events in src/analytics.ts. Only reachable in town (UI.open refuses it in a run).
 import { RARITY_COLOR } from './config';
 import { COS_BY_ID, COS_SLOT_ICON, COS_SLOT_LABEL, ownsCos } from './content/appearance';
+import { featuredSkus, limitedSku } from './store';
 import { CATALOG, LOCKER_SLOTS_PER_TIER, LOCKER_TIER_CENTS, BANK_TIER_CENTS, Sku, SKU_BY_ID, activeOrder, cancelOrder, confirmPurchase, dismissUpsell, nextStorageSku, skuAvail, startPurchase, storeOf, MOCK_CFG } from './store';
 import { exportJson, fmtUsd, funnel, track } from './analytics';
 import { lockerCapOf } from './bank';
 import { bankOf, bankCapacity } from './bank';
-import { previewFromStore } from './wardrobeui';
+import { previewFromStore, WD, stageSet } from './wardrobeui';
 type UIx = any;
 const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export type StTab = 'skins' | 'bundles' | 'storage';
@@ -22,7 +23,9 @@ export function openStore(ui: UIx, from: typeof ST.from, sku?: string) {
 }
 
 const swatch = (k: Sku) => { if (k.kind === 'skin') { const d = COS_BY_ID[k.items![0]]; return `<span class="cosw" style="--c:${d.c};--c2:${d.c2 || d.c}">${COS_SLOT_ICON[d.slot]}</span>`; } return `<span class="cosw" style="--c:#c9a24a;--c2:#fff0b0">${k.kind === 'bundle' ? '★' : k.kind === 'storage_bank' ? 'BK' : 'LK'}</span>`; };
-const rar = (k: Sku) => k.kind === 'skin' ? COS_BY_ID[k.items![0]].rarity : 'green';
+const RS = ['grey', 'green', 'blue', 'purple', 'orange'];
+const rar = (k: Sku) => k.kind === 'skin' ? COS_BY_ID[k.items![0]].rarity : k.kind === 'bundle' ? k.items!.map(i => COS_BY_ID[i].rarity).reduce((m, r) => RS.indexOf(r) > RS.indexOf(m) ? r : m, 'green') : 'green';
+const RANK = (k: Sku) => RS.indexOf(rar(k));
 
 export function storeHtml(ui: UIx): string {
   const s = ui.g.save; const tabBtn = (id: StTab, label: string) => `<button class="btn tabb ${ST.tab === id ? 'primary' : ''}" data-act="st-tab" data-tab="${id}">${label}</button>`;
@@ -32,8 +35,10 @@ export function storeHtml(ui: UIx): string {
     const row = (k: Sku | null, title: string, now: string, n: number, max: number) => `<div class="row"><span><b>${title}</b> <span class="mut">${now}</span><br><span class="mut">${n}/${max} bought</span></span>${k ? `<button class="btn ${ST.sel === k.id ? 'primary' : ''}" data-act="st-sel" data-id="${k.id}">${esc(k.name)} · ${usd(k.cents)}</button>` : '<span class="tag good">Maxed</span>'}</div>`;
     list = row(lk, 'Locker', `${lockerCapOf(s)} slots now`, st.counters.locker, LOCKER_TIER_CENTS.length) + row(bk, 'Bank', `${b.tabs} tabs, ${bankCapacity(b)} slots now`, st.counters.bank, BANK_TIER_CENTS.length);
   } else {
-    const items = CATALOG.filter(k => tabOf(k) === ST.tab);
-    list = `<div class="stgrid wdgrid">${items.map(k => { const a = skuAvail(s, k.id); return `<button class="slot tile st cos ${ST.sel === k.id ? 'sel' : ''} ${a.ok ? '' : 'off'}" data-act="st-sel" data-id="${k.id}" data-tip="${esc('<b>' + esc(k.name) + '</b><br>' + esc(k.desc) + '<br><span class="mut">' + (a.ok ? usd(k.cents) + ' SIMULATED' : a.why) + '</span>')}" aria-label="${esc(k.name + ', ' + (a.ok ? usd(k.cents) + ' simulated price' : a.why))}" style="border-color:${RARITY_COLOR[rar(k) as keyof typeof RARITY_COLOR]}"><span class="ticon">${swatch(k)}</span><span class="tn"><small>${a.ok ? usd(k.cents) : esc(a.why)}</small></span></button>`; }).join('')}</div>`;
+    const items = CATALOG.filter(k => tabOf(k) === ST.tab).sort((p, q) => RANK(q) - RANK(p)); const lim = limitedSku();
+    const tile = (k: Sku, spot = false) => { const a = skuAvail(s, k.id); const isLim = lim.sku.id === k.id; const badge = isLim ? `<i class="drb ltd" title="Limited: this week only">LTD</i>` : k.featured || rar(k) === 'orange' ? '<i class="drb feat" title="Featured">★</i>' : ''; return `<button class="slot tile st cos r-${rar(k)} ${spot ? 'spot' : ''} ${ST.sel === k.id ? 'sel' : ''} ${a.ok ? '' : 'off'}" data-act="st-sel" data-id="${k.id}" data-tip="${esc('<b>' + esc(k.name) + '</b><br>' + esc(k.desc) + '<br><span class="mut">' + (a.ok ? usd(k.cents) + ' SIMULATED' : a.why) + '</span>')}" aria-label="${esc(k.name + ', ' + (a.ok ? usd(k.cents) + ' simulated price' : a.why))}" style="border-color:${RARITY_COLOR[rar(k) as keyof typeof RARITY_COLOR]}"><span class="ticon">${swatch(k)}</span><span class="tn"><small>${a.ok ? usd(k.cents) : esc(a.why)}</small></span>${badge}</button>`; };
+    const spot = ST.tab !== 'storage' ? [...new Map([lim.sku, ...featuredSkus()].filter(k => tabOf(k) === ST.tab).map(k => [k.id, k])).values()] : [];
+    list = (spot.length ? `<div class="stspot"><span class="mut" data-tip="${esc('Featured legendary and epic skins. LTD rotates weekly (ends ' + new Date(lim.endsAt).toLocaleDateString() + ').')}">Featured</span><div class="stgrid wdgrid spotgrid">${spot.map(k => tile(k, true)).join('')}</div></div>` : '') + `<div class="stgrid wdgrid">${items.map(k => tile(k)).join('')}</div>`;
   }
   const k = ST.sel ? SKU_BY_ID[ST.sel] : null; let detail = '<div class="mut wdsel">Select an item for details. Prices are SIMULATED: nothing is charged.</div>';
   if (k && tabOf(k) === ST.tab) {
@@ -42,8 +47,9 @@ export function storeHtml(ui: UIx): string {
     if (ST.phase === 'confirm') act = `<span>Buy <b>${esc(k.name)}</b> for <b>${usd(k.cents)}</b>? <span class="tag">SIMULATED, no real charge</span></span><button class="btn primary" data-act="st-confirm">Confirm</button><button class="btn" data-act="st-cancel">Cancel</button>`;
     else if (ST.phase === 'processing') act = `<span class="mut" role="status">Processing payment (simulated)…</span><button class="btn" data-act="st-cancel">Cancel</button>`;
     else act = a.ok ? `<button class="btn primary" data-act="st-buy" data-id="${k.id}">Buy ${usd(k.cents)} <small>SIMULATED</small></button>` : `<span class="tag good">${esc(a.why)}</span>`;
+    const show = (k.kind === 'skin' || k.kind === 'bundle') ? `<button class="btn" data-act="st-showcase" data-id="${k.id}" data-tip="${esc('Showcase: see it animate on your character in the dressing room')}">▶ Showcase</button>` : '';
     const prev = k.kind === 'skin' && a.ok ? `<button class="btn" data-act="st-preview" data-id="${k.id}" data-tip="${esc('Try it on your character in the Wardrobe preview')}">Preview</button>` : '';
-    detail = `<div class="wdsel"><b>${esc(k.name)}</b> <span class="tag">${usd(k.cents)} SIMULATED</span><div>${esc(k.desc)}</div>${parts ? `<div class="mut">Includes: ${parts}</div>` : ''}${k.kind === 'skin' ? `<div class="mut">${esc(COS_SLOT_LABEL[COS_BY_ID[k.items![0]].slot])} · cosmetic only, no stat change</div>` : k.kind === 'storage_locker' ? `<div class="mut">+${LOCKER_SLOTS_PER_TIER} permanent locker slots. Price rises each tier.</div>` : k.kind === 'storage_bank' ? '<div class="mut">One more bank tab. Price rises each tier.</div>' : '<div class="mut">Cosmetic only, no stat change</div>'}<div class="wdact">${act}${ST.phase === 'idle' ? prev : ''}</div></div>`;
+    detail = `<div class="wdsel"><b>${esc(k.name)}</b> <span class="tag">${usd(k.cents)} SIMULATED</span><div>${esc(k.desc)}</div>${parts ? `<div class="mut">Includes: ${parts}</div>` : ''}${k.kind === 'skin' ? `<div class="mut">${esc(COS_SLOT_LABEL[COS_BY_ID[k.items![0]].slot])} · cosmetic only, no stat change</div>` : k.kind === 'storage_locker' ? `<div class="mut">+${LOCKER_SLOTS_PER_TIER} permanent locker slots. Price rises each tier.</div>` : k.kind === 'storage_bank' ? '<div class="mut">One more bank tab. Price rises each tier.</div>' : '<div class="mut">Cosmetic only, no stat change</div>'}<div class="wdact">${act}${ST.phase === 'idle' ? prev + show : ''}</div></div>`;
   }
   let fun = '';
   if (ST.funnel) { const f = funnel(); fun = `<div class="wdsel" data-funnel><b>Funnel (local, simulated)</b><div class="mut">views ${f.views} → starts ${f.starts} (${(f.viewToStart * 100).toFixed(0)}%) → successes ${f.successes} (${(f.startToSuccess * 100).toFixed(0)}%) · fails ${f.fails} · cancels ${f.cancels} · revenue ${usd(f.revenueCents)} SIMULATED</div>${Object.entries(f.perSku).map(([id, v]) => `<div class="mut">${esc(id)}: ${v.views}v ${v.starts}s ${v.successes}ok ${v.fails}f ${v.cancels}c</div>`).join('')}<div class="wdact"><button class="btn" data-act="st-export">Export JSON to console</button><span class="mut">Fail rate ${(MOCK_CFG.failureRate * 100).toFixed(0)}% · set with wvStore.config({failureRate:.3})</span></div></div>`; }
@@ -59,6 +65,7 @@ export function storeClick(ui: UIx, el: HTMLElement, a: string): boolean {
     case 'st-dismiss': dismissUpsell(); ui.render(); return true;
     case 'st-tab': if (ST.phase === 'processing') return true; ST.tab = (el.dataset.tab as StTab) || 'skins'; ST.sel = ''; ST.phase = 'idle'; ST.msg = ''; break;
     case 'st-sel': if (ST.phase === 'processing') return true; if (ST.phase === 'confirm' && ST.orderId) cancelOrder(ST.orderId); ST.phase = 'idle'; ST.msg = ''; view(el.dataset.id!); break;
+    case 'st-showcase': { const k = SKU_BY_ID[el.dataset.id!]; if (!k?.items) return true; WD.showcase = true; if (k.kind === 'bundle') { WD.tab = 'all'; WD.show = 'all'; stageSet(s, k.id); ui.open('wardrobe'); } else previewFromStore(ui, k.items[0]); track('sku_view', k.id, { showcase: true }); return true; }
     case 'st-preview': { const k = SKU_BY_ID[el.dataset.id!]; if (!k?.items) return true; previewFromStore(ui, k.items[0]); return true; }
     case 'st-buy': { const r = startPurchase(s, el.dataset.id!); if (r.ok) { ST.orderId = r.order.orderId; ST.phase = 'confirm'; ST.msg = ''; } else ST.msg = r.why; break; }
     case 'st-confirm': {
