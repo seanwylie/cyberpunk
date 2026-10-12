@@ -29,7 +29,7 @@ const inj = await ev(async () => { const g = window.__game; const o = {}; g.ente
   // safety net: enemies + player dropped in a wall are rescued within a second
   const live = g.enemies.filter(e => !e.dead && e.faction === 'enemy').slice(0, 5); for (const e of live) { e.x = w[0]; e.y = w[1]; } g.px = w[0]; g.py = w[1]; for (let i = 0; i < 40; i++) g.update(1 / 30); o.rescuedAll = live.every(e => !g.stranded(e.x, e.y, .3)) && !g.stranded(g.px, g.py, .3); o.rescuedCount = g.rescued;
   // NaN positions
-  live[0].x = NaN; g.px = NaN; for (let i = 0; i < 40; i++) g.update(1 / 30); o.nan = isFinite(live[0].x) && isFinite(g.px);
+  live[0].x = NaN; g.px = NaN; for (let i = 0; i < 40; i++) g.update(1 / 30); o.nan = isFinite(live[0].x) && isFinite(g.px); o.nanv = [live[0].x, g.px, g.mode, live.length];
   // A*: flow field with the player inside a wall still reaches walkable cells; enemies path to the snapped player
   g.px = w[0]; g.py = w[1]; g.flowField(0); let reach = 0; for (const v of g.flow) if (v >= 0) reach++; o.flowReach = reach;
   // restore from a corrupted saved instance (player + enemies inside walls)
@@ -39,7 +39,7 @@ const inj = await ev(async () => { const g = window.__game; const o = {}; g.ente
   const e = g.spawnEnemy(g.enemies.find(x => !x.dead).type, w[0], w[1]); o.spawned = !g.stranded(e.x, e.y, .3) && e.home.x === e.x;
   return o; });
 ok(inj.haveWall && inj.rescuedAll && inj.rescuedCount >= 6, 'safety net rescues the player and enemies placed inside walls: ' + JSON.stringify({ n: inj.rescuedCount }));
-ok(inj.nan, 'NaN positions are rescued');
+ok(inj.nan, 'NaN positions are rescued ' + JSON.stringify(inj));
 ok(inj.flowReach > 200, 'A*/flow field recovers when the player tile is non-walkable (reaches ' + inj.flowReach + ' cells)');
 ok(inj.restored, 'saved-instance restore snaps corrupt player/enemy positions onto walkable tiles');
 ok(inj.spawned, 'spawnEnemy into a wall snaps to walkable ground and resets home');

@@ -203,7 +203,7 @@ export class Game {
   rescued=0; resT=0;
   /** Safety net (runs ~2x/s in a run): rescue any entity found on a non-walkable tile (spawn, restore, knockback, dash, teleport, party start). */
   rescueStranded(){ if(this.mode!=='run') return; const me={x:this.px,y:this.py}; if(this.snapWalkable(me,COMBAT.playerRadius)){ this.px=me.x; this.py=me.y; this.toast('Repositioned onto walkable ground.'); }
-    for(const e of this.enemies){ if(e.dead||e._rt.reveal>0) continue; const r=ENEMIES[e.type]?.radius||.4; if(this.snapWalkable(e,r)&&e.home&&this.stranded(e.home.x,e.home.y,r)){ e.home={x:e.x,y:e.y}; } } }
+    for(const e of this.enemies){ if((e.dead||e._rt.reveal>0)&&isFinite(e.x)&&isFinite(e.y)) continue; /* a non-finite position is always repaired (dead bodies and revealing bosses too) */ const r=ENEMIES[e.type]?.radius||.4; if(this.snapWalkable(e,r)&&e.home&&this.stranded(e.home.x,e.home.y,r)){ e.home={x:e.x,y:e.y}; } } }
   /** Push an entity out of any collider it ended up inside (dash end, knockback, spawn). */
   unwedge(o:{x:number;y:number},r:number){ if(!this.circleHits(o.x,o.y,r)) return; for(let ring=1;ring<=12;ring++){ const rr=ring*.15; for(let k=0;k<8;k++){ const a=k*Math.PI/4; const nx=o.x+Math.cos(a)*rr, ny=o.y+Math.sin(a)*rr; if(!this.circleHits(nx,ny,r)){ o.x=nx; o.y=ny; return; } } } }
   los(ax:number,ay:number,bx:number,by:number){ const d=dist(ax,ay,bx,by); const n=Math.ceil(d/.4); for(let i=1;i<n;i++){ const t=i/n; if(this.solidAt(ax+(bx-ax)*t,ay+(by-ay)*t)) return false; } return true; }
