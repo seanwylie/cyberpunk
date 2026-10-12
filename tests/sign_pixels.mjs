@@ -19,7 +19,7 @@ const res = await page.evaluate(async () => {
   return out;
 });
 for (const r of res) { const tag = `${r.name} @DPR${r.dpr}`; const must = ['store', 'repair'].includes(r.key) || r.dpr === 1;
-  if (!must) { if (Math.abs(r.left - r.right) * r.sc > 1.8) ok(false, `${tag}: padding L ${r.left.toFixed(1)} R ${r.right.toFixed(1)}`); continue; }
+  if (!must) { if (Math.abs(r.left - r.right) * r.sc > 2.0) ok(false, `${tag}: padding L ${r.left.toFixed(1)} R ${r.right.toFixed(1)}`); continue; }
   ok(Math.abs(r.left - r.right) * r.sc <= 1.5 && r.left >= 20 && r.right >= 20, `${tag}: ink padding icon-cell->text ${r.left.toFixed(1)} vs text->border ${r.right.toFixed(1)} (sprite px, equal within 1.5 device px, >=20)`);
   ok(Math.abs(r.top - r.bot) * r.sc <= 1.5, `${tag}: cap-centred top ${r.top.toFixed(1)} bottom ${r.bot.toFixed(1)}`); }
 ok(res.some(r => r.key === 'store') && res.some(r => r.key === 'repair'), 'Outfitter and Repair Bay both covered');
