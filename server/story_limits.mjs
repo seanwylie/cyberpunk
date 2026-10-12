@@ -59,7 +59,7 @@ export function dynamoStore(table, client, commands) {
  */
 export function createLimiter({ store, cfg = STORY_LIMIT_DEFAULTS, now = Date.now } = {}) {
   return {
-    cfg,
+    cfg, store, // store is shared with the speech scorer's own counters (server/npc_speech.mjs)
     async check({ player, ip, regen }) {
       const t = now(), day = dayOf(t), mid = secsToMidnight(t), exp = Math.floor(t / 1000) + mid + 3600;
       const daily = (scope) => ({ ok: false, reason: 'daily_cap', retryAfter: mid, scope });

@@ -7,6 +7,8 @@ import fs from 'node:fs';
 import { createLimiter, memoryStore, limitConfig } from './story_limits.mjs';
 import { createTraitRanker } from './trait_rank.mjs';
 import { createNemesisWords } from './nemesis_words.mjs';
+import { createSpeechScorer } from './npc_speech.mjs';
+import { createContractPicker } from './contract_pick.mjs';
 
 export const CATALOG = JSON.parse(fs.readFileSync(new URL('./story_catalog.json', import.meta.url), 'utf8'));
 
@@ -80,10 +82,12 @@ export function loadoutHash(s) { const { session, variant, player, ...rest } = s
 /** Output filter. Returns cleaned text or null. */
 /** Trait description lines: same banned-content rules as story lines (shorter, one sentence). */
 export function cleanTraitLine(t) { const s = cleanOutput(t); return s && s.length <= 160 ? s : null; }
-export function cleanOutput(t) {
+/** NPC replies / contract briefs: same banned-content rules, shorter minimum. */
+export function cleanReply(t) { const c = cleanOutput(t, 8); return c && c.length <= 200 ? c : null; }
+export function cleanOutput(t, minChars = LIMITS.minChars) {
   if (typeof t !== 'string') return null;
   let s = t.replace(/\s+/g, ' ').trim().replace(/^["“]+|["”]+$/g, '').trim();
-  if (s.length < LIMITS.minChars || s.length > LIMITS.maxChars) return null;
+  if (s.length < minChars || s.length > LIMITS.maxChars) return null;
   if (/https?:|www\.|<|>|[`{}\[\]]|\bAs an AI\b|\b(?:drugs?|narcotics?|cocaine|coke|heroin|meth|dealers?|junkies?|pills?|overdos\w*|stoned|high on|stims?)\b|\bprompt\b|\blanguage model\b|openai|chatgpt|system message/i.test(s)) return null;
   if (/guarantee|always drop|100%|drop rate|unlock|free item|grants? you|you receive|\+\d+\s?(%|credits|dmg|damage)/i.test(s)) return null;
   if (CODE_RE.test(s)) return null;
@@ -112,11 +116,12 @@ export function createStoryService(opts = {}) {
   const model = () => env.OPENAI_STORY_MODEL || 'gpt-5.4-nano';
   const base = () => (env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '');
   const dailyCap = () => { const n = parseInt(env.STORY_DAILY_CAP || '', 10); return Number.isFinite(n) && n >= 0 ? n : LIMITS.dailyCap; };
-  async function callOpenAI(facts, system = SYSTEM_PROMPT, raw = false) {
+  async function callOpenAI(facts, system = SYSTEM_PROMPT, raw = false, schema = null) {
     const key = env.OPENAI_API_KEY; if (!key) return { error: 'no_key' };
     const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), opts.timeoutMs || LIMITS.timeoutMs);
     try {
       const body = { model: model(), messages: [{ role: 'system', content: system }, { role: 'user', content: raw ? facts : JSON.stringify(facts) }], max_completion_tokens: maxTokens(), reasoning_effort: env.OPENAI_STORY_REASONING || 'low' };
+      if (schema) body.response_format = { type: 'json_schema', json_schema: schema };
       if (!/^(gpt-5|o\d)/.test(model())) { delete body.reasoning_effort; body.max_completion_tokens = Math.min(200, maxTokens()); body.temperature = 0.9; }
       const r = await fetchFn(base() + '/chat/completions', { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify(body) });
       if (!r.ok) return { error: 'http_' + r.status };
@@ -126,7 +131,14 @@ export function createStoryService(opts = {}) {
   /** raw: parsed body. meta: {ip}. Returns {status, json}. json: {ok:true,text,model,cached} or {ok:false,reason}. Never includes key material. */
   const traitRank = createTraitRanker({ limiter, clean: (s) => cleanTraitLine(s), call: async (system, user) => { const day = new Date(nowFn()).toISOString().slice(0, 10); if (daily.day !== day) { daily.day = day; daily.n = 0; } if (daily.n >= dailyCap()) return { error: 'daily_cap' }; daily.n++; return callOpenAI(user, system, true); } });
   const nemWords = createNemesisWords({ limiter, clean: (s) => cleanTraitLine(s), call: async (system, user) => { const day = new Date(nowFn()).toISOString().slice(0, 10); if (daily.day !== day) { daily.day = day; daily.n = 0; } if (daily.n >= dailyCap()) return { error: 'daily_cap' }; daily.n++; return callOpenAI(user, system, true); } });
+  const budgeted = async (system, user, schema) => { const day = new Date(nowFn()).toISOString().slice(0, 10); if (daily.day !== day) { daily.day = day; daily.n = 0; } if (daily.n >= dailyCap()) return { error: 'daily_cap' }; daily.n++; return callOpenAI(user, system, true, schema); };
+  /** Optional provider moderation (STORY_MODERATION=openai). Local moderation in npc_speech.mjs always runs first. Fails open to local-only. */
+  const moderateRemote = env.STORY_MODERATION === 'openai' ? async (text) => { const key = env.OPENAI_API_KEY; if (!key) return false; const r = await fetchFn(base() + '/moderations', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key }, body: JSON.stringify({ model: 'omni-moderation-latest', input: text }) }); if (!r.ok) return false; const j = await r.json(); return !!j?.results?.[0]?.flagged; } : null;
+  const speech = createSpeechScorer({ limiter, env, now: nowFn, clean: (s) => cleanReply(s), call: budgeted, moderateRemote });
+  const contracts = createContractPicker({ limiter, clean: (s) => cleanReply(s), call: budgeted });
   async function handle(raw, meta = {}) {
+    if (raw && typeof raw === 'object' && raw.kind === 'npc_intent') return speech(raw, meta); // free-text speech scoring (server/npc_speech.mjs)
+    if (raw && typeof raw === 'object' && raw.kind === 'contract_pick') return contracts(raw, meta); // personal contracts (server/contract_pick.mjs)
     if (raw && typeof raw === 'object' && raw.kind === 'trait_rank') return traitRank(raw, meta);
     if (raw && typeof raw === 'object' && raw.kind === 'nemesis_words') return nemWords(raw, meta); // nemesis name + taunt (server/nemesis_words.mjs): same limits + budget // trait offers (server/trait_rank.mjs): same limits + budget
     const v = sanitizeSummary(raw); if (!v.ok) return { status: 400, json: { ok: false, reason: 'bad_request:' + v.why } };

@@ -1,0 +1,430 @@
+{
+ "generatedBy": "tools/gen_catalog.mjs",
+ "memKinds": [
+  "talked_down",
+  "bribed",
+  "intimidated",
+  "deceived",
+  "empathized",
+  "betrayed",
+  "scammed",
+  "helped",
+  "killed_crew",
+  "cleared",
+  "contract_done",
+  "speech_failed",
+  "gift",
+  "witnessed_death",
+  "failed_job",
+  "met"
+ ],
+ "npcs": {
+  "odalys_vane": {
+   "name": "Odalys Vane",
+   "role": "fixer",
+   "faction": "independent"
+  },
+  "tech_marr": {
+   "name": "Marr",
+   "role": "technician",
+   "faction": "independent"
+  },
+  "handler_cole": {
+   "name": "Cole",
+   "role": "boss",
+   "faction": "MM"
+  },
+  "ten_hallowell": {
+   "name": "Teodor \"Ten\" Hallowell",
+   "role": "boss",
+   "faction": "HI"
+  },
+  "noor_abiodun": {
+   "name": "Noor Abiodun",
+   "role": "boss",
+   "faction": "independent"
+  },
+  "pell_okafor": {
+   "name": "Pell Okafor",
+   "role": "trader",
+   "faction": "independent"
+  },
+  "ilya_sen": {
+   "name": "Ilya Sen",
+   "role": "technician",
+   "faction": "PS"
+  },
+  "liaison_costa": {
+   "name": "Dr. Mireille Costa",
+   "role": "handler",
+   "faction": "PS"
+  },
+  "liaison_dunmore": {
+   "name": "Rhea Dunmore",
+   "role": "handler",
+   "faction": "HI"
+  },
+  "vendor_rustline": {
+   "name": "Pike",
+   "role": "vendor",
+   "faction": "independent"
+  },
+  "vendor_harrow": {
+   "name": "Greaves",
+   "role": "vendor",
+   "faction": "HI"
+  },
+  "guard_HI": {
+   "name": "Harrow-Brandt security",
+   "role": "guard",
+   "faction": "HI"
+  },
+  "guard_PS": {
+   "name": "Aldane ward staff",
+   "role": "guard",
+   "faction": "PS"
+  },
+  "guard_MM": {
+   "name": "Kestrel floor crew",
+   "role": "guard",
+   "faction": "MM"
+  }
+ },
+ "bosses": {
+  "apothecary": "Formulator Dessa Quill",
+  "auditor": "Compliance Officer Hale Thornquist",
+  "autosurgeon": "Theatre Autosurgeon GEMINI",
+  "bellfounder": "Bell-Founder Vesper Calloway",
+  "brannoch": "Ladle-Tyrant Brannoch",
+  "breaker": "Breaker-King Joss Kellan",
+  "clearance": "Clearance Manager Bryce Tolliver",
+  "courier": "Courier-Queen Marisol Pike",
+  "cryo": "Cryo-Archivist Linnea Frost",
+  "dispatcher": "Fleet Dispatcher AUTO-7",
+  "gantrymother": "Gantry-Mother Ngozi Adeyemi",
+  "lineman": "Lineman Tomasz Brandt",
+  "liquidator": "Liquidator Prime",
+  "mirrorpt": "The Mirror Patient",
+  "ore9": "Governor ORE-9",
+  "overseer": "Annex Overseer",
+  "pitboss": "Pit Boss Karl Ossendrecht",
+  "rattle": "Quiet Shift Foreman 'Rattle'",
+  "recall": "Recall Engine R-ALL",
+  "reclaimer": "Returns Reclaimer LAZARUS-LITE",
+  "recovered": "The Recovered (Patient Eleven)",
+  "resonance": "Resonance Engineer Obi Lindqvist",
+  "retrieval": "Retrieval Unit R-0",
+  "stockmgr": "Regional Stock Manager Wendell Rusk",
+  "surgeon": "Chief Surgeon Aurelio Vance",
+  "teague": "Crucible Foreman Aldric Teague",
+  "tidewarden": "Pump-Warden Alva Strand",
+  "voss": "Oven-Tender Marguerite Voss",
+  "warrantor": "Warrantor Edda Marsh",
+  "widow": "Signal Widow Perpetua"
+ },
+ "dungeons": {
+  "warehouse": {
+   "name": "Kestrel Distribution Hub 9",
+   "mfr": "MM",
+   "giver": "handler_cole",
+   "bosses": [
+    "stockmgr",
+    "retrieval",
+    "reclaimer"
+   ],
+   "condBosses": [
+    "retrieval",
+    "reclaimer"
+   ]
+  },
+  "annex": {
+   "name": "Reclamation Annex",
+   "mfr": "HI",
+   "giver": "odalys_vane",
+   "bosses": [
+    "overseer"
+   ],
+   "condBosses": []
+  },
+  "foundry": {
+   "name": "Harrow-Brandt Foundry Line 7",
+   "mfr": "HI",
+   "giver": "ten_hallowell",
+   "bosses": [
+    "teague",
+    "brannoch",
+    "ore9"
+   ],
+   "condBosses": [
+    "brannoch",
+    "ore9"
+   ]
+  },
+  "clinic": {
+   "name": "Aldane Ward 9 Clinic",
+   "mfr": "PS",
+   "giver": "noor_abiodun",
+   "bosses": [
+    "surgeon",
+    "autosurgeon",
+    "recovered"
+   ],
+   "condBosses": [
+    "autosurgeon",
+    "recovered"
+   ]
+  },
+  "coke_ovens": {
+   "name": "Basin Slag Ovens",
+   "mfr": "HI",
+   "giver": "ten_hallowell",
+   "bosses": [
+    "voss"
+   ],
+   "condBosses": []
+  },
+  "substation_12": {
+   "name": "Substation 12",
+   "mfr": "HI",
+   "giver": "ten_hallowell",
+   "bosses": [
+    "lineman"
+   ],
+   "condBosses": []
+  },
+  "scrap_gantry": {
+   "name": "Rustline Scrap Gantry",
+   "mfr": "MM",
+   "giver": "odalys_vane",
+   "bosses": [
+    "gantrymother"
+   ],
+   "condBosses": []
+  },
+  "tailings_pit": {
+   "name": "Tailings Pit 3",
+   "mfr": "HI",
+   "giver": "ten_hallowell",
+   "bosses": [
+    "pitboss"
+   ],
+   "condBosses": []
+  },
+  "bell_foundry": {
+   "name": "Calloway Bell Foundry",
+   "mfr": "HI",
+   "giver": "ten_hallowell",
+   "bosses": [
+    "bellfounder"
+   ],
+   "condBosses": []
+  },
+  "cold_archive": {
+   "name": "Aldane Cold Archive",
+   "mfr": "PS",
+   "giver": "noor_abiodun",
+   "bosses": [
+    "cryo"
+   ],
+   "condBosses": []
+  },
+  "audit_tower": {
+   "name": "Aldane Audit Tower",
+   "mfr": "PS",
+   "giver": "noor_abiodun",
+   "bosses": [
+    "auditor"
+   ],
+   "condBosses": []
+  },
+  "aesthetic_ward": {
+   "name": "Ward 3 Aesthetics",
+   "mfr": "PS",
+   "giver": "noor_abiodun",
+   "bosses": [
+    "mirrorpt"
+   ],
+   "condBosses": []
+  },
+  "pharmacy_vault": {
+   "name": "Quill Reagent Vault",
+   "mfr": "PS",
+   "giver": "noor_abiodun",
+   "bosses": [
+    "apothecary"
+   ],
+   "condBosses": []
+  },
+  "outlet_mall": {
+   "name": "Kestrel Outlet Mall",
+   "mfr": "MM",
+   "giver": "handler_cole",
+   "bosses": [
+    "clearance"
+   ],
+   "condBosses": []
+  },
+  "drained_reservoir": {
+   "name": "Drained Reservoir",
+   "mfr": "MM",
+   "giver": "odalys_vane",
+   "bosses": [
+    "tidewarden"
+   ],
+   "condBosses": []
+  },
+  "anechoic_lab": {
+   "name": "Lindqvist Anechoic Lab",
+   "mfr": "PS",
+   "giver": "noor_abiodun",
+   "bosses": [
+    "resonance"
+   ],
+   "condBosses": []
+  },
+  "liquidation_floor": {
+   "name": "Kestrel Liquidation Floor",
+   "mfr": "MM",
+   "giver": "handler_cole",
+   "bosses": [
+    "liquidator"
+   ],
+   "condBosses": []
+  },
+  "parcel_tower": {
+   "name": "Kestrel Parcel Tower",
+   "mfr": "MM",
+   "giver": "handler_cole",
+   "bosses": [
+    "courier"
+   ],
+   "condBosses": []
+  },
+  "freight_depot": {
+   "name": "Basin Freight Depot",
+   "mfr": "MM",
+   "giver": "handler_cole",
+   "bosses": [
+    "dispatcher"
+   ],
+   "condBosses": []
+  },
+  "warranty_vault": {
+   "name": "Kestrel Warranty Vault",
+   "mfr": "MM",
+   "giver": "handler_cole",
+   "bosses": [
+    "warrantor"
+   ],
+   "condBosses": []
+  },
+  "night_tunnels": {
+   "name": "Quiet Shift Tunnels",
+   "mfr": "MM",
+   "giver": "odalys_vane",
+   "bosses": [
+    "rattle"
+   ],
+   "condBosses": []
+  },
+  "breaker_yard": {
+   "name": "Kellan Breaker Yard",
+   "mfr": "HI",
+   "giver": "odalys_vane",
+   "bosses": [
+    "breaker"
+   ],
+   "condBosses": []
+  },
+  "radio_mast": {
+   "name": "Basin Radio Mast",
+   "mfr": "PS",
+   "giver": "odalys_vane",
+   "bosses": [
+    "widow"
+   ],
+   "condBosses": []
+  },
+  "recall_yard": {
+   "name": "Recall Authority Yard",
+   "mfr": "HI",
+   "giver": "odalys_vane",
+   "bosses": [
+    "recall"
+   ],
+   "condBosses": []
+  },
+  "gw_coke_ovens": {
+   "name": "Through the Slag Ovens",
+   "mfr": "HI",
+   "giver": "ten_hallowell",
+   "bosses": [
+    "voss"
+   ],
+   "condBosses": []
+  },
+  "gw_tailings_pit": {
+   "name": "Tailings Crossing",
+   "mfr": "HI",
+   "giver": "ten_hallowell",
+   "bosses": [
+    "pitboss"
+   ],
+   "condBosses": []
+  },
+  "gw_bell_foundry": {
+   "name": "The Bell Road",
+   "mfr": "HI",
+   "giver": "ten_hallowell",
+   "bosses": [
+    "bellfounder"
+   ],
+   "condBosses": []
+  },
+  "gw_pharmacy_vault": {
+   "name": "Down the Vault Stairs",
+   "mfr": "PS",
+   "giver": "noor_abiodun",
+   "bosses": [
+    "apothecary"
+   ],
+   "condBosses": []
+  },
+  "gw_audit_tower": {
+   "name": "Audit Ascent",
+   "mfr": "PS",
+   "giver": "noor_abiodun",
+   "bosses": [
+    "auditor"
+   ],
+   "condBosses": []
+  },
+  "gw_radio_mast": {
+   "name": "Climb the Mast",
+   "mfr": "PS",
+   "giver": "odalys_vane",
+   "bosses": [
+    "widow"
+   ],
+   "condBosses": []
+  },
+  "gw_liquidation_floor": {
+   "name": "Final Markdown",
+   "mfr": "MM",
+   "giver": "handler_cole",
+   "bosses": [
+    "liquidator"
+   ],
+   "condBosses": []
+  },
+  "gw_recall_yard": {
+   "name": "Recall Run",
+   "mfr": "HI",
+   "giver": "odalys_vane",
+   "bosses": [
+    "recall"
+   ],
+   "condBosses": []
+  }
+ }
+}

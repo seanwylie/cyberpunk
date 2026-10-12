@@ -757,3 +757,16 @@ img.splash{width:84px;height:112px;object-fit:cover;border-radius:4px;border:1px
 .mp-img,.mp-clip{display:block;width:100%;height:auto;border-radius:3px}.mp-clip{margin-top:8px}
 .mp-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}.mp-row button{flex:1 1 90px;min-width:0;padding:7px 8px;font:600 13px "Roboto Condensed",sans-serif;color:#efe4cc;background:#2a221a;border:1px solid #6b5636;border-radius:4px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mp-msg{min-height:16px;font-size:12px;color:#b9a27a;margin-top:6px}
+/* NPC memory / speech / personal contracts (src/npcui.ts) */
+.speechcol .sp-free{display:flex;gap:6px;align-items:stretch;min-width:0}
+.speechcol .sp-free input{flex:1;min-width:0;background:#0d0f14;color:#e8e2d6;border:1px solid #5a4a36;border-radius:4px;padding:6px 8px;font:inherit}
+.speechcol .sp-opts{display:flex;flex-wrap:wrap;gap:6px}
+.speechcol .sp-opt{min-width:0;max-width:100%}
+.speechcol .sp-res{margin-top:8px;padding:6px 8px;border-left:3px solid #6b5a40}
+.speechcol .sp-res.good{border-color:#5fd38a}.speechcol .sp-res.bad{border-color:#ff6a5a}
+.speechcol .sp-mem{font-style:italic}
+.pcblock .pcrow{display:flex;gap:8px;align-items:center;min-width:0}
+.pcblock .pcmain{flex:1;min-width:0}
+.pcblock .pcbrief{white-space:normal;overflow-wrap:anywhere}
+.pcblock .pcmod{border-color:#c79bff}
+.pcblock .od-mem{font-style:italic;margin-bottom:4px}

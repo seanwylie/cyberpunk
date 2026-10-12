@@ -1,6 +1,7 @@
 // Applies src/altplay.ts outcomes to a live Game (docs/ALT_GAMEPLAY.md). Kept out of sim.ts so new styles plug in here.
 import { ENEMIES } from './config';
 import { tierOf, NODES, tooltip, canUse, miniFor, cursorAt, miniHit, speechOptions, rollOk, ALT_CFG, STYLE_META, TEACH, altState, firstSeen, humanityOfSave, psychoDmg, nextHint, type Ctx, type Payoff, type Style, type Mini } from './altplay';
+import { memOnSpeech } from './npcmem';
 import { traitsOf, recordHack, recordSpeech, recordHumanity } from './traitstate';
 type G=any;
 export function ctxOf(g:G):Ctx{ const T=traitsOf(g.save); return { caps:g.build?.caps||new Set(), abilities:g.build?.abilities||[], traits:{ l10:T.l10?.id||null, l20:T.l20?.id||null }, rep:g.save.rep, mfr:g.dd?.mfr, humanity:humanity(g), credits:g.save.credits }; }
@@ -58,8 +59,8 @@ function talk(g:G,e:any,boss:boolean){ if(teach(g,'speech')&&!boss){ /* the teac
 export function speak(g:G,e:any,p:Payoff,r:number):boolean{ if(e.dead||e.talked&&p!=='sitout') return false; const opts=talkOptions(g,e,p==='sitout'); const o=opts.find(x=>x.payoff===p); if(!o||!o.ok) return false;
   e.talked=true; const a=altState(g.save); a.n.speech++; recordSpeech(g.save,p==='flee'?'intimidate':p); g.emit('altspeech',p);
   if(p==='bribe'){ g.save.credits-=o.cost!; }
-  if(rollOk(o.chance,r)){ applyPayoff(g,p,e); g.emit('altspeech_res',{p,ok:true}); return true; } g.emit('altspeech_res',{p,ok:false});
-  a.fails.speech++; e.alert=true; for(const x of g.enemies) if(!x.dead&&x.faction==='enemy'&&Math.hypot(x.x-e.x,x.y-e.y)<8) x.alert=true; g.toast('No deal. Fight!'); return false; }
+  if(rollOk(o.chance,r)){ try{ memOnSpeech(g.save,g.dd?.mfr,p,true); }catch{} applyPayoff(g,p,e); g.emit('altspeech_res',{p,ok:true}); return true; } g.emit('altspeech_res',{p,ok:false});
+  try{ memOnSpeech(g.save,g.dd?.mfr,p,false); }catch{} a.fails.speech++; e.alert=true; for(const x of g.enemies) if(!x.dead&&x.faction==='enemy'&&Math.hypot(x.x-e.x,x.y-e.y)<8) x.alert=true; g.toast('No deal. Fight!'); return false; }
 
 // ---- T0 hack mini-game (relay) ----
 export function relay(g:G){ const f=g.inst.flags; if(f.lock2){ g.toast('Lock already open.'); return; } const a=altState(g.save); if((a.cdUntil||0)>g.time){ g.toast('Alarm active. Retry in '+Math.ceil(a.cdUntil-g.time)+'s'); return; }

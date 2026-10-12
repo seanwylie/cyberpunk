@@ -5,7 +5,7 @@ import { launch, sleep } from './lib.mjs'; import fs from 'fs';
 let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fails++; };
 fs.mkdirSync('shots/ui_overflow', { recursive: true });
 const VPS = [[1280, 720, 'desktop', false], [844, 390, 'phone', true]];
-const PANELS = (process.env.PANELS || 'story,locker,store,vendor,bank,wardrobe,fixer,guild,travel,chars,traits,mail,news').split(',');
+const PANELS = (process.env.PANELS || 'story,locker,store,vendor,bank,wardrobe,fixer,guild,travel,chars,traits,mail,news,speech').split(',');
 for (const [w, h, tag, touch] of VPS) {
   const { browser, page, errors } = await launch({ viewport: { width: w, height: h }, touch, query: '?splash=hold' });
   await page.route('**/api/story-beat', r => r.fulfill({ contentType: 'application/json', body: JSON.stringify({ ok: true, text: 'Fresh line.' }) }));
@@ -15,7 +15,7 @@ for (const [w, h, tag, touch] of VPS) {
     g.enterTown(true); });
   await sleep(400);
   for (const p of PANELS) {
-    const r = await page.evaluate(async (p) => { const ui = window.__ui; try { if (p === 'story') ui.openStory(); else ui.open(p); } catch (e) { return { err: String(e) }; } await new Promise(r => setTimeout(r, 350));
+    const r = await page.evaluate(async (p) => { const ui = window.__ui; try { if (p === 'story') ui.openStory(); else if (p === 'speech') (await import('/src/npcui.ts')).openSpeech(ui, 'guard_MM', 'standdown'); else ui.open(p); } catch (e) { return { err: String(e) }; } await new Promise(r => setTimeout(r, 350));
       const root = document.getElementById('modal'); if (!root || getComputedStyle(root).display === 'none') return { skip: true };
       const bad = []; for (const el of root.querySelectorAll('*')) { if (!el.childNodes.length || ![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue; const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden') continue;
         const over = (el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) || (el.scrollHeight > el.clientHeight + 2 && el.clientHeight > 0 && cs.overflowY !== "auto" && cs.overflowY !== "scroll"); if (!over) continue; const clips = cs.overflowX !== 'visible' || cs.overflow !== 'visible'; if (!clips) continue;

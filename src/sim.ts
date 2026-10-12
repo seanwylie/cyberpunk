@@ -31,6 +31,8 @@ import { movePattern, resolveMove, bossTick, filterDamage, clearBossAdds } from 
 import { mobTick, mobDeath, mobAfterHit, resolveMobAttack, mobPattern, MOB_COND } from './content/mobs';
 import { MOB_ATK } from './content/batch2_mobs';
 import { CONTRACT_BY_ID, Goal } from './content/npcs';
+import { contractDefOf } from './pcontracts';
+import { memOnClear, memOnDown } from './npcmem';
 import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState, capacityUsed } from './state';
 import { idkfaActive, idkfaEnable, idkfaDisable } from './idkfa_toggle';
 import { BAL } from './content/balance';
@@ -471,7 +473,7 @@ export class Game {
     if(this.combatHold>0){ this.sinceAb+=dt; if(this.sinceAb>16&&this.nudgeCd<=0&&!this.overheated){ const i=this.build.abilities.findIndex((a,k)=>a&&this.abCd[k]<=0&&ABILITIES[a].heat+this.heat<=COMBAT.heat.max); if(i>=0){ this.nudgeCd=40; this.sinceAb=0; this.emit('nudge',i); this.toast(`Abilities are ready: ${ABILITIES[this.build.abilities[i]!].name} [${['Q','E','R'][i]}] hits far harder than auto-attacks.`); } } } else this.sinceAb=0;
   }
   playerDown(){
-    this.hp=0; this.downed=true; this.emit('stinger','death'); this.downT=0; this.cast=null; this.aim=null; this.channel=null; this.clearTransients(); this.emit('sfx','down');
+    this.hp=0; this.downed=true; if(this.mode==='run'&&this.inst) try{ memOnDown(this.save,this.dd,String(this.inst.seed)); }catch{} this.emit('stinger','death'); this.downT=0; this.cast=null; this.aim=null; this.channel=null; this.clearTransients(); this.emit('sfx','down');
     const inst=this.inst!; const cand=SLOTS.filter(s=>!inst.broken.includes(s)&&!inst.protectedSlots.includes(s)&&this.save.installed[s]&&!ITEM_BY_ID[this.save.items.find(i=>i.uid===this.save.installed[s])!.def].id.startsWith('stock_'));
     let broke:Slot|null=null; if(cand.length){ broke=cand[Math.floor(Math.random()*cand.length)]; inst.broken.push(broke); const it=this.save.items.find(i=>i.uid===this.save.installed[broke!])!; const cost=Math.round(REPAIR_COST[ITEM_BY_ID[it.def].rarity]*HARD.death.repairMul); this.save.repairBill+=cost; inst.repairAdded+=cost; }
     { const lost=Math.floor(inst.carried.credits*HARD.death.creditLoss); if(lost>0){ inst.carried.credits-=lost; this.toast('Downed: lost '+lost+' carried credits.'); } }
@@ -514,8 +516,9 @@ export class Game {
   /** Record a story event (dungeon-prefixed outside the Annex) and advance matching contracts. */
   note(kind:EventKind,key:string){ const id=this.inst?.dungeon||'annex'; record(this.story(),kind,id==='annex'?key:id+':'+key); this.contractEvent(kind,key); }
   contractEvent(kind:string,key:string){ const cs=contractState(this.save); const did=this.inst?.dungeon||'annex';
-    for(const id of Object.keys(cs.active)){ const c=CONTRACT_BY_ID[id]; if(!c) continue; const g:Goal=c.goal; if(g.dungeon&&g.dungeon!==did) continue;
-      const ok=(g.kind==='kill_mfr'&&kind==='kill_mfr'&&g.key===key)||(g.kind==='kill_type'&&kind==='kill_type'&&g.key===key)||(g.kind==='clear'&&kind==='run_cleared')||(g.kind==='condition'&&kind==='condition_used'&&(!g.key||g.key===key))||(g.kind==='route'&&kind==='route_used'&&g.key===key)||(g.kind==='pickup'&&kind==='pickup')||(g.kind==='boss'&&kind==='boss_defeated'&&g.key===key);
+    if(kind==='run_cleared') memOnClear(this.save,this.dd);
+    for(const id of Object.keys(cs.active)){ const c=contractDefOf(this.save,id); if(!c) continue; const g:Goal=c.goal; if(g.dungeon&&g.dungeon!==did) continue;
+      const ok=(g.kind==='kill_mfr'&&kind==='kill_mfr'&&(g.key===key||g.key==='any'))||(g.kind==='kill_type'&&kind==='kill_type'&&g.key===key)||(g.kind==='clear'&&kind==='run_cleared')||(g.kind==='condition'&&kind==='condition_used'&&(!g.key||g.key===key))||(g.kind==='route'&&kind==='route_used'&&g.key===key)||(g.kind==='pickup'&&kind==='pickup')||(g.kind==='boss'&&kind==='boss_defeated'&&g.key===key);
       if(ok) cs.active[id]=Math.min(g.n,(cs.active[id]||0)+1); } }
   /** Dungeon-specific replacement-boss interaction (augment-gated). The first confirmed condition wins; the other selector locks. */
   doCond(id:'A'|'B'){ const dd=this.dd, f=this.inst!.flags, c=dd.conds.find(x=>x.id===id); if(!c) return; const story=this.story(); const dc=story.dclues?.[dd.id]; const clue=dc?.[id]||dc?.general||dd.generalClue;
