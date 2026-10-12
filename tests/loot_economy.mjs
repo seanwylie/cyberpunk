@@ -70,7 +70,9 @@ const G = await page.evaluate(async () => {
   const pd = g.inst.drops.slice(n0).find(d => d.prestige); o.prestigeDrop = pd ? { p: pd.prestige, def: pd.inst.def } : null; if (pd) { g.px = pd.x + 3; g.py = pd.y + 3; }
   o.ev = ev.length; o.evFirst = ev.filter(x => x.first).length; o.first = toasts.some(t => t.startsWith('Odalys:')); o.log = E.ecoOf(g.save).log.filter(l => l.kind === 'orange' || l.kind === 'seasonal').length;
   return o; });
-await sleep(900);
+// camera eases toward the player after the teleport: poll for the beam instead of a fixed wait
+for (let i = 0; i < 20 && !(await page.evaluate(() => window.__rend.lastBeams >= 1)); i++) await sleep(200);
+await sleep(300);
 const V = await page.evaluate(() => ({ beams: window.__rend.lastBeams, banner: document.getElementById('prestigebanner')?.className || '', bannerText: document.getElementById('prestigebanner')?.textContent || '' }));
 ok(G.tableOrange === 0, `regular loot tables give no oranges (${G.bosses} boss loot rolls)`);
 ok(!!G.prestigeDrop, 'forced pity on a real boss kill drops a prestige item ' + JSON.stringify(G.prestigeDrop));
