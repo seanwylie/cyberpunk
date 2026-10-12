@@ -31,6 +31,15 @@ export function nemOnDown(g: any) { if (!feature('nemesis', g.save.settings) || 
     g.toast(res.kind === 'created' ? `${r.name} marked you. A new nemesis.` : res.kind === 'promoted' ? `${r.name} climbs to ${r.title}.` : res.kind === 'recruited' ? `${r.name} recruits another hunter.` : `${r.name} grows stronger.`); }
   return res; }
 
+/** sim.leaveInstance / abandonInstance hook: fleeing an engaged boss or elite (within 9 tiles, alerted, in combat) can mark it as a nemesis. */
+export function nemOnFlee(g: any) { if (!feature('nemesis', g.save.settings) || !g.inst || String(g.inst.id).startsWith('net-') || g.mode !== 'run' || !(g.combatHold > 0)) return null;
+  let near: any = null, bd = 9; for (const e of g.enemies || []) { if (e.dead || !e.alert) continue; const d = ENEMIES[e.type]; if (!d || !(d.boss || d.elite || e.affix?.length)) continue; const dd = Math.hypot(e.x - g.px, e.y - g.py); if (dd < bd) { bd = dd; near = e; } }
+  if (!near || near.nem) return null; const d = ENEMIES[near.type]; const seed = (g.inst.seed ^ (g.save.stats?.runs || 0) * 1231) >>> 0; const dd = g.dd;
+  const res = onPlayerKilled(g.save, { type: near.type, attack: 'swing', boss: !!d.boss, elite: true, mfr: d.mfr, dungeon: g.inst.dungeon, name: d.name },
+    { seed, profile: playerProfile(g), trophy: null, owner: ownerName(g), body: bodyFor(near.type, [dd?.gateGuard, dd?.lockElite].filter(Boolean)) }, true);
+  if (res.kind === 'created') { const r = res.rec; g.emit('nemesis', { kind: 'created', id: r.id, name: r.name, title: r.title, taunt: res.taunt, tauntKey: res.tauntKey, trophy: null }); g.toast(`${r.name} saw you run. A new nemesis.`); }
+  return res; }
+
 /** sim.startRun hook: add at most one nemesis (plus bounded escorts) to a fresh instance roster. */
 export function nemOnRunStart(g: any, inst: any) { if (!feature('nemesis', g.save.settings) || String(inst.id).startsWith('net-')) return null; const n = pickForRun(g.save, inst.seed); if (!n) return null;
   const dd = g.dd; const avoid = [dd.gateGuard, dd.lockElite]; const pool = inst.enemies.filter((e: any) => !ENEMIES[e.type]?.boss && !avoid.includes(e.type)); if (!pool.length) return null;
@@ -53,5 +62,5 @@ export const nemCache = (g: any) => { g._nemSelf = ownerName(g); g._nems = (g.en
 /** hurtEnemy hook: resistance to the player's main damage type. */
 export function nemIncoming(g: any, e: any, dmg: number, tag: string): number { const st = e._rt?.nemSt; if (!st || !st.resist) return dmg; return typeOfTag(tag, g.build?.weapon?.kind || 'pistol') === st.resistType ? dmg * (1 - st.resist) : dmg; }
 /** killEnemy hook: permanent kill + provenance trophy. */
-export function nemOnKill(g: any, e: any) { if (!e.nem) return null; const t = onNemesisKilled(g.save, e.nem); if (!t) return null; g.emit('nemesis', { kind: 'killed', id: e.nem, name: t.name, line: t.line, tauntKey: 'death_' + (1 + (t.kills % 2)) }); g.toast(t.line + '. Trophy: ' + t.name); g.emit('moment', { kind: 'nemesis_kill', title: t.line, sub: t.name }); return t; }
+export function nemOnKill(g: any, e: any) { if (!e.nem) return null; const t = onNemesisKilled(g.save, e.nem); if (!t) return null; const rec = nemOf(g.save).list.find(x => x.id === e.nem); g.emit('nemesis', { kind: 'killed', id: e.nem, name: t.name, line: t.line, tauntKey: 'death_' + (1 + (t.kills % 2)) }); g.toast(t.line + '. Trophy: ' + t.name); g.emit('moment', { kind: 'nemesis_kill', title: t.line, sub: t.name, stats: { Nemesis: rec?.name || 'Nemesis', 'Killed you': t.kills, Rank: rec?.rank || 1 } }); return t; }
 export const moduleList = (n: NemRec) => n.modules.map(m => MODULES[m].name);

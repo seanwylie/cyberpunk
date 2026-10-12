@@ -53,6 +53,15 @@ ok(r.pickedDead === 0 && r.revive === 'none', 'a dead nemesis never returns (300
 ok(r.pub.length === 1 && r.exportTrophy === r.line && r.text, 'trophy is public: build export + text summary carry the provenance line');
 ok(r.wBad === false && r.wDrug === false && r.wOk === true && r.wName === 'Rue Cold Hands' && r.wKey === '', 'AI words validated (digits / banned words rejected); custom taunt drops the cached voice key');
 // ---- voice fallback ----
+// flee: fleeing an engaged boss can mark a new nemesis (same caps), but never ranks up an existing one; deaths counter untouched
+{ const f = await ev(async () => { const N = await import('/src/nemesis.ts'); const K = { type: 'overseer', attack: 'swing', boss: true, elite: true, mfr: 'MM', dungeon: 'annex', name: 'Annex Overseer' };
+  const C = { seed: 77, profile: { hack: 0, burst: .2, kite: 0, main: 'kinetic' }, trophy: null, owner: 'Vex', body: 'foreman', now: 1 }; const s = {};
+  const a = N.onPlayerKilled(s, K, C, true); const rank0 = a.rec?.rank; const b = N.onPlayerKilled(s, { ...K, nemId: a.rec?.id }, C, true);
+  for (let i = 0; i < 20; i++) N.onPlayerKilled(s, { ...K, type: 'foreman' + i }, { ...C, seed: i }, true);
+  return { a: a.kind, fled: a.rec?.fled, b: b.kind, rank: N.nemOf(s).list[0].rank, rank0, deaths: N.nemOf(s).deaths, active: N.activeNems(s).length, cap: N.NEM_CFG.maxActive }; });
+  ok(f.a === 'created' && f.fled === true && f.deaths === 0, `fleeing an engaged boss marks a nemesis without counting a death (${f.a})`);
+  ok(f.b === 'none' && f.rank === f.rank0, 'fleeing an existing nemesis never ranks it up (avoiding is always safe)');
+  ok(f.active <= f.cap, `flee-made nemeses respect the per-character cap (${f.active}/${f.cap})`); }
 const v = await ev(async () => { const V = await import('/src/nemesis_voice.ts'); const o = {}; const st = { volume: .5, sfxVol: 1 };
   window.__WV_FEATURES.nemesisVoice = false; o.off = await V.playTaunt('melee_1', st); window.__WV_FEATURES.nemesisVoice = true;
   V._resetVoice(); o.miss = await V.playTaunt('melee_1', st, { fetcher: async () => ({ ok: false }) });

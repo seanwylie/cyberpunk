@@ -14,7 +14,7 @@ export function drawCard(c: CanvasRenderingContext2D, m: Moment, shot: CanvasIma
   c.fillStyle = '#f2e6cc'; c.font = '700 40px "Roboto Condensed", sans-serif'; wrap(c, m.title, tx, 140, 380, 44, 3);
   c.fillStyle = '#d6c6a4'; c.font = 'italic 22px "Roboto Condensed", sans-serif'; wrap(c, m.sub, tx, 290, 380, 28, 2);
   c.font = '600 17px "Roboto Condensed", sans-serif'; let y = 380; for (const [k, v] of Object.entries(m.stats).slice(0, 5)) { c.fillStyle = '#9c8c70'; c.fillText(k, tx, y); c.fillStyle = '#efe4cc'; c.textAlign = 'right'; c.fillText(String(v).slice(0, 26), 1160, y); c.textAlign = 'left'; y += 28; }
-  c.fillStyle = '#7d705a'; c.font = '13px monospace'; c.fillText('Build ' + (m.code.length > 44 ? m.code.slice(0, 44) + '…' : m.code), tx, H - 66);
+  c.fillStyle = '#7d705a'; c.font = '13px monospace'; c.fillText('Build ' + (m.code.length > 44 ? m.code.slice(0, 44) + '…' : m.code), tx, H - 84); if (m.ver) c.fillText(m.ver.slice(0, 52), tx, H - 66);
   c.fillStyle = acc; c.font = '700 20px "Roboto Condensed", sans-serif'; c.fillText('WARRANTY VOID', tx, H - 40); }
 const labelOf = (m: Moment) => ({ nemesis_kill: 'Nemesis slain', exclusive_drop: 'Exclusive drop', orange_drop: 'Orange drop', gateway_clear: 'Gateway cleared', flawless_boss: 'Flawless boss' } as any)[m.kind] || 'Moment';
 function wrap(c: CanvasRenderingContext2D, t: string, x: number, y: number, w: number, lh: number, max: number) { const words = String(t).split(/\s+/); let line = '', n = 0; for (const wd of words) { const tt = line ? line + ' ' + wd : wd; if (c.measureText(tt).width > w && line) { c.fillText(line, x, y); y += lh; line = wd; if (++n >= max - 1) break; } else line = tt; } if (line) c.fillText(line, x, y); }

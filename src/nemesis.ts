@@ -28,7 +28,7 @@ export interface Trophy { def: string; name: string; rarity: string; slot: strin
 export interface NemRec { id: string; src: string; body: string; mfr: string; name: string; title: string; rank: number; kills: number; encounters: number; status: 'active' | 'dead'; tier: Tier;
   modules: Module[]; resist: DmgType; trophy: Trophy | null; method: string; cat: MethodCat; dungeon: string; born: number; lastSeen: number; taunt: string; tauntKey: string; words: 'canned' | 'ai'; recruits: number; owner: string; parent?: string }
 export interface TrophyItem { id: string; nem: string; name: string; title: string; kills: number; line: string; at: number; trophy: Trophy | null; owner: string }
-export interface NemState { v: 1; list: NemRec[]; seq: number; deaths: number; trophies: TrophyItem[] }
+export interface NemState { v: 1; list: NemRec[]; seq: number; deaths: number; flees?: number; trophies: TrophyItem[] }
 export const nemOf = (s: any): NemState => { if (!s.nemesis || s.nemesis.v !== 1) s.nemesis = { v: 1, list: [], seq: 1, deaths: 0, trophies: [] }; return s.nemesis; };
 export const activeNems = (s: any) => nemOf(s).list.filter(n => n.status === 'active');
 
@@ -79,8 +79,10 @@ export const tierFor = (kills: number): Tier => { let t: Tier = 'stalker'; for (
 export interface Killer { type: string; attack: string; boss: boolean; elite: boolean; mfr: string; dungeon: string; nemId?: string; name: string }
 export interface DeathCtx { seed: number; profile: Profile; trophy: Trophy | null; owner: string; body: string; now?: number }
 export type DeathResult = { kind: 'created' | 'promoted' | 'ranked' | 'recruited'; rec: NemRec; taunt: string; tauntKey: string } | { kind: 'none' };
-export function onPlayerKilled(s: any, k: Killer, c: DeathCtx): DeathResult {
-  const N = nemOf(s); const now = c.now ?? Date.now(); N.deaths++; const r = rng((c.seed ^ Math.imul(N.deaths, 2654435761)) >>> 0);
+/** fled = the player left the run while this boss/elite was on them. Fleeing never ranks up an existing nemesis (so avoiding is always safe); it can only mark a new one, with the same caps. */
+export function onPlayerKilled(s: any, k: Killer, c: DeathCtx, fled = false): DeathResult {
+  const N = nemOf(s); const now = c.now ?? Date.now(); if (fled) N.flees = (N.flees || 0) + 1; else N.deaths++; const r = rng((c.seed ^ Math.imul(N.deaths + (N.flees || 0) * 7919, 2654435761)) >>> 0);
+  if (k.nemId && fled) return { kind: 'none' };
   if (k.nemId) { const n = N.list.find(x => x.id === k.nemId); if (!n || n.status !== 'active') return { kind: 'none' };
     n.kills++; n.rank = Math.min(NEM_CFG.maxRank, n.rank + 1); n.lastSeen = now; const t0 = n.tier; n.tier = tierFor(n.kills); n.title = TITLE[n.tier];
     const a = adapt(c.profile, n.rank); n.modules = a.modules; n.resist = a.resist; n.method = k.attack; n.cat = methodCat(k.attack);
@@ -94,7 +96,7 @@ export function onPlayerKilled(s: any, k: Killer, c: DeathCtx): DeathResult {
     top.recruits++; top.tauntKey = 'recruit_1'; top.taunt = TAUNTS.recruit_1; return { kind: 'recruited', rec: top, taunt: top.taunt, tauntKey: top.tauntKey }; }
   const cat = methodCat(k.attack); const w = cannedWords(r, cat, 'stalker'); const a = adapt(c.profile, 1);
   const rec: NemRec = { id: 'n' + (N.seq++), src: k.type, body: c.body, mfr: k.mfr, name: w.name, title: TITLE.stalker, rank: 1, kills: 1, encounters: 0, status: 'active', tier: 'stalker', modules: a.modules, resist: a.resist,
-    trophy: c.trophy, method: k.attack, cat, dungeon: k.dungeon, born: now, lastSeen: now, taunt: TAUNTS[w.tauntKey], tauntKey: w.tauntKey, words: 'canned', recruits: 0, owner: String(c.owner || 'Runner').slice(0, 24) };
+    trophy: c.trophy, method: k.attack, cat, dungeon: k.dungeon, born: now, lastSeen: now, taunt: TAUNTS[w.tauntKey], tauntKey: w.tauntKey, words: 'canned', recruits: 0, ...(fled ? { fled: true } : {}), owner: String(c.owner || 'Runner').slice(0, 24) };
   N.list.push(rec); return { kind: 'created', rec, taunt: rec.taunt, tauntKey: rec.tauntKey }; }
 /** Choose at most one active nemesis for a new run (seeded). Dead nemeses are never chosen. */
 export function pickForRun(s: any, seed: number): NemRec | null { const act = activeNems(s); if (!act.length) return null; const r = rng(seed ^ 0x9e3779b9);

@@ -2,8 +2,8 @@
 // Capture work happens off the frame path: the frame snapshot is a single drawImage scheduled after the frame, the card renders on idle.
 import { feature } from './features';
 import { offer, type Moment, type MomentSession, MOMENT_LABEL } from './moments';
-import { renderCard } from './moment_card';
 import { ClipBuffer } from './clipbuf';
+import { BUILD_ID } from './version'; import { CATALOG_VERSION } from './catalog_version';
 import { exportBuild, encodeBuild, buildUrl } from './buildcode';
 const idle = (f: () => void) => ((globalThis as any).requestIdleCallback ? (globalThis as any).requestIdleCallback(f, { timeout: 1500 }) : setTimeout(f, 50));
 export class Moments {
@@ -14,10 +14,10 @@ export class Moments {
     if (want && !this.clipBuf?.running) { this.clipBuf = new ClipBuffer(this.canvas); this.clipBuf.start(); } else if (!want && this.clipBuf) { this.clipBuf.stop(); if (!feature('momentClip', this.g.save.settings)) { this.clipBuf.clear(); this.clipBuf = null; } } }
   stats(): Record<string, string | number> { const s = this.g.save; const tr = s.traits?.l10?.id; return { Runner: (s.charName || (() => { try { return localStorage.getItem('wv_name'); } catch { return null; } })() || 'Runner'), Level: s.level, Dungeon: this.g.inst ? this.g.dd?.name : 'Town', Kills: this.g.kills || 0, ...(tr ? { Trait: tr } : {}) }; }
   event(ev: any) { if (!feature('moments', this.g.save.settings)) return null; let code = ''; try { code = encodeBuild(exportBuild(this.g.save)); } catch {}
-    const m = offer(this.ses, ev, { stats: this.stats(), code }, this.shared); if (!m) return null; this.busy = this.capture(m); return m; }
+    const m = offer(this.ses, ev, { stats: this.stats(), code, ver: 'Game ' + BUILD_ID + ' · Catalog ' + CATALOG_VERSION }, this.shared); if (!m) return null; this.busy = this.capture(m); return m; }
   private capture(m: Moment): Promise<void> { return new Promise(done => { requestAnimationFrame(() => { // after this frame was drawn: one scaled copy of the game canvas
       let shot: HTMLCanvasElement | null = document.createElement('canvas'); const k = Math.min(1, 960 / Math.max(1, this.canvas.width)); shot.width = Math.max(1, Math.round(this.canvas.width * k)); shot.height = Math.max(1, Math.round(this.canvas.height * k)); try { shot.getContext('2d')!.drawImage(this.canvas, 0, 0, shot.width, shot.height); } catch { shot = null; }
-      idle(async () => { const b = await renderCard(m, shot); if (shot) shot.width = shot.height = 0; if (this.ses.best !== m) return done(); if (this.url) URL.revokeObjectURL(this.url); this.card = b; this.url = b ? URL.createObjectURL(b) : '';
+      idle(async () => { const b = await (await import('./moment_card')).renderCard(m, shot); /* card painter is lazy-loaded: not in the boot bundle */ if (shot) shot.width = shot.height = 0; if (this.ses.best !== m) return done(); if (this.url) URL.revokeObjectURL(this.url); this.card = b; this.url = b ? URL.createObjectURL(b) : '';
         if (this.clipBuf?.running) { const c = await this.clipBuf.grab(); if (this.clipUrl) URL.revokeObjectURL(this.clipUrl); this.clip = c; this.clipUrl = c ? URL.createObjectURL(c) : ''; }
         this.showBtn(); done(); }); }); }); }
   private showBtn() { if (!this.btn) { const b = document.createElement('button'); b.id = 'momentBtn'; b.className = 'moment-btn'; b.textContent = 'Moment'; b.title = 'Your best moment this session. Open to share, copy or download.'; b.onclick = () => this.open(); document.body.appendChild(b); this.btn = b; } this.btn.style.display = ''; this.btn.classList.add('new'); }
