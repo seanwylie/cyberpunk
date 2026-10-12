@@ -633,3 +633,12 @@ body:not(.intown) #btn-story{ display:none; }
 .regen svg{ position:absolute; inset:2px; width:32px; height:32px; transform:rotate(-90deg); } .regen .rgtrack{ fill:none; stroke:rgba(255,255,255,.08); stroke-width:2; } .regen .rgring{ fill:none; stroke:var(--accent,#ffae2b); stroke-width:2; stroke-linecap:round; transition:stroke-dasharray .4s linear; }
 .regen .rgi{ font-size:18px; line-height:1; }
 mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1px dashed currentColor; cursor:help; padding:0 1px; }
+
+/* build inspector (src/buildui.ts): compact grid of icon tiles, details in tooltips */
+.bdcol{ gap:6px; } .bdgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(56px,64px)); gap:6px; }
+.bdt{ position:relative; min-height:0; } .bdt.empty,.bdt.missing{ opacity:.5; display:flex; align-items:center; justify-content:center; } .bdt .bdsl{ font-size:12px; text-align:center; line-height:1.1; }
+.bdt .bdchips{ position:absolute; right:2px; top:2px; font-size:12px; background:rgba(10,10,11,.8); border-radius:3px; padding:0 3px; }
+.bdabs,.bdsyn{ display:flex; flex-wrap:wrap; gap:6px; } .bdab,.bdnote{ border:1px solid rgba(255,255,255,.18); border-radius:4px; padding:2px 6px; font-size:max(12px,calc(12px*var(--fs))); }
+.bdtot{ font-size:max(12px,calc(12px*var(--fs))); } .bdimp input{ flex:1; min-width:0; background:#151517; color:inherit; border:1px solid #444; padding:4px 6px; }
+.bdnotice{ border:1px solid rgba(255,174,43,.5); background:rgba(255,174,43,.08); padding:6px 8px; border-radius:4px; font-size:max(12px,calc(12px*var(--fs))); } .bdnotice.warn{ border-color:#ff6b4a; background:rgba(255,80,60,.1); }
+.bdnotice ul{ margin:4px 0 0 18px; padding:0; } .bdinc{ color:#ffb3a3; } .bdmode{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
