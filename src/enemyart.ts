@@ -66,6 +66,8 @@ export class EnemyArt {
       while (this.atl.size > Math.min(this.atlasMax, Q.p.atlasMax)) { let ok = '', ou = 1e18; for (const [k, v] of this.atl) if (k !== type && v.used < ou && v.used < now - 4) { ok = k; ou = v.used; } /* never evict an atlas drawn in the last 4 s (no load/evict thrash when many types are on screen) */ if (!ok) break; const ev = this.atl.get(ok)!; for (const i of Object.values(ev.ims)) i.src = ''; this.atl.delete(ok); } }
     a.used = now; return a.state === 'ready' && a.meta ? a : null;
   }
+  /** Releases every decoded 3D atlas (called when the level changes: run start or return to town), so sheets from earlier dungeons do not stay resident. Types on the new level reload lazily on first draw. */
+  releaseAll() { for (const a of this.atl.values()) for (const i of Object.values(a.ims)) i.src = ''; this.atl.clear(); }
   has(type: string) { return this.ready && !!ART[type] && !!this.img[ART[type].spr]; }
   /** pre-scaled, pre-shaded sprite (cached per size): foot occlusion gradient, soft top rim, optional variant tint */
   private scaled(a: Art, hpx: number, dpr: number, flash: boolean) {
