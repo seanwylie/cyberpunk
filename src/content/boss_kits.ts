@@ -74,6 +74,8 @@ export const KITS:Record<string,Kit>={
   widow:{pal:'violet',title:'Signal Web',mechs:[M('beam',12,{first:6}),M('gaze',12),M('pylons',30,{first:14})]},
   recall:{pal:'magenta',title:'Recall Everything',mechs:[M('overload',24,{first:14,at:.7}),M('grid',16,{first:10,at:.5})]}, // its own phases already add the shield and the tether pylons
 };
+/** dev/A-B only: ?nokit in the URL disables every signature kit (tools/balance comparisons) */
+if(typeof location!=='undefined'&&/[?&]nokit\b/.test(location.search)) for(const k of Object.keys(KITS)) delete KITS[k];
 export const kitOf=(id:string):Kit|undefined=>KITS[id];
 export const palOf=(id:string):keyof typeof PALS=>KITS[id]?.pal||'amber';
 export const kph=(e:any)=>{ const f=e.hp/e.maxHp; return f>.66?0:f>.33?1:2; };
@@ -85,7 +87,7 @@ function mkCtx(sim:any,e:any,km:KitMech,kit:Kit,n:number):C{
   const rt=e._rt; const seed=String(sim.inst?.seed??0); const rng=rng32(hash32(seed+':'+e.type+':'+n)); const ar=arenaOf(sim); const ph=kph(e);
   const add=(z:any)=>{ if(sim.zones.filter((q:any)=>q.kit).length>=26) return null; const o={t:0,heat:0,dps:0,windup:1,life:2,r:1,kit:km.m,pal:kit.pal,style:MECH_INFO[km.m].style,x:e.x,y:e.y,...z}; sim.zones.push(o); return o; };
   return { sim,e,rt,rng,ar,ph,km,pal:kit.pal,id:e.type,add,
-    dmg:(f:number)=>f*sim.maxHp*(rt.hardDmg||1), P:(k:string,d:number)=>{ const v=km.p?.[k]; return typeof v==='number'?v:d; },
+    dmg:(f:number)=>Math.min(KIT_HIT_CAP,f*(1+.5*((rt.hardDmg||1)-1)))*sim.maxHp, /* hard-mode scales half as hard; no single kit hit exceeds KIT_HIT_CAP of max HP */ P:(k:string,d:number)=>{ const v=km.p?.[k]; return typeof v==='number'?v:d; },
     free:(x:number,y:number,minD=0)=>inBoss(sim,x,y)&&!sim.circleHits(x,y,.5)&&Math.hypot(x-e.x,y-e.y)>=minD };
 }
 const sfx=(c:C,w:'tell'|'fire')=>c.sim.emit('sfx',MECH_INFO[c.km.m].sfx+':'+w);
@@ -184,6 +186,7 @@ export function kitTick(sim:any,e:any,dt:number){
 }
 export const KIT_ZONE_CAP=26;
 /** balance knobs (docs/BOSSES.md): signature mechanics are the pressure on top of the old move list, so they run slower than their nominal cd */
+export const KIT_HIT_CAP=.3;
 export const PYLON_LIFE=20; // tethers overload and shut down by themselves so a fight can never stall on them
 export const KIT_CD_SCALE=2, KIT_FIRST_ADD=8;
 
