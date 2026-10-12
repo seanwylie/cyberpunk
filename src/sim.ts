@@ -1,4 +1,5 @@
 import { PROFILES } from './abilities/vfxprofile';
+import { GORE } from './gore';
 import { SFX } from './abilities/sfxprofile';
 import { VFX } from './vfx';
 import { AB, key, ABILITIES, AbilityDef, AbilityId, COMBAT, ENEMIES, ENEMY_DMG, EnemyDef, ITEM_BY_ID, LOOT, LootEntry, REPAIR_COST, SLOTS, Slot, Rarity, RARITY_RANK, PROGRESSION, ChipId, Stats, WeaponDef, DUNGEON_TIER_MAX_ITEM_LEVEL, SELL_VALUE, CHIPS, INSTANCE_WARN_MINUTES , DROP, DROP_RATE_SCALE, STARTING, STARTER_ABILITIES} from './config';
@@ -393,7 +394,7 @@ export class Game {
     const hadShield=!!(rt.shield&&rt.shield.hp>0);
     if(hadShield&&dmg>0){ if(tag==='pulse') dmg=Math.max(dmg*AB.pulseShield,(rt.shield.max||rt.shield.hp)*AB.pulseShieldFrac); else if(tag==='auto') dmg*=AB.shieldAuto; else dmg*=AB.shieldAbility; }
     if(tag!=='auto') rt.abHitAt=this.time;
-    { const pre=e.hp+(hadShield?rt.shield.hp:0); this.dealt[tag]=(this.dealt[tag]||0)+Math.min(dmg,pre); } dmg=filterDamage(this,e,dmg); e.hp-=dmg; e.alert=true; e._rt.hit=.12; if(!ENEMIES[e.type].boss) e._rt.lost=0;
+    { const pre=e.hp+(hadShield?rt.shield.hp:0); this.dealt[tag]=(this.dealt[tag]||0)+Math.min(dmg,pre); } dmg=filterDamage(this,e,dmg); e.hp-=dmg; e.alert=true; e._rt.hit=.12; if(!ENEMIES[e.type].boss) e._rt.lost=0; if(dmg>0&&this.save.settings.gore!=='off'){ const P0=PROFILES[tag]; GORE.hit(this,e,dmg,((P0?P0.power:.3)>=.75)||dmg/Math.max(1,e.maxHp)>=.12,sx,sy); }
     this.emit('sfx','hit'); this.combatHold=3; if(!ENEMIES[e.type].boss&&this.isElite(e)) this.eliteExchange();
     const broke=hadShield&&!(rt.shield&&rt.shield.hp>0);
     if(tag!=='auto'&&dmg>0){ const P=PROFILES[tag]; const pw=P?P.power:.3; const frac=dmg/Math.max(1,e.maxHp); const heavy=pw>=.75||frac>=.12; const red=!!this.save.settings.reducedFx; // damage numbers scale with the hit; heavy hits pop (crit-style)
@@ -666,8 +667,7 @@ export class Game {
   // ---------- death, loot, XP ----------
   killEnemy(e:En){
     if(e.dead) return; const def=ENEMIES[e.type]; e.dead=true; e.hp=0; mobDeath(this,e); this.combatHold=3;
-    this.emit('sfx','death_'+(def.boss?'boss':def.elite?'elite':def.mfr)); const gore=this.save.settings.gore; const n=gore==='off'?0:gore==='standard'?4:14;
-    for(let i=0;i<n;i++){ const a=Math.random()*6.28,s=1+Math.random()*(gore==='bloody'?5:2.5); this.fx.push({kind:'blood',x:e.x,y:e.y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,t:0,life:.5+Math.random()*.5,c:def.mfr==='PS'?'#8a8f94':'#6e2a22'}); }
+    this.emit('sfx','death_'+(def.boss?'boss':def.elite?'elite':def.mfr)); GORE.kill(this,e);
     this.fx.push({kind:'burst',x:e.x,y:e.y,t:0,life:.3});
     if(e.faction==='ally') { return; }
     this.grantKill(e); const inst=this.inst!;

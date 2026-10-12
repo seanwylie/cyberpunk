@@ -20,14 +20,18 @@ for (const [w, h, touch] of [[1280, 720, 0], [1920, 1080, 0], [844, 390, 1]]) {
 
   await open();
   const tabs = await ev(() => [...document.querySelectorAll('[role=tab]')].map(t => t.textContent));
-  ok(JSON.stringify(tabs) === JSON.stringify(['Gameplay', 'Display & UI', 'Audio', 'Controls', 'Instance', 'Story AI', 'About & Data']), `${tag} tab rail has the 7 sections`);
+  ok(JSON.stringify(tabs) === JSON.stringify(['Gameplay', 'Display & UI', 'Audio', 'Controls', 'Content', 'Instance', 'Story AI', 'About & Data']), `${tag} tab rail has the 8 sections`);
   await noClip('gameplay');
 
   // ---- Gameplay ----
-  await seg('gore', 'bloody'); await seg('lootlabels', 'all'); await seg('lootmin', 'purple'); await tog('dmgnum'); await tog('recnudge'); await tog('rechide');
-  let s = await st(); ok(s.gore === 'bloody' && s.lootLabels === 'all' && s.lootMin === 'purple' && s.damageNumbers === true && s.recNudge === false && s.recHidden === true, `${tag} gameplay controls update settings`);
-  ok(await ev(() => document.querySelector('[data-in=gore][data-v=bloody]').getAttribute('aria-checked') === 'true' && document.getElementById('s-dmgnum').checked), `${tag} controls reflect state after re-render`);
-  await seg('gore', 'off'); await seg('lootlabels', 'near'); await seg('lootmin', 'grey'); await tog('dmgnum'); await tog('recnudge'); await tog('rechide');
+  await seg('lootlabels', 'all'); await seg('lootmin', 'purple'); await tog('dmgnum'); await tog('recnudge'); await tog('rechide');
+  let s = await st(); ok(s.lootLabels === 'all' && s.lootMin === 'purple' && s.damageNumbers === true && s.recNudge === false && s.recHidden === true, `${tag} gameplay controls update settings`);
+  ok(await ev(() => document.getElementById('s-dmgnum').checked), `${tag} controls reflect state after re-render`);
+  // ---- Content: Blood & gore (default Off, Mild, Bloody) ----
+  ok((await st()).gore === 'off', `${tag} Blood & gore defaults to Off`); await tab('content'); await noClip('content');
+  await seg('gore', 'mild'); ok((await st()).gore === 'mild', `${tag} gore Mild saved`); await seg('gore', 'bloody'); ok((await st()).gore === 'bloody' && await ev(() => document.querySelector('[data-in=gore][data-v=bloody]').getAttribute('aria-checked') === 'true'), `${tag} gore Bloody saved + reflected`);
+  ok(await ev(() => /16\+/.test(document.querySelector('.settingswin').textContent)), `${tag} gore row carries the age note`); await seg('gore', 'off'); await tab('gameplay');
+  await seg('lootlabels', 'near'); await seg('lootmin', 'grey'); await tog('dmgnum'); await tog('recnudge'); await tog('rechide');
 
   // ---- Display ----
   await tab('display'); await noClip('display');
@@ -91,13 +95,13 @@ for (const [w, h, touch] of [[1280, 720, 0], [1920, 1080, 0], [844, 390, 1]]) {
   await tab('gameplay'); await page.focus('#stab-gameplay'); await page.keyboard.press('ArrowDown'); await sleep(80);
   ok(await ev(() => document.activeElement.id === 'stab-display' && document.querySelector('.stab.on').id === 'stab-display'), `${tag} arrow keys move through tabs`);
   await page.keyboard.press('End'); await sleep(80); ok(await ev(() => document.querySelector('.stab.on').id === 'stab-about'), `${tag} End goes to last tab`);
-  await tab('gameplay'); await page.focus('[data-in=gore][data-v=standard]'); await page.keyboard.press('ArrowRight'); await sleep(80);
-  ok((await st()).gore === 'bloody' && await ev(() => document.activeElement.dataset.v === 'bloody'), `${tag} arrow keys move through a segmented control and keep focus`); await seg('gore', 'standard');
+  await tab('content'); await page.focus('[data-in=gore][data-v=mild]'); await page.keyboard.press('ArrowRight'); await sleep(80);
+  ok((await st()).gore === 'bloody' && await ev(() => document.activeElement.dataset.v === 'bloody'), `${tag} arrow keys move through a segmented control and keep focus`); await seg('gore', 'off');
   await tab('audio'); await ev(() => window.__ui.close()); await open(); ok(await ev(() => document.querySelector('.stab.on').id === 'stab-audio'), `${tag} last tab is remembered`);
   await page.keyboard.press('Escape'); ok(await ev(() => window.__ui.modal === null), `${tag} Esc closes Settings`);
 
   // ---- persistence across reload ----
-  await open(); await tab('gameplay'); await seg('gore', 'bloody'); await tab('audio'); await range('sfxvol', .5); await ev(() => window.__ui.close());
+  await open(); await tab('content'); await seg('gore', 'bloody'); await tab('audio'); await range('sfxvol', .5); await ev(() => window.__ui.close());
   await page.reload({ waitUntil: 'load' }); await page.waitForFunction(() => window.__game); await ev(() => document.getElementById('splash')?.remove());
   s = await st(); ok(s.gore === 'bloody' && s.sfxVol === .5 && s.volume === .35 && s.musicVol === .4, `${tag} settings survive a reload`);
   ok(await ev(() => window.__audio.sfxVol === .5 && window.__audio.musicVol === .4), `${tag} saved volumes applied to audio on boot`);

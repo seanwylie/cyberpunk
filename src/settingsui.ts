@@ -8,7 +8,7 @@ import { Q } from './quality';
 
 type UIx=any;
 const esc=(s:string)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
-export const TABS:[string,string][]=[['gameplay','Gameplay'],['display','Display & UI'],['audio','Audio'],['controls','Controls'],['instance','Instance'],['story','Story AI'],['about','About & Data']];
+export const TABS:[string,string][]=[['gameplay','Gameplay'],['display','Display & UI'],['audio','Audio'],['controls','Controls'],['content','Content'],['instance','Instance'],['story','Story AI'],['about','About & Data']];
 const TAB_KEY='wv_settings_tab';
 const BVG='<span class="bvg"><span>With Big Viking Games</span><img src="/brand/bvg_logo_bone.png" alt="Big Viking Games" width="64"></span>';
 let savedTab='gameplay'; try{ savedTab=localStorage.getItem(TAB_KEY)||'gameplay'; }catch{}
@@ -28,7 +28,6 @@ export function settingsHtml(ui:UIx):string{
   const g=ui.g, st=g.save.settings, tab=S.tab; let c='';
   if(tab==='gameplay') c=head('Gameplay','How combat looks and what the game tells you about loot.')
     +row('Replay tutorial','Walk through the first-run guide again: contracts, the locker, the vendor and your first run.',`<button type="button" class="btn" data-act="replaytut">Replay tutorial</button>`)
-    +row('Gore','How much blood and debris combat leaves behind.',seg('gore',st.gore,[['off','Off'],['standard','Standard'],['bloody','Bloody']],'Gore'))
     +row('Upgrade recommendations','Show the Recommended panel and ▲ badges in the locker and vendor.',sw('rechide',st.recHidden!==true,'Upgrade recommendations'),{tag:'label',id:'s-rechide'})
     +row('Show station markers','Town wayfinding: arrows at the screen edge pointing to Job Board, Implant Parts, Gate and the other stations that are off screen.',sw('stationmk',st.stationMarkers!==false,'Show station markers'),{tag:'label',id:'s-stationmk'})
     +row('Recommendations: nudge on town return','Pop a short toast about your best upgrade when you get back to town.',sw('recnudge',st.recNudge!==false,'Recommendations nudge on town return'),{tag:'label',id:'s-recnudge'})
@@ -42,6 +41,9 @@ export function settingsHtml(ui:UIx):string{
     +row('FPS overlay','Show frame rate and render resolution (F3 on desktop).',sw('showfps',!!st.showFps,'FPS overlay'),{tag:'label',id:'s-showfps'})
     +row('Auto-sell junk','Grey (junk) items are sold for credits the moment you pick them up, so they never fill your bag.',sw('autosell',st.autoSellGrey!==false,'Auto-sell junk'),{tag:'label',id:'s-autosell'})
     +row('Reduced incidental effects','Tones down flashes, shake and ambient particles. Combat telegraphs stay.',sw('reduced',!!st.reducedFx,'Reduced incidental effects'),{tag:'label',id:'s-reduced'});
+  else if(tab==='content') c=head('Content','Optional mature content. Off by default; applies only in dungeons, never in town.')
+    +row('Blood & gore','Off: nothing. Mild: small droplets and a pool where an enemy falls. Bloody: wet hit bursts, floor splatter, gibs, severed limbs and boss limb breaks; robots spark and leak coolant instead. Intended for players 16+. It never affects players or NPCs, and each person in a party uses their own setting.',seg('gore',st.gore||'off',[['off','Off'],['mild','Mild'],['bloody','Bloody']],'Blood and gore'))
+    +`<p class="sd">Reduced incidental effects also hides airborne gore and the screen-edge spray; floor stains stay and fade away on their own.</p>`;
   else if(tab==='audio') c=head('Audio','Volumes are saved per browser. Master scales everything.')
     +row('Master volume','Overall loudness.',slider('vol',st.volume,'Master volume'),{wide:true})
     +row('Music','Turn the soundtrack on or off (M also toggles).',sw('music',!!st.music,'Music'),{tag:'label',id:'s-music'})

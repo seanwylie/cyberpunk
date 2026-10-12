@@ -1,0 +1,36 @@
+// BESTIARY batch 1 (docs/BESTIARY.md): 14 NON-ROBOT mobs (swarm, slithering lamprey worm, gas-sac, cyber-arachnid, jellyfish drifter, mannequin stalker, tick,
+// corpse-mech pile, hologram ghost, fungal growth, tentacled chassis, glitch entity, crab-turret, flesh med-drone). Data only; kits reuse the existing batch-2 attack
+// vocabulary so balance stays inside docs/BALANCE.md: every mob is a re-bodied, re-themed variant of a tuned role at the same tier.
+import type { MobSpec } from './batch2_mobs';
+const M=(m:MobSpec)=>m;
+/** body family (for docs, the gore system and tests): organic bleeds, machine sparks/leaks coolant, spectral/glitch do neither */
+export type Body='organic'|'hybrid'|'machine'|'spectral';
+export const BODY:Record<string,Body>={ gutterling:'hybrid', slagleech:'organic', soothsac:'organic', stitchspider:'hybrid', drapejelly:'organic', fittingdoll:'machine', hangtick:'organic', meatcarrier:'hybrid', hollowghost:'spectral', rootcluster:'organic', squidwalker:'hybrid', glitchshard:'spectral', crabgun:'hybrid', fleshdrone:'hybrid' };
+export const BESTIARY_MOBS:MobSpec[]=[
+ // ---- tier I
+ M({ id:'gutterling', name:'Gutterling Swarm', tier:1, role:'swarmer', fac:['RC','HB'], mfr:'MM', blurb:'Nine wire-grafted sewer vermin that move as one wet shuffle. Frail, fast, and everywhere.', hp:10, speed:4.5, radius:.32, aggro:8, xp:5, dmg:1.2, melee:['bite'], moves:[], h:.55, spr:'cinderhound', pack:[7,10] }),
+ M({ id:'slagleech', name:'Slag Leech', tier:1, role:'bruiser', fac:['HB','RC'], mfr:'HI', blurb:'A furnace-bred lamprey the length of a man. Latches on with a ring of teeth and drinks.', hp:58, speed:2.6, radius:.5, aggro:8, xp:20, dmg:1.25, melee:['swing','slam'], moves:[], lifesteal:.35, h:1.0, spr:'cinderhound', pack:[2,3] }),
+ M({ id:'soothsac', name:'Soot Sac', tier:1, role:'exploder', fac:['HB','RC'], mfr:'HI', blurb:'A bloated gas bladder on stilt legs, venting furnace fumes. Pop it at range or it pops on you.', hp:24, speed:2.7, radius:.5, aggro:8, xp:11, dmg:1.25, melee:[], moves:[], custom:['detonate'], h:1.15, spr:'cinderhound', pack:[2,4] }),
+ // ---- tier II
+ M({ id:'stitchspider', name:'Stitch Spider', tier:2, role:'charger', fac:['KV','RC'], mfr:'MM', blurb:'A stitched-together arachnid rig with a glowing egg-sac. Skitters in, bites, skitters out.', hp:50, speed:3.9, radius:.45, aggro:9, xp:19, dmg:1.15, melee:['charge','bite'], moves:[], h:.95, spr:'cinderhound', pack:[1,3] }),
+ M({ id:'drapejelly', name:'Drape Jelly', tier:2, role:'debuffer', fac:['AS','QS'], mfr:'PS', blurb:'A cyber-jellyfish drifting through the cold air. Its stinging tentacles slow and heat whatever they brush.', hp:42, speed:2.3, radius:.42, aggro:10, xp:24, dmg:1.35, melee:[], moves:[], custom:['hex'], ranged:true, keep:7, h:1.2, hover:.7, spr:'drone', pack:[1,2] }),
+ M({ id:'fittingdoll', name:'Fitting-Room Doll', tier:2, role:'charger', fac:['KV','AS'], mfr:'MM', blurb:'A mannequin that only moves when you look away. Stiff, silent, and far too fast when it does.', hp:62, speed:3.5, radius:.4, aggro:10, xp:24, dmg:1.35, melee:['swing','charge'], moves:[], h:1.8, spr:'picker', pack:[1,2] }),
+ M({ id:'hangtick', name:'Hang Tick', tier:2, role:'ranged', fac:['AS','RC'], mfr:'PS', blurb:'A bloated parasite that drops from the cable trays and spits a fan of acid blood from a safe distance.', hp:40, speed:2.4, radius:.5, aggro:10, xp:20, dmg:1.3, melee:['shot'], ranged:true, moves:[{k:'fan',p:{n:3,spread:34,speed:10},w:.8,cd:3.8,min:2,max:12,dmg:8}], keep:8, h:1.0, spr:'cinderhound', pack:[1,3] }),
+ M({ id:'meatcarrier', name:'Meat Carrier', tier:2, role:'bruiser', fac:['HB','RC','AS'], mfr:'HI', blurb:'A fused pile of corpses and loader frames that lurches on salvaged limbs. Slow, tough, and still hungry.', hp:105, speed:2.2, radius:.62, aggro:8, xp:30, dmg:1.45, melee:['cleave','slam'], moves:[], lifesteal:.2, h:1.5, spr:'loader', pack:[1,2] }),
+ // ---- tier III
+ M({ id:'hollowghost', name:'Hollow Ghost', tier:3, role:'caster', fac:['QS','AS'], mfr:'PS', blurb:'A hologram that remembers being a person. Its static curses slow and burn from range.', hp:70, speed:2.6, radius:.38, aggro:11, xp:36, dmg:1.55, melee:[], moves:[{k:'marks',p:{n:3,r:1.3,spread:3},w:1.2,cd:6,min:3,max:14,dmg:12}], custom:['hex'], ranged:true, keep:8, h:1.7, hover:.4, spr:'drone', pack:[1,2] }),
+ M({ id:'rootcluster', name:'Root Cluster', tier:3, role:'healer', fac:['AS','RC'], mfr:'PS', blurb:'A biotech fungal growth that feeds on the dead. Spores knit nearby flesh back together; burn it first.', hp:78, speed:1.9, radius:.45, aggro:10, xp:36, dmg:1.4, melee:['dart'], moves:[], custom:['mend'], ranged:true, keep:5, h:1.3, spr:'drone', pack:[1,1] }),
+ M({ id:'squidwalker', name:'Squidwalker', tier:3, role:'bruiser', fac:['QS','KV'], mfr:'PS', blurb:'A tentacled chassis that walks on six ropey limbs. Long reach, wide sweeps, no good angle.', hp:128, speed:2.8, radius:.62, aggro:9, xp:42, dmg:1.65, melee:['cleave','slam','swing'], moves:[], h:1.6, spr:'loader', pack:[1,2] }),
+ M({ id:'glitchshard', name:'Glitch Shard', tier:3, role:'charger', fac:['QS','RC'], mfr:'MM', blurb:'A corrupted entity that stutters between positions. Blinks onto you and cuts before the frame draws.', hp:72, speed:3.9, radius:.38, aggro:7, xp:34, dmg:1.65, melee:['swing','blink'], moves:[], h:1.5, spr:'matron', pack:[1,2] }),
+ M({ id:'crabgun', name:'Crab Gun', tier:3, role:'caster', fac:['RC','KV','HB'], mfr:'HI', blurb:'A scavenged turret grafted onto a crab shell. Lobs slow, telegraphed shells from behind its claws.', hp:112, speed:1.9, radius:.62, aggro:13, xp:42, dmg:1.6, melee:[], moves:[{k:'marks',p:{n:4,r:1.4,spread:3},w:1.3,cd:6.5,min:4,max:16,dmg:13}], ranged:true, keep:9, h:1.0, spr:'slagcannon', pack:[1,2] }),
+ M({ id:'fleshdrone', name:'Flesh Drone', tier:3, role:'summoner', fac:['AS','KV'], mfr:'PS', blurb:'A rogue medical drone that stitched itself a body. Releases swarms from the sacs under its bell.', hp:84, speed:2.5, radius:.45, aggro:10, xp:38, dmg:1.4, melee:['shot'], moves:[], custom:['summonlite'], summon:'gutterling', ranged:true, keep:7, h:1.3, hover:.6, spr:'drone', pack:[1,1] }),
+];
+/** which dungeon themes field which bestiary mobs (merged into LEVEL_MOBS[...].new by batch2_rosters.ts) */
+export const BESTIARY_ROSTER:Record<string,string[]>={
+  coke_ovens:['slagleech','soothsac'], substation_12:['gutterling'], scrap_gantry:['gutterling','soothsac'], tailings_pit:['gutterling','slagleech','soothsac'],
+  bell_foundry:['meatcarrier'], cold_archive:['drapejelly','fittingdoll'], audit_tower:['hangtick','fittingdoll'], aesthetic_ward:['drapejelly','fittingdoll'], pharmacy_vault:['drapejelly','hangtick'],
+  outlet_mall:['fittingdoll','stitchspider'], drained_reservoir:['stitchspider','drapejelly','meatcarrier'],
+  anechoic_lab:['hollowghost','fleshdrone'], liquidation_floor:['squidwalker'], parcel_tower:['stitchspider','crabgun'], freight_depot:['squidwalker','crabgun','stitchspider'], warranty_vault:['hollowghost','glitchshard'],
+  night_tunnels:['hangtick','hollowghost','glitchshard','rootcluster'], breaker_yard:['meatcarrier','crabgun','squidwalker'], radio_mast:['glitchshard','hollowghost','rootcluster'],
+  recall_yard:['squidwalker','glitchshard','fleshdrone','hollowghost','meatcarrier'],
+};

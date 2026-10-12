@@ -48,7 +48,7 @@ export class Renderer {
     const tx=(g.px-g.py)*this.TW/2, ty=(g.px+g.py)*this.TW/4; this.camx+= (tx-this.camx)*Math.min(1,dt*8); this.camy+=(ty-this.camy)*Math.min(1,dt*8);
     if(this.shake>0) this.shake=Math.max(0,this.shake-dt*3);
     c.fillStyle=PAL.soot; c.fillRect(0,0,this.w,this.h);
-    vfxFrame(this,dt); if(g.kick>0){ if(!g.save.settings.reducedFx) this.shake=Math.max(this.shake,g.kick); g.kick=0; } this.drawFloor(); this.drawWorld(); this.flushLoot(); vfxScreen(this); this.drawOverlay();
+    GORE.sync(g); vfxFrame(this,dt); if(g.kick>0){ if(!g.save.settings.reducedFx) this.shake=Math.max(this.shake,g.kick); g.kick=0; } this.drawFloor(); this.drawWorld(); this.flushLoot(); vfxScreen(this); GORE.drawScreen(this); this.drawOverlay();
   }
   tile(x:number,y:number,col:string){ const c=this.ctx; const a=this.sx(x,y), b=this.sy(x,y); const hw=this.TW/2, hh=this.TW/4; c.fillStyle=col; c.beginPath(); c.moveTo(a,b); c.lineTo(a+hw,b+hh); c.lineTo(a,b+2*hh); c.lineTo(a-hw,b+hh); c.closePath(); c.fill(); }
   drawFloor(){
@@ -58,6 +58,7 @@ export class Renderer {
       if(hv<.04){ c.strokeStyle='rgba(30,30,30,.25)'; c.lineWidth=1; c.beginPath(); c.moveTo(this.sx(x+.2,y+.3),this.sy(x+.2,y+.3)); c.lineTo(this.sx(x+.7,y+.8),this.sy(x+.7,y+.8)); c.stroke(); }
       if((z==='proc')&&(x%8===0)&&hv>.2){ this.tile(x,y,'rgba(143,59,46,.10)'); } }
     if(this.env){ this.drawDecals(); this.org.drawFloorOverlay(this,L); this.dart.arena(this); }
+    GORE.drawGround(this);
     for(const cp of L.checkpoints){ const done=this.g.mode==='run'&&(this.g.inst?.reached||[]).includes(cp.id); const cur=this.g.mode==='run'&&this.g.inst?.checkpoint.id===cp.id; this.ring(cp.x,cp.y,1.1,done?'#8fae7f':PAL.bone,done?.9:.6,true); if(cur) this.ring(cp.x,cp.y,1.5+.12*Math.sin(this.g.time*4),'#8fae7f',.8); }
     if(g.mode==='run'&&g.inst){ const f=g.inst.flags; if(!f.controller){ const it=L.interacts.find(i=>i.id==='controller')!; this.ring(it.x,it.y,.9,'#d8d2bf',.45,true); } }
   }
@@ -311,6 +312,7 @@ export class Renderer {
       const tl=k==='needle'?.07:k==='pistol'?.05:k==='shard'?.03:.04; const rad=(k==='slug'?5:k==='pop'?3:k==='shard'?2.6:k==='needle'?2.4:k==='pistol'?3:4)*s;
       c.strokeStyle=col; c.globalAlpha=.4; c.lineWidth=(k==='needle'?1.6:2.4)*s; c.beginPath(); c.moveTo(a,b); c.lineTo(this.sx(p.x-p.vx*tl*(k==='needle'?2:1),p.y-p.vy*tl*(k==='needle'?2:1)),this.sy(p.x-p.vx*tl*(k==='needle'?2:1),p.y-p.vy*tl*(k==='needle'?2:1),.5)); c.stroke(); c.globalAlpha=1;
       c.fillStyle=col; c.beginPath(); if(k==='shard'){ c.moveTo(a,b-rad*1.4); c.lineTo(a+rad,b); c.lineTo(a,b+rad*1.4); c.lineTo(a-rad,b); c.closePath(); } else c.arc(a,b,rad,0,7); c.fill(); if(ally){ c.fillStyle='#fff'; c.globalAlpha=.7; c.beginPath(); c.arc(a,b,rad*.4,0,7); c.fill(); c.globalAlpha=1; } }
+    GORE.drawAir(this);
     const red=g.save.settings.reducedFx||Q.fx>=1;
     for(const f of g.fx){ const k=f.t/f.life; const a=this.sx(f.x,f.y), b=this.sy(f.x,f.y);
       switch(f.kind){
@@ -511,6 +513,7 @@ export const ATKD:Record<string,{shape:'cone'|'circle'|'line'|'fan'|'aim';r:numb
 import { ATK } from './sim';
 import { vfxFrame, vfxGround, vfxItems, vfxStatus, vfxAuras, vfxScreen } from './vfxdraw';
 import { mobLabel } from './content/mobs';
+import { GORE } from './gore';
 export const FONT='"Roboto Condensed","Bahnschrift","Liberation Sans Narrow","Arial Narrow",system-ui,sans-serif';
 const geo:Record<string,any>={ swing:{shape:'cone',r:1.5,arc:Math.PI*.6}, cleave:{shape:'cone',r:2.6,arc:Math.PI*.75}, rsweep:{shape:'cone',r:3.8,arc:Math.PI*.85}, slam:{shape:'circle',r:3.4,arc:0}, charge:{shape:'line',r:9,arc:0,w:1.4}, shot:{shape:'aim',r:10,arc:0}, turretshot:{shape:'aim',r:11,arc:0}, volley:{shape:'fan',r:13,arc:0}, snipe:{shape:'aim',r:18,arc:0}, hex:{shape:'aim',r:13,arc:0}, detonate:{shape:'circle',r:2.6,arc:0}, detonate_big:{shape:'circle',r:3.6,arc:0} };
 for(const k of Object.keys(geo)) (ATKD as any)[k]={ ...geo[k], w:ATK[k].w, wid:geo[k].w };
