@@ -2,7 +2,7 @@
 // 10 slots, free create, delete with a confirm step. Short labels; full details live in the tooltip (docs/UI.md).
 import { ensureRoster, createChar, selectChar, deleteChar, CHAR_LIMIT } from './chars';
 import { newSave, persist } from './state';
-const TRAIT_BY_ID:Record<string,{name:string;short:string}>={}; // traits land in phase b
+import { TRAIT_BY_ID } from './traits';
 type UIx=any;
 const esc=(s:string)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
 export const CS={ confirmDel:'' as string, naming:false, msg:'' };

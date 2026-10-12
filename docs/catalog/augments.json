@@ -1,6 +1,6 @@
 {
  "version": 1,
- "catalogVersion": "1c19def59389",
+ "catalogVersion": "6df1f8dd08fa",
  "generatedBy": "tools/gen_catalog.mjs",
  "stats": {
   "augments": 166,
@@ -41,6 +41,564 @@
   "abilityNotGranted": [],
   "chipFitsNothing": []
  },
+ "traits": [
+  {
+   "id": "netrunner",
+   "name": "Netrunner",
+   "level": 10,
+   "families": [
+    "hack"
+   ],
+   "effects": [
+    {
+     "t": "famDmg",
+     "f": "hack",
+     "v": 0.1,
+     "text": "+10% damage with hacking abilities"
+    },
+    {
+     "t": "famCdr",
+     "f": "hack",
+     "v": 0.1,
+     "text": "10% faster cooldowns on hacking abilities"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "bruiser",
+   "name": "Bruiser",
+   "level": 10,
+   "families": [
+    "brute"
+   ],
+   "effects": [
+    {
+     "t": "meleeDmg",
+     "v": 0.1,
+     "text": "+10% melee basic attack damage"
+    },
+    {
+     "t": "famDmg",
+     "f": "brute",
+     "v": 0.08,
+     "text": "+8% damage with direct combat abilities"
+    },
+    {
+     "t": "maxHp",
+     "v": 0.06,
+     "text": "+6% max HP"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "gunslinger",
+   "name": "Gunslinger",
+   "level": 10,
+   "families": [
+    "gun"
+   ],
+   "effects": [
+    {
+     "t": "rangedDmg",
+     "v": 0.1,
+     "text": "+10% ranged basic attack damage"
+    },
+    {
+     "t": "famDmg",
+     "f": "gun",
+     "v": 0.08,
+     "text": "+8% damage with ranged abilities"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "ghost",
+   "name": "Ghost",
+   "level": 10,
+   "families": [
+    "ghost"
+   ],
+   "effects": [
+    {
+     "t": "famDur",
+     "f": "ghost",
+     "v": 0.2,
+     "text": "+20% duration on stealth & evasion effects (stuns, cloaks, summons)"
+    },
+    {
+     "t": "dodgeCd",
+     "v": 0.15,
+     "text": "15% faster dodge recovery"
+    },
+    {
+     "t": "moveSpd",
+     "v": 0.04,
+     "text": "+4% move speed"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "tinker",
+   "name": "Drone Tinker",
+   "level": 10,
+   "families": [
+    "tech"
+   ],
+   "effects": [
+    {
+     "t": "famDur",
+     "f": "tech",
+     "v": 0.2,
+     "text": "+20% duration on drones & tech effects (stuns, cloaks, summons)"
+    },
+    {
+     "t": "famDmg",
+     "f": "tech",
+     "v": 0.08,
+     "text": "+8% damage with drones & tech abilities"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "breacher",
+   "name": "Breacher",
+   "level": 10,
+   "families": [
+    "hack",
+    "brute"
+   ],
+   "effects": [
+    {
+     "t": "famCdr",
+     "f": "hack",
+     "v": 0.07,
+     "text": "7% faster cooldowns on hacking abilities"
+    },
+    {
+     "t": "meleeDmg",
+     "v": 0.07,
+     "text": "+7% melee basic attack damage"
+    },
+    {
+     "t": "maxHp",
+     "v": 0.04,
+     "text": "+4% max HP"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "overwatch",
+   "name": "Overwatch",
+   "level": 10,
+   "families": [
+    "gun",
+    "tech"
+   ],
+   "effects": [
+    {
+     "t": "rangedDmg",
+     "v": 0.07,
+     "text": "+7% ranged basic attack damage"
+    },
+    {
+     "t": "famDur",
+     "f": "tech",
+     "v": 0.12,
+     "text": "+12% duration on drones & tech effects (stuns, cloaks, summons)"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "phantom",
+   "name": "Phantom Blade",
+   "level": 10,
+   "families": [
+    "ghost",
+    "brute"
+   ],
+   "effects": [
+    {
+     "t": "meleeDmg",
+     "v": 0.07,
+     "text": "+7% melee basic attack damage"
+    },
+    {
+     "t": "famDur",
+     "f": "ghost",
+     "v": 0.12,
+     "text": "+12% duration on stealth & evasion effects (stuns, cloaks, summons)"
+    },
+    {
+     "t": "dodgeCd",
+     "v": 0.08,
+     "text": "8% faster dodge recovery"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "glitch",
+   "name": "Glitch",
+   "level": 10,
+   "families": [
+    "hack",
+    "ghost"
+   ],
+   "effects": [
+    {
+     "t": "famDmg",
+     "f": "hack",
+     "v": 0.07,
+     "text": "+7% damage with hacking abilities"
+    },
+    {
+     "t": "famDur",
+     "f": "ghost",
+     "v": 0.12,
+     "text": "+12% duration on stealth & evasion effects (stuns, cloaks, summons)"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "jackofall",
+   "name": "Freelancer",
+   "level": 10,
+   "families": [
+    "hack",
+    "brute",
+    "gun",
+    "ghost",
+    "tech"
+   ],
+   "effects": [
+    {
+     "t": "autoDmg",
+     "v": 0.05,
+     "text": "+5% basic attack damage"
+    },
+    {
+     "t": "maxHp",
+     "v": 0.05,
+     "text": "+5% max HP"
+    },
+    {
+     "t": "moveSpd",
+     "v": 0.03,
+     "text": "+3% move speed"
+    }
+   ],
+   "buildsOn": []
+  },
+  {
+   "id": "rootkit",
+   "name": "Rootkit",
+   "level": 20,
+   "families": [
+    "hack"
+   ],
+   "effects": [
+    {
+     "t": "famDur",
+     "f": "hack",
+     "v": 0.2,
+     "text": "+20% duration on hacking effects (stuns, cloaks, summons)"
+    },
+    {
+     "t": "famHeat",
+     "f": "hack",
+     "v": 0.15,
+     "text": "15% less heat from hacking abilities"
+    }
+   ],
+   "buildsOn": [
+    "netrunner",
+    "glitch",
+    "breacher"
+   ]
+  },
+  {
+   "id": "icebreaker",
+   "name": "Icebreaker",
+   "level": 20,
+   "families": [
+    "hack",
+    "brute"
+   ],
+   "effects": [
+    {
+     "t": "famDmg",
+     "f": "hack",
+     "v": 0.1,
+     "text": "+10% damage with hacking abilities"
+    },
+    {
+     "t": "maxHp",
+     "v": 0.04,
+     "text": "+4% max HP"
+    }
+   ],
+   "buildsOn": [
+    "netrunner",
+    "breacher"
+   ]
+  },
+  {
+   "id": "juggernaut",
+   "name": "Juggernaut",
+   "level": 20,
+   "families": [
+    "brute"
+   ],
+   "effects": [
+    {
+     "t": "maxHp",
+     "v": 0.06,
+     "text": "+6% max HP"
+    },
+    {
+     "t": "famHeat",
+     "f": "brute",
+     "v": 0.15,
+     "text": "15% less heat from direct combat abilities"
+    }
+   ],
+   "buildsOn": [
+    "bruiser",
+    "breacher",
+    "phantom"
+   ]
+  },
+  {
+   "id": "berserker",
+   "name": "Berserker",
+   "level": 20,
+   "families": [
+    "brute"
+   ],
+   "effects": [
+    {
+     "t": "meleeDmg",
+     "v": 0.05,
+     "text": "+5% melee basic attack damage"
+    },
+    {
+     "t": "famCdr",
+     "f": "brute",
+     "v": 0.1,
+     "text": "10% faster cooldowns on direct combat abilities"
+    }
+   ],
+   "buildsOn": [
+    "bruiser",
+    "phantom"
+   ]
+  },
+  {
+   "id": "deadeye",
+   "name": "Deadeye",
+   "level": 20,
+   "families": [
+    "gun"
+   ],
+   "effects": [
+    {
+     "t": "famDmg",
+     "f": "gun",
+     "v": 0.1,
+     "text": "+10% damage with ranged abilities"
+    },
+    {
+     "t": "famCdr",
+     "f": "gun",
+     "v": 0.08,
+     "text": "8% faster cooldowns on ranged abilities"
+    }
+   ],
+   "buildsOn": [
+    "gunslinger",
+    "overwatch"
+   ]
+  },
+  {
+   "id": "runandgun",
+   "name": "Run and Gun",
+   "level": 20,
+   "families": [
+    "gun",
+    "ghost"
+   ],
+   "effects": [
+    {
+     "t": "rangedDmg",
+     "v": 0.05,
+     "text": "+5% ranged basic attack damage"
+    },
+    {
+     "t": "moveSpd",
+     "v": 0.04,
+     "text": "+4% move speed"
+    },
+    {
+     "t": "dodgeCd",
+     "v": 0.1,
+     "text": "10% faster dodge recovery"
+    }
+   ],
+   "buildsOn": [
+    "gunslinger",
+    "ghost"
+   ]
+  },
+  {
+   "id": "shade",
+   "name": "Shade",
+   "level": 20,
+   "families": [
+    "ghost"
+   ],
+   "effects": [
+    {
+     "t": "famCdr",
+     "f": "ghost",
+     "v": 0.12,
+     "text": "12% faster cooldowns on stealth & evasion abilities"
+    },
+    {
+     "t": "moveSpd",
+     "v": 0.04,
+     "text": "+4% move speed"
+    }
+   ],
+   "buildsOn": [
+    "ghost",
+    "phantom",
+    "glitch"
+   ]
+  },
+  {
+   "id": "swarmlord",
+   "name": "Swarm Lord",
+   "level": 20,
+   "families": [
+    "tech"
+   ],
+   "effects": [
+    {
+     "t": "famDur",
+     "f": "tech",
+     "v": 0.1,
+     "text": "+10% duration on drones & tech effects (stuns, cloaks, summons)"
+    },
+    {
+     "t": "famCdr",
+     "f": "tech",
+     "v": 0.12,
+     "text": "12% faster cooldowns on drones & tech abilities"
+    }
+   ],
+   "buildsOn": [
+    "tinker",
+    "overwatch"
+   ]
+  },
+  {
+   "id": "fieldmech",
+   "name": "Field Mechanic",
+   "level": 20,
+   "families": [
+    "tech",
+    "brute"
+   ],
+   "effects": [
+    {
+     "t": "maxHp",
+     "v": 0.05,
+     "text": "+5% max HP"
+    },
+    {
+     "t": "famHeat",
+     "f": "tech",
+     "v": 0.15,
+     "text": "15% less heat from drones & tech abilities"
+    }
+   ],
+   "buildsOn": [
+    "tinker",
+    "overwatch"
+   ]
+  },
+  {
+   "id": "journeyman",
+   "name": "Journeyman",
+   "level": 20,
+   "families": [
+    "hack",
+    "brute",
+    "gun",
+    "ghost",
+    "tech"
+   ],
+   "effects": [
+    {
+     "t": "famCdr",
+     "v": 0.06,
+     "text": "6% faster cooldowns on all abilities"
+    },
+    {
+     "t": "maxHp",
+     "v": 0.04,
+     "text": "+4% max HP"
+    }
+   ],
+   "buildsOn": [
+    "jackofall"
+   ]
+  },
+  {
+   "id": "adaptable",
+   "name": "Adaptable",
+   "level": 20,
+   "families": [
+    "hack",
+    "brute",
+    "gun",
+    "ghost",
+    "tech"
+   ],
+   "effects": [
+    {
+     "t": "autoDmg",
+     "v": 0.05,
+     "text": "+5% basic attack damage"
+    },
+    {
+     "t": "famHeat",
+     "v": 0.1,
+     "text": "10% less heat from all abilities"
+    },
+    {
+     "t": "dodgeCd",
+     "v": 0.08,
+     "text": "8% faster dodge recovery"
+    }
+   ],
+   "buildsOn": [
+    "jackofall",
+    "glitch",
+    "breacher",
+    "phantom",
+    "overwatch"
+   ]
+  }
+ ],
  "augments": [
   {
    "id": "ab_hi_armL_firestorm_pillar",

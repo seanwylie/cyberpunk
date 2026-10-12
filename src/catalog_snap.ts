@@ -3,18 +3,21 @@
 // public/catalog/v/<version>.json, so a build code made under an older catalog can be compared with the current one ("What changed").
 import { ITEMS, CHIPS, CHIP_FITS, SLOT_SOCKETS, HARD_CONFLICTS, ABILITIES, type Slot } from './config';
 import { ABILITY_BY_ID, describe } from './abilities/registry';
+import { TRAITS, describeEffect } from './traits';
 
 export interface SnapItem { n:string; s:string; m:string; r:string; l:number; st:Record<string,number>; ab:string[]; w?:string }
 export interface SnapChip { n:string; st:Record<string,number>; f:string[] }
 export interface SnapAb { n:string; cd:number|null; e:string; g:string[]; u:string[] }
-export interface Snap { items:Record<string,SnapItem>; chips:Record<string,SnapChip>; abilities:Record<string,SnapAb>; sockets:Record<string,number>; conflicts:[string,string,string][] }
+export interface SnapTrait { n:string; t:number; e:string[]; p:string[] }
+export interface Snap { /** traits (docs/TRAITS.md); absent in catalogs older than the trait system */ traits?:Record<string,SnapTrait>; items:Record<string,SnapItem>; chips:Record<string,SnapChip>; abilities:Record<string,SnapAb>; sockets:Record<string,number>; conflicts:[string,string,string][] }
 const sortObj=<T>(o:Record<string,T>)=>Object.fromEntries(Object.keys(o).sort().map(k=>[k,o[k]]));
 const num=(o:any)=>sortObj(Object.fromEntries(Object.entries(o||{}).map(([k,v])=>[k,Math.round((v as number)*1e4)/1e4]))) as Record<string,number>;
 export function snapshot():Snap{
   const items:Record<string,SnapItem>={}; for(const d of ITEMS){ items[d.id]={ n:d.name, s:d.slot, m:d.mfr, r:d.rarity, l:d.lvl, st:num(d.stats), ab:[...(d.abilities||[])], ...(d.weapon?{w:d.weapon}:{}) }; }
   const chips:Record<string,SnapChip>={}; for(const [id,c] of Object.entries(CHIPS)) chips[id]={ n:c.name, st:num(c.stats), f:[...(CHIP_FITS[id as keyof typeof CHIP_FITS]||[])] };
   const abilities:Record<string,SnapAb>={}; for(const id of new Set([...Object.keys(ABILITIES),...Object.keys(ABILITY_BY_ID)])){ const d=ABILITY_BY_ID[id], a=(ABILITIES as any)[id]; abilities[id]={ n:d?.name||a?.name||id, cd:d?.cd??a?.cd??null, e:d?describe(d):(a?.desc||''), g:[...(d?.gives||[])], u:[...(d?.uses||[])] }; }
-  return { items:sortObj(items), chips:sortObj(chips), abilities:sortObj(abilities), sockets:sortObj({...SLOT_SOCKETS}), conflicts:HARD_CONFLICTS.map(c=>[c.a,c.b,c.reason] as [string,string,string]).sort((x,y)=>(x[0]+x[1]).localeCompare(y[0]+y[1])) };
+  const traits:Record<string,SnapTrait>={}; for(const tr of TRAITS) traits[tr.id]={ n:tr.name, t:tr.tier, e:tr.effects.map(describeEffect), p:[...(tr.parent||[])].sort() };
+  return { traits:sortObj(traits), items:sortObj(items), chips:sortObj(chips), abilities:sortObj(abilities), sockets:sortObj({...SLOT_SOCKETS}), conflicts:HARD_CONFLICTS.map(c=>[c.a,c.b,c.reason] as [string,string,string]).sort((x,y)=>(x[0]+x[1]).localeCompare(y[0]+y[1])) };
 }
 const GROUP:Record<string,string>={ handL:'hand',handR:'hand',armL:'arm',armR:'arm',legL:'leg',legR:'leg',footL:'foot',footR:'foot',torso:'torso',face:'face',brain:'brain' };
 export interface BuildSlots { [slot:string]:{ d:string; c:string[] } }

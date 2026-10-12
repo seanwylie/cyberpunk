@@ -7,7 +7,7 @@ const CHECK = process.argv.includes('--check');
 const vs = await createServer({ configFile: false, server: { middlewareMode: true }, appType: 'custom', logLevel: 'error' });
 const L = (m) => vs.ssrLoadModule(m);
 const C = await L('/src/config.ts'), D = await L('/src/content/dungeons.ts'), HW = await L('/src/abilities/hw.ts'), REG = await L('/src/abilities/registry.ts');
-const IDK = await L('/src/content/idkfa.ts'), SNAP = await L('/src/catalog_snap.ts');
+const TR = await L('/src/traits.ts'); const IDK = await L('/src/content/idkfa.ts'), SNAP = await L('/src/catalog_snap.ts');
 // catalog version = content hash of the compact snapshot a build depends on (items, chips, abilities, sockets, conflicts)
 const snap = SNAP.snapshot(); const snapJson = JSON.stringify(snap); const CATALOG_VERSION = crypto.createHash('sha256').update(snapJson).digest('hex').slice(0, 12);
 const VFX = await L('/src/abilities/vfxprofile.ts'), SFX = await L('/src/abilities/sfxprofile.ts'), V = await L('/src/vendor.ts');
@@ -67,7 +67,8 @@ const gaps = { augmentNoSource: augments.filter(a => !a.sources.length).map(a =>
 const stats = { augments: augments.length, abilityAugments: augments.filter(a => a.abilities.length).length, abilities: Object.keys(abilities).length, chips: Object.keys(chips).length, dungeons: D.DUNGEON_IDS.length,
   bySlot: Object.fromEntries(C.SLOTS.map(s => [s, augments.filter(a => a.slot === s).length])), byRarity: Object.fromEntries(['grey', 'green', 'blue', 'purple', 'orange'].map(r => [r, augments.filter(a => a.rarity === r).length])),
   gaps: Object.fromEntries(Object.entries(gaps).map(([k, v]) => [k, v.length])) };
-const json = JSON.stringify({ version: 1, catalogVersion: CATALOG_VERSION, generatedBy: 'tools/gen_catalog.mjs', stats, gaps, augments, abilities, chips, conflicts, mixPenalty: C.MIX_PENALTY, vendor: { rustline: V.VENDOR_BUY, harrow: V.VENDOR_BUY_HARROW } }, null, 1) + '\n';
+const traits = TR.TRAITS.map(t => ({ id: t.id, name: t.name, level: t.tier === 1 ? 10 : 20, families: t.fams, effects: t.effects.map(e => ({ ...e, text: TR.describeEffect(e) })), buildsOn: t.parent || [] }));
+const json = JSON.stringify({ version: 1, catalogVersion: CATALOG_VERSION, generatedBy: 'tools/gen_catalog.mjs', stats, gaps, traits, augments, abilities, chips, conflicts, mixPenalty: C.MIX_PENALTY, vendor: { rustline: V.VENDOR_BUY, harrow: V.VENDOR_BUY_HARROW } }, null, 1) + '\n';
 
 // ---- markdown
 const fmtStats = (s) => Object.entries(s || {}).map(([k, v]) => `${k} ${v > 0 ? '+' : ''}${r2(v)}`).join(', ') || 'none';
@@ -77,6 +78,7 @@ md += `Catalog version \`${CATALOG_VERSION}\` (content hash; every version's sna
 md += `**${stats.augments} augments** (${stats.abilityAugments} with abilities), **${stats.abilities} abilities**, **${stats.chips} chips**, ${stats.dungeons} dungeons.\n\n`;
 md += `## Data gaps\n\n` + Object.entries(gaps).map(([k, v]) => `- **${k}** (${v.length}): ${v.length ? v.map(x => '`' + x + '`').join(', ') : 'none'}`).join('\n') + '\n\n';
 md += `## Rules\n\n- Stats are fixed per augment (no random rolls). Weapons scale by rarity: ${Object.entries(C.WEAPON_RARITY_MUL).map(([k, v]) => k + ' x' + v).join(', ')}.\n- Maker sets: ${augments[0] ? augments.find(a => !a.id.startsWith('stock_')).makerSet : ''}.\n- Hard conflicts: ${conflicts.map(c => `\`${c.a}\` + \`${c.b}\` (${c.reason})`).join('; ') || 'none'}.\n\n`;
+md += `## Traits\n\nPermanent character specializations (docs/TRAITS.md). Level 20 traits require the listed level 10 trait.\n\n| Trait | Level | Families | Effects | Builds on |\n|---|---|---|---|---|\n` + TR.TRAITS.map(t => `| ${t.name} | ${t.tier === 1 ? 10 : 20} | ${t.fams.join(', ')} | ${t.effects.map(TR.describeEffect).join('<br>')} | ${(t.parent || []).map(p => TR.TRAIT_BY_ID[p].name).join(', ') || '-'} |`).join('\n') + '\n\n';
 md += `## Chips\n\n| Chip | Rarity | Fits | Stats | Ability mods |\n|---|---|---|---|---|\n` + Object.values(chips).map(c => `| ${c.name} | ${c.rarity} | ${c.fits.join(', ')} | ${fmtStats(c.stats)} | ${fmtStats(c.abilityMods)} |`).join('\n') + '\n\n';
 for (const sl of C.SLOTS) { const list = augments.filter(a => a.slot === sl); md += `## ${C.SLOT_LABEL[sl]} (${list.length}, ${C.SLOT_SOCKETS[sl]} sockets)\n\n| Augment | Maker | Rarity | Lv | Stats | Abilities | Sources |\n|---|---|---|---|---|---|---|\n`;
   md += list.map(a => `| ${a.name.replace(/\|/g, '/')} | ${a.maker} | ${a.rarity} | ${a.level} | ${fmtStats(a.stats)}${a.weapon ? '; weapon ' + a.weapon.kind : ''} | ${a.abilities.map(x => `${x.name} (cd ${x.cooldown}s)`).join('<br>') || '-'} | ${a.sources.slice(0, 4).map(fmtSrc).join('<br>')}${a.sources.length > 4 ? '<br>+' + (a.sources.length - 4) + ' more' : ''} |`).join('\n') + '\n\n'; }

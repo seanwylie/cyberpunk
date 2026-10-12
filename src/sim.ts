@@ -33,6 +33,9 @@ import { CONTRACT_BY_ID, Goal } from './content/npcs';
 import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState, capacityUsed } from './state';
 import { idkfaActive, idkfaEnable, idkfaDisable } from './idkfa_toggle';
 import { BAL } from './content/balance';
+import { recordAbility, recordAuto, recordDodge, recordHack, closeRun, refreshOffer, traitEffects, famBonus, statBonus } from './traitstate';
+import { traitPrior } from './traithooks';
+import type { Effect } from './traits';
 import { record, newStory, EventKind } from './story';
 
 export const TOWN_KEY=key('town');
@@ -72,14 +75,15 @@ export class Game {
   constructor(save:Save, emit:Emit){ this.save=save; this.emit=emit; this.level=buildTown(); this.migrateInstance(); this.recompute(); this.enterTown(true); }
 
   // ---------- build / stats ----------
-  recompute(){ const L=installedLayout(this.save); abPickRef.v=this.save.abPick||null; this.build=computeBuild(L,this.save.level,this.save.rep,this.inst?this.inst.broken:[]); const mx=this.build.stats.maxHp; if(this.hp>mx||this.hp<=0&&!this.downed) this.hp=mx; }
+  traitFx:Effect[]=[];
+  recompute(){ const L=installedLayout(this.save); abPickRef.v=this.save.abPick||null; this.build=computeBuild(L,this.save.level,this.save.rep,this.inst?this.inst.broken:[]); this.traitFx=traitEffects(this.save); { const st=this.build.stats; st.maxHp*=1+statBonus(this.traitFx,'maxHp'); st.move*=1+statBonus(this.traitFx,'moveSpd'); } const mx=this.build.stats.maxHp; if(this.hp>mx||this.hp<=0&&!this.downed) this.hp=mx; }
   get maxHp(){ return this.build.stats.maxHp; }
   toast(s:string){ this.emit('toast',s); }
   now(){ return Date.now(); }
 
   // ---------- mode transitions ----------
   enterTown(first=false){
-    const wasRun=this.mode==='run'; this.settleCompleted();
+    const wasRun=this.mode==='run'; this.settleCompleted(); if(wasRun){ closeRun(this.save); refreshOffer(this.save,traitPrior(this)); this.emit('traitcheck','town'); }
     if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this); this.clearTransients();
     const tid=currentTown(this.save); this.townId=tid; setTownStations(stationsOf(tid)); this.mode='town'; this.level=buildTownLevel(tid); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.townFails=0; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); this.emit('towntheme',tid); this.checkTownUnlocks(); if(this.inst) persist(this.save); this.emit('mode','town'); this.worldArrive(); if(!first) this.toast('Back in town. Unload loot at the locker.'); if(!first&&wasRun) this.emit('beat',{dungeon:this.save.instance?.dungeon||undefined,run:this.save.instance?.id,result:this.save.instance?.flags?.bossDead?'Boss defeated':'Left the run early'});
@@ -143,7 +147,7 @@ export class Game {
   instDone(i:InstanceState|null=this.save.instance):boolean{ return !!i&&(!!i.flags.bossDead||!!i.flags.completed&&!!i.flags.rewardsGranted); }
   /** Save migration: an instance whose boss is dead (dead boss enemy but flags unset, or half-set flags) is marked completed, its rewards and per-dungeon lockout are applied, so it is never stuck "live". */
   migrateInstance(){ const i=this.save.instance; if(!i) return; const id=i.dungeon||'annex'; const bossDead=i.flags.bossDead||i.enemies.some(e=>e.dead&&ENEMIES[e.type]?.boss&&e.faction!=='ally');
-    if(!bossDead) return; i.flags.bossDead=true; i.flags.completed=true; if(!i.flags.rewardsGranted){ i.flags.rewardsGranted=true; } if(lockDay(this.save,id)!==todayStr()) setLockDay(this.save,id,todayStr()); persist(this.save); }
+    if(!bossDead) return; i.flags.bossDead=true; i.flags.completed=true; if(!i.flags.rewardsGranted){ i.flags.rewardsGranted=true; closeRun(this.save); refreshOffer(this.save,traitPrior(this)); this.emit('traitcheck','clear'); } if(lockDay(this.save,id)!==todayStr()) setLockDay(this.save,id,todayStr()); persist(this.save); }
   /** Move carried credits/stims/items/chips into the locker as capacity allows. Returns how many carried entries did not fit. */
   bankCarried():number{ const s=this.save, c=s.instance?.carried; if(!c) return 0; const cap=s.lockerCap+s.purchases.lockerBlocks*STARTING.lockerPerPurchase; s.credits+=c.credits; c.credits=0; const rest:Inst[]=[]; for(const it of c.items){ if(capacityUsed(s)<cap) s.items.push(it); else if(bankOverflowItem(s,it)) this.bankedOverflow++; else rest.push(it); } c.items=rest;
     for(const [k,v] of Object.entries(c.chips)){ const kk=k as ChipId; if((s.lockerChips[kk]||0)>0||capacityUsed(s)<cap){ s.lockerChips[kk]=(s.lockerChips[kk]||0)+(v||0); delete c.chips[kk]; } else if(bankOverflowChip(s,kk,v||0)){ this.bankedOverflow+=v||0; delete c.chips[kk]; } } s.stims+=c.stims; c.stims=0; persist(s); return c.items.length+Object.keys(c.chips).length; }
@@ -235,7 +239,7 @@ export class Game {
     if(this.grace) this.grace.acted=true; this.aim=null; const hadCast=!!this.cast; this.cast=null; if(this.channel&&this.channel.kind==='hack') this.channel=null; this.emit('dodgecancel'); // always cancels aiming/execution, even on cooldown
     if(this.dodgeCd>0){ if(hadCast) this.toast('Cast cancelled'); return; }
     let dx=this.inputMove.x, dy=this.inputMove.y; if(Math.hypot(dx,dy)<.1){ dx=Math.cos(this.face); dy=Math.sin(this.face); }
-    if(Math.hypot(this.inputMove.x,this.inputMove.y)>=.1){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); dx=v.x; dy=v.y; } /* input is screen-space; convert to world */ const l=Math.hypot(dx,dy)||1; this.dodgeDx=dx/l; this.dodgeDy=dy/l; this.dodgeT=COMBAT.dodge.time; this.iframes=Math.max(this.iframes,COMBAT.dodge.iframes); this.dodgeCd=COMBAT.dodge.cd; this.emit('sfx','dodge'); this.fx.push({kind:'dust',x:this.px,y:this.py,t:0,life:.4});
+    if(Math.hypot(this.inputMove.x,this.inputMove.y)>=.1){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); dx=v.x; dy=v.y; } /* input is screen-space; convert to world */ const l=Math.hypot(dx,dy)||1; this.dodgeDx=dx/l; this.dodgeDy=dy/l; this.dodgeT=COMBAT.dodge.time; this.iframes=Math.max(this.iframes,COMBAT.dodge.iframes); this.dodgeCd=COMBAT.dodge.cd*(1-statBonus(this.traitFx,'dodgeCd')); recordDodge(this.save); this.emit('sfx','dodge'); this.fx.push({kind:'dust',x:this.px,y:this.py,t:0,life:.4});
     this.townInterrupt('Town return interrupted');
   }
   interact(){ if(!this.prompt||this.downed) return; this.doInteract(this.prompt); }
@@ -287,7 +291,7 @@ export class Game {
     { const band=this.heat>=COMBAT.heat.max*.85?'hot':this.heat>=COMBAT.heat.max*.7?'warm':'ok'; if(this.mode==='run'&&band==='hot'&&this._band!=='hot'&&!this.overheated) this.emit('sfx','amb_hot'); this._band=band; }
     if(this.heat>=COMBAT.heat.max&&!this.overheated){ this.heat=COMBAT.heat.max; this.overheated=true; this.ohT=HEAT.overheat.lockT; this.cast=null; this.aim=null; this.ventLock=0; this.overheats=(this.overheats||0)+1; this.emit('sfx','overheat'); this.toast(`OVERHEATED: abilities offline, +${Math.round((HEAT.overheat.takenMul-1)*100)}% damage taken. Vent (${key('vent')}) to recover faster`); }
     if(this.hp<this.maxHp&&!this.downed&&st.regen>0) this.hp=Math.min(this.maxHp,this.hp+st.regen*dt*(this.mode==='town'?4:HARD.runRegen));
-    if(this.downed){ this.downT+=dt; this.cast=null; this.aim=null; if(this.channel){ this.channel.t+=dt; if(this.channel.t>=this.channel.dur){ const cb=this.channel.cb; this.channel=null; cb(); } } return; }
+    if(this.downed){ this.downT+=dt; this.cast=null; this.aim=null; if(this.channel){ this.channel.t+=dt; if(this.channel.t>=this.channel.dur){ const cb=this.channel.cb; if(this.channel.kind==='hack') recordHack(this.save); this.channel=null; cb(); } } return; }
     // movement
     let mx=0,my=0; const mag=Math.min(1,Math.hypot(this.inputMove.x,this.inputMove.y)); if(mag>.12){ const v=ISO.vec(this.inputMove.x,this.inputMove.y); mx=v.x*mag; my=v.y*mag; }
     let speed=COMBAT.playerSpeed*st.move*(this.overheated?COMBAT.heat.overheatSpeedMult:1)*(this.ventLock>0?HEAT.vent.moveMul:1)*(this.cast?.6:1)*(this.slowT>0?BAL.p.hexSlowMul:1)*abxPlayerSpeed(this);
@@ -318,7 +322,7 @@ export class Game {
     if(w.stationary&&this.moving) return; if(this.atkCd>0) return; if(this.aim) return;
     const st=this.stat(); const rate=w.rate*st.atkSpeed*(this.overheated?.5:1); this.atkCd=1/rate; if(this.grace) this.grace.acted=true;
     this.face=Math.atan2(t.y-this.py,t.x-this.px);
-    let dmg=w.dmg*AB.autoDmgMul*this.build.weaponMul*st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1); if(w.kind==='ripper') dmg*=1+(st.atkSpeed-1)*.6;
+    let dmg=w.dmg*AB.autoDmgMul*this.build.weaponMul*st.dmg*(this.overheated?COMBAT.heat.overheatDmgMult:1)*(1+statBonus(this.traitFx,'autoDmg')+statBonus(this.traitFx,w.proj||w.kind==='arc'?'rangedDmg':'meleeDmg')); recordAuto(this.save,w.kind); if(w.kind==='ripper') dmg*=1+(st.atkSpeed-1)*.6;
     let tag='auto'; if(this.cloakT>0){ dmg*=AB.cloakAuto; this.cloakT=0; tag='cloak'; this.popup(this.px,this.py,'AMBUSH x'+AB.cloakAuto,'#e8c46a'); this.vfx('cloak.ambush',this.px,this.py,{a:this.face}); }
     this.heat+=w.heat*AB.autoHeatMul*(this.overheated?HEAT.overheat.autoHeatMul:1); this.curTag=tag; this.emit('sfx','atk_'+w.kind);
     if(w.kind==='arc') this.fireArc(t,w,dmg);
@@ -363,15 +367,15 @@ export class Game {
     // synergies read state BEFORE the cast pays its heat
     const chargedB=Math.min(AB.chargedMax,this.heat*AB.chargedPerHeat); const danger=def.id==='reposition'&&this.dangerNear();
     // resource commitment point: effect start
-    this.heat+=heatCost(def.heat,this.build.abMods.heat); this.heatSoak=HEAT.soakT; this.abCd[c.idx]=cdAfter(def.cd,this.build.abMods.cdr); this.emit('sfx','ab_'+def.id); this.casts[def.id]=(this.casts[def.id]||0)+1; this.sinceAb=0; const ang=Math.atan2(c.aim.wy-this.py,c.aim.wx-this.px);
+    this.heat+=heatCost(def.heat,this.build.abMods.heat+famBonus(this.traitFx,'famHeat',def.id)); this.heatSoak=HEAT.soakT; this.abCd[c.idx]=cdAfter(def.cd,this.build.abMods.cdr+famBonus(this.traitFx,'famCdr',def.id)); recordAbility(this.save,def.id); this.emit('sfx','ab_'+def.id); this.casts[def.id]=(this.casts[def.id]||0)+1; this.sinceAb=0; const ang=Math.atan2(c.aim.wy-this.py,c.aim.wx-this.px);
     // combo chain: a different ability within comboT of the last stacks +15% each (max 3)
     if(this.comboT>0&&this.lastAb!==def.id) this.comboN=Math.min(AB.comboMax,this.comboN+1); else if(this.comboT<=0) this.comboN=0; this.lastAb=def.id; this.comboT=AB.comboT;
     const comboB=this.comboN*AB.comboStep; if(this.comboN>=1){ this.popup(this.px,this.py-.6,'COMBO x'+(this.comboN+1)+' +'+Math.round(comboB*100)+'%','#9fd8c8'); this.emit('sfx','combo'); }
     if(chargedB>=.15) this.popup(this.px,this.py-1.1,'CHARGED +'+Math.round(chargedB*100)+'%','#e08a4a');
     const ovB=this.ovT>0?AB.ovMul-1:0; const dmgingId=def.id==='sweep'||def.id==='bladeburst'||def.id==='pulse'||def.id==='reposition';
     let ambushB=0; if(this.cloakT>0&&dmgingId){ ambushB=AB.cloakMul-1; this.cloakT=0; this.popup(this.px,this.py-1.6,'AMBUSH x'+AB.cloakMul,'#e8c46a'); }
-    const dmgM=st.dmg*throttle(this.build.abMods.heat,st.cooling)*(this.overheated?COMBAT.heat.overheatDmgMult:1)*(1+chargedB+comboB+ovB+ambushB);
-    if(ABILITY_BY_ID[def.id]){ abxCast(this,def,c.idx,c.aim,v); return; } // data-driven augment abilities (src/abilities)
+    const dmgM=st.dmg*throttle(this.build.abMods.heat,st.cooling)*(this.overheated?COMBAT.heat.overheatDmgMult:1)*(1+chargedB+comboB+ovB+ambushB)*(1+famBonus(this.traitFx,'famDmg',def.id));
+    if(ABILITY_BY_ID[def.id]){ const keep=this.build.abMods; this.build.abMods={ ...keep, dmg:keep.dmg+famBonus(this.traitFx,'famDmg',def.id), dur:keep.dur+famBonus(this.traitFx,'famDur',def.id) }; try{ abxCast(this,def,c.idx,c.aim,v); } finally{ this.build.abMods=keep; } return; } // data-driven augment abilities (src/abilities)
     this.curTag=def.id;
     try{ switch(def.id){
       case 'sweep': { const arc=Math.PI*.75*(1+m.arc); this.face=ang; this.castLook('sweep',this.px,this.py,{a:ang,r:def.range,w:arc,c:'#c4543c'}); this.vfx('sweep.cast',this.px,this.py,{a:ang,r:def.range,len:arc}); let n=0; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const d=dist(this.px,this.py,e.x,e.y)-ENEMIES[e.type].radius; if(d<=def.range&&Math.abs(angDiff(Math.atan2(e.y-this.py,e.x-this.px),ang))<=arc/2){ n++; this.hurtEnemy(e,AB.sweepDmg*dmgM,this.px,this.py,2.2); if(!e.dead&&!ENEMIES[e.type].boss) e.stunT=Math.max(e.stunT,AB.sweepStun); } } if(n>=3) this.popup(this.px+Math.cos(ang)*2,this.py+Math.sin(ang)*2,'CLEAR x'+n,'#e8a07a'); break; }
