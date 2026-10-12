@@ -38,7 +38,10 @@
     "test:dressing-room": "node tests/dressing_room.mjs",
     "test:worldperf": "node tests/world_perf.mjs",
     "test:rarity-fx": "node tests/rarity_fx.mjs",
-    "test:alt": "node tests/alt_gameplay.mjs"
+    "test:alt": "node tests/alt_gameplay.mjs",
+    "test:perf": "node tests/perf_gate.mjs",
+    "test:perf:full": "node tests/perf_gate.mjs --full",
+    "test:memory": "node tests/memory.mjs"
   },
   "devDependencies": {
     "@types/ws": "^8.18.2",

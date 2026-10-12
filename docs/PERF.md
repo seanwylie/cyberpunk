@@ -40,5 +40,6 @@ Dev (`vite` unbundled modules) vs production build differ by < 10% in process me
 * The service worker caches heavy files in Cache Storage (disk, not RAM).
 
 ## Tests
-* `node tests/memory.mjs` — per-tier scenario (boot, town, [dungeon, town] x N) with budgets (process memory, decoded images+canvases+audio, music) and growth checks (process, JS heap, decoded, canvas count, listeners). Env: `MEM_TIERS`, `MEM_ROUNDS`, `MEM_TOWN_S`, `MEM_RUN_S`, `MEM_REPORT=1` (print only).
+* `node tests/memory.mjs` (`npm run test:memory`) — median of `MEM_RUNS` (default 3) runs per tier; per-tier scenario (boot, town, [dungeon, town] x N) with budgets (process memory, decoded images+canvases+audio, music) and growth checks (process, JS heap, decoded, canvas count, listeners). Env: `MEM_TIERS`, `MEM_ROUNDS`, `MEM_TOWN_S`, `MEM_RUN_S`, `MEM_REPORT=1` (print only).
 * `node tests/memory_boot.mjs` — peak process memory while loading at DPR 1 / 1.25 / 1.5 (`BOOT_TIERS`, `BOOT_DPRS`, `URL=` for a preview build), plus "at most 2 music tracks decoded at boot".
+* Budgets and the perf gate: see `docs/PERF_BUDGETS.md` (`npm run test:perf`).
