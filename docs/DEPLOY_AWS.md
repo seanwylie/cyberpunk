@@ -50,7 +50,21 @@ npx cdk deploy WvServer WvStory WvBilling WvCi -c arch=x86 -c existingRepo=true 
   -c domainName=seanwylie.ca -c hostedZoneId=Z04435742M9VY95ZIB9BY -c clientSubdomain=play -c serverSubdomain=game \
   -c monthlyBudgetUsd=40 -c createOidcRole=true
 ```
-If the image is not pushed yet, add `-c minTasks=0 -c maxTasks=0` so the service deploys with zero tasks (no circuit-breaker failure); after pushing, redeploy without those flags (or run `aws ecs update-service --desired-count 1`). Use the same `-c` flags on every later deploy, especially `existingRepo=true` and `arch=x86`, or CloudFormation would try to create the repo.
+If the image is not pushed yet, add `-c minTasks=0 -c maxTasks=0` so the service deploys with zero tasks (no circuit-breaker failure); after pushing, redeploy without those flags (or run `aws ecs update-service --desired-count 1`). Use the same `-c` flags on every later deploy, especially `existingRepo=true` and `arch=x86`, or CloudFormation would try to create the repo. (For the live account these are now in `infra/cdk.context.json`, see 3b.)
+
+### 3b. Live deployment values are committed (`infra/cdk.context.json`), deploy one stack at a time
+`infra/cdk.context.json` holds the real values of the live account (domain `seanwylie.ca`, hosted zone, `play`/`game` subdomains, `arch=x86`, `existingRepo=true`, budget 40, OIDC role). CDK reads it automatically when you run from `infra/`, so **no `-c` flags are needed** and a forgotten flag can no longer revert the stacks to defaults. `-c key=value` still overrides it. `bin/app.ts` refuses to synth for account 382598155084 without a `domainName` (bypass: `-c allowNoDomain=true`).
+
+Deploy a single stack with `--exclusively` (never pulls in other stacks): `cd infra && npm run deploy-story` (= `npx cdk deploy WvStory --exclusively`), or `./update.sh story` from the repo root. Preview with `npm run diff-story`.
+
+Why this matters: without a domain, `WvClient.url` is a CloudFront domain token, so WvStory/WvServer take a cross-stack reference on WvClient and `cdk deploy WvStory` also updates WvClient with default props (no alias, no certificate). With the domain set, the URL is a plain string and WvStory is independent (covered by `infra/test/stacks.test.ts`).
+
+Reading why a deploy failed (needs AWS credentials):
+```
+aws cloudformation describe-stack-events --stack-name WvClient --query "StackEvents[?contains(ResourceStatus,'FAILED')].[Timestamp,LogicalResourceId,ResourceType,ResourceStatus,ResourceStatusReason]" --output table
+aws cloudformation describe-stacks --stack-name WvClient --query "Stacks[0].[StackStatus,StackStatusReason]"
+aws cloudfront get-distribution-config --id E1K8QJZGMQ8H9M --query "DistributionConfig.Aliases"
+```
 
 ## 4. Put the OpenAI key in Secrets Manager (you, from your terminal)
 ```

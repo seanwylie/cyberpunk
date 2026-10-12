@@ -60,3 +60,14 @@ test('server: first deploy with zero tasks (minTasks=0 maxTasks=0) and desiredCo
   t.hasResourceProperties('AWS::ECS::Service', { DesiredCount: 0 }); t.hasResourceProperties('AWS::ApplicationAutoScaling::ScalableTarget', { MinCapacity: 0, MaxCapacity: 0 });
   const o = base({ ...domain, desiredCount: 1, minTasks: 0, maxTasks: 2 }); Template.fromStack(buildApp(o.app, o.cfg).server).hasResourceProperties('AWS::ECS::Service', { DesiredCount: 1 });
 });
+test('root cause: without a domain the client URL is a CloudFront token, so WvStory (and WvServer) depend on WvClient; with a domain they do not', () => {
+  const a = base({}); const sa = buildApp(a.app, a.cfg); Template.fromStack(sa.story); assert.ok(sa.story.dependencies.some(d => d.stackName === 'WvClient'), 'no domain: WvStory pulls in WvClient');
+  const b = base(domain); const sb = buildApp(b.app, b.cfg); Template.fromStack(sb.story); assert.ok(!sb.story.dependencies.some(d => d.stackName === 'WvClient'), 'with a domain: WvStory is independent of WvClient'); assert.ok(!sb.server.dependencies.some(d => d.stackName === 'WvClient'));
+});
+test('committed infra/cdk.context.json carries the live deployment values (no context flags needed)', async () => {
+  const fs = await import('node:fs'); const ctx = JSON.parse(fs.readFileSync('cdk.context.json', 'utf8')) /* npm test runs in infra/ */;
+  const app = new App({ context: ctx }); const cfg = readConfig(app); assert.equal(cfg.domainName, 'seanwylie.ca'); assert.equal(cfg.hostedZoneId, 'Z04435742M9VY95ZIB9BY'); assert.equal(cfg.clientSubdomain, 'play'); assert.equal(cfg.serverSubdomain, 'game'); assert.equal(cfg.arch, 'x86'); assert.equal(cfg.existingRepo, true); assert.equal(cfg.createOidcRole, true); assert.equal(cfg.monthlyBudgetUsd, 40);
+  const s = buildApp(app, { ...cfg, account: '111111111111' }); Template.fromStack(s.story); assert.ok(!s.story.dependencies.some(d => d.stackName === 'WvClient'), 'WvStory no longer depends on WvClient');
+  Template.fromStack(s.client).hasResourceProperties('AWS::CloudFront::Distribution', { DistributionConfig: Match.objectLike({ Aliases: ['play.seanwylie.ca'] }) });
+  Template.fromStack(s.server).resourceCountIs('AWS::ECR::Repository', 0); Template.fromStack(s.story).hasResourceProperties('AWS::Lambda::Function', { Architectures: ['x86_64'] });
+});

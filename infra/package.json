@@ -8,8 +8,18 @@
     "synth": "cdk synth",
     "test": "node --test --import tsx test/*.test.ts",
     "diff": "cdk diff",
-    "deploy": "cdk deploy --all"
+    "deploy": "cdk deploy --all",
+    "deploy-story": "cdk deploy WvStory --exclusively",
+    "diff-story": "cdk diff WvStory --exclusively"
   },
-  "devDependencies": { "@types/node": "^20.14.0", "aws-cdk": "^2.170.0", "tsx": "^4.19.0", "typescript": "^5.6.0" },
-  "dependencies": { "aws-cdk-lib": "^2.170.0", "constructs": "^10.4.2" }
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "aws-cdk": "^2.170.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.170.0",
+    "constructs": "^10.4.2"
+  }
 }

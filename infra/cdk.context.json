@@ -1,0 +1,10 @@
+{
+  "domainName": "seanwylie.ca",
+  "hostedZoneId": "Z04435742M9VY95ZIB9BY",
+  "clientSubdomain": "play",
+  "serverSubdomain": "game",
+  "monthlyBudgetUsd": 40,
+  "createOidcRole": true,
+  "arch": "x86",
+  "existingRepo": true
+}

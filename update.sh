@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Update the live AWS deployment (server image -> ECS, client -> S3 + CloudFront).
-# Usage: ./update.sh [all|server|client] [--no-pull] [--yes] [--dry-run]
+# Usage: ./update.sh [all|server|client|story] [--no-pull] [--yes] [--dry-run]
 # Run from WSL/Linux/macOS (not from Windows PowerShell). Every setting below can be overridden via the environment.
 set -euo pipefail
 
@@ -26,12 +26,12 @@ export AWS_REGION AWS_DEFAULT_REGION="$AWS_REGION"
 TARGET=all; PULL=1; YES=0; DRY=0
 for a in "$@"; do
   case "$a" in
-    all|server|client) TARGET="$a" ;;
+    all|server|client|story) TARGET="$a" ;;
     --no-pull) PULL=0 ;;
     --yes|-y) YES=1 ;;
     --dry-run) DRY=1 ;;
     -h|--help) sed -n 2,4p "$0"; exit 0 ;;
-    *) echo "Unknown argument: $a (usage: ./update.sh [all|server|client] [--no-pull] [--yes] [--dry-run])" >&2; exit 2 ;;
+    *) echo "Unknown argument: $a (usage: ./update.sh [all|server|client|story] [--no-pull] [--yes] [--dry-run])" >&2; exit 2 ;;
   esac
 done
 
@@ -45,7 +45,7 @@ cd "$(dirname "$0")"
 
 # --- 1. preflight ---
 say "Checking tools"
-need=(git npm node); [ "$TARGET" != client ] && need+=(docker); need+=(aws); [ "$TARGET" != server ] && need+=(curl)
+need=(git npm node); { [ "$TARGET" = all ] || [ "$TARGET" = server ]; } && need+=(docker); need+=(aws); [ "$TARGET" != story ] && need+=(curl)
 for t in "${need[@]}"; do
   if ! command -v "$t" >/dev/null 2>&1; then
     if [ "$DRY" = 1 ]; then echo "warning: '$t' not found (would fail in a real run)"; else die "'$t' is required but not installed"; fi
@@ -68,9 +68,9 @@ SHA="$(git rev-parse --short HEAD)"
 echo "Deploying git $SHA (target: $TARGET, image arch: linux/$ARCH)"
 
 if [ "$YES" != 1 ] && [ "$DRY" != 1 ]; then
-  [ "$TARGET" != client ] && echo "WARNING: the server redeploy restarts the hub; active parties and dungeon runs will be dropped."
+  { [ "$TARGET" = all ] || [ "$TARGET" = server ]; } && echo "WARNING: the server redeploy restarts the hub; active parties and dungeon runs will be dropped."
   read -r -p "Continue? [y/N] " ans; case "$ans" in y|Y|yes) ;; *) echo "Aborted."; exit 1 ;; esac
-elif [ "$TARGET" != client ]; then echo "WARNING: the server redeploy restarts the hub; active parties will drop."; fi
+elif [ "$TARGET" = all ] || [ "$TARGET" = server ]; then echo "WARNING: the server redeploy restarts the hub; active parties will drop."; fi
 
 # --- 2. server ---
 deploy_server() {
@@ -111,7 +111,17 @@ deploy_client() {
   BUILD_ID_LOCAL="$(node -e "console.log(require('./dist/version.json').id)" 2>/dev/null || echo '?')"
 }
 
+# --- story: CDK deploy of ONLY the WvStory stack (--exclusively: never touches WvClient/WvServer). Context (domain, subdomains, arch, existingRepo...) comes from infra/cdk.context.json.
+deploy_story() {
+  say "Story: cdk deploy WvStory --exclusively (infra/cdk.context.json supplies the live context)"
+  if [ -d infra/node_modules/@esbuild ] && ! ls infra/node_modules/@esbuild 2>/dev/null | grep -q "^linux-"; then echo "infra/node_modules was installed on another OS; reinstalling."; run rm -rf infra/node_modules; fi
+  if [ ! -d infra/node_modules ]; then (cd infra && run npm ci); fi
+  local approve=(); [ "$YES" = 1 ] && approve=(--require-approval never)
+  (cd infra && run npx cdk deploy WvStory --exclusively "${approve[@]}")
+}
+
 case "$TARGET" in
+  story) deploy_story ;;
   server) deploy_server ;;
   client) deploy_client ;;
   all) deploy_server; deploy_client ;;
@@ -124,16 +134,17 @@ check() { # url label
   if curl -fsS --max-time 15 -o /dev/null "$1"; then echo "OK    $2 ($1)"; else echo "FAIL  $2 ($1)"; FAILED=1; fi
 }
 FAILED=0
-[ "$TARGET" != client ] && check "https://${SERVER_HOST}/healthz" "server"
-[ "$TARGET" != server ] && check "https://${CLIENT_HOST}/" "client"
-if [ "$TARGET" != server ] && [ "$DRY" != 1 ]; then
+{ [ "$TARGET" = all ] || [ "$TARGET" = server ]; } && check "https://${SERVER_HOST}/healthz" "server"
+{ [ "$TARGET" = all ] || [ "$TARGET" = client ]; } && check "https://${CLIENT_HOST}/" "client"
+if { [ "$TARGET" = all ] || [ "$TARGET" = client ]; } && [ "$DRY" != 1 ]; then
   LIVE_ID="$(curl -fsS --max-time 15 -H 'Cache-Control: no-cache' "https://${CLIENT_HOST}/version.json?t=$(date +%s)" 2>/dev/null | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{console.log(JSON.parse(s).id)}catch{console.log('?')}})" || echo '?')"
   if [ "$LIVE_ID" = "${BUILD_ID_LOCAL:-?}" ]; then echo "OK    deployed build id $LIVE_ID is live"; else echo "WARN  live build id is '$LIVE_ID' but just built '${BUILD_ID_LOCAL:-?}' (CDN may still be propagating)"; FAILED=1; fi
 fi
 
 say "Summary"
 echo "git:     $SHA"
-[ "$TARGET" != client ] && echo "server:  ${ECR_URI}:${SHA} (linux/$ARCH) -> ${SERVICE}"
-[ "$TARGET" != server ] && echo "client:  https://${CLIENT_HOST}/ build ${BUILD_ID_LOCAL:-?} (CloudFront invalidation /* started; may take a minute)"
+{ [ "$TARGET" = all ] || [ "$TARGET" = server ]; } && echo "server:  ${ECR_URI}:${SHA} (linux/$ARCH) -> ${SERVICE}"
+[ "$TARGET" = story ] && echo "story:   WvStory deployed (outputs above; StoryUrl must still equal WV_STORY_URL)"
+{ [ "$TARGET" = all ] || [ "$TARGET" = client ]; } && echo "client:  https://${CLIENT_HOST}/ build ${BUILD_ID_LOCAL:-?} (CloudFront invalidation /* started; may take a minute)"
 [ "$DRY" = 1 ] && echo "(dry run: nothing was changed)"
 [ "$FAILED" = 0 ] || { echo "Some health checks failed: the new ECS task may still be starting, or the invalidation is pending. Re-check shortly."; exit 1; }

@@ -3,4 +3,3 @@ cdk.out
 .staged
 *.js
 !lambda/*.mjs
-cdk.context.json
