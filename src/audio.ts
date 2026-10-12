@@ -55,7 +55,30 @@ export class AudioSys {
   abSfx:AbilitySfx|null=null;
   abilitySfx(id:string,layer:Layer,red=false){ if(!this.ctx) return false; if(!this.abSfx) this.abSfx=new AbilitySfx(this,this.musicBase.replace(/music\/$/,'sfx/')); return this.abSfx.play(id,layer,red); }
   warmAbilitySfx(ids:string[]){ if(!this.ctx) return; if(!this.abSfx) this.abSfx=new AbilitySfx(this,this.musicBase.replace(/music\/$/,'sfx/')); this.abSfx.warm(ids); }
+  /** Boss signature stingers (docs/BOSSES.md): 'bk:<mechanic>:<tell|fire>' plus bk:phase / bk:break. Pure synth, one recognisable voice per mechanic. */
+  bossSfx(name:string,t:number,B:GainNode){ const [,m,w]=name.split(':'); const tell=w==='tell';
+    switch(m){
+      case 'beam': if(tell) this.osc('sine',280,t,.55,.1,B,undefined,900); else { this.osc('sawtooth',140,t,.45,.1,B,900,110); this.noiseAt(t,.3,.05,6000,B,'highpass'); } break;
+      case 'grid': if(tell){ for(let i=0;i<3;i++) this.osc('square',1800,t+i*.16,.04,.04,B); } else { this.noiseAt(t,.16,.12,5000,B,'highpass'); this.osc('square',2400,t,.18,.06,B,undefined,300); } break;
+      case 'scythe': if(tell) this.noiseAt(t,.5,.06,1800,B,'bandpass',3); else { this.noiseAt(t,.3,.14,2600,B,'bandpass',1.5); this.osc('sine',110,t+.05,.2,.18,B,undefined,50); } break;
+      case 'vortex': if(tell) this.osc('sine',90,t,.9,.12,B,undefined,220); else { this.osc('sine',220,t,.7,.14,B,undefined,55); this.noiseAt(t,.6,.08,500,B,'lowpass'); } break;
+      case 'belt': if(tell){ for(let i=0;i<4;i++) this.osc('square',110,t+i*.14,.07,.08,B,600); } else this.noiseAt(t,.4,.08,1200,B,'bandpass',4); break;
+      case 'roll': if(tell) this.osc('sawtooth',70,t,.6,.09,B,500,115); else { this.osc('triangle',130,t,.3,.14,B,undefined,60); this.noiseAt(t,.25,.08,800,B); } break;
+      case 'pylon': if(tell){ this.osc('sine',1200,t,.08,.06,B); this.osc('sine',1200,t+.18,.08,.06,B); } else this.osc('square',1500,t,.22,.07,B,3000,180); break;
+      case 'safe': if(tell){ [440,554,659].forEach((f,i)=>this.osc('sine',f,t+i*.16,.4,.07,B)); } else { this.osc('sine',70,t,.7,.3,B,undefined,28); this.noiseAt(t,.5,.18,700,B,'lowpass'); } break;
+      case 'gaze': if(tell){ this.osc('sine',2000,t,.5,.05,B,undefined,2400); } else this.osc('sine',2600,t,.3,.07,B,undefined,400); break;
+      case 'tile': if(tell){ [523,587,659,784].forEach((f,i)=>this.osc('sine',f,t+i*.12,.16,.06,B)); } else { this.osc('triangle',330,t,.18,.12,B,undefined,160); this.noiseAt(t,.08,.07,3000,B); } break;
+      case 'bomb': if(tell){ [0,.2,.36,.48].forEach(d=>this.osc('square',880,t+d,.05,.05,B)); } else { this.osc('sine',100,t,.5,.3,B,undefined,38); this.noiseAt(t,.35,.16,900,B,'lowpass'); } break;
+      case 'strike': if(tell) this.noiseAt(t,.3,.06,6500,B,'highpass'); else { this.noiseAt(t,.2,.14,2400,B,'bandpass',2); this.osc('sawtooth',600,t,.2,.08,B,2000,120); } break;
+      case 'heat': if(tell) this.noiseAt(t,.8,.07,900,B,'bandpass',4); else { this.noiseAt(t,.6,.1,4500,B,'highpass'); this.osc('sine',200,t,.5,.08,B,undefined,120); } break;
+      case 'buff': this.osc('triangle',392,t,.5,.07,B); this.osc('triangle',494,t+.06,.5,.06,B); break;
+      case 'toll': if(tell){ this.osc('sine',220,t,.6,.12,B); this.osc('sine',330,t,.6,.06,B); } else { this.osc('sine',160,t,.7,.3,B,undefined,60); this.osc('sine',440,t,.9,.1,B); } break;
+      case 'shield': this.osc('triangle',700,t,.35,.08,B,undefined,1400); break;
+      case 'phase': this.osc('sawtooth',80,t,.5,.18,B,700,200); this.osc('square',300,t+.1,.1,.07,B); this.osc('square',300,t+.28,.1,.07,B); break;
+      case 'break': this.noiseAt(t,.25,.14,5500,B,'highpass'); this.osc('triangle',1500,t,.3,.1,B,undefined,500); break;
+    } }
   sfx(name:string){ if(name.startsWith('ab:')){ const [,id,layer,r]=name.split(':'); this.abilitySfx(id,layer as Layer,r==='r'); return; } if(name.startsWith('abwarm:')){ this.warmAbilitySfx(name.slice(7).split(',')); return; } const c=this.ctx; if(!c||c.state!=='running') return; const now=c.currentTime; const gap:Record<string,number>={ hit:.05,enemy_swing:.08,pickup:.05,coin:.05,atk_ripper:.09,atk_blade:.06,atk_fist:.08,atk_slug:.1,atk_popper:.05,atk_autopistol:.04,atk_burst:.03,atk_shard:.08,atk_arc:.08,death_MM:.05,death_HI:.06,death_PS:.06,telegraph_basic:.15,hurt:.1,enemy_shot:.08,alert:.2,combo:.1,ab_ready:.15,abx_big:.25 }; const g=gap[name]??(name.startsWith('ab')?.06:.02); if(this.last[name]&&now-this.last[name]<g) return; this.last[name]=now; if(this.playing>14) return; const B=this.sfxBus; const t=now; this.playing++; setTimeout(()=>this.playing--,300);
+    if(name.startsWith('bk:')){ this.bossSfx(name,t,B); return; }
     switch(name){
       case 'hit': this.noiseAt(t,.06,.2,2400,B); this.osc('sine',140,t,.1,.25,B,undefined,60); break;
       case 'atk_ripper': this.noiseAt(t,.14,.16,1400,B,'bandpass',4); this.osc('sawtooth',95,t,.14,.1,B,500,70); break;

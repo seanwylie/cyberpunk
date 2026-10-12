@@ -4,6 +4,7 @@ import { Game, En, type Fx } from './sim';
 import { AB, ENEMIES, MFR, RARITY_COLOR, COMBAT, ITEM_BY_ID, CHIPS, Slot, ABILITIES, ABILITY_TYPE_COLOR, RARITY_RANK, uiFs, cpx } from './config';
 import { installedLayout } from './build';
 import { Q } from './quality';
+import { drawBossZone } from './boss_draw';
 import { PlayerAnimator, loadAtlas } from './sprites';
 import { bodyOf } from './bodyvariants';
 import { equippedCos, CosDef } from './content/appearance';
@@ -286,7 +287,7 @@ export class Renderer {
     const ox=this.sx(gd.obj.x,gd.obj.y), oy=this.sy(gd.obj.x,gd.obj.y,.5); const m=26; if(ox<m||ox>this.w-m||oy<m||oy>this.h-m){ const ex=Math.max(m,Math.min(this.w-m,ox)), ey=Math.max(m+40,Math.min(this.h-m,oy)); c.save(); c.fillStyle='#e05a3a'; c.globalAlpha=.55+.3*Math.sin(g.time*6); c.beginPath(); c.arc(ex,ey,7*s,0,7); c.fill(); c.restore(); } else { this.ring(gd.obj.x,gd.obj.y,1.2+.2*Math.sin(g.time*4),'#e05a3a',.75); c.save(); c.fillStyle='#e05a3a'; c.globalAlpha=.8; c.beginPath(); c.moveTo(ox,oy-34*s+Math.sin(g.time*5)*3*s); c.lineTo(ox-7*s,oy-46*s+Math.sin(g.time*5)*3*s); c.lineTo(ox+7*s,oy-46*s+Math.sin(g.time*5)*3*s); c.closePath(); c.fill(); c.restore(); } }
   drawGroundFx(){
     const g=this.g, c=this.ctx; vfxGround(this);
-    for(const z of g.zones){ if(!z.env&&(!isFinite(z.life)||z.t>=z.life)) continue; const warn=z.t<z.windup; if(!warn&&this.env&&this.dart.zone(this,z)) continue; this.drawZone(z); }
+    for(const z of g.zones){ if(!z.env&&(!isFinite(z.life)||z.t>=z.life)) continue; const warn=z.t<z.windup; if(!warn&&!(z as any).style&&this.env&&this.dart.zone(this,z)) continue; this.drawZone(z); }
     for(const e of g.enemies){ if(e.dead||e._rt.st!=='tele') continue; const rt=e._rt, A=ATKD[rt.atk]; if(!A) continue; const p=Math.min(1,rt.t/ (A.w||1)); const def=ENEMIES[e.type]; const fill=p>.7?'#d2503a':'#b5483a', edge=p>.7&&Math.sin(g.time*34)>0?'#ffffff':'#d8d2bf'; const A0=.26+.14*p; { const sc=this.TW/64; const ex=this.sx(e.x,e.y), ey=this.sy(e.x,e.y,0)-(def.boss?110:def.elite?66:48)*sc; c.save(); c.fillStyle=def.boss||def.elite?'#e0a040':'#e05a3a'; c.font='bold '+cpx((14+6*p)*sc)+'px '+FONT; c.textAlign='center'; c.globalAlpha=.95; c.fillText('!',ex,ey); c.restore(); }
       if(A.shape==='cone') { this.poly(this.sector(e.x,e.y,rt.ang,A.r,A.arc),fill,edge,A0,2); this.poly(this.sector(e.x,e.y,rt.ang,A.r*p,A.arc),fill,undefined,.38); }
       else if(A.shape==='circle'){ this.poly(this.circle(e.x,e.y,A.r),fill,edge,A0,2); this.poly(this.circle(e.x,e.y,A.r*p),fill,undefined,.38); }
@@ -407,7 +408,7 @@ export class Renderer {
   hazardCue(z:{x:number;y:number;r:number}){ const g=this.g; const d=Math.hypot(g.px-z.x,g.py-z.y); const near=z.r+3.2; if(d>near) return; const k=Math.min(1,(near-d)/2.2), c=this.ctx, T=g.time; const a=this.sx(z.x,z.y), b=this.sy(z.x,z.y);
     this.poly(this.circle(z.x,z.y,z.r),'#c8741e','#ffc060',(.1+.1*(.5+.5*Math.sin(T*6)))*k,2); c.save(); c.setLineDash([7,5]); this.poly(this.circle(z.x,z.y,z.r),undefined,'#ffd27a',.75*k,2); c.restore();
     c.save(); c.globalAlpha=.9*k; c.fillStyle='#ffd27a'; c.strokeStyle='#1a120a'; c.lineWidth=3; const s=Math.max(9,this.TW*.16); c.beginPath(); c.moveTo(a,b-s*1.1); c.lineTo(a+s,b+s*.7); c.lineTo(a-s,b+s*.7); c.closePath(); c.stroke(); c.fill(); c.fillStyle='#1a120a'; c.font='bold '+Math.round(s*1.1)+'px sans-serif'; c.textAlign='center'; c.textBaseline='middle'; c.fillText('!',a,b+s*.12); c.restore(); }
-  private drawZone(z:{x:number;y:number;r:number;t:number;life:number;dps:number;windup:number;env?:boolean}){ const warn=z.t<z.windup; const hostile=z.dps>0; const T=this.g.time; const red=!!this.g.save.settings.reducedFx; const left=z.env?1:Math.max(0,Math.min(1,(z.life-z.t)/.7)); const pulse=red?.5:.5+.5*Math.sin(T*6+z.x*3);
+  private drawZone(z:{x:number;y:number;r:number;t:number;life:number;dps:number;windup:number;env?:boolean}){ if((z as any).shape||(z as any).style){ drawBossZone(this,z,FONT); return; } const warn=z.t<z.windup; const hostile=z.dps>0; const T=this.g.time; const red=!!this.g.save.settings.reducedFx; const left=z.env?1:Math.max(0,Math.min(1,(z.life-z.t)/.7)); const pulse=red?.5:.5+.5*Math.sin(T*6+z.x*3);
     if(warn){ const p=z.t/z.windup; this.poly(this.circle(z.x,z.y,z.r),'#b5483a','#ffd9a0',.18+.25*p,2); this.poly(this.circle(z.x,z.y,z.r*p),'#d8502a',undefined,.35); return; }
     if(!hostile){ this.poly(this.circle(z.x,z.y,z.r),'#4f5f78','#9aa8b8',.22*left,2); return; }
     if(z.env){ this.hazardFloor(z); this.hazardCue(z); return; }

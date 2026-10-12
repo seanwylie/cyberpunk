@@ -13,6 +13,7 @@ import { LAYOUT_V, mkInst } from '../state';
 import type { InstanceState } from '../state';
 import { abxTick, abxPlayerSpeed } from '../abilities/engine';
 import { clearBossAdds } from '../content/mechanics';
+import { tickZone, endZones } from '../content/zoneshape';
 import { sanitizeProfile } from './profile';
 import type { Profile } from './profile';
 import { TICK_DT, partyHpMul, partyDmgMul, rng32, hash32, r2, clamp } from '../net/shared';
@@ -145,8 +146,8 @@ export class PartyWorld {
   flows() { const ai = this.ai; if (ai.flowT > 0) return; ai.flowT = .35; const need = [false, false, false]; for (const e of this.enemies) if (!e.dead && e.faction === 'enemy' && e.alert && !ENEMIES[e.type].static) need[ai.flowCls(ENEMIES[e.type].radius)] = true; need[0] = true;
     for (const h of this.alive()) { ai.px = h.g.px; ai.py = h.g.py; ai.flows = this.flowsOf(h.id); for (let c = 0; c < 3; c++) if (need[c]) ai.flowField(c); } }
   hurtPlayer(h: PHost, dmg: number, sx: number, sy: number) { const g = h.g; const hp0 = g.hp; this.run(h, () => { g.dmgSrc = this.ai.dmgSrc; g.hurtPlayer(dmg * this.dmgMul, sx, sy); }); if (g.hp < hp0) this.evq.push({ e: 'phit', id: h.id, d: Math.round(hp0 - g.hp) }); }
-  private updateZones(dt: number) { const ai = this.ai; for (const z of ai.zones) { z.t += dt; ai.dmgSrc = (z as any).src || (z.env ? 'env' : 'zone'); if (z.t >= z.windup && !ai.revealing) for (const h of this.alive()) { const g = h.g; if (Math.hypot(z.x - g.px, z.y - g.py) < z.r) { g.heat = Math.min(COMBAT.heat.max, g.heat + z.heat * dt); g.zoneTick = (g.zoneTick || 0) + dt; if (g.zoneTick > .5) { g.zoneTick = 0; this.hurtPlayer(h, z.dps, z.x, z.y); } } } }
-    ai.zones = ai.zones.filter(z => z.t < z.life); const MAXZ = 40; let drop = ai.zones.filter(z => !z.env).length - MAXZ; if (drop > 0) ai.zones = ai.zones.filter(z => z.env || drop-- <= 0); }
+  private updateZones(dt: number) { const ai = this.ai; const hs = ai.revealing ? [] : this.alive(); const tg = hs.map(h => ({ px: h.g.px, py: h.g.py, g: h.g as any, hurt: (d: number, sx: number, sy: number) => this.hurtPlayer(h, d, sx, sy) })); for (const z of ai.zones) { ai.dmgSrc = (z as any).src || (z.env ? 'env' : 'zone'); tickZone(ai, z, dt, tg, COMBAT.heat.max, COMBAT.playerRadius); }
+    const old = ai.zones; ai.zones = ai.zones.filter(z => z.t < z.life); if (old.length !== ai.zones.length) endZones(ai, old); const MAXZ = 40; let drop = ai.zones.filter(z => !z.env && !(z as any).kit).length - MAXZ; if (drop > 0) ai.zones = ai.zones.filter(z => z.env || (z as any).kit || drop-- <= 0); }
 
   // ---------------- rewards: individual by construction ----------------
   killEnemy(killer: PHost, e: En) {

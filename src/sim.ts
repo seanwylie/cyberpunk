@@ -19,6 +19,9 @@ import { BOSS_BY_ID } from './content/batch1_bosses';
 import { HARD, applyHard } from './content/hardmode';
 import { rollCosmetic, checkAchievements, COS_SLOT_LABEL } from './content/appearance';
 import { DUNGEONS } from './content/dungeons';
+import { kitTick, KITS, palOf } from './content/boss_kits';
+import { tickZone, endZones } from './content/zoneshape';
+import type { ZX } from './content/zoneshape';
 import { movePattern, resolveMove, bossTick, filterDamage, clearBossAdds } from './content/mechanics';
 import { mobTick, mobDeath, mobAfterHit, resolveMobAttack, mobPattern, MOB_COND } from './content/mobs';
 import { MOB_ATK } from './content/batch2_mobs';
@@ -31,7 +34,7 @@ import { record, newStory, EventKind } from './story';
 export const TOWN_KEY=key('town');
 export type Emit = (type:string, payload?:any)=>void;
 export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:number; life:number; faction:'enemy'|'ally'; kind:'bolt'|'slug'|'pop'|'pistol'|'needle'|'shard'; c?:string; }
-export interface Zone { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }
+export interface Zone extends ZX { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }
 export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'|'ability'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; s?:number; pop?:number; }
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
 export interface Rt { hardDmg?:number; taunt?:number; rcA?:number; rcM?:number; rcT?:number; // enemy transient runtime fields
@@ -546,7 +549,7 @@ export class Game {
   updateEnemies(dt:number){
     this.frame++; this.flowT-=dt; if(this.flowHook) this.flowHook(); else if(this.flowT<=0){ this.flowT=.35; const need=[false,false,false]; for(const e of this.enemies){ if(!e.dead&&e.faction==='enemy'&&e.alert&&!ENEMIES[e.type].static) need[this.flowCls(ENEMIES[e.type].radius)]=true; } need[0]=true; for(let c=0;c<3;c++){ if(need[c]) this.flowField(c); } }
     const alive=this.enemies.filter(e=>!e.dead);
-    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.hack>0) rt.hack-=dt; if(rt.reveal>0) continue; this.bindTarget?.(e); if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); else mobTick(this,e,dt); this.updateEnemy(e,dt); }
+    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.hack>0) rt.hack-=dt; if(rt.reveal>0) continue; this.bindTarget?.(e); if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); else mobTick(this,e,dt); if(KITS[e.type]) kitTick(this,e,dt); this.updateEnemy(e,dt); }
     // separation
     for(let i=0;i<alive.length;i++){ const a=alive[i]; if(ENEMIES[a.type].static) continue; for(let j=i+1;j<alive.length;j++){ const b=alive[j]; const dx=b.x-a.x, dy=b.y-a.y; const d2=dx*dx+dy*dy; const rr=(ENEMIES[a.type].radius+ENEMIES[b.type].radius)*.9; if(d2<rr*rr&&d2>1e-4){ const d=Math.sqrt(d2), push=(rr-d)*.5; const nx=dx/d, ny=dy/d; if(!ENEMIES[b.type].static){ const pb=this.moveCircle(b.x,b.y,nx*push,ny*push,ENEMIES[b.type].radius*.8); b.x=pb.x; b.y=pb.y; } const pa=this.moveCircle(a.x,a.y,-nx*push,-ny*push,ENEMIES[a.type].radius*.8); a.x=pa.x; a.y=pa.y; } } }
     this.enemies=this.enemies.filter(e=>!e.dead||e._rt.bornT>-1); // keep dead for persistence
@@ -604,13 +607,13 @@ export class Game {
   /** Boss/elite ground-pattern attacks added by dungeon content. Reuses the lingering-zone system (telegraphed windup, then damaging). */
   zonePattern(e:En,a:string,tx:number,ty:number):{x:number;y:number}[]|null{
     const def=ENEMIES[e.type]; const dps=(ENEMY_DMG[a]||0)*(def.dmgMul||1); const out:{x:number;y:number}[]=[]; const aim=Math.atan2(ty-e.y,tx-e.x); if(MOB_ATK[a]) return mobPattern(this,e,a,tx,ty);
-    const add=(x:number,y:number,r:number,windup:number,life:number,heat:number)=>{ if(this.solidAt(x,y)) return; out.push({x,y}); this.zones.push({x,y,r,t:0,life,dps,heat,windup}); };
+    const pal=palOf(e.type); const add=(x:number,y:number,r:number,windup:number,life:number,heat:number,style='pool')=>{ if(this.solidAt(x,y)) return; out.push({x,y}); this.zones.push({x,y,r,t:0,life,dps,heat,windup,style,pal}); };
     switch(a){
-      case 'slagpool': for(let i=0;i<4;i++) add(e.x+Math.cos(aim)*(3+i*2),e.y+Math.sin(aim)*(3+i*2),1.6,1.2,7,14); break;
-      case 'gasvent': for(let i=0;i<3;i++){ const aa=Math.random()*6.28, rr=i===0?0:2.6; add(tx+Math.cos(aa)*rr,ty+Math.sin(aa)*rr,2.3,1.3,8,22); } break;
-      case 'ringpools': { const g=Math.floor(Math.random()*10); for(let i=0;i<10;i++){ if(i===g||i===(g+1)%10) continue; const aa=i/10*Math.PI*2; add(e.x+Math.cos(aa)*5.5,e.y+Math.sin(aa)*5.5,1.5,1.6,7,14); } break; }
-      case 'sawlanes': for(let lane=0;lane<2;lane++){ const cx=tx+Math.cos(aim)*lane*3.6, cy=ty+Math.sin(aim)*lane*3.6; for(let i=-3;i<=3;i++){ if(i===(lane?2:0)) continue; add(cx-Math.sin(aim)*i*2.2,cy+Math.cos(aim)*i*2.2,1.2,1.5,5,12); } } break;
-      case 'cratefall': add(tx,ty,1.7,1.3,1.9,8); for(let i=0;i<6;i++){ const aa=Math.random()*6.28, rr=1.5+Math.random()*4; add(tx+Math.cos(aa)*rr,ty+Math.sin(aa)*rr,1.7,1.3,1.9,8); } break;
+      case 'slagpool': for(let i=0;i<4;i++) add(e.x+Math.cos(aim)*(3+i*2),e.y+Math.sin(aim)*(3+i*2),1.6,1.2,7,14,'pool'); break;
+      case 'gasvent': for(let i=0;i<3;i++){ const aa=Math.random()*6.28, rr=i===0?0:2.6; add(tx+Math.cos(aa)*rr,ty+Math.sin(aa)*rr,2.3,1.3,8,22,'gas'); } break;
+      case 'ringpools': { const g=Math.floor(Math.random()*10); const gc=((g+.5)/10)*Math.PI*2; this.zones.push({x:e.x,y:e.y,r:7,r0:4,shape:'ring',style:'toll',gapA:gc,gapW:Math.max(.6,3/10*Math.PI*2-2*1.5/5.5),pal,t:0,life:7,dps,heat:14,windup:1.6}); out.push({x:e.x,y:e.y}); break; }
+      case 'sawlanes': for(let lane=0;lane<2;lane++){ const cx=tx+Math.cos(aim)*lane*3.6, cy=ty+Math.sin(aim)*lane*3.6; const gapI=lane?2:0; for(const [i0,i1] of [[-3.5,gapI-.5],[gapI+.5,3.5]]){ if(i1-i0<.6) continue; const x=cx-Math.sin(aim)*i0*2.2, y=cy+Math.cos(aim)*i0*2.2; const al=aim+Math.PI/2; if(this.solidAt(x,y)) continue; out.push({x,y}); this.zones.push({x,y,r:1,a:al,len:(i1-i0)*2.2,w:2.4,shape:'line',style:'saw',pal,t:0,life:5,dps,heat:12,windup:1.5}); } } break;
+      case 'cratefall': add(tx,ty,1.7,1.3,1.9,8,'drop'); for(let i=0;i<6;i++){ const aa=Math.random()*6.28, rr=1.5+Math.random()*4; add(tx+Math.cos(aa)*rr,ty+Math.sin(aa)*rr,1.7,1.3,1.9,8,'drop'); } break;
       default: return movePattern(this,e,a,tx,ty,dps,ATK[a]?.w||1);
     }
     return out; }
@@ -656,7 +659,7 @@ export class Game {
     const a:any=this.abx; if(a){ a.deps=a.deps.filter((d:any)=>isFinite(d.life)&&d.t<d.life+1); if(a.deps.length>24) a.deps.splice(0,a.deps.length-24); if(a.delayed.length>40) a.delayed.splice(0,a.delayed.length-40); if(a.projs.length>80) a.projs.splice(0,a.projs.length-80); }
     this.fx=this.fx.filter(f=>isFinite(f.life)&&f.t<f.life+1); if(this.fx.length>260) this.fx.splice(0,this.fx.length-260); }
   sanT=0;
-  updateZones(dt:number){ for(const z of this.zones){ z.t+=dt; this.dmgSrc=(z as any).src||(z.env?'env':'zone'); if(z.t>=z.windup&&!this.downed&&!this.revealing&&dist(z.x,z.y,this.px,this.py)<z.r){ this.zoneTick=(this.zoneTick||0)+dt; this.heat=Math.min(COMBAT.heat.max,this.heat+z.heat*dt); if(this.zoneTick>.5){ this.zoneTick=0; this.hurtPlayer(z.dps,z.x,z.y); } } } this.zones=this.zones.filter(z=>z.t<z.life); const MAXZ=40; { let drop=this.zones.filter(z=>!z.env).length-MAXZ; if(drop>0){ this.zones=this.zones.filter(z=>z.env||drop--<=0); } } }
+  updateZones(dt:number){ const tg=(!this.downed&&!this.revealing)?[{px:this.px,py:this.py,g:this as any,hurt:(d:number,sx:number,sy:number)=>this.hurtPlayer(d,sx,sy)}]:[]; for(const z of this.zones){ this.dmgSrc=(z as any).src||(z.env?'env':'zone'); tickZone(this,z,dt,tg,COMBAT.heat.max,COMBAT.playerRadius); } const old=this.zones; this.zones=this.zones.filter(z=>z.t<z.life); if(old.length!==this.zones.length) endZones(this,old); const MAXZ=40; { let drop=this.zones.filter(z=>!z.env&&!(z as any).kit).length-MAXZ; if(drop>0){ this.zones=this.zones.filter(z=>z.env||(z as any).kit||drop--<=0); } } }
   zoneTick=0;
   /** balance instrumentation only: label of whatever is currently damaging the player (tools/balance) */ dmgSrc='';
 
