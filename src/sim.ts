@@ -34,7 +34,7 @@ export interface Proj { x:number; y:number; vx:number; vy:number; dmg:number; r:
 export interface Zone { x:number; y:number; r:number; t:number; life:number; dps:number; heat:number; windup:number; env?:boolean; }
 export interface Fx { kind:'slash'|'ring'|'burst'|'line'|'spark'|'blood'|'text'|'dust'|'vent'|'ability'; x:number; y:number; a?:number; r?:number; t:number; life:number; text?:string; vx?:number; vy?:number; c?:string; len?:number; w?:number; s?:number; pop?:number; }
 export interface AimState { idx:number; wx:number; wy:number; hasDir:boolean; }
-export interface Rt { hardDmg?:number; rcA?:number; rcM?:number; rcT?:number; // enemy transient runtime fields
+export interface Rt { hardDmg?:number; taunt?:number; rcA?:number; rcM?:number; rcT?:number; // enemy transient runtime fields
   /** content batch 1 boss mechanics (src/content/mechanics.ts) */ spdMul?:number; cdMul?:number; shield?:any; gim?:any; gimT?:number; q?:any[]; pylPrev?:number; tl?:number;
   st:'idle'|'chase'|'tele'|'rec'|'dash'|'lost'; t:number; atk:string; acd:Record<string,number>; ang:number; tx:number; ty:number; lost:number; vuln:number; hack:number; abHitAt:number; reveal:number; bornT:number; fire:number; shots:{x:number;y:number}[]; hit:number; fkT?:number; fkN?:number; flankSide?:number; flanker?:boolean; wpT?:number; wp?:{x:number;y:number}|null; sx?:number; sy?:number; sT?:number; unstick?:number; side?:number; dashed:boolean; strafe:number; chained?:boolean;
 }
@@ -537,7 +537,9 @@ export class Game {
     for(const off of [0,.6,-.6,1.2,-1.2,1.9,-1.9]){ const a=base+(off*(((e.id|0)&1)?1:-1)); const p=this.moveCircle(e.x,e.y,Math.cos(a)*step,Math.sin(a)*step,r); const mv=dist(p.x,p.y,ox,oy); if(mv>=step*.6||off===1.9){ e.x=p.x; e.y=p.y; return mv; } }
     return 0; }
   opponents(faction:'enemy'|'ally'):{x:number;y:number;r:number;hurt:(d:number,sx:number,sy:number)=>void}[]{
-    if(faction==='enemy'){ const out:any[]=[]; if(!this.downed) out.push({x:this.px,y:this.py,r:COMBAT.playerRadius,hurt:(d:number,sx:number,sy:number)=>this.hurtPlayer(d,sx,sy)}); for(const a of this.enemies) if(a.faction==='ally'&&!a.dead) out.push({x:a.x,y:a.y,r:ENEMIES[a.type].radius,hurt:(d:number,sx:number,sy:number)=>this.hurtEnemy(a,d*.7,sx,sy)}); return out; }
+    if(faction==='enemy'){ const out:any[]=[]; if(!this.downed) out.push({x:this.px,y:this.py,r:COMBAT.playerRadius,hurt:(d:number,sx:number,sy:number)=>this.hurtPlayer(d,sx,sy)}); for(const a of this.enemies) if(a.faction==='ally'&&!a.dead) out.push({x:a.x,y:a.y,r:ENEMIES[a.type].radius,hurt:(d:number,sx:number,sy:number)=>this.hurtEnemy(a,d*.7,sx,sy)});
+      /* holographic decoys (Decoy Projector / Mirage Step) are hittable targets: melee, projectiles and charges land on them and shorten their life */
+      for(const d of ((this.abx as any)?.deps||[])) if(d.kind==='decoy'&&d.t<d.life) out.push({x:d.x,y:d.y,r:.6,hurt:(dm:number)=>{ d.life-=Math.min(.8,.25+dm/Math.max(1,this.maxHp*.4)); d.hits=(d.hits||0)+1; this.vfx(d.ab.id+'.hit',d.x,d.y,{a:0}); this.emit('sfx','hit'); }}); return out; }
     return this.enemies.filter(e=>e.faction==='enemy'&&!e.dead&&e._rt.reveal<=0).map(e=>({x:e.x,y:e.y,r:ENEMIES[e.type].radius,hurt:(d:number,sx:number,sy:number)=>this.hurtEnemy(e,d,sx,sy,.4)})); }
   /** Party hooks (src/core/party.ts): re-aim the shared enemy AI at the player an enemy is fighting, and keep one flow field per player. Undefined in solo. */
   bindTarget?:(e:En)=>void; flowHook?:()=>void; onTeamRevive?:()=>void;
@@ -556,6 +558,7 @@ export class Game {
     let tx=0,ty=0,tgtIsPlayer=true,tgtEnemy:En|null=null;
     if(e.faction==='ally'){ let bd=14; for(const o of this.enemies){ if(o.dead||o.faction!=='enemy'||o._rt.reveal>0) continue; const d=dist(e.x,e.y,o.x,o.y); if(d<bd){bd=d;tgtEnemy=o;} } if(tgtEnemy){ tx=tgtEnemy.x; ty=tgtEnemy.y; tgtIsPlayer=false; } else if(player){ tx=player.x; ty=player.y; } else return; }
     else { if(!player&&!this.enemies.some(a=>a.faction==='ally'&&!a.dead)) return; tx=this.px; ty=this.py; let bd=dist(e.x,e.y,tx,ty); if(!player) bd=1e9; for(const a of this.enemies){ if(a.faction==='ally'&&!a.dead){ const d=dist(e.x,e.y,a.x,a.y); if(d<bd-1&&d<8){ bd=d; tx=a.x; ty=a.y; tgtIsPlayer=false; } } } }
+    rt.taunt=0; if(e.faction==='enemy'&&e.alert&&!def.boss){ let bd=1e9, bx=0, by=0; for(const dc of ((this.abx as any)?.deps||[])){ if(dc.kind!=='decoy'||dc.t>=dc.life) continue; const dd=dist(e.x,e.y,dc.x,dc.y); if(dd<dc.r+1&&dd<bd){ bd=dd; bx=dc.x; by=dc.y; } } if(bd<1e9){ tx=bx; ty=by; tgtIsPlayer=false; rt.taunt=1; } } /* taunt: alerted non-boss enemies within the decoy's radius go for it */
     const d=dist(e.x,e.y,tx,ty); const cloaked=tgtIsPlayer&&this.cloakT>0;
     if(!e.alert){ const rad=def.aggro*(cloaked?.18:1); if(e.faction==='enemy'&&tgtIsPlayer&&d<rad&&this.los(e.x,e.y,tx,ty)){ e.alert=true; this.alertGroup(e); this.emit('sfx','alert'); } else return; }
     if(cloaked&&d>1.7&&rt.st!=='tele'&&rt.st!=='dash'){ rt.lost+=dt; if(rt.lost>1.5){ e.alert=false; rt.lost=0; rt.st='idle'; } return; }

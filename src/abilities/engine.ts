@@ -133,6 +133,7 @@ export function abxTick(g:any,dt:number){
   for(const d of a.deps){ d.t+=dt; if(d.follow&&(d.kind==='drone'||d.kind==='aura')){ const ph=d.t*1.6+d.x; if(d.kind==='drone'){ d.x+=(g.px+Math.cos(ph)*1.3-d.x)*Math.min(1,dt*4); d.y+=(g.py+Math.sin(ph)*1.3-d.y)*Math.min(1,dt*4); } else { d.x=g.px; d.y=g.py; } }
     if(d.kind==='trap'){ const t=nearest(g,d.x,d.y,d.r); if(t){ d.t=d.life+1; const c:Ctx={x:d.x,y:d.y,ang:0,tx:d.x,ty:d.y,target:t,hit:[],ab:d.ab,idx:0,kills:0}; (c as any).ox=d.x; (c as any).oy=d.y; fxCastBase(g,d.ab,d.x,d.y); runSteps(g,c,d.then||[],2); } continue; }
     d.acc+=dt; while(d.acc>=d.every&&d.t<d.life){ d.acc-=d.every; const c:Ctx={x:d.x,y:d.y,ang:d.ang,tx:d.x,ty:d.y,target:null,hit:[],ab:d.ab,idx:0,kills:0}; (c as any).ox=d.x; (c as any).oy=d.y; (c as any).range=d.r; runSteps(g,c,d.tick,3); if(!g.save?.settings?.reducedFx&&typeof g.vfx==='function'&&d.kind==='aura') g.vfx(d.ab.id+'.pulse',d.x,d.y,{r:d.r}); }
+    if(d.kind==='decoy'&&d.t>=d.life&&!(d as any).done){ (d as any).done=1; if(typeof g.vfx==='function'){ g.vfx(d.ab.id+'.hit',d.x,d.y,{a:0}); g.vfx(d.ab.id+'.pulse',d.x,d.y,{r:d.r}); } }
     if(d.t>=d.life&&d.end){ const c:Ctx={x:d.x,y:d.y,ang:d.ang,tx:d.x,ty:d.y,target:null,hit:[],ab:d.ab,idx:0,kills:0}; runSteps(g,c,d.end,3); d.end=undefined; } }
   a.deps=a.deps.filter(d=>d.t<d.life);
 }

@@ -22,12 +22,30 @@ export function drawAbx(r:Renderer){
   for(const d of a.deps){ const col=(TYPE_FX as any)[d.ab.type]; const life=1-d.t/d.life; const x=r.sx(d.x,d.y), y=r.sy(d.x,d.y,.5);
     if(d.kind==='aura'){ r.ring(d.x,d.y,d.r,col,.5*Math.min(1,life*3)+.15,true); if(!red) r.ring(d.x,d.y,d.r*(.5+.5*((t*1.5)%1)),col,.4); continue; }
     if(d.kind==='trap'){ r.ring(d.x,d.y,Math.min(d.r,1.2),col,.7+.2*Math.sin(t*6)); c.save(); c.fillStyle=col; c.beginPath(); c.arc(x,y,4,0,7); c.fill(); c.restore(); continue; }
+    if(d.kind==='decoy'){ drawDecoy(g,r,c,d,t,red,life,x,y); continue; }
     c.save(); c.globalAlpha=Math.min(1,life*4+.3); c.fillStyle='#1c1a17'; c.strokeStyle=col; c.lineWidth=2;
     if(d.kind==='turret'){ c.beginPath(); c.rect(x-8,y-6,16,12); c.fill(); c.stroke(); c.beginPath(); c.moveTo(x,y-4); c.lineTo(x+12,y-10); c.stroke(); }
     else if(d.kind==='drone'){ const yy=y-14+Math.sin(t*5+d.x)*3; c.beginPath(); c.arc(x,yy,6,0,7); c.fill(); c.stroke(); c.beginPath(); c.moveTo(x-11,yy-3); c.lineTo(x+11,yy-3); c.stroke(); }
     else if(d.kind==='bot'){ c.beginPath(); c.rect(x-10,y-18,20,18); c.fill(); c.stroke(); c.beginPath(); c.arc(x,y-24,5,0,7); c.fill(); c.stroke(); r.ring(d.x,d.y,d.r,col,.35); }
-    else if(d.kind==='decoy'){ c.globalAlpha=.45+.2*Math.sin(t*9); c.fillStyle=col; c.beginPath(); c.arc(x,y-22,6,0,7); c.fill(); c.beginPath(); c.rect(x-6,y-16,12,16); c.fill(); }
     c.restore(); }
   for(const p of a.projs){ const x=r.sx(p.x,p.y), y=r.sy(p.x,p.y,.5); c.save(); c.strokeStyle=(TYPE_FX as any)[p.ab.type]; c.fillStyle='#f4ead8'; c.lineWidth=3; c.beginPath(); c.moveTo(x-p.vx*.02*8,y-p.vy*.01*8); c.lineTo(x,y); c.stroke(); c.beginPath(); c.arc(x,y,4,0,7); c.fill(); c.restore(); }
   for(const d of a.delayed){ r.ring(d.x,d.y,1.2+(1-d.t)*.3,'#d9a36a',.4+.3*Math.sin(t*14)); }
 }
+
+/** holographic player double: cyan scan-lined silhouette, base projector ring, dashed taunt radius and a shrinking timer arc. Steady (no flicker) under Reduced FX. */
+function drawDecoy(g:any,r:any,c:CanvasRenderingContext2D,d:any,t:number,red:boolean,life:number,x:number,y:number){
+  const HOLO='#7fe6ff'; const fade=Math.min(1,life*6+.25); const warn=d.life-d.t<1.2; const fl=red?1:(.82+.18*Math.sin(t*23+d.x*3));
+  const rx=d.r*r.TW/2*Math.SQRT2, ry=d.r*r.TW/4*Math.SQRT2; const cx=r.sx(d.x,d.y), cy=r.sy(d.x,d.y);
+  c.save(); c.globalCompositeOperation='lighter';
+  c.globalAlpha=.16*fade; c.setLineDash([8,8]); c.lineDashOffset=-t*14; c.strokeStyle=HOLO; c.lineWidth=2; c.beginPath(); c.ellipse(cx,cy,rx,ry,0,0,7); c.stroke(); c.setLineDash([]); // taunt radius
+  const tr=Math.SQRT2*r.TW/2*.85, tyr=tr/2; c.globalAlpha=.9*fade; c.strokeStyle=warn?'#ffd27f':HOLO; c.lineWidth=3; c.beginPath(); c.ellipse(cx,cy,tr,tyr,0,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.max(0,1-d.t/d.life)); c.stroke(); // timer ring
+  c.globalAlpha=.35*fade; c.fillStyle=HOLO; c.beginPath(); c.ellipse(cx,cy,tr*.7,tyr*.7,0,0,7); c.fill();
+  const bob=red?0:Math.sin(t*3+d.x)*1.5; const by=y-bob; const H=34;
+  c.globalAlpha=.5*fade*fl; const gr=c.createLinearGradient(0,by-H-8,0,by); gr.addColorStop(0,'rgba(127,230,255,.9)'); gr.addColorStop(1,'rgba(127,230,255,.25)'); c.fillStyle=gr;
+  c.beginPath(); c.arc(x,by-H,6.5,0,7); c.fill(); // head
+  c.beginPath(); c.moveTo(x-8,by-H+8); c.lineTo(x+8,by-H+8); c.lineTo(x+6,by-14); c.lineTo(x-6,by-14); c.closePath(); c.fill(); // torso
+  c.fillRect(x-6,by-14,4.5,14); c.fillRect(x+1.5,by-14,4.5,14); // legs
+  c.fillRect(x-12,by-H+9,3.5,15); c.fillRect(x+8.5,by-H+9,3.5,15); // arms
+  c.globalAlpha=.55*fade; c.fillStyle='#02121a'; const off=(red?0:(t*30)%6); for(let yy=by-H-8+off;yy<by;yy+=6) c.fillRect(x-14,yy,28,1.5); // scanlines
+  c.globalAlpha=.7*fade; c.strokeStyle=warn?'#ffd27f':HOLO; c.lineWidth=1.5; c.beginPath(); c.arc(x,by-H,6.5,0,7); c.stroke();
+  c.restore(); }

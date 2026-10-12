@@ -22,6 +22,6 @@ export function fxPrim(g:any,c:{x:number;y:number;ang:number;tx:number;ty:number
     case 'dash': push(g,{kind:'line',x:g.px,y:g.py,a:c.ang,len:p.len,w:.5,t:0,life:L,c:TYPE_FX.mobility}); break;
     case 'teleport': push(g,{kind:'ring',x:g.px,y:g.py,r:1.1,t:0,life:L,c:TYPE_FX.mobility}); push(g,{kind:'ring',x:c.tx,y:c.ty,r:1.1,t:0,life:L+.1,c:TYPE_FX.mobility}); break;
     case 'shield': case 'mitigate': case 'reflect': case 'heal': case 'cloak': case 'vent': case 'buff': case 'cdr': case 'invuln': if(typeof g.vfx==='function') g.vfx(c.ab.id+'.buff',g.px,g.py,{r:1.5}); push(g,{kind:'ring',x:g.px,y:g.py,r:1.1,t:0,life:L+.2,c:col}); if(!reduced(g)) push(g,{kind:'vent',x:g.px,y:g.py,t:0,life:.5,c:col}); break;
-    case 'burn': case 'mark': case 'expose': case 'stun': case 'slow': case 'root': case 'tether': case 'control': case 'strip': break; // drawn as status marks by abx_render
+    case 'burn': case 'mark': case 'expose': case 'stun': case 'slow': case 'root': case 'tether': case 'control': case 'strip': { const tg=(c as any).target; if(tg&&!(c as any)._sh&&typeof g.vfx==='function'){ (c as any)._sh=1; g.vfx(c.ab.id+'.hit',tg.x,tg.y,{a:0}); g.vfx(c.ab.id+'.hit',tg.x,tg.y,{a:1}); } break; } // also a hit burst on the afflicted target (status marks drawn by abx_render)
     default: break; } }
 export function fxDeploy(g:any,d:{x:number;y:number;kind:string;r:number;ab:AbilityData}){ if(typeof g.vfx==='function') g.vfx(d.ab.id+'.deploy',d.x,d.y,{r:d.r}); push(g,{kind:'ring',x:d.x,y:d.y,r:Math.min(2,d.r),t:0,life:.4,c:TYPE_FX[d.ab.type]}); }
