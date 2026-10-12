@@ -54,7 +54,7 @@ ok(U.party.every((v, i) => i === 0 || v <= U.party[i - 1]) && U.party[3] < 1, 'p
 ok(U.dupe?.kind === 'shard' && !U.redeemSeasonal && U.redeemFound && U.shardsLeft === 0, 'duplicates become Prism Shards; shards rebuild found oranges, never season exclusives');
 
 const M = { in: await runModel(page, { players: 120, levels: [30, 42], seed: 11, season: true }), off: await runModel(page, { players: 120, levels: [30, 42], seed: 13, season: false }), duo: await runModel(page, { players: 120, levels: [42], seed: 17, season: false, partySize: 4 }) };
-for (const r of M.in) ok(r.firstMean >= 13 && r.firstMean <= 27 && r.seasonalMean >= 13 && r.seasonalMean <= 36, `in season L${r.level}: first orange ${r.firstMean.toFixed(1)} h, first seasonal ${r.seasonalMean.toFixed(1)} h (target 15-25, tol 13-27 / 13-36)`);
+for (const r of M.in) ok(r.firstMean >= 13 && r.firstMean <= 27 && r.seasonalMean >= 18 && r.seasonalMean <= 27, `in season L${r.level}: first orange ${r.firstMean.toFixed(1)} h, first seasonal ${r.seasonalMean.toFixed(1)} h (targets 15-25 / 20-25, tol 13-27 / 18-27)`);
 for (const r of M.off) ok(r.firstMean >= 11 && r.firstMean <= 25 && r.firstP90 < 40, `off season L${r.level}: first orange ${r.firstMean.toFixed(1)} h, p90 ${r.firstP90.toFixed(1)} h (pity caps the bad-luck tail)`);
 ok(M.duo[0].orangePerHour <= M.off.find(r => r.level === 42).orangePerHour * 1.02, `4-player party member earns no more legendaries per hour than solo (${M.duo[0].orangePerHour.toFixed(3)} vs ${M.off.find(r => r.level === 42).orangePerHour.toFixed(3)})`);
 

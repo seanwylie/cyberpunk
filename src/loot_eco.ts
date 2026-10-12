@@ -9,7 +9,7 @@ import { COS_BY_ID } from './content/appearance';
 export const LOOT_ECO={
   /** base chance per eligible kill */
   orange:{ boss:.0042, elite:.0002 },
-  seasonal:{ boss:.0034, elite:.00015 },
+  seasonal:{ boss:.005, elite:.00022 },
   /** dungeon tier 0..4 (base dungeons are tier 0), epic gateway and hard mode multipliers: harder content is the better farm */
   tierMul:[.85,.95,1,1.2,1.5], gatewayMul:1.5, hardMul:1.35,
   /** hidden soft pity, counted in boss-kill equivalents (an elite counts eliteWeight): after softStart dry kills each further kill adds softStep; at hard the next eligible kill is guaranteed */
@@ -52,9 +52,9 @@ export function rollPrestige(save:any,c:PrestigeCtx):PrestigeAward|null{
   const se=activeSeason(now); const sGear=se?se.gear.filter(id=>canGrant(id,now)&&lvlOk(id,c)):[]; const sCos=se?se.cosmetics.filter(id=>canGrant(id,now)&&COS_BY_ID[id]&&!save.cosmetics?.owned?.[id]):[];
   const canO=sig.length+gen.length>0, canS=sGear.length+sCos.length>0; if(!canO&&!canS) return null; // nothing reachable here yet: pity does not advance
   e.kills++; const m=ctxMul(c); const pb=pityBonus(e.dry)*w; const forced=e.dry+w>=LOOT_ECO.pity.hard;
-  const pO=canO?LOOT_ECO.orange[c.tier]*m+pb*(canS?.6:1):0, pS=canS?LOOT_ECO.seasonal[c.tier]*m+pb*(canO?.4:1):0;
+  const pO=canO?LOOT_ECO.orange[c.tier]*m+pb*(canS?.55:1):0, pS=canS?LOOT_ECO.seasonal[c.tier]*m+pb*(canO?.45:1):0;
   const x=r(); let kind:'orange'|'seasonal'|null=null;
-  if(forced) kind=canO&&canS?(r()<.6?'orange':'seasonal'):canO?'orange':'seasonal'; else if(x<pO) kind='orange'; else if(x<pO+pS) kind='seasonal';
+  if(forced) kind=canO&&canS?(r()<.55?'orange':'seasonal'):canO?'orange':'seasonal'; else if(x<pO) kind='orange'; else if(x<pO+pS) kind='seasonal';
   if(!kind){ e.dry+=w; return null; }
   e.dry=0; e.awards++; const base={ t:now, where:c.where, boss:c.boss };
   if(kind==='orange'){
