@@ -22,7 +22,8 @@ First boot after the update: no roster exists, so the existing save JSON is copi
 
 - Shown on load when the account has **2+ characters** (with one character there is nothing to choose, so the game loads straight in), or with `?chars` in the URL.
 - Always reachable from **Settings > Gameplay > Characters**.
-- 10 slots; `+ New` asks for a name (16 chars max) and starts a fresh character (stock gear, start level from `PROGRESSION.startLevel`).
+- 10 slots; `+ New` asks for a name (16 chars max) and starts a fresh character at **level 1** (`PROGRESSION.startLevel`) with the Standard Issue stock kit (grey, level 1, every slot) and starting credits/chips. The level 10 trait is earned in play. The Reclamation Annex (Lv 1–10) is the first dungeon; see *Early game (levels 1–10)* below.
+- Existing saves are not touched: the character migrated from the legacy single save keeps its stored level, gear and traits.
 - Delete needs a second click on a red **Delete** (Keep cancels). Deleting the active character switches to the next one; deleting the last one leaves a fresh character 1. Account purchases are never deleted.
 - Switching persists the current character and reloads the page (all systems boot cleanly on the new save).
 
@@ -53,3 +54,18 @@ The IDKFA snapshot lives in each character's save, so the cheat is **per charact
 ## Build export
 
 Exports (JSON, code, link, text) include the character's confirmed traits (`traits: [L10, L20]`). The inspector shows them as short chips with the effects in the tooltip. Trait definitions are part of the catalog snapshot, so an old build link reports trait changes ("What changed"): changed effects, renames, removed traits (Incompatible) and level 20 traits that no longer build on the level 10 one.
+
+## Early game (levels 1–10)
+
+New characters start at level 1, so the level 1–10 band is real content (Oct 2026 pass):
+
+| Level | Where | What |
+|---|---|---|
+| 1–10 | Reclamation Annex (tutorial dungeon) | Calm start, ramped first encounter; general pool drops from Lv 1 (grey/green Lv 1–5, common ability augments from Lv 1) |
+| 3–14 | Kestrel Distribution Hub 9 (Neon Mile) | Ordinary drops re-levelled to Lv 2–7 so it pays out early |
+| 8–24 | Tier I batch dungeons (Scrap Gantry, Substation 12, Tailings Pit, Slag Ovens) | Sealed teaser until Lv 4, enterable from Lv 8 |
+
+Vendors filter by `lvl <= level`, so a level 1 character sees the Lv 1–5 stock. Common ability augments start at Lv 1 (`LVL.grey` in `src/abilities/hw.ts`), so the tutorial's guaranteed ability augment exists at level 1.
+
+**Early-band scaling** (`Game.earlyMul()` in `src/sim.ts`): in level 1–10 dungeons (`minLevel < 8`: the Annex and Hub 9), enemy HP and damage dealt to the player scale from 0.5x at Lv 1 linearly to 1x at Lv 12. Bosses take an extra square-root factor (about 0.35x at Lv 1), because the stock kit has no burst. Before this pass, even a level 12 stock kit lost to the Annex Overseer. The scale is never above 1x and never applies outside those dungeons, so every level 12+ fight is unchanged. `tests/level1_start.mjs` checks the band coverage, early gear per slot, and headless clears (stock kit Lv 1/3 Annex, mid kit Lv 8 Hub 9).
+
