@@ -1,3 +1,4 @@
+import { gwPhase, GW_BOSS_HP } from './gateways';
 // Reusable boss mechanics toolkit (docs/CONTENT_BATCH_1.md section 2). Bosses are DATA (batch1_bosses.ts): lists of moves, phase actions and an
 // arena gimmick that this module turns into ATK entries and runtime behaviour. The sim only calls the hooks at the bottom of this file.
 import { BOSS_BY_ID } from './batch1_bosses';
@@ -78,9 +79,12 @@ export function applyAct(sim:any,e:any,act:PhaseAct){ const rt=e._rt; const def=
     case 'adds': spawnAdds(sim,e,act.type,act.n,99); break;
     case 'gimmick': rt.gim=act.g; rt.gimT=act.g.every*.6; break; } }
 
+/** epic gateway runs: the boss gets +30% HP once and an extra final phase (src/content/gateways.ts) */
+function gwSpec(sim:any,e:any,spec:any){ if(!spec||!sim.dd?.gateway||!e.boss&&e.type!==sim.dd.defaultBoss) return spec; const rt=e._rt; if(!rt.gwHp){ rt.gwHp=1; if(!e.gwBuffed){ e.gwBuffed=1; e.maxHp*=GW_BOSS_HP; e.hp*=GW_BOSS_HP; } }
+  return rt.gwSpec??=({ ...spec, phases:[...spec.phases.filter((p:any)=>p.at>.22),gwPhase(spec.summon,spec.gimmick)] }); }
 /** per-frame boss logic: phase transitions, shield timer, tether line fx, enrage cooldown scaling, arena gimmick. Skipped during the reveal. */
 export function bossTick(sim:any,e:any,dt:number){
-  const spec=BOSS_BY_ID[e.type]; if(!spec||e.dead) return; const rt=e._rt; if(rt.reveal>0||!e.alert) return;
+  const spec=gwSpec(sim,e,BOSS_BY_ID[e.type]); if(!spec||e.dead) return; const rt=e._rt; if(rt.reveal>0||!e.alert) return;
   if(rt.gim===undefined){ if(!rt.mechInit){ rt.mechInit=1; const tc=HARD.mech.tierCd[bossTierOf(e.type)]||1; if(tc!==1) rt.cdMul=(rt.cdMul||1)/tc; }  rt.gim=spec.gimmick||null; rt.gimT=(spec.gimmick?.every||0)*.7; rt.q=[]; if(e.phase===undefined) e.phase=0; if(e.phase>0){ /* resumed mid-fight: re-apply passive phase acts that are not one-offs */ for(let i=0;i<e.phase;i++) for(const a of spec.phases[i].acts) if(a.k==='enrage'||a.k==='gimmick') applyAct(sim,e,a); } }
   const frac=e.hp/e.maxHp; const ph=spec.phases[e.phase||0];
   if(ph&&frac<=ph.at){ e.phase=(e.phase||0)+1; sim.toast(spec.name+': "'+ph.say+'"'); for(const a of ph.acts) applyAct(sim,e,a); }

@@ -15,7 +15,7 @@ for (const t of r) { if (t.gw === undefined) { ok(t.starter && t.open, `${t.id}:
   ok(t.locked, `${t.id}: locked on a fresh character, transit refused`); ok(t.host && t.srcReach, `${t.id}: gateway ${t.gw} enterable from its source town`); ok(t.tuned, `${t.id}: gateway Lv ${t.dmin} tuned to the town's entry level ${t.band[0]} (±6)`); }
 // UI silhouette
 let u = await ev(async () => { window.__ui.open('travel'); await new Promise(r => setTimeout(r, 100)); const n = document.querySelector('#modal .wmnode[data-id="tether_base"]'); n.click(); const b = document.querySelector('#modal [data-act="tv-go"]'); const res = { cls: n.className, tip: n.dataset.tip, dis: b.disabled, travel: window.__game.travel('tether_base'), town: window.__game.townId }; window.__ui.close(); return res; });
-ok(/locked/.test(u.cls) && /Tether Base/.test(u.tip) && /Lv 38/.test(u.tip) && /Clear Recall Authority Yard to unlock/.test(u.tip), 'locked town is a silhouette with name, band and "Clear <Gateway> to unlock"');
+ok(/locked/.test(u.cls) && /Tether Base/.test(u.tip) && /Lv 38/.test(u.tip) && /Clear Recall Run to unlock/.test(u.tip), 'locked town is a silhouette with name, band and "Clear <Gateway> to unlock"');
 ok(u.dis && u.travel === false && u.town === 'rustline', 'locked town cannot be reached by transit');
 // real clear of every gateway through the run path
 for (const t of r.filter(x => x.gw)) {

@@ -11,6 +11,8 @@ import { genFoundry, genClinic, genWarehouse, varyAnnex } from './mapgen';
 import { genBatch1 } from './mapgen_batch1';
 import { symLevel, symOfSeed } from './mapgen_arch';
 import { LEVELS } from './batch1_levels';
+import { GATEWAY_BASES, gatewaySpec } from './gateways';
+import { ARCH_OF } from './mapgen_arch';
 import type { LevelSpec } from './batch1_levels';
 import { safeEntry } from './safestart';
 export type { Hazard };
@@ -26,7 +28,7 @@ export interface DungeonDef {
   relayLabel:string; objectiveLabel:string; objectiveToast:string; cache:{ label:string; chips:ChipId[] };
   hazards:Hazard[]; loot?:{ ordinary:LootEntry[]; elite:LootEntry[]; boss:LootEntry[] }; signature:Record<string,{item:string;chance:number}>|null;
   creditMul:number; clearXp:number; intro:string; generalClue:string; needsArt:string[];
-  /** content batch 1: difficulty tier (I-IV) and the dungeons that must have been cleared before this one unlocks */ tier?:1|2|3|4; unlock?:string[]; faction?:string; boss?:string;
+  /** content batch 1: difficulty tier (I-IV) and the dungeons that must have been cleared before this one unlocks */ tier?:1|2|3|4; unlock?:string[]; faction?:string; boss?:string; /** epic gateway: destination town id (src/content/gateways.ts) */ gateway?:string;
 }
 
 // ---------------- loot pools (replace the global pools in these dungeons) ----------------
@@ -94,10 +96,18 @@ export const DUNGEONS:Record<string,DungeonDef> = {
     generalClue:'Shrinkage at Hub 9 is up again. Cole says the numbers do not add up in either direction.', needsArt:['Warehouse floor/wall textures per warehouse.jpg (loading dock decals, shelving, stamped plate)','Enemy sprites: picker, loader, forkbot, scanner, camgun, shiftlead, hobbs','Boss sprites: stockmgr, retrieval (large mech per sheet), reclaimer','Gantry-crane/stamping-press hazard rendering','Signature orange animations: Lazarus Rack, R-0 Lifter'] },
 };
 for(const sp of LEVELS) DUNGEONS[sp.id]=makeBatch1Dungeon(sp);
+/** gateway set piece: an elite pair (lock elite + gate guard) holds the objective controller, with a pack of the alarm type (shared group 77) */
+function gwAmbush(L:Level,sp:LevelSpec):Level{ const c=L.interacts.find(i=>i.kind==='controller'); if(!c) return L;
+  // stand on tiles the generator already validated as reachable: the junction elite (group 55) and the junction packs nearest the controller
+  const J=L.spawns.filter(s=>s.group!==77&&s.group<90&&L.zone[Math.floor(s.y)*L.w+Math.floor(s.x)]===L.zone[Math.floor(c.y)*L.w+Math.floor(c.x)]).sort((a,b)=>Math.hypot(a.x-c.x,a.y-c.y)-Math.hypot(b.x-c.x,b.y-c.y));
+  const el=L.spawns.find(s=>s.group===55); const types=el?[el.type,sp.alarmType,sp.alarmType,sp.alarmType]:[sp.alarmType,sp.alarmType,sp.alarmType];
+  const at=J.slice(0,types.length); at.forEach((p,i)=>L.spawns.push({type:types[i],x:p.x,y:p.y,group:77})); (L as any).setPiece={x:c.x,y:c.y,n:at.length}; return L; }
+// EPIC GATEWAYS (src/content/gateways.ts): longer variants of batch-1 dungeons that open the Reach Line to the next town
+export const GATEWAY_SPECS:LevelSpec[]=GATEWAY_BASES.map(g=>{ const b=LEVELS.find(l=>l.id===g.base)!; const sp=gatewaySpec(b,g.to,g.title); ARCH_OF[sp.id]=ARCH_OF[b.id]; const d=makeBatch1Dungeon(sp) as any; d.gateway=g.to; const b0=d.build; d.build=(sd?:number)=>gwAmbush(b0(sd),sp); DUNGEONS[sp.id]=d; return sp; });
 /** every dungeon's generated level goes through the hazard budget (no overlaps, capped count) */
 for(const d of Object.values(DUNGEONS)){ const b=d.build; d.build=(seed?:number)=>thinHazards(b(seed)); }
 export const BATCH1_IDS=LEVELS.map(l=>l.id);
-export const DUNGEON_LIST:DungeonDef[]=[...['warehouse','annex','foundry','clinic'].map(k=>DUNGEONS[k]),...[...LEVELS].sort((a,b)=>a.tier-b.tier||a.minLevel-b.minLevel).map(l=>DUNGEONS[l.id])];
+export const DUNGEON_LIST:DungeonDef[]=[...['warehouse','annex','foundry','clinic'].map(k=>DUNGEONS[k]),...[...LEVELS].sort((a,b)=>a.tier-b.tier||a.minLevel-b.minLevel).map(l=>DUNGEONS[l.id]),...GATEWAY_SPECS.map(l=>DUNGEONS[l.id])];
 export const DUNGEON_IDS=DUNGEON_LIST.map(d=>d.id);
 export const dungeonOf=(id?:string|null):DungeonDef=>DUNGEONS[id||'annex']||DUNGEONS.annex;
 /** Level-appropriate band used by the dungeon select filter. Low-level players may still enter (carry/party); they just get fewer eligible drops. */

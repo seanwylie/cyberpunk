@@ -11,7 +11,7 @@ for (const [W, H, dpr, US] of [[1280, 720, 1, 'M'], [1280, 720, 2, 'M'], [1280, 
   await ev(() => document.getElementById('splash')?.remove()); await page.waitForFunction(() => window.__rend?.town?.ready, null, { timeout: 60000 });
   await ev(async US => { const m = await import('/src/config.ts'); m.applyUiScale(US); }, US);
   for (const town of ['rustline', 'harrow']) {
-    await ev(async town => { const g = window.__game; g.save.level = 30; (g.save.cleared = { ...(g.save.cleared || {}), bell_foundry: 1 }, g.checkTownUnlocks()); if (g.townId !== town) g.travel(town); window.__ui.open(null); g.save.settings.reducedFx = true; g.save.settings.stationMarkers = false; }, town);
+    await ev(async town => { const g = window.__game; g.save.level = 30; (g.save.cleared = { ...(g.save.cleared || {}), gw_bell_foundry: 1 }, g.checkTownUnlocks()); if (g.townId !== town) g.travel(town); window.__ui.open(null); g.save.settings.reducedFx = true; g.save.settings.stationMarkers = false; }, town);
     await page.waitForFunction(t => window.__rend.town?.ready && window.__game.townId === t, town, { timeout: 30000 }); await sleep(1200);
     const sts = await ev(() => window.__game.level.interacts.map(i => ({ id: i.id, key: i.station, x: i.x, y: i.y })));
     for (const st of sts) {

@@ -7,7 +7,7 @@
   "abilityAugments": 107,
   "abilities": 78,
   "chips": 17,
-  "dungeons": 24,
+  "dungeons": 32,
   "bySlot": {
    "face": 14,
    "brain": 19,
@@ -2685,6 +2685,114 @@
      ]
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "boss",
+     "share": 0.149,
+     "bosses": [
+      "Oven-Tender Marguerite Voss"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "boss",
+     "share": 0.149,
+     "bosses": [
+      "Pit Boss Karl Ossendrecht"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.149,
+     "bosses": [
+      "Bell-Founder Vesper Calloway"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.047,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
      "kind": "store",
      "minLevel": 22,
      "towns": [
@@ -3313,6 +3421,114 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.032,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.095,
+     "bosses": [
+      "Formulator Dessa Quill"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "boss",
+     "share": 0.095,
+     "bosses": [
+      "Compliance Officer Hale Thornquist"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "boss",
+     "share": 0.095,
+     "bosses": [
+      "Signal Widow Perpetua"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.013
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -5294,6 +5510,102 @@
      "share": 0.024
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "ordinary",
+     "share": 0.028
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "elite",
+     "share": 0.071
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "ordinary",
+     "share": 0.028
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "elite",
+     "share": 0.071
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.028
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.071
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.008
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.024
+    },
+    {
      "kind": "store",
      "minLevel": 16,
      "towns": [
@@ -5661,6 +5973,114 @@
      ]
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "elite",
+     "share": 0.014
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "boss",
+     "share": 0.025,
+     "bosses": [
+      "Oven-Tender Marguerite Voss"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "elite",
+     "share": 0.014
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "boss",
+     "share": 0.025,
+     "bosses": [
+      "Pit Boss Karl Ossendrecht"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.014
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.025,
+     "bosses": [
+      "Bell-Founder Vesper Calloway"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.005
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.008,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
      "kind": "store",
      "minLevel": 26,
      "towns": [
@@ -5983,6 +6403,30 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.033
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "ordinary",
+     "share": 0.075
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -8342,6 +8786,60 @@
      ]
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "elite",
+     "share": 0.07
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "boss",
+     "share": 0.136,
+     "bosses": [
+      "Liquidator Prime"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.024
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.047,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
      "kind": "store",
      "minLevel": 16,
      "towns": [
@@ -8809,6 +9307,114 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.024,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.029
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.071,
+     "bosses": [
+      "Formulator Dessa Quill"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "elite",
+     "share": 0.029
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "boss",
+     "share": 0.071,
+     "bosses": [
+      "Compliance Officer Hale Thornquist"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "elite",
+     "share": 0.029
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "boss",
+     "share": 0.071,
+     "bosses": [
+      "Signal Widow Perpetua"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.009
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -10032,6 +10638,54 @@
      "share": 0.025
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "ordinary",
+     "share": 0.083
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "ordinary",
+     "share": 0.083
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.083
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.025
+    },
+    {
      "kind": "store",
      "minLevel": 18,
      "towns": [
@@ -10326,6 +10980,30 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.025
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "ordinary",
+     "share": 0.057
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -10744,6 +11422,102 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.047
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "ordinary",
+     "share": 0.047
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "ordinary",
+     "share": 0.047
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.012
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -11370,6 +12144,54 @@
      "share": 0.025
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.094
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "ordinary",
+     "share": 0.094
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "ordinary",
+     "share": 0.094
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.025
+    },
+    {
      "kind": "store",
      "minLevel": 22,
      "towns": [
@@ -11916,6 +12738,102 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "ordinary",
+     "share": 0.042
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "ordinary",
+     "share": 0.042
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.042
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.012
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -13239,6 +14157,30 @@
      "share": 0.025
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "ordinary",
+     "share": 0.057
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.025
+    },
+    {
      "kind": "store",
      "minLevel": 9,
      "towns": [
@@ -13701,6 +14643,102 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "ordinary",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "ordinary",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.008
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -14833,6 +15871,102 @@
      "share": 0.031
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "ordinary",
+     "share": 0.028
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "ordinary",
+     "share": 0.028
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.028
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.008
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.031
+    },
+    {
      "kind": "store",
      "minLevel": 20,
      "towns": [
@@ -15077,6 +16211,66 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.019,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "boss",
+     "share": 0.059,
+     "bosses": [
+      "Oven-Tender Marguerite Voss"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "boss",
+     "share": 0.059,
+     "bosses": [
+      "Pit Boss Karl Ossendrecht"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.059,
+     "bosses": [
+      "Bell-Founder Vesper Calloway"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -15437,6 +16631,30 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.021
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "ordinary",
+     "share": 0.047
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -15838,6 +17056,60 @@
      ]
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "elite",
+     "share": 0.07
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "boss",
+     "share": 0.091,
+     "bosses": [
+      "Liquidator Prime"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.024
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.032,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
      "kind": "store",
      "minLevel": 14,
      "towns": [
@@ -16226,6 +17498,60 @@
      ]
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "elite",
+     "share": 0.093
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "boss",
+     "share": 0.136,
+     "bosses": [
+      "Liquidator Prime"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.047,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
      "kind": "store",
      "minLevel": 14,
      "towns": [
@@ -16575,6 +17901,54 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "ordinary",
+     "share": 0.028
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "elite",
+     "share": 0.093
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.012
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -16974,6 +18348,60 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.032,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "elite",
+     "share": 0.07
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "boss",
+     "share": 0.091,
+     "bosses": [
+      "Liquidator Prime"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.024
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -17646,6 +19074,114 @@
      ]
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.043
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.062,
+     "bosses": [
+      "Formulator Dessa Quill"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "elite",
+     "share": 0.043
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "boss",
+     "share": 0.062,
+     "bosses": [
+      "Compliance Officer Hale Thornquist"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "elite",
+     "share": 0.043
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "boss",
+     "share": 0.062,
+     "bosses": [
+      "Signal Widow Perpetua"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.014
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.021,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
      "kind": "store",
      "minLevel": 22,
      "towns": [
@@ -18160,6 +19696,102 @@
      "share": 0.024
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.071
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "ordinary",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "elite",
+     "share": 0.071
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "ordinary",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "elite",
+     "share": 0.071
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.008
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.024
+    },
+    {
      "kind": "store",
      "minLevel": 14,
      "towns": [
@@ -18422,6 +20054,66 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.011,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.033,
+     "bosses": [
+      "Formulator Dessa Quill"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "boss",
+     "share": 0.033,
+     "bosses": [
+      "Compliance Officer Hale Thornquist"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "boss",
+     "share": 0.033,
+     "bosses": [
+      "Signal Widow Perpetua"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -19629,6 +21321,162 @@
      ]
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "ordinary",
+     "share": 0.007
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "boss",
+     "share": 0.074,
+     "bosses": [
+      "Oven-Tender Marguerite Voss"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "ordinary",
+     "share": 0.007
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "boss",
+     "share": 0.074,
+     "bosses": [
+      "Pit Boss Karl Ossendrecht"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.007
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.074,
+     "bosses": [
+      "Bell-Founder Vesper Calloway"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.002
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.013
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.024,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
      "kind": "store",
      "minLevel": 26,
      "towns": [
@@ -20063,6 +21911,30 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.025
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "ordinary",
+     "share": 0.057
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -20674,6 +22546,162 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.024,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.008
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.071,
+     "bosses": [
+      "Formulator Dessa Quill"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "ordinary",
+     "share": 0.008
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "boss",
+     "share": 0.071,
+     "bosses": [
+      "Compliance Officer Hale Thornquist"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "ordinary",
+     "share": 0.008
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "boss",
+     "share": 0.071,
+     "bosses": [
+      "Signal Widow Perpetua"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.002
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.013
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -21967,6 +23995,162 @@
      ]
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "ordinary",
+     "share": 0.007
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "boss",
+     "share": 0.074,
+     "bosses": [
+      "Oven-Tender Marguerite Voss"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "ordinary",
+     "share": 0.007
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "boss",
+     "share": 0.074,
+     "bosses": [
+      "Pit Boss Karl Ossendrecht"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.007
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.074,
+     "bosses": [
+      "Bell-Founder Vesper Calloway"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.002
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.013
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.024,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
      "kind": "store",
      "minLevel": 26,
      "towns": [
@@ -22288,6 +24472,30 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.025
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "ordinary",
+     "share": 0.057
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -22889,6 +25097,162 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.024,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.008
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.071,
+     "bosses": [
+      "Formulator Dessa Quill"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "ordinary",
+     "share": 0.008
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "boss",
+     "share": 0.071,
+     "bosses": [
+      "Compliance Officer Hale Thornquist"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "ordinary",
+     "share": 0.008
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "elite",
+     "share": 0.038
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "boss",
+     "share": 0.071,
+     "bosses": [
+      "Signal Widow Perpetua"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.002
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.013
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -25768,6 +28132,114 @@
      ]
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "boss",
+     "share": 0.149,
+     "bosses": [
+      "Oven-Tender Marguerite Voss"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "boss",
+     "share": 0.149,
+     "bosses": [
+      "Pit Boss Karl Ossendrecht"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.149,
+     "bosses": [
+      "Bell-Founder Vesper Calloway"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.047,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
      "kind": "store",
      "minLevel": 22,
      "towns": [
@@ -25976,6 +28448,54 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.025
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_coke_ovens",
+     "dungeonName": "Through the Slag Ovens",
+     "dungeonTier": 1,
+     "levels": [
+      14,
+      26
+     ],
+     "tier": "ordinary",
+     "share": 0.083
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_tailings_pit",
+     "dungeonName": "Tailings Crossing",
+     "dungeonTier": 1,
+     "levels": [
+      16,
+      28
+     ],
+     "tier": "ordinary",
+     "share": 0.083
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_bell_foundry",
+     "dungeonName": "The Bell Road",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.083
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -26476,6 +28996,30 @@
      "share": 0.05
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "ordinary",
+     "share": 0.113
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.05
+    },
+    {
      "kind": "store",
      "minLevel": 8,
      "towns": [
@@ -26864,6 +29408,60 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.047,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "elite",
+     "share": 0.093
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_liquidation_floor",
+     "dungeonName": "Final Markdown",
+     "dungeonTier": 3,
+     "levels": [
+      30,
+      42
+     ],
+     "tier": "boss",
+     "share": 0.136,
+     "bosses": [
+      "Liquidator Prime"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,
@@ -27501,6 +30099,54 @@
      "share": 0.025
     },
     {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "ordinary",
+     "share": 0.094
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "ordinary",
+     "share": 0.094
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "ordinary",
+     "share": 0.094
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "ordinary",
+     "share": 0.025
+    },
+    {
      "kind": "store",
      "minLevel": 22,
      "towns": [
@@ -27890,6 +30536,114 @@
      "kind": "drop",
      "dungeon": "recall_yard",
      "dungeonName": "Recall Authority Yard",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "boss",
+     "share": 0.047,
+     "bosses": [
+      "Recall Engine R-ALL"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_pharmacy_vault",
+     "dungeonName": "Down the Vault Stairs",
+     "dungeonTier": 2,
+     "levels": [
+      20,
+      32
+     ],
+     "tier": "boss",
+     "share": 0.143,
+     "bosses": [
+      "Formulator Dessa Quill"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_audit_tower",
+     "dungeonName": "Audit Ascent",
+     "dungeonTier": 2,
+     "levels": [
+      26,
+      38
+     ],
+     "tier": "boss",
+     "share": 0.143,
+     "bosses": [
+      "Compliance Officer Hale Thornquist"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "elite",
+     "share": 0.095
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_radio_mast",
+     "dungeonName": "Climb the Mast",
+     "dungeonTier": 3,
+     "levels": [
+      28,
+      40
+     ],
+     "tier": "boss",
+     "share": 0.143,
+     "bosses": [
+      "Signal Widow Perpetua"
+     ]
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
+     "dungeonTier": 4,
+     "levels": [
+      38,
+      50
+     ],
+     "tier": "elite",
+     "share": 0.031
+    },
+    {
+     "kind": "drop",
+     "dungeon": "gw_recall_yard",
+     "dungeonName": "Recall Run",
      "dungeonTier": 4,
      "levels": [
       38,

@@ -33,25 +33,34 @@ Data lives in `GATEWAYS` in `src/world.ts`; edit that to retune.
 
 ```
             Rustline ──(Bell Foundry)──> Harrow Reach ──(Radio Mast)──> Signal Heights
-Neon Mile ──(Reagent Vault)──> Underbazaar ──(Ward 9 Clinic)──> Aldane Spire ──(Liquidation Floor)──> Kestrel Plaza ──(Recall Yard)──> Tether Base
-The Stacks ──(Slag Ovens)──> Saltwater Harbor ──(Foundry Line 7)──> Dustline Salvage
+Neon Mile ──(Reagent Vault)──> Underbazaar ──(Audit Ascent)──> Aldane Spire ──(Liquidation Floor)──> Kestrel Plaza ──(Recall Yard)──> Tether Base
+The Stacks ──(Slag Ovens)──> Saltwater Harbor ──(Tailings Crossing)──> Dustline Salvage
 ```
 
 | Link | Gateway dungeon | Title | Destination floor | Arrival vista |
 |---|---|---|---|---|
-| the_stacks → **salt_harbor** | `coke_ovens` | Through the Slag Ovens | 14 | The ovens open onto the old sea wall. Below, the harbor lights float on black water. |
-| salt_harbor → **dust_yard** | `foundry` | Line 7 Breakout | 16 | Past the last casting hall the roof is gone and the sand starts. Salvage fires flicker on the horizon. |
-| rustline → **harrow** | `bell_foundry` | The Bell Road | 20 | The bell tolls behind you. Ahead, Harrow Reach glows on its slag terraces under the dead stack. |
-| neon_mile → **under_bazaar** | `pharmacy_vault` | Down the Vault Stairs | 20 | The vault's service stair drops into the metro concourse. Lanterns, a thousand stalls, nobody looks up. |
-| under_bazaar → **aldane_spire** | `clinic` | Ward 9 Ascent | 26 | The patient lift climbs out of Ward 9 and opens on the Spire podium. The air tastes filtered. |
-| harrow → **signal_heights** | `radio_mast` | Climb the Mast | 28 | At the top of the mast the Heights spread out: dishes, shanties and the Spire far across the haze. |
-| aldane_spire → **kestrel_plaza** | `liquidation_floor` | Final Markdown | 30 | The liquidation floor's loading doors roll up onto Kestrel Plaza and its gold arch. |
-| kestrel_plaza → **tether_base** | `recall_yard` | Recall Run | 38 | Beyond the yard fence the Tether rises out of sight, climber cars crawling toward orbit. |
+| the_stacks → **salt_harbor** | `gw_coke_ovens` | Through the Slag Ovens | 14 | The ovens open onto the old sea wall. Below, the harbor lights float on black water. |
+| salt_harbor → **dust_yard** | `gw_tailings_pit` | Tailings Crossing | 16 | Past the last tailings dam the pit gives way to open sand. Salvage fires flicker on the horizon. |
+| rustline → **harrow** | `gw_bell_foundry` | The Bell Road | 20 | The bell tolls behind you. Ahead, Harrow Reach glows on its slag terraces under the dead stack. |
+| neon_mile → **under_bazaar** | `gw_pharmacy_vault` | Down the Vault Stairs | 20 | The vault's service stair drops into the metro concourse. Lanterns, a thousand stalls, nobody looks up. |
+| under_bazaar → **aldane_spire** | `gw_audit_tower` | Audit Ascent | 26 | The auditors' lift climbs out of the tower and opens on the Spire podium. The air tastes filtered. |
+| harrow → **signal_heights** | `gw_radio_mast` | Climb the Mast | 28 | At the top of the mast the Heights spread out: dishes, shanties and the Spire far across the haze. |
+| aldane_spire → **kestrel_plaza** | `gw_liquidation_floor` | Final Markdown | 30 | The liquidation floor's loading doors roll up onto Kestrel Plaza and its gold arch. |
+| kestrel_plaza → **tether_base** | `gw_recall_yard` | Recall Run | 38 | Beyond the yard fence the Tether rises out of sight, climber cars crawling toward orbit. |
 
 Locked towns appear on the world map as dashed silhouettes. The tooltip shows the name, level band and "Clear <Gateway> to unlock". The ride button is disabled and `travelCheck` refuses travel.
 Old saves keep any town they already visited, along with Harrow if its legacy unlock flag was set.
 
-**Not done yet:** the gateways reuse existing dungeons with their own signature bosses. They are not yet longer than a normal run or retuned for gateway duty, and there is no look-only visit from the end vista.
+### What makes a gateway epic (`src/content/gateways.ts`)
+Each gateway is a `gw_<base>` variant of a batch-1 dungeon, registered as its own dungeon id (own daily lock, instance and catalog entry) and hosted only by its source town:
+- **Longer run:** every room is 35% larger on each side (about 1.5–1.9x the floor area) and the packs are 1.5x (1.25x in tier III–IV). The estimated time is 1.6x the base dungeon's.
+- **Set piece:** an ambush of the junction elite and three alarm-type foes (group 77) holds the objective controller. They stand on tiles the generator already validated as reachable.
+- **Boss:** +30% HP and an extra final phase below 22% HP, applied when `dd.gateway` is set (`mechanics.ts` `gwSpec`). The phase adds an enrage (x1.18 speed, x0.8 cooldowns), a wave of three of its summons, and its arena gimmick at 1.6x tempo.
+- **Tuning:** `minLevel` is the destination town's entry level, and `maxLevel` is that level + 12. XP is 2.2x and credits 1.6x. A gateway has no unlock chain.
+- **Arrival vista:** clearing a gateway emits `gateway` and shows a full-screen vista (`townui.ts` `showVista`) with the gateway title, the town name in its colour, the arrival text and its band and faction. The Reach Line then opens with that town selected.
+- The Dustline and Aldane links use `tailings_pit` and `audit_tower` as bases, because the hand-built `foundry`/`clinic` are not on the batch-1 generator.
+
+Not done: a look-only visit from the end vista.
 
 ## Aspirational hooks and discovery (`src/discovery.ts`)
 
@@ -87,6 +96,7 @@ The art for a town (props, grounds, recolour bake, neon signs) is created on fir
 ## Tests
 
 - `tests/world.mjs`: every town via the transit UI at level 1 (locked lines refuse travel first, then are force-opened), safe hub, full walkable connectivity, reachable pads, station spacing.
+- `tests/gateway_epic.mjs`: each gateway is tuned to its destination's entry level and is longer than its base (floor area, spawns and estimated time). It must have a set-piece ambush and a boss with +HP and an extra phase. Without `--quick`, the headless bot must clear every gateway at matching gear: kit mid below 20, blue below 28, purple from 28, at the destination floor + 2. Gateway runs must also take longer than their bases.
 - `tests/world_unlocks.mjs`: starter towns open; every other town is locked and travel is refused; each gateway is enterable from its source town and within ±6 levels of the destination floor; a real `startRun` + `grantClear` of every gateway unlocks its town; checks the silhouette tooltip, persistence across reload, and that a second character starts locked.
 - `tests/world_discovery.mjs`: first-visit XP and standing once, fixer line, landmark log, sealed gates, elite vendor stock, persistence.
 - `tests/station_trigger_align.mjs`: every station in every town, desktop and phone.

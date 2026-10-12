@@ -98,7 +98,7 @@ export class Game {
     const line=outOfDepth(this.save.level,id); if(line) this.emit('toast','Odalys: '+line); }
   /** epic gateway clear: opens the Reach Line to the destination for this character (each party member runs this on their own save) */
   gatewayClear(){ const gw=GATEWAY_BY_DUNGEON[this.dd.id]; if(!gw) return; const w:any=(this.save as any).world??={visited:{},landmarks:{}}; if(w.unlocked?.[gw.to]) return; (w.unlocked??={})[gw.to]=Date.now(); w.arrival=gw.to; const t=WORLD_BY_ID[gw.to];
-    this.toast(`GATEWAY CLEARED: ${gw.title}. ${gw.arrival} The Reach Line to ${t.name} is open.`); this.emit('stinger','complete'); persist(this.save); }
+    this.toast(`GATEWAY CLEARED: ${gw.title}. ${gw.arrival} The Reach Line to ${t.name} is open.`); this.emit('stinger','complete'); this.emit('gateway',gw.to); persist(this.save); }
   worldScan(){ const L:any=this.level; const xp=landmarkNear(this.save,this.townId,this.px,this.py,L.landmark); if(xp){ this.addXp(xp); this.toast(`Landmark logged: ${L.landmark.name} (+${xp} XP).`); persist(this.save); } }
   /** Unlock towns whose condition is newly met (clears, level ups, load). Returns the ids unlocked now. */
   checkTownUnlocks():TownId[]{ const n=refreshUnlocks(this.save); for(const id of n){ this.toast(`New destination: ${TOWN_INFO[id].name}. Take the Reach Line at the plaza tram stop.`); persist(this.save); } return n; }

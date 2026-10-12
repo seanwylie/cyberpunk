@@ -11,7 +11,7 @@ await ev(() => { window.__texts = []; const o = CanvasRenderingContext2D.prototy
   const od = CanvasRenderingContext2D.prototype.drawImage; CanvasRenderingContext2D.prototype.drawImage = function (im, ...r) { const n = window.__signs.get(im); if (n && this.globalAlpha > .05) window.__signDraws[n] = (window.__signDraws[n] || 0) + 1; return od.call(this, im, ...r); }; });
 const names = [];
 for (const town of ['rustline', 'harrow']) {
-  await ev(async town => { const g = window.__game; g.save.level = 30; (g.save.cleared = { ...(g.save.cleared || {}), bell_foundry: 1 }, g.checkTownUnlocks()); if (g.townId !== town) g.travel(town); window.__ui.open(null); }, town);
+  await ev(async town => { const g = window.__game; g.save.level = 30; (g.save.cleared = { ...(g.save.cleared || {}), gw_bell_foundry: 1 }, g.checkTownUnlocks()); if (g.townId !== town) g.travel(town); window.__ui.open(null); }, town);
   await page.waitForFunction(t => window.__rend.town?.ready && window.__game.townId === t, town, { timeout: 30000 }); await sleep(1500);
   const sts = await ev(() => window.__game.level.interacts.map(i => ({ id: i.id, key: i.station, x: i.x, y: i.y, r: i.r, name: i.label.split(':')[0].toUpperCase() })));
   const nm = await ev(async () => { const S = await import('/src/stations.ts'); return Object.fromEntries(S.STATIONS.map(s => [s.key, s.name.toUpperCase()])); });

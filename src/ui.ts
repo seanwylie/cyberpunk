@@ -35,7 +35,7 @@ import { bankItemsOf, depositItem } from './bank';
 import { currentTown, dungeonAccess, isUnlocked, unlockProgress } from './towns';
 import { WORLD_BY_ID, GATEWAY_BY_DUNGEON } from './world';
 import { gateSealed, SEAL_MARGIN, vendorBand, outOfDepth } from './discovery';
-import { travelHtml, guildHtml, townClick, TV } from './townui';
+import { travelHtml, guildHtml, townClick, TV, showVista } from './townui';
 import { bankHtml, bankClick, bankInput, BK } from './bankui';
 import { wardrobeHtml, wardrobeClick, wardrobeAfter } from './wardrobeui';
 import { storeHtml, storeClick } from './storeui';
@@ -120,7 +120,7 @@ export class UI {
   handle(type:string,p:any){
     const g=this.g;
     if(type==='traitcheck'){ setTimeout(()=>traitCheckpoint(this),1500); return; }
-    if(type==='toast') this.toast(p); else if(type==='dialog') this.showDialog(p); else if(type==='open'){ const pid=String(p); if(pid.startsWith('npc_')||pid==='contacts'){ if(pid.startsWith('npc_')&&CONTACT_BY_ID[pid.slice(4)]) this.contactSel=pid.slice(4); this.open('contacts'); } else this.open(pid==='annex'||pid==='gate'||pid.startsWith('dungeon')?'gate':pid==='locker'?'locker':pid==='bank'?'bank':pid==='travel'?'travel':pid==='guild'?'guild':pid==='vendor'?'vendor':pid==='fixer'?'fixer':pid==='store'?'store':null); }
+    if(type==='toast') this.toast(p); else if(type==='gateway') showVista(String(p)); else if(type==='dialog') this.showDialog(p); else if(type==='open'){ const pid=String(p); if(pid.startsWith('npc_')||pid==='contacts'){ if(pid.startsWith('npc_')&&CONTACT_BY_ID[pid.slice(4)]) this.contactSel=pid.slice(4); this.open('contacts'); } else this.open(pid==='annex'||pid==='gate'||pid.startsWith('dungeon')?'gate':pid==='locker'?'locker':pid==='bank'?'bank':pid==='travel'?'travel':pid==='guild'?'guild':pid==='vendor'?'vendor':pid==='fixer'?'fixer':pid==='store'?'store':null); }
     else if(type==='reveal') this.banner(p.name, 'Damage-free emergence. Movement is available.'); else if(type==='reveal-end') this.hideBanner();
     else if(type==='boss-dead'){ this.banner('Mission complete','Boss defeated. Personal loot remains until the instance expires.',4); { let tries=0; const iv=setInterval(()=>{ tries++; if(g.mode!=='run'||!g.inst?.flags.bossDead||tries>40){ clearInterval(iv); return; } if(tries>=4&&!this.modal){ clearInterval(iv); this.open('summary'); } },1000); } }
     else if(type==='intro'){ if(p.fresh!==false||true){ this.banner(p.name, p.objective?('Objective: '+String(p.objective).replace(/^Next: /,'')):(p.zone||''), 5); } { let f=document.getElementById('introFade'); if(!f){ f=document.createElement('div'); f.id='introFade'; f.style.cssText='position:fixed;inset:0;background:#05070a;opacity:0;pointer-events:none;z-index:40;transition:opacity 1.6s ease-out'; document.body.appendChild(f); } f.style.transition='none'; f.style.opacity='.9'; void f.offsetWidth; f.style.transition='opacity 1.6s ease-out'; f.style.opacity='0'; } }

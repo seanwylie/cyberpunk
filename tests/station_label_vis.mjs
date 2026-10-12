@@ -12,7 +12,7 @@ for (const [W, H, T] of [[1280, 720, 0], [800, 600, 0], [844, 390, 1]]) {
     P.drawImage = function (im, ...a) { if (a.length === 8) hit(this, a[4], a[5], a[6], a[7]); else if (a.length === 4) hit(this, a[0], a[1], a[2], a[3]); return oi.call(this, im, ...a); };
     P.fillText = function (t, ...r) { if (this.canvas.id === 'game') { const L = (window.__rend.lblRects || []).find(q => q.text === String(t)); if (L) window.__lbl = L; } return of.call(this, t, ...r); }; const raf = window.requestAnimationFrame.bind(window); window.requestAnimationFrame = cb => raf(t => { window.__lbl = null; cb(t); }); window.__ui.open(null); });
   for (const town of ['rustline', 'harrow']) {
-    await ev(async town => { const g = window.__game; g.save.level = 30; (g.save.cleared = { ...(g.save.cleared || {}), bell_foundry: 1 }, g.checkTownUnlocks()); if (g.townId !== town) g.travel(town); window.__ui.open(null); }, town);
+    await ev(async town => { const g = window.__game; g.save.level = 30; (g.save.cleared = { ...(g.save.cleared || {}), gw_bell_foundry: 1 }, g.checkTownUnlocks()); if (g.townId !== town) g.travel(town); window.__ui.open(null); }, town);
     await page.waitForFunction(t => window.__rend.town?.ready && window.__game.townId === t, town, { timeout: 30000 }); await sleep(1500);
     const sts = await ev(() => window.__game.level.interacts.map(i => ({ id: i.id, key: i.station, x: i.x, y: i.y, r: i.r })));
     for (const st of sts) {

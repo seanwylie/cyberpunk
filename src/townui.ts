@@ -3,7 +3,7 @@ import { CHIPS, ChipId, RARITY_COLOR, STARTING } from './config';
 import { TOWN_INFO, currentTown, travelCheck, isUnlocked, unlockHint, unlockProgress, type TownId } from './towns';
 import { bankOverflowChip, lockerFree } from './bank';
 import { persist } from './state';
-import { WORLD, WORLD_BY_ID, FIRST_VISIT_XP } from './world';
+import { WORLD, WORLD_BY_ID, FIRST_VISIT_XP, GATEWAY_TO } from './world';
 import { stationsOf } from './worldtowns';
 import { worldOf, dungeonsAt, discoveredCount } from './discovery';
 type UIx = any;
@@ -58,4 +58,18 @@ export async function rideTram(ui: UIx, id: TownId) {
   document.body.appendChild(ov); requestAnimationFrame(() => { ov.style.opacity = '1'; const f = document.getElementById('tramfill'); if (f) f.style.width = '92%'; });
   try { await Promise.all([Promise.resolve(g.townPreload?.(id)).catch(() => {}), new Promise(r => setTimeout(r, 900))]); ui.close(); g.travel(id); }
   finally { ov.style.opacity = '0'; setTimeout(() => ov.remove(), 220); riding = false; }
+}
+
+/** Gateway arrival vista: a full-screen set piece when an epic gateway is cleared (the road to the new town opens in front of you). */
+export function showVista(to: string) {
+  const t = WORLD_BY_ID[to], gw = GATEWAY_TO[to]; if (!t || !gw || document.getElementById('gwvista')) return;
+  const ov = document.createElement('div'); ov.id = 'gwvista'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', t.name);
+  ov.style.cssText = `position:fixed;inset:0;z-index:8500;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0 6vw 9vh;gap:10px;color:#eee;font-family:"Roboto Condensed",sans-serif;text-align:center;opacity:0;transition:opacity .8s;background:linear-gradient(180deg,rgba(4,6,10,.15) 0%,rgba(4,6,10,.35) 40%,rgba(4,6,10,.92) 100%),radial-gradient(ellipse at 50% 30%,${t.color}55,transparent 60%),linear-gradient(0deg,#05070a,#0e1320)`;
+  const sky = Array.from({ length: 26 }, (_, i) => `<i style="position:absolute;bottom:${18 + (i * 37) % 22}%;left:${(i * 53) % 100}%;width:${10 + (i * 7) % 26}px;height:${40 + (i * 29) % 160}px;background:#0b0f18;box-shadow:0 0 18px ${t.color}33"></i>`).join('');
+  ov.innerHTML = `<div aria-hidden="true" style="position:absolute;inset:0;overflow:hidden">${sky}</div><div style="position:relative;letter-spacing:.3em;font-size:13px;color:#ffd84a">GATEWAY CLEARED · ${esc(gw.title.toUpperCase())}</div>
+    <div style="position:relative;font:800 clamp(30px,6vw,64px) 'Roboto Condensed',sans-serif;color:${t.color};text-shadow:0 0 24px ${t.color}88">${esc(t.name)}</div>
+    <div style="position:relative;max-width:640px;font-size:16px;line-height:1.4">${esc(gw.arrival)}</div><div style="position:relative;font-size:13px;opacity:.75">Lv ${t.band[0]}–${t.band[1]} · ${esc(t.faction)} · the Reach Line now stops here</div>
+    <button class="btn primary" style="position:relative;margin-top:8px" data-gwclose>Continue</button>`;
+  document.body.appendChild(ov); requestAnimationFrame(() => { ov.style.opacity = '1'; }); const close = () => { ov.style.opacity = '0'; setTimeout(() => ov.remove(), 400); };
+  ov.querySelector('[data-gwclose]')!.addEventListener('click', close); setTimeout(close, 12000);
 }
