@@ -36,7 +36,7 @@ export const WORLD: WorldTown[] = [
       perimeter: [['container', 4, 2, 3.6], ['h_container', 4, 2, 3.7], ['container', 2, 4, 3.6], ['leanto', 3, 2, 3.0], ['scaffold', 3, 2, 3.2], ['crates', 2, 2, 2.5]], hub: [['barrel_fire', 1, 1, 1.4], ['bench', 2, 1, 2.0], ['junk', 2, 1, 2.6], ['rags1', 1, 1, 1.0]],
       landmark: { spr: 'scaffold', fw: 3, fd: 2, sw: 4.6, name: 'The Twelve-High', blurb: 'The tallest stack in the Basin. The lift has not worked in nine years; the residents run a pulley instead.' },
       signage: ['STACK 7', 'NO TRESPASS', 'WATER 2C'], crowd: 1.2, puddles: true } },
-  { id: 'salt_harbor', name: 'Saltwater Harbor', short: 'HARBOR', band: [12, 28], faction: 'Rustline Compact', theme: 'Flooded harbor', color: '#38d8ff', map: [14, 52], region: 'outskirts',
+  { id: 'salt_harbor', name: 'Saltwater Harbor', short: 'HARBOR', band: [14, 30], faction: 'Rustline Compact', theme: 'Flooded harbor', color: '#38d8ff', map: [14, 52], region: 'outskirts',
     blurb: 'The old port went under when the sea wall failed. Now it is boardwalks, moored barges and a fish market on stilts.',
     dungeons: ['drained_reservoir', 'coke_ovens', 'freight_depot'], under: 'Harbor jobs run deeper than the water, merc. Look around, but keep your feet dry.',
     gen: { seed: 303, w: 72, h: 52, shape: 'cross', stations: ['transit', 'jobs', 'vendor', 'bank', 'locker', 'gate'], ground: { base: 'planks', planks: 'deck', plaza: 'plaza', debris: 'cobble' }, recolor: 'hue-rotate(160deg) saturate(.8) brightness(.95)', grade: { tint: 'rgba(8,26,40,.2)', vig: 'rgba(2,8,14,.74)' }, lamp: '120,210,255', pulse: 7,
@@ -93,3 +93,19 @@ export const GEN_TOWNS = WORLD.filter(t => t.gen);
 /** first-visit bonus XP, scaled by how far above the player the town sits */
 export const FIRST_VISIT_XP = (t: WorldTown) => 40 + t.band[0] * 6;
 export const LANDMARK_XP = (t: WorldTown) => 20 + t.band[0] * 3;
+/** Soft, staggered transit unlocks (docs/WORLD.md table). Each milestone lands well before the town's band floor, so players still arrive under-levelled.
+ *  kind: open | clears (any dungeon clears, optionally of a min tier / maker) | contract (fixer jobs done) | rep (manufacturer standing) | level. Any listed path unlocks. */
+export type UnlockPath = { kind: 'clears'; n: number; tier?: number; mfr?: 'HI' | 'PS' | 'MM' } | { kind: 'contract'; n: number } | { kind: 'rep'; mfr: 'HI' | 'PS' | 'MM'; n: number } | { kind: 'level'; n: number };
+export const UNLOCKS: Record<string, UnlockPath[] | 'open'> = {
+  rustline: 'open', neon_mile: 'open', the_stacks: 'open',
+  salt_harbor: [{ kind: 'clears', n: 1 }, { kind: 'level', n: 14 }],
+  dust_yard: [{ kind: 'clears', n: 3 }, { kind: 'contract', n: 1 }],
+  harrow: [{ kind: 'clears', n: 1, tier: 2 }, { kind: 'level', n: 20 }],
+  under_bazaar: [{ kind: 'contract', n: 1 }, { kind: 'clears', n: 1, tier: 2 }],
+  aldane_spire: [{ kind: 'rep', mfr: 'PS', n: 40 }, { kind: 'clears', n: 1, tier: 2, mfr: 'PS' }],
+  kestrel_plaza: [{ kind: 'rep', mfr: 'MM', n: 40 }, { kind: 'clears', n: 1, tier: 2, mfr: 'MM' }],
+  signal_heights: [{ kind: 'clears', n: 3, tier: 2 }, { kind: 'contract', n: 3 }],
+  tether_base: [{ kind: 'clears', n: 1, tier: 3 }, { kind: 'level', n: 34 }],
+};
+const MFRN: Record<string, string> = { HI: 'Harrow-Brandt', PS: 'Aldane Surgical', MM: 'Kestrel Value' };
+export const unlockText = (p: UnlockPath) => p.kind === 'level' ? `reach level ${p.n}` : p.kind === 'contract' ? `finish ${p.n} fixer job${p.n > 1 ? 's' : ''}` : p.kind === 'rep' ? `${p.n} standing with ${MFRN[p.mfr]}` : `clear ${p.n} ${p.mfr ? MFRN[p.mfr] + ' ' : ''}${p.tier ? 'Tier ' + ['', 'I', 'II', 'III', 'IV'][p.tier] + '+ ' : ''}dungeon${p.n > 1 ? 's' : ''}`;

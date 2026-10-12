@@ -685,3 +685,4 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 .trfix{ display:flex; flex-direction:column; gap:6px; margin:8px 0; } .trrow{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 .trchip{ display:inline-block; padding:1px 8px; border:1px solid #3ef0ff; border-radius:10px; font-size:.9em; white-space:nowrap; }
 .trrecog{ font-style:italic; }
+.wmnode.locked i{ background:#2a2d33; box-shadow:none; border:2px dashed #6b7280; } .wmnode.locked span{ color:#7b8190; }
