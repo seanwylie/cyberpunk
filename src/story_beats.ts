@@ -15,7 +15,10 @@ export const SPEAKER = { name:'Odalys Vane', role:'Fixer' };
 
 /** Random per-page-load session id (server-side per-session limit and repeat-avoidance). Not tied to the player. */
 export const SESSION_ID=(()=>{ try{ const a=new Uint8Array(12); crypto.getRandomValues(a); return Array.from(a,x=>x.toString(16).padStart(2,'0')).join(''); }catch{ return Math.random().toString(16).slice(2).padEnd(24,'0').slice(0,24); } })();
-export function journalOf(s:Save):JournalEntry[]{ const x=s as any; if(!Array.isArray(x.journal)) x.journal=[]; return x.journal; }
+/** display names retired by the content-rating pass (no drug references): old saved story lines / run labels are rewritten on load */
+export const RENAMED:[RegExp,string][]=[[/Basin Coke Ovens/g,'Basin Slag Ovens'],[/Coke Ovens/g,'Slag Ovens'],[/Coke-Tender/g,'Oven-Tender'],[/coke ovens/g,'slag ovens'],[/Quill Pharmacy Vault/g,'Quill Reagent Vault'],[/Pharmacy Vault/g,'Reagent Vault'],[/Apothecary Dessa Quill/g,'Formulator Dessa Quill'],[/\bApothecary\b/g,'Formulator'],[/Sedative Bloom/g,'Torpor Bloom'],[/Stim injector/g,'Nano-patch'],[/\bstims\b/g,'patches'],[/\bstim\b/g,'patch'],[/\bStims?\b/g,'Patch']];
+export const renameLegacy=(t:string)=>{ for(const [re,to] of RENAMED) t=t.replace(re,to); return t; };
+export function journalOf(s:Save):JournalEntry[]{ const x=s as any; if(!Array.isArray(x.journal)) x.journal=[]; if(!x._jrMig){ x._jrMig=true; for(const e of x.journal){ if(typeof e.text==='string') e.text=renameLegacy(e.text); if(typeof e.result==='string') e.result=renameLegacy(e.result); if(Array.isArray(e.parts)) e.parts=e.parts.map((p:any)=>typeof p==='string'?renameLegacy(p):p); if(typeof e.dungeonName==='string') e.dungeonName=renameLegacy(e.dungeonName); } } return x.journal; }
 export function metaOf(s:Save):BeatMeta{ const x=s as any; if(!x.beatMeta) x.beatMeta={seenMfr:[],count:0}; return x.beatMeta; }
 
 /** Plain display name: drops the short maker prefix ("HB Siege Bot Arm" -> "Siege Bot Arm") and a trailing side marker. */

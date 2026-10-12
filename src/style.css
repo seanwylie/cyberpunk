@@ -603,3 +603,5 @@ body.reducefx .win.storywin{ animation:none; }
 .storynav{ align-items:center; justify-content:space-between; } .stpos{ font-size:max(var(--fmin),calc(13px*var(--fs))); opacity:.85; }
 #storymsg2{ min-height:1.3em; }
 body:not(.intown) #btn-story{ display:none; }
+/* compact tile captions (docs/UI.md): one line, never clipped mid-glyph; the full name is in the tooltip */
+.stparts .tile.stp>b.cap{ position:absolute; left:2px; right:2px; bottom:2px; font-size:max(12px,calc(10.5px*var(--fs))); text-align:center; background:rgba(10,10,11,.7); border-radius:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.25; padding:1px 2px; }
