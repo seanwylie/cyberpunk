@@ -33,6 +33,7 @@ import { CONTRACT_BY_ID, Goal } from './content/npcs';
 import { LAYOUT_V, Save, InstanceState, EnemyState, Drop, mkInst, persist, todayStr, retentionMs, Carried, Inst, lockDay, setLockDay, contractState, capacityUsed } from './state';
 import { idkfaActive, idkfaEnable, idkfaDisable } from './idkfa_toggle';
 import { BAL } from './content/balance';
+import { altPrompt, altInteract, relay as altRelay, hackTier, applyPayoff, altTick, altDmgMul, altTown } from './altsim';
 import { recordAbility, recordAuto, recordDodge, recordHack, closeRun, refreshOffer, traitEffects, famBonus, statBonus } from './traitstate';
 import { traitPrior } from './traithooks';
 import type { Effect } from './traits';
@@ -83,7 +84,7 @@ export class Game {
 
   // ---------- mode transitions ----------
   enterTown(first=false){
-    const wasRun=this.mode==='run'; this.settleCompleted(); if(wasRun){ closeRun(this.save); refreshOffer(this.save,traitPrior(this)); this.emit('traitcheck','town'); }
+    const wasRun=this.mode==='run'; this.settleCompleted(); if(wasRun){ altTown(this); closeRun(this.save); refreshOffer(this.save,traitPrior(this)); this.emit('traitcheck','town'); }
     if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this); this.clearTransients();
     const tid=currentTown(this.save); this.townId=tid; setTownStations(stationsOf(tid)); this.mode='town'; this.level=buildTownLevel(tid); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.townFails=0; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
     this.recompute(); this.hp=this.maxHp; this.heat=0; this.overheated=false; this.cloakT=0; this.musicSet('town'); this.emit('towntheme',tid); this.checkTownUnlocks(); if(this.inst) persist(this.save); this.emit('mode','town'); this.worldArrive(); if(!first) this.toast('Back in town. Unload loot at the locker.'); if(!first&&wasRun) this.emit('beat',{dungeon:this.save.instance?.dungeon||undefined,run:this.save.instance?.id,result:this.save.instance?.flags?.bossDead?'Boss defeated':'Left the run early'});
@@ -273,7 +274,7 @@ export class Game {
   update(dtRaw:number){
     if(this.netHook&&this.netHook(dtRaw)) return;
     if(this.hitStop>0){ this.hitStop-=dtRaw; this.updateFx(dtRaw*.25); return; }
-    const dt=Math.min(dtRaw,.05); this.time+=dt;
+    const dt=Math.min(dtRaw,.05); this.time+=dt; altTick(this,dt);
     if(this.mode==='run'&&this.inst){ this.inst.elapsed+=dt; const rem=this.inst.expiresAt-this.now(); if(rem<=0){ this.expireInstance(); this.enterTown(); return; } if(!this.inst.warned&&rem<INSTANCE_WARN_MINUTES*60000){ this.inst.warned=true; this.toast('Instance expires in under '+INSTANCE_WARN_MINUTES+' minutes. Retrieve loot.'); } }
     if(this.grace&&this.mode==='run') this.tickGrace(dt); else if(this.grace) this.grace=null;
     this.updatePlayer(dt); abxTick(this,dt); this.codexT-=dt; if(this.codexT<=0){ this.codexT=1; this.codexScan(); if(this.mode==='town') this.worldScan(); }
@@ -407,7 +408,7 @@ export class Game {
 
   // ---------- damage ----------
   hurtEnemy(e:En,dmg:number,sx:number,sy:number,knock=0){
-    if(e.dead||e._rt.reveal>0) return; if(this.grace&&e.faction==='enemy') this.grace.acted=true; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; dmg=abxOutgoing(this,e,dmg); const rt=e._rt, tag=this.curTag;
+    if(e.dead||e._rt.reveal>0) return; if(this.grace&&e.faction==='enemy') this.grace.acted=true; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; if(e.faction==='enemy') dmg*=altDmgMul(this); dmg=abxOutgoing(this,e,dmg); const rt=e._rt, tag=this.curTag;
     if(rt.hack>0) dmg*=AB.hackMul;
     const hadShield=!!(rt.shield&&rt.shield.hp>0);
     if(hadShield&&dmg>0){ if(tag==='pulse') dmg=Math.max(dmg*AB.pulseShield,(rt.shield.max||rt.shield.hp)*AB.pulseShieldFrac); else if(tag==='auto') dmg*=AB.shieldAuto; else dmg*=AB.shieldAbility; }
@@ -488,7 +489,7 @@ export class Game {
   updateWorldRun(dt:number,inBoss:boolean){
     const f=this.inst!.flags;
     // zone based doors
-    if(!f.gate1&&this.enemies.filter(e=>e.type===this.dd.gateGuard&&!e.dead).length===0){ f.gate1=true; this.openDoor('gate1'); this.toast('Security gate released'); }
+    if(!f.gate1&&this.enemies.filter(e=>e.type===this.dd.gateGuard&&!e.dead&&!(e as any).turned).length===0){ f.gate1=true; this.openDoor('gate1'); this.toast('Security gate released'); }
     progressTick(this,dt);
     // reveal timer
     const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead);
@@ -508,7 +509,7 @@ export class Game {
   /** Dungeon-specific replacement-boss interaction (augment-gated). The first confirmed condition wins; the other selector locks. */
   doCond(id:'A'|'B'){ const dd=this.dd, f=this.inst!.flags, c=dd.conds.find(x=>x.id===id); if(!c) return; const story=this.story(); const dc=story.dclues?.[dd.id]; const clue=dc?.[id]||dc?.general||dd.generalClue;
     if(f.cond){ this.emit('dialog',{ title:c.title, body:'Boss selection is locked: '+ENEMIES[f.bossKey!].name+'. Conflicting selectors are disabled.', options:[{label:'Close'}] }); return; }
-    if(!this.build.caps.has(c.cap)){ this.emit('sfx','deny'); this.emit('dialog',{ title:c.title, body:c.denied+'\n\n'+clue, options:[{label:'Close'}] }); return; }
+    if(c.cap==='hack'?hackTier(this)<1:!this.build.caps.has(c.cap)){ this.emit('sfx','deny'); this.emit('dialog',{ title:c.title, body:c.denied+'\n\n'+clue, options:[{label:'Close'}] }); return; }
     this.emit('dialog',{ title:c.title, body:clue+'\n\n'+c.body+' Combat continues while this is open.', options:[
       { label:c.confirm, cb:()=>{ if(f.cond) return; this.channel={kind:'hack',t:0,dur:1.5,cb:()=>{ if(f.cond) return; f.cond=id; f.bossKey=c.boss; this.note('condition_used',id); this.note('route_used',c.cap); this.toast(c.toast); this.saveNow(); }}; }},{label:'Cancel'} ] }); }
   story(){ if(!this.save.story) this.save.story=newStory(); return this.save.story; }
@@ -522,14 +523,14 @@ export class Game {
     const inst=this.inst; const f=inst?.flags; const b=this.build;
     if(this.mode==='town'){ this.vendorStation=it.station||''; this.emit('open',it.opens||it.id); return; }
     if(!inst||!f) return;
+    if(String(it.id).startsWith('alt:')) return altInteract(this,it);
     const need=(cap:string,msg:string)=>{ if(!b.caps.has(cap)){ this.toast(msg); this.emit('sfx','deny'); return false; } return true; };
     switch(it.id){
-      case 'hackproc': if(f.lock2){ this.toast('Locks already rerouted.'); return; } if(!need('hack','Locked relay. Needs hacking hardware (a combat route is always available).')) return;
-        this.channel={kind:'hack',t:0,dur:1.5,cb:()=>{ f.lock2=true; this.openDoor('lock2'); this.toast('Security rerouted: junction lock open'); this.note('route_used','hack'); }}; this.toast('Hacking relay... (vulnerable; damage or dodge interrupts)'); break;
+      case 'hackproc': altRelay(this); break; /* T0 mini-game for anyone, T1+ instant (docs/ALT_GAMEPLAY.md); the lock elite still opens it by combat */
       case 'terminal': {
         const story=this.story(); const clue=story.clues.A||story.clues.general||'Terminal records: audit logs, nothing actionable.';
         if(f.cond){ this.emit('dialog',{ title:'Annex security terminal', body:'Boss selection is locked: '+ENEMIES[f.bossKey!].name+'. Conflicting selectors are disabled.', options:[{label:'Close'}] }); return; }
-        if(!b.caps.has('hack')){ this.emit('dialog',{ title:'Annex security terminal', body:'ACCESS DENIED. Requires hacking hardware.\n\n'+clue, options:[{label:'Close'}] }); return; }
+        if(hackTier(this)<1){ this.emit('dialog',{ title:'Annex security terminal', body:'Needs Hack T1 (hack augment, chip, ability or trait). You T0. Optional: the run continues without it.\n\n'+clue, options:[{label:'Close'}] }); return; }
         this.emit('dialog',{ title:'Annex security terminal', body:clue+'\n\nIssue the audit command? Selects the Neural Warden as the boss for this run (disruption zones, ranged pressure). Combat continues while this is open.', options:[
           {label:'Issue audit command (Neural Warden)', cb:()=>{ if(f.cond) return; this.channel={kind:'hack',t:0,dur:1.5,cb:()=>{ if(f.cond) return; f.cond='A'; f.bossKey='warden'; this.note('condition_used','A'); this.note('route_used','hack'); this.toast('Audit command confirmed: Neural Warden selected'); this.saveNow(); }}; }},
           {label:'Cancel'} ] }); break; }
@@ -539,12 +540,13 @@ export class Game {
           {label:'Remove fuse (Reclamation Enforcer)', cb:()=>{ if(f.cond) return; f.cond='B'; f.bossKey='enforcer'; this.note('condition_used','B'); this.toast('Fuse removed: Reclamation Enforcer selected'); this.saveNow(); }},{label:'Cancel'} ] }); break; }
       case 'controller': if(f.controller){ this.toast('Controller already secured.'); return; } f.controller=true; this.openDoor('boss'); this.toast(this.dd.objectiveToast); this.emit('sfx','objective'); this.saveNow(); break;
       case 'cond_A': case 'cond_B': this.doCond(it.id==='cond_A'?'A':'B'); break;
-      case 'cratechip': if(f.salvageForeman||inst.claimed.includes('cratechip')){ this.toast('Cache already looted.'); return; } inst.claimed.push('cratechip'); this.addDrop(it.x,it.y+.8,{kind:'chip',chip:this.dd.cache.chips[0],amount:1}); this.addDrop(it.x+.8,it.y+.6,{kind:'chip',chip:this.dd.cache.chips[1],amount:1}); this.toast('Chip cache opened'); break;
+      case 'cratechip': if(f.salvageForeman||inst.claimed.includes('cratechip')){ this.toast('Cache already looted.'); return; } inst.claimed.push('cratechip'); this.addDrop(it.x,it.y+.8,{kind:'chip',chip:this.dd.cache.chips[0],amount:1}); this.addDrop(it.x+.8,it.y+.6,{kind:'chip',chip:this.dd.cache.chips[1],amount:1}); this.toast('Chip cache opened'); if(hackTier(this)>=1) applyPayoff(this,'cache'); break;
     }
   }
   updatePrompt(){ const L=this.level; const inst=this.inst; const f=inst?.flags; let best:Interact|null=null,bd=1e9;
     for(const it of L.interacts){ if(this.mode==='run'&&f){ if(it.id==='hackproc'&&f.lock2) continue; if(it.id==='armorydoor'&&f.armory) continue; if(it.id==='controller'&&f.controller) continue; if(it.id==='cratechip'&&inst!.claimed.includes('cratechip')) continue; }
       const d=dist(this.px,this.py,it.x,it.y); const rr=it.r+(this.prompt?.id===it.id?.35:0) /* small hysteresis: no flicker at the edge */; if(d<rr&&d<bd){ bd=d; best=it; } }
+    if(!best) best=altPrompt(this);
     if(this.prompt?.id!==best?.id) this.prompt=best; }
 
   // ---------- enemies ----------
@@ -592,7 +594,7 @@ export class Game {
     rt.taunt=0; if(e.faction==='enemy'&&e.alert&&!def.boss){ let bd=1e9, bx=0, by=0; for(const dc of ((this.abx as any)?.deps||[])){ if(dc.kind!=='decoy'||dc.t>=dc.life) continue; const dd=dist(e.x,e.y,dc.x,dc.y); if(dd<dc.r+1&&dd<bd){ bd=dd; bx=dc.x; by=dc.y; } } if(bd<1e9){ tx=bx; ty=by; tgtIsPlayer=false; rt.taunt=1; } } /* taunt: alerted non-boss enemies within the decoy's radius go for it */
     const d=dist(e.x,e.y,tx,ty); const cloaked=tgtIsPlayer&&this.cloakT>0;
     if((rt.wake||0)>0){ rt.wake=rt.wake!-dt; if(rt.wake>0) return; rt.wake=0; e.alert=true; rt.hit=Math.max(rt.hit||0,.12); this.emit('sfx','alert'); }
-    if(!e.alert){ if(this.grace&&e.faction==='enemy'&&!def.boss) return; const rad=def.aggro*(cloaked?.18:1); if(e.faction==='enemy'&&tgtIsPlayer&&d<rad&&this.los(e.x,e.y,tx,ty)){ e.alert=true; this.alertGroup(e); this.emit('sfx','alert'); } else return; }
+    if(!e.alert){ if(this.grace&&e.faction==='enemy'&&!def.boss) return; const rad=def.aggro*(cloaked?.18:1)*((this.inst?.flags as any)?.lightsOut?.6:1); if(e.faction==='enemy'&&tgtIsPlayer&&d<rad&&this.los(e.x,e.y,tx,ty)){ e.alert=true; this.alertGroup(e); this.emit('sfx','alert'); } else return; }
     if(cloaked&&d>1.7&&rt.st!=='tele'&&rt.st!=='dash'){ rt.lost+=dt; if(rt.lost>1.5){ e.alert=false; rt.lost=0; rt.st='idle'; } return; }
     const speed=def.speed*(this.zoneSlow(e)?.7:1)*(rt.spdMul||1)*abxSpeedMul(this,e);
     const ang=Math.atan2(ty-e.y,tx-e.x);
