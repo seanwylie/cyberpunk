@@ -16,7 +16,7 @@ Context: `docs/UNIVERSE.md` section 8 (MMO roadmap): "a persistent shared hub wo
 | Enemies | **Each client simulates its own copy** (hybrid "local sim + relayed damage + first-claim kills"). Damage a player deals is batched (125 ms) and relayed so teammates' copies of that enemy lose the same HP; a kill is a **claim** the server dedupes, then everyone gets `ekill` | See tradeoff below |
 | Pivotal (synchronous, server arbitrated) | party create/join/leave/ready/kick, dungeon start (seed), enemy and boss **kill claims**, objective flags, instance complete (boss kill), revive, wipe | Everything that must agree |
 | Identity | Anonymous guest id + secret token, display name; saves stay local | Accounts are a later phase |
-| Party | 5-char code or invite link, max 4, leader, ready check, kick | |
+| Party | Invite / Join party from a town player's menu (accept prompt), invite link as backup, code tucked away; max 4, leader, kick | No codes or server details in the main flow |
 | Scaling | Enemy HP x(1+0.65 per extra player) applied on each client to its own enemies; damage x(1+0.20) | HP pool is effectively shared because damage is relayed |
 
 ### Enemy approach and tradeoff
@@ -47,11 +47,21 @@ There is no second combat model: a party dungeon is the same `Game` as solo (`sr
 - Legacy v1 reference core (not used by the hub): `src/core/party.ts`, `src/core/profile.ts`, `src/core/testkit.ts`.
 - Shared-file edits are tiny: `Game.netHook` (+1 call at top of `Game.update`; it now always returns false), one `netItems` call in `Renderer`, `initNet` in `main.ts`.
 
+## 2b. Zero-config grouping (no server details, no accounts)
+- **Connection:** production builds carry the server URL (`VITE_WV_SERVER`, set by `update.sh` to `wss://game.seanwylie.ca`). There is no URL field. The client connects quietly once the player is in town (only when a URL was baked in or passed with `?server=`), or when Party is opened, a town player is clicked, or an invite link is followed. `?server=` is a dev/test override (remembered only on dev hosts); dev hosts with nothing configured use `ws://<host>:8787` when Party is opened. Unreachable server: solo play continues, the Party button tooltip reads "Party: offline", the panel says so with Retry, and one short toast appears only if the player asked for multiplayer.
+- **Invite from town:** click/tap another player -> small menu: Invite, Join party, Inspect. The other player gets an Accept/Decline prompt (expires after 30 s client-side, 60 s server-side). Invite creates the inviter's party on demand; a Join request, once accepted, puts the asker into the accepter's party. Invite links still work (Party panel > Invite link); a code field sits under "Have a code?".
+- **Ready check:** the world entrance is the picker. When the leader of a 2+ party steps into a gateway, the server opens a 15 s ready check (`party_go`); every member sees the dungeon name, a countdown and who is ready. When everyone has answered, or time runs out, the ready members go in together; anyone who declined or timed out stays in town, still in the party. Non-leaders entering a gateway play solo as before (never stuck).
+- **Drop-in:** a party member in town gets **Join run** in the Party panel (or steps into the same gateway). The server adds them to the room and sends the normal `instance_start` with the seed, killed set and flags; they spawn at the entrance. Joining a party whose run is in progress is allowed. **Scaling choice (simple):** party HP/damage scaling is fixed at the run's start size; a late joiner does not rescale enemies already alive. Documented tradeoff: a 2-player run that becomes 3 is slightly easier.
+- Protocol additions (still `PROTO = 2`, additive): `invite {to, kind}`, `invite_reply {from, ok}`, `party_go {dungeon}`, `rcheck {ok}`, `drop_in`; server -> client `invite {from, name, lvl, kind}`; `party` state gains `check {dungeon, ms, yes, no}` and `members[].inRun`. `party_dungeon` / `party_start` / `party_ready` remain for old tests but the UI no longer uses them.
+
+### Later phase: town shards with population caps (design only)
+Named town instances (e.g. "Rustline 1", "Rustline 2") each capped (`TOWN_SHARD_CAP`, tuned to the render/perf budget for visible players). A player joins the fullest shard below the cap; when all are full a new shard opens (overflow). Party members are routed to their leader's shard (reserved seats so a party is never split; a member arriving at a full shard still gets in up to cap + party size). Shard name shows in the Party header; empty shards close after a minute. Cross-task shards need the room-ownership registry in section 8 step 3.
+
 ## 3. Running
 ```
 npm run server        # ws://localhost:8787  (PORT=, WV_HOST=; WV_DEV=1 enables test-only teleports (tp flag), never in production)
 npm run dev           # game
-# http://localhost:5173/?server=ws://localhost:8787 -> Party button (top-right tray) -> Create party -> send the Invite link
+# http://localhost:5173/ -> Party button connects to ws://localhost:8787; open a second window and click the other player in town -> Invite
 ```
 The Party button shows on dev/LAN hosts, and in production builds only when a server URL is configured (`?server=` is remembered in `localStorage.wv_server`, or build-time `VITE_WV_SERVER`). A static build without a URL has no multiplayer UI and opens no socket. Nothing connects until the player presses Connect or follows an invite link; failure leaves the game in solo mode.
 
@@ -71,7 +81,7 @@ See "Cheating limits" in section 1. In short: the server cannot verify gameplay,
 - `tests/net_integration.mjs`: real ws server, 3 bot clients on the real client core, 150 ms RTT + jitter + 8% loss: party flow, caps, chat limits, same seed/enemy ids everywhere, local movement + 8 Hz relay, teleport/flood rejection, damage relay and clipping, kill-claim dedup/rate cap/boss dedup, flag whitelist, revive and wipe, reconnect resume, town presence.
 - `tests/net_latency.mjs`: 200 ms RTT: every local input is applied in the same call (< 5 ms measured), teammates see it only after the link delay, local movement continues with the connection dropped, server load stays tiny.
 - `tests/net_hardening.mjs`: origin allow-list, caps, health/metrics, **version gate** (proto 1/missing/99 refused with the refresh message), graceful drain.
-- `tests/net_party_ui.mjs` (needs vite dev, `URL=http://localhost:5173/`): two real browser pages, Party panel, invite link, ready check, chat, both pages run the local dungeon, flags reach the other page, boss claim, completed state and personal loot.
+- `tests/net_party_ui.mjs` (needs vite dev, `URL=...`; hub on `HUB_PORT`, default 8787): three real pages, no URL typed, invite and join request from town, ready check on the entrance, ready members enter together, a declined member stays in town and drops in later (seed, killed set, flags, entrance spawn), unreachable-server notice. Screenshots go to `SHOTS` (default /tmp).
 - `tests/net_core.mjs`, `tests/net_interp.mjs`: legacy v1 combat-core regression (deterministic, per-player rewards, build validation) and interpolation.
 
 ## 7. Works / stubbed
@@ -81,7 +91,7 @@ Known gaps:
 - Enemies are simulated per client (see tradeoff): positions and aggro can differ between players; a teammate's enemy copy only mirrors damage and death. Summons/boss adds are local-only. Enemy attacks only ever target the local player (no friendly fire between players), heal/aura abilities are self-only.
 - Boss phases follow each client's own copy of the boss (HP is kept aligned by relayed damage); a player who never entered the boss room sees the boss simply die (no local fight, no clear XP).
 - Without accounts the server cannot prove item ownership or truthfulness of client state.
-- Late joiners are not supported (party is fixed at start; reconnect within 60 s resumes with the killed set and flags, but the local enemy HP of a rejoining client restarts).
+- Late joiners drop in at the entrance (section 2b); scaling stays at the start size. Reconnect within 60 s resumes with the killed set and flags, but the local enemy HP of a rejoining client restarts.
 - No 5th guest slot, no persistence (restart drops parties), no emotes/voice/friends.
 
 ## 8. Deployment plan (AWS) and cost
