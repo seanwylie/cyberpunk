@@ -14,7 +14,7 @@ export interface RemoteP { id: string; name: string; x: number; y: number; face:
 const PLATE_RANGE = 7.5;
 const TINTS = ['#e8c46a', '#7fd6c2', '#e58f7b', '#9fb8ff', '#c9a3ff'];
 export class RemoteDrawer {
-  private an = new Map<string, { a: PlayerAnimator; t: number; hp: number; atk: number }>(); private trails = new Map<string, TrailPt[]>(); private em = new Map<string, number>(); private plates: { x0: number; y0: number; x1: number; y1: number }[] = []; private frameT = -1;
+  private an = new Map<string, { a: PlayerAnimator; t: number; hp: number; atk: number }>(); private trails = new Map<string, TrailPt[]>(); private em = new Map<string, number>(); private recalls: number[] = []; private plates: { x0: number; y0: number; x1: number; y1: number }[] = []; private frameT = -1;
   /** device-pixel hit boxes of players drawn this frame (inspect card) and first-seen times (hub arrival flair) */
   private hits: { p: RemoteP; x0: number; y0: number; x1: number; y1: number }[] = []; private seen = new Map<string, number>(); /** last flair alpha per player (tests) */ flair = new Map<string, number>();
   constructor(private r: Renderer) {}
@@ -30,7 +30,7 @@ export class RemoteDrawer {
     if (now !== this.frameT) { this.frameT = now; }
     { const m = c.getTransform(); const p0 = m.transformPoint(new DOMPoint(a - 14 * s, b - 60 * s)), p1 = m.transformPoint(new DOMPoint(a + 14 * s, b + 6 * s)); this.hits.push({ p, x0: Math.min(p0.x, p1.x), y0: Math.min(p0.y, p1.y), x1: Math.max(p0.x, p1.x), y1: Math.max(p0.y, p1.y) }); }
     const cosL = ((p.look?.cos || []) as string[]).map(id => COS_BY_ID[id]).filter(Boolean) as CosDef[];
-    if (!this.seen.has(p.id)) { this.seen.set(p.id, now / 1000); try { playRecall(cosL, 'net:' + p.id, false); } catch {} } // arrival: their recall plays for you too
+    if (!this.seen.has(p.id)) { this.seen.set(p.id, now / 1000); this.recalls = this.recalls.filter(t => now - t < 1600); if (this.recalls.length < 2) try { if (playRecall(cosL, 'net:' + p.id, false)) this.recalls.push(now); } catch {} } // arrival: their recall plays for you too (at most 2 at once, so a crowd joining never spikes draw calls)
     { const e = (p as any).em | 0, was = this.em.get(p.id); if (was !== undefined && e !== was) try { playEmote(cosL, 'net:' + p.id, false); } catch {} this.em.set(p.id, e); }
     c.save(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(a, b, 13 * s, 6 * s, 0, 0, 7); c.fill();
     const o = this.animFor(p); let drew = false;
