@@ -189,8 +189,6 @@ export function iconCanvas(s:LootSpec):HTMLCanvasElement {
 function sheenFrames(s:LootSpec):HTMLCanvasElement[]{ let f=sheens.get(s.key); if(f) return f; const ic=iconCanvas(s); f=[];
   for(let i=0;i<SHEEN_N;i++){ const cv=mk(CELL,CELL); const c=cv.getContext('2d')!; c.drawImage(ic,0,0); c.globalCompositeOperation='source-atop'; const x=-30+i/(SHEEN_N-1)*(CELL+60); const g=c.createLinearGradient(x-14,0,x+14,0); g.addColorStop(0,'rgba(255,244,214,0)'); g.addColorStop(.5,'rgba(255,244,214,.85)'); g.addColorStop(1,'rgba(255,244,214,0)'); c.fillStyle=g; c.save(); c.translate(48,48); c.rotate(.5); c.translate(-48,-48); c.fillRect(x-20,-40,40,CELL+80); c.restore(); f.push(cv); }
   sheens.set(s.key,f); return f; }
-export function clearLootCaches(){ icons.clear(); sheens.clear(); frames.clear(); }
-export const cacheStats=()=>({icons:icons.size,sheens:sheens.size,frames:frames.size});
 
 // ---------------------------------------------------------------- spawn toss
 export const TOSS_T=.72;
@@ -289,5 +287,4 @@ export function drawPickup(c:C,fx:number,fy:number,tx:number,ty:number,s:number,
 export function drawLabel(c:C,x:number,y:number,s:number,spec:LootSpec,strong:boolean){ const fs=cpx(Math.max(10,Math.round(11*Math.max(.9,s)))*uiFs()); c.save(); c.font=`600 ${fs}px "Roboto Condensed","Bahnschrift","Liberation Sans Narrow","Arial Narrow",system-ui,sans-serif`; const txt=spec.name; const w=c.measureText(txt).width+12, h=fs+7; const col=RARITY_COLOR[spec.rar];
   const rs=RSTYLE[spec.rar]; const mw=rs.rank>0?fs*.9:0; const W2=w+mw; c.globalAlpha=strong?.95:.8; c.fillStyle='rgba(14,15,16,.88)'; rr(c,x-W2/2,y-h,W2,h,3); c.fill(); if(rs.rank>=2){ c.save(); c.shadowColor=col; c.shadowBlur=rs.rank*2.5; c.strokeStyle=col; c.lineWidth=rs.border; rr(c,x-W2/2,y-h,W2,h,3); c.stroke(); c.restore(); } c.strokeStyle=col; c.lineWidth=rs.border; c.stroke(); if(mw) drawMarker(c,rs.marker,x-W2/2+mw*.75+1,y-h/2,fs*.3,col); c.fillStyle=spec.rar==='grey'?'#cfc9b6':col; c.textAlign='center'; c.textBaseline='middle'; c.globalAlpha=1; c.fillText(txt,x+mw/2,y-h/2+.5);
   if(spec.mfr){ c.fillStyle=PAL[spec.mfr].b; c.fillRect(x-W2/2+1,y-h+1,2.6,h-2); } c.restore(); return { w:W2, h }; }
-export const LOOT_FILTERS:Rarity[]=['grey','green','blue','purple','orange'];
 export const visibleAt=(spec:LootSpec,min:Rarity)=>RARITY_RANK[spec.rar]>=RARITY_RANK[min];

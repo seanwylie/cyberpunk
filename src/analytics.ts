@@ -21,8 +21,6 @@ export function httpSink(url: string, flushEvery = 10, post: (u: string, body: s
   return { name: 'http:' + url, write: e => { q.push(e); if (q.length >= flushEvery) post(url, JSON.stringify(q.splice(0))); } };
 }
 export function addSink(s: AnalyticsSink) { if (!sinks.some(x => x.name === s.name)) sinks.push(s); }
-export function removeSink(name: string) { const i = sinks.findIndex(x => x.name === name); if (i >= 0) sinks.splice(i, 1); }
-export const sinkNames = () => sinks.map(s => s.name);
 
 export function track(name: AEventName, sku?: string, data?: Record<string, any>): AEvent {
   const e: AEvent = { n: ++__G.seq, t: Date.now(), name, ...(sku ? { sku } : {}), ...(data ? { data } : {}) };

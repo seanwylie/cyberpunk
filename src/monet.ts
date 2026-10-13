@@ -9,7 +9,6 @@ import { track } from './analytics';
 
 // ---------------------------------------------------------------- catalogue helpers
 export const lineSkins = (line: string): CosDef[] => COSMETICS.filter(d => d.line === line && d.slot === 'skin' && (d.src.k === 'shop'));
-export const shopItems = (): CosDef[] => COSMETICS.filter(d => d.src.k === 'shop' || d.src.k === 'chroma');
 export const priceOf = (d: CosDef): number => (d.src as any).cents | 0;
 export const tierOf = (d: CosDef): SkinTier | null => (d.src.k === 'shop' ? (d.src as any).tier : null);
 /** Can this cosmetic be sold right now? Retired = never. Dated = only inside its window. Chromas need the base skin. */

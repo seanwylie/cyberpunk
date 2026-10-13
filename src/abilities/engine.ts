@@ -153,4 +153,3 @@ export function abxOutgoing(g:any,e:any,dmg:number):number{ const a=abx(g); cons
   return d; }
 export function abxSpeedMul(g:any,e:any):number{ const s=g.abx?.st.get(e.id); if(!s) return 1; if(s.root>0) return 0; return s.slow?s.slow.m:1; }
 export function abxPlayerSpeed(g:any):number{ const a=abx(g); let m=a.move.t>0?a.move.m:1; for(const id of a.toggles){ const t=ABILITY_BY_ID[id]?.toggle; if(t?.move) m*=t.move; } return m; }
-export function abxCoolMul(g:any):number{ let m=1; for(const id of abx(g).toggles){ const t=ABILITY_BY_ID[id]?.toggle; if(t?.cool) m*=t.cool; } return m; }

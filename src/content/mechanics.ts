@@ -113,7 +113,6 @@ function kitFilter(sim:any,e:any,dmg:number){ if(sim.enemies.some((o:any)=>o.pyl
 /** remove pylons/adds spawned by a boss (reset, restart, death) */
 export function clearBossAdds(sim:any,killDead=true){ for(const o of sim.enemies) if(o.bossAdd&&!o.dead){ o.dead=true; o.hp=0; } if(sim.inst) sim.inst.enemies=sim.inst.enemies.filter((o:any)=>!(o.bossAdd&&killDead)); sim.enemies=sim.enemies.filter((o:any)=>!o.bossAdd); }
 /** A one-line HUD-ready status for the boss (shield / tether), used by tests and the boss bar if wanted */
-export function bossStatus(sim:any,e:any):string{ const rt=e._rt; const bits:string[]=[]; if(rt.shield&&rt.shield.hp>0) bits.push('Shielded'); if(sim.enemies.some((o:any)=>o.pylon&&!o.dead)) bits.push('Tethered'); if(rt.vuln>0) bits.push('Staggered'); if(rt.spdMul>1) bits.push('Enraged'); return bits.join(' / '); }
 
 /** Boss pressure (HARD.press): camping next to the boss triggers a quake ring + knockback, a hazard is placed under the player on a timer so standing still is punished,
  *  reinforcements arrive, and after enrageAt seconds damage and tempo ramp. All telegraphed (zone windup) so dodging/moving/abilities beat it. */

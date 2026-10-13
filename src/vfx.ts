@@ -127,4 +127,3 @@ export class Vfx {
   update(dt:number){ if(this.accent){ this.accent.t+=dt; if(this.accent.t>=this.accent.life) this.accent=null; } if(!this.live) return; for(const p of this.pool){ if(!p.on) continue; p.t+=dt; if(p.t>=p.life){ p.on=false; this.live--; continue; } p.x+=p.vx*dt; p.y+=p.vy*dt; p.z+=p.vz*dt; if(p.g){ p.vz-=p.g*dt; if(p.z<0){ p.z=0; p.vz*=-.3; p.vx*=.6; p.vy*=.6; } } if(p.d>0){ const f=Math.max(0,1-p.d*dt); p.vx*=f; p.vy*=f; } p.rot+=p.vr*dt; } }
 }
 export const VFX=new Vfx(); (globalThis as any).__vfx=VFX;
-export const typeColor=(t:keyof typeof ABILITY_TYPE_COLOR)=>ABILITY_TYPE_COLOR[t];

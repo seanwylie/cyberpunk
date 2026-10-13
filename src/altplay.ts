@@ -43,7 +43,6 @@ export function vendorTerms(h:number,district?:string):{ mul:number; refuse:bool
 /** dark bonus: below 35 humanity, up to +8% damage ("cyberpsycho") */
 export const psychoDmg=(h:number)=>h<35?(35-h)/35*.08:0;
 /** telegraphed loss-of-control at very low humanity: a 1s warning, then 1.2s of auto-attacking the nearest target. Never while a dialog or mini-game is open. */
-export const PSYCHO={ below:10, everyS:45, warnS:1, lossS:1.2 };
 export function humanityDelta(cur:ItemDef|undefined,next:ItemDef|undefined,h:number):{ d:number; text:string }{ const d=humanityCost(cur)-humanityCost(next); if(!d) return { d, text:'' };
   const nb=band(Math.max(0,Math.min(100,h+d))); const why=d<0?(nb==='psycho'?'cyberpsycho risk':nb==='chrome'?'persuasion down, intimidate up':'persuasion odds down'):'persuasion odds up';
   return { d, text:(d>0?'+':'−')+Math.abs(d)+' Humanity: '+why }; }
@@ -55,7 +54,6 @@ export function tierOf(style:Style,c:Ctx):0|1|2|3{ let n=0;
   if(style==='hack'){ if(c.caps.has('hack')) n++; if(c.abilities.some(a=>(abilityFamilies(a).hack||0)>=.5)) n++; if(fams(c.traits.l10).includes('hack')) n++; if(fams(c.traits.l20).includes('hack')) n++; }
   else { if(c.caps.has('speech')) n++; if(c.rep&&c.mfr&&(c.rep[c.mfr]||0)>=ALT_CFG.speech.repTier) n++; n+=Math.round(effSum(c,'speechTier')); if(fams(c.traits.l10).includes('social')&&!effSum(c,'speechTier')) n++; }
   return Math.max(0,Math.min(3,n)) as 0|1|2|3; }
-export function tierSources(style:Style):string{ return style==='hack'?'hack augment or chip, a hacking ability, a hacker trait':'speech augment, faction rep, a Face trait'; }
 
 // ---------------- nodes ----------------
 export type Payoff='shortcut'|'lights'|'turret'|'cache'|'shield'|'standdown'|'switch'|'bribe'|'flee'|'sitout'|'discount';

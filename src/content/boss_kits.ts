@@ -184,7 +184,6 @@ export function kitTick(sim:any,e:any,dt:number){
   if(dur===null){ k.next[bi]=k.t+4; return; } k.last=km.m; const cd=km.cd*KIT_CD_SCALE/tc*(1-.06*ph)*(.9+c.rng()*.2); k.next[bi]=k.t+dur+cd; k.busy=k.t+dur+1.6;
   rt.underT=Math.max(rt.underT||0,4.5); // a signature mechanic is the pressure: delay the generic under-your-feet hazard
 }
-export const KIT_ZONE_CAP=26;
 /** balance knobs (docs/BOSSES.md): signature mechanics are the pressure on top of the old move list, so they run slower than their nominal cd */
 export const KIT_HIT_CAP=.3;
 export const KIT_HIT_FLOOR=.16;

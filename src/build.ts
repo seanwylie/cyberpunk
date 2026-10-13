@@ -41,6 +41,5 @@ export function computeBuild(L:Layout, level:number, rep:Record<Mfr,number>, bro
 import { HARD_CONFLICTS } from './config';
 export function hardConflicts(L:Layout):string[]{ const ids=new Set(Object.values(L).filter(Boolean).map(i=>i!.def)); return HARD_CONFLICTS.filter(c=>ids.has(c.a)&&ids.has(c.b)).map(c=>c.reason); }
 export function wouldConflict(L:Layout, slot:Slot, def:string):string|null{ const L2={...L,[slot]:{uid:'tmp',def,chips:[]}}; const h=hardConflicts(L2); return h.length?h[0]:null; }
-export const socketCap=(slot:Slot)=>SLOT_SOCKETS[slot];
 export function cloneLayout(L:Layout):Layout{ const o:Layout={}; for(const k of Object.keys(L) as Slot[]) { const v=L[k]; if(v) o[k]={...v,chips:[...v.chips]}; } return o; }
 export type { ChipId };

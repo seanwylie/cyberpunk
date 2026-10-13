@@ -12,7 +12,6 @@ import { ENEMIES } from '../config';
 import { rollAffixes } from './batch2_rosters';
 
 export type Arch='gauntlet'|'ell'|'zig'|'uturn'|'hub'|'vault'|'floors';
-export const ARCHS:Arch[]=['gauntlet','ell','zig','uturn','hub','vault','floors'];
 /** [primary, alternate] macro layout per level; the alternate shows up on ~30% of runs so a dungeon keeps its identity but is not one fixed map. */
 export const ARCH_OF:Record<string,[Arch,Arch]>={
   coke_ovens:['gauntlet','ell'], substation_12:['hub','uturn'], scrap_gantry:['ell','hub'], tailings_pit:['zig','ell'], bell_foundry:['vault','uturn'],
@@ -133,7 +132,6 @@ export function genArch(spec:LevelSpec,seed:number):Level{
   for(let k=0;k<60;k++){ const s=(seed+k*7919)>>>0; try{ const L=once(spec,s); (L as any).attempt=k; (L as any).seed=seed; last=L; const bad=archCheck(L); if(!bad.length) return L; lastErr=bad.slice(0,3).join('; '); }catch(e:any){ lastErr=String(e&&e.message||e); if(!/^(place|gap|salvage|boss spawn|corridor)/.test(lastErr)) throw e; } }
   console.warn('mapgen_arch: '+spec.id+' seed '+seed+' failed: '+lastErr); if(last) return last; throw new Error('mapgen_arch '+spec.id+' '+lastErr);
 }
-export function archOfSeed(spec:LevelSpec,seed:number):Arch{ const ps=ARCH_OF[spec.id]||['gauntlet','ell']; let h0=0; for(const c of spec.id) h0=(h0*31+c.charCodeAt(0))>>>0; const q=rngOf(seed^h0^0x51ed270b); return q()<.3?ps[1]:ps[0]; }
 
 function once(spec:LevelSpec,seed:number):Level{
   let h0=0; for(const c of spec.id) h0=(h0*31+c.charCodeAt(0))>>>0; const q=rngOf(seed^h0^0x51ed270b); const ri=(a:number,b:number)=>a+Math.floor(q()*(b-a+1));

@@ -14,7 +14,6 @@ import { ABILITY_ITEMS } from './abilities/hw';
 import { HEAT } from './heat';
 // Editable gameplay configuration. SEPARATE from save data (see save.ts). All numbers are PLACEHOLDER
 // prototype values, not approved balance (spec: "Numerical examples are not approved balance").
-export const CONFIG_VERSION = '0.1.0-proto';
 
 export type Slot = 'handL'|'handR'|'armL'|'armR'|'footL'|'footR'|'legL'|'legR'|'torso'|'face'|'brain';
 export const SLOTS: Slot[] = ['face','brain','armL','torso','armR','handL','legL','handR','footL','legR','footR'];
@@ -39,7 +38,6 @@ export interface Stats { maxHp:number; dmg:number; atkSpeed:number; cooling:numb
 export const BASE_STATS: Stats = { maxHp:100, dmg:1, atkSpeed:1, cooling:1, move:1, pickup:0, regen:0, armor:0 };
 
 /** Legacy ids plus the 60+ data-driven augment abilities (src/abilities/data.ts), so this is an open string. */
-export type LegacyAbilityId = 'sweep'|'brace'|'forcedcool'|'cloak'|'bladeburst'|'reposition'|'control'|'pulse'|'revive'|'defib';
 export type AbilityId = string;
 export type AimType = 'self'|'direction'|'ground'|'target'|'ally';
 export type AbilityType='attack'|'defense'|'hacking'|'mobility';
@@ -117,7 +115,6 @@ export const WEAPONS: Record<WeaponKind,WeaponDef> = {
   arc:{ kind:'arc', dmg:11, rate:1.5, range:6.5, arc:0, heat:2.4, chain:3, chainR:3.2, label:'Chain-arc caster (hitscan chain)' },
 };
 
-export type ItemKind = 'hardware';
 export interface ItemDef { id:string; name:string; slot:Slot; mfr:Mfr; rarity:Rarity; lvl:number; stats:Partial<Stats>; abilities?:AbilityId[]; weapon?:WeaponKind; caps?:('force'|'hack'|'cloak'|'defib'|'speech')[]; /** humanity cost override (docs/HUMANITY.md); default from rarity x invasiveness */ hum?:number; authoredException?:boolean; blurb?:string; }
 const H = (id:string,name:string,slot:Slot,mfr:Mfr,rarity:Rarity,lvl:number,stats:Partial<Stats>,x:Partial<ItemDef>={}):ItemDef=>({id,name,slot,mfr,rarity,lvl,stats,...x});
 export const ITEMS: ItemDef[] = [

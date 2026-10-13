@@ -5,7 +5,6 @@ import { ABILITY_DATA } from './data';
 export type Elem='kinetic'|'fire'|'arc'|'frost'|'void'|'barrier'|'verdant'|'blink'|'gear'|'steam'|'shadow'|'sonic'|'holo';
 export type VType='attack'|'defense'|'hacking'|'mobility'|'heat';
 export interface VfxProfile { id:string; elem:Elem; type:VType; /** short description of the signature look (docs) */ signature:string; /** 0..1 grandness: rarity + role */ power:number; /** screen shake 0..1 */ shake:number; /** hit-stop seconds on a hit */ stop:number; /** stinger name for audio.sfx */ cast:string; hit:string; /** per-ability variation seed 0..7 (spoke counts, rotation, ring layering) */ v:number; trail:boolean; accent:boolean }
-export const TYPE_RGB:Record<VType,string>={ attack:'#c4543c', defense:'#d8d2bf', hacking:'#6d90b0', mobility:'#a8b87a', heat:'#d5e4e6' };
 /** [highlight, core] per element (the type colour is the third, outer colour) */
 export const ELEM_PAL:Record<Elem,readonly [string,string]>={ kinetic:['#ffe0b0','#d9a36a'], fire:['#ffd27a','#ff7a2a'], arc:['#f4ffff','#8fd4ff'], frost:['#ffffff','#a8e4f4'], void:['#e8d0ff','#8a5ad0'], barrier:['#ffffff','#9ec7e8'], verdant:['#e8ffd8','#7fd08a'], blink:['#f4ffe0','#b5e070'], gear:['#fff4c8','#d8b050'], steam:['#ffffff','#c8d8dc'], shadow:['#d8e0c0','#5a6a46'], sonic:['#fff8e0','#e8c46a'], holo:['#e8f6ff','#5fb4ea'] };
 const EL:Record<string,[Elem,string]>={

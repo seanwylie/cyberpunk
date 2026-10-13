@@ -18,7 +18,6 @@ export const recordHack=(s:any)=>addSig(s,{ hack:1 },4);
 export const recordSpeech=(s:any,kind:string)=>addSig(s,kind==='intimidate'||kind==='terrify'?{ social:.6, chrome:.4 }:{ social:1 },4);
 /** per-run humanity lean (docs/HUMANITY.md): small, so play still decides */
 export const recordHumanity=(s:any,h:number)=>addSig(s,{ social:h/100, chrome:1-h/100 },1.5);
-export const recordCloakKill=(s:any)=>addSig(s,{ ghost:1 },2);
 /** Close the current bucket (dungeon clear / town return) and trim to the rolling window. */
 export function closeRun(s:any,now=Date.now()){ const T=traitsOf(s); if(T.cur&&T.cur.n>0){ T.cur.end=now; T.runs.push(T.cur); } T.cur=null; trimWindow(T,now); }
 export function trimWindow(T:TraitState,now=Date.now()){ T.runs=T.runs.filter(r=>now-(r.end??r.t)<=C.windowMs).slice(-C.windowRuns); }

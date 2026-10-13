@@ -13,7 +13,6 @@ export interface Roster { v:1; active:string; chars:CharSummary[]; account:Accou
 type KV={ get(k:string):string|null; set(k:string,v:string):void; del(k:string):void };
 export const lsKV:KV={ get:k=>{ try{ return localStorage.getItem(k); }catch{ return null; } }, set:(k,v)=>{ try{ localStorage.setItem(k,v); }catch{} }, del:k=>{ try{ localStorage.removeItem(k); }catch{} } };
 const newId=()=>Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-4);
-export const NAME_POOL=['Vex','Juno','Kestrel','Rook','Moth','Sable','Ivo','Nadia','Pike','Wren','Cass','Dax'];
 export function readRoster(kv:KV=lsKV):Roster|null{ try{ const r=JSON.parse(kv.get(ROSTER_KEY)||'null'); if(r&&r.v===1&&Array.isArray(r.chars)) return r; }catch{} return null; }
 export function writeRoster(r:Roster,kv:KV=lsKV){ kv.set(ROSTER_KEY,JSON.stringify(r)); }
 /** Ensure a roster exists. First run after the update: the existing single save becomes character 1 (nothing lost, the raw JSON is copied verbatim). */
@@ -45,11 +44,7 @@ export function deleteChar(id:string,kv:KV=lsKV):CharResult{ const r=ensureRoste
   /* mail addressed to the deleted character goes back to its sender (if that character still exists) */ if(r.account.mail) r.account.mail=r.account.mail.filter((m:any)=>m.to!==id||(m.from!==id&&r!.chars.some(c=>c.id===m.from))).map((m:any)=>m.to===id?{ ...m, to:m.from, fromName:'Returned' }:m);
   if(!r.chars.length){ kv.del(LEGACY_KEY); kv.del(ROSTER_KEY); const r2=ensureRoster(kv); r2.account=r.account; writeRoster(r2,kv); return { ok:true, id:r2.active }; }
   if(r.active===id){ writeRoster(r,kv); return selectChar(r.chars[0].id,kv); } writeRoster(r,kv); return { ok:true, id:r.active }; }
-export function renameChar(id:string,name:string,kv:KV=lsKV){ const r=ensureRoster(kv); const c=r.chars.find(x=>x.id===id); if(c){ c.name=name.replace(/[<>"&]/g,'').trim().slice(0,16)||c.name; writeRoster(r,kv); } }
-export const activeChar=(kv:KV=lsKV)=>{ const r=ensureRoster(kv); return r.chars.find(c=>c.id===r.active)!; };
 /** Raw save of any character (transfers / selector previews). */
-export function readChar(id:string,kv:KV=lsKV):any|null{ try{ return JSON.parse(kv.get(CHAR_KEY(id))||'null'); }catch{ return null; } }
-export function writeChar(id:string,s:any,kv:KV=lsKV){ const json=JSON.stringify(s,(k,v)=>k.startsWith('_')?undefined:v); kv.set(CHAR_KEY(id),json); const r=ensureRoster(kv); if(r.active===id) kv.set(LEGACY_KEY,json); }
 /** Multiplayer identity is per character: party display name defaults to the character name; a custom party name is remembered per character. */
 export const partyName=(kv:KV=lsKV)=>{ try{ const r=ensureRoster(kv); return kv.get('wv_name_'+r.active)||(r.chars[0]?.id===r.active?kv.get('wv_name'):null)||r.chars.find(c=>c.id===r.active)?.name||'Guest'; }catch{ return 'Guest'; } };
 export const setPartyName=(n:string,kv:KV=lsKV)=>{ const r=ensureRoster(kv); kv.set('wv_name_'+r.active,n); };

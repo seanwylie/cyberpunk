@@ -38,4 +38,3 @@ export function dissipation(cooling:number,overheated:boolean,soak:number):numbe
 /** HUD band: 'ok' | 'warm' | 'hot' | 'over'. */
 export function heatBand(heat:number,overheated:boolean):'ok'|'warm'|'hot'|'over'{ if(overheated) return 'over'; const f=heat/HEAT.max; return f>=HEAT.hotAt?'hot':f>=HEAT.warnAt?'warm':'ok'; }
 /** Steady-state ceiling on ability heat per minute for a spec (what dissipation alone can absorb), before autos. Used by tests and docs. */
-export function sustainHeatPerMin(cooling:number):number{ return dissipation(cooling,false,0)*60; }

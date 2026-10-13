@@ -40,7 +40,6 @@ function stats(g:Grp,m:Mf,rar:Rar):Partial<Stats>{ const u=U[rar]; let s:Partial
   if(g==='arm'||g==='hand') s={dmg:.03*u}; else if(g==='leg') s={maxHp:Math.round(5*u),move:.012*u}; else if(g==='foot') s={move:.015*u,armor:.3*u}; else if(g==='torso') s={maxHp:Math.round(8*u),armor:.4*u}; else if(g==='brain') s={cooling:.05*u,dmg:.01*u}; else s={armor:.3*u,dmg:.015*u};
   if(m==='HI'){ s.armor=(s.armor||0)+.5*u; s.maxHp=(s.maxHp||0)+Math.round(3*u); } else if(m==='PS'){ s.cooling=(s.cooling||0)+.03*u; s.dmg=(s.dmg||0)+.01*u; } else { s.regen=(s.regen||0)+.08*u; s.pickup=(s.pickup||0)+.08*u; }
   for(const k of Object.keys(s) as (keyof Stats)[]) s[k]=r2(s[k]!); return s; }
-export interface HwRow { item:ItemDef; abilities:string[]; }
 function build():ItemDef[]{
   const out:ItemDef[]=[]; const ctr:Record<string,number>={}; const bundles:Record<string,AbilityData[]>={};
   const addTo=(a:AbilityData,g:Grp,variant:number)=>{ const sl=SLOTS_OF[g]; const n=(ctr[g+variant]=(ctr[g+variant]||0)+1); const slot=sl[n%sl.length]; const key=[a.mfr,a.rarity,slot,variant].join('|'); (bundles[key]=bundles[key]||[]).push(a); };
@@ -67,7 +66,6 @@ export function chipsFor(a:AbilityData):string[]{ const s=new Set<string>(['spee
   case 'stun': case 'slow': case 'root': case 'control': s.add('ctrldur'); s.add('gridlink'); break; case 'cloak': s.add('cloakdur'); break; case 'heal': s.add('sustain'); break; case 'shield': case 'mitigate': s.add('ablative'); s.add('plating'); break; case 'buff': s.add('gridlink'); s.add('ctrldur'); if(p.s==='move'){ s.add('stride'); s.add('servo'); } if(p.s==='lifesteal') s.add('sustain'); break; case 'vent': break;
   case 'mark': case 'expose': case 'summon': case 'aura': s.add('gridlink'); s.add('ctrldur'); if(p.tick) walk(p.tick); break; case 'delayed': case 'trap': walk(p.then); break; } } }; walk(a.steps); if(a.toggle){ if(a.toggle.mitigate){ s.add('plating'); s.add('ablative'); } if(a.toggle.dmg){ s.add('power'); s.add('overdrive'); } } return [...s]; }
 
-export const abilityOrder=(id:string)=>ABILITY_DATA.findIndex(a=>a.id===id);
 
 export interface PickEnv { tier:'ordinary'|'elite'|'boss'; level:number; tierCap:number; rank:Record<Mf,number>; discovered:Record<string,number>|undefined; rnd:()=>number; }
 /** Choose an ability-bearing augment for a converted roll. Returns null when nothing is eligible. */

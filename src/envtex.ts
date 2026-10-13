@@ -184,4 +184,3 @@ export class Env {
   }
 }
 export function makeEnv(): Env | null { try { if (typeof document === 'undefined') return null; const e = new Env(); e.ao(0); return e; } catch { return null; } }
-export const WALL_H = WALLH;

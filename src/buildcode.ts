@@ -58,4 +58,3 @@ export function buildText(b:BuildExport):string{
   return lines.filter((l,i)=>l!==''||i<4).join('\n').trim()+'\n';
 }
 export function exportJson(s:Save){ return JSON.stringify(exportBuild(s),null,1); }
-export function equippedCheck(s:Save){ return computeBuild(installedLayout(s),s.level,s.rep); }

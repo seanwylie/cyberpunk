@@ -26,8 +26,6 @@ export function playRecall(list: CosDef[], id = 'me', sound = true): string | nu
 export function playEmote(list: CosDef[], id = 'me', sound = true): string | null {
   const e = list.find(d => d.slot === 'emote'); if (!e) return null; own(id).emote = { style: e.style, t0: NaN, c: e.c }; if (sound && id === 'me') playCosSfx('pm_emote', .45); return e.style;
 }
-export const momentState = (id = 'me') => OWN.get(id);
-export const resetPm = () => OWN.clear();
 
 // ---------------------------------------------------------------- epic accents: one unique silhouette piece per skin
 type Fn = (k: PmCtx, d: CosDef, pal: string[]) => void;
@@ -47,7 +45,6 @@ const ACC: Record<string, Fn> = {
 /** Legendary/Ultimate: integrated emissive points (the body frames already carry the glow; this adds a soft bloom only) */
 const EMIT: Record<string, number[][]> = { hextech: [[0, -30], [-9, -37], [9, -37], [0, -56]], bloom: [[0, -28], [-6, -34], [6, -34]], ronin: [[0, -50], [-8, -24]], founder: [[0, -31]] };
 const lineOf = (list: CosDef[]) => list.find(d => d.slot === 'skin' && d.line);
-export const hasAccent = (id: string) => !!ACC[id];
 
 // ---------------------------------------------------------------- weapon skins + pets
 const WEAPON: Record<string, Fn> = {

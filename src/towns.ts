@@ -24,7 +24,6 @@ export const gatewayName = (id: TownId) => { const gw = GATEWAY_TO[id]; return g
 export const unlockHint = (id: TownId) => { const gw = GATEWAY_TO[id]; return !gw ? 'Open' : `Clear ${gatewayName(id)} to unlock`; };
 export const currentTown = (s: Save): TownId => (s.town && WORLD_BY_ID[s.town] ? s.town : 'rustline');
 export const clearedTier2 = (s: Save) => Object.keys(s.cleared || {}).some(id => ((DUNGEONS as any)[id]?.tier || 0) >= 2);
-export const harrowConditionMet = (s: Save) => s.level >= HARROW_UNLOCK_LEVEL || clearedTier2(s);
 /** Unlock any town whose condition is now met. Returns the towns unlocked by this call. Idempotent; also backfills old saves. */
 export function refreshUnlocks(s: Save): TownId[] { const n: TownId[] = []; const w: any = ((s as any).world ??= { visited: {}, landmarks: {} }); for (const t of WORLD) { const had = !!w.unlocked?.[t.id] || STARTER_TOWNS.includes(t.id) || !!w.visited?.[t.id]; if (!had && isUnlocked(s, t.id)) { n.push(t.id); (w.unlocked ??= {})[t.id] = Date.now(); } } return n; }
 export function unlockProgress(s: Save, id: TownId): { met: boolean; lines: string[] } {

@@ -40,7 +40,6 @@ function fallbackHumanity(s:any):number{ if(typeof s?.humanity==='number') retur
   for(const sl of SLOTS){ const u=s?.installed?.[sl]; const it=u&&s.items?.find((i:any)=>i.uid===u); const d:any=it&&ITEM_BY_ID[it.def]; if(!d) continue; cost+=typeof d.hum==='number'?d.hum:Math.round((HR[d.rarity]||0)*(HS[sl]||1)); }
   return Math.max(0,Math.min(100,100-cost)); }
 let humProvider:(s:any)=>number=(s:any)=>typeof s?.humanity==='number'?s.humanity:humanityOfSave(s);
-export const setHumanityProvider=(f:(s:any)=>number)=>{ humProvider=f; };
 export const humanityOf=(s:any)=>{ const h=humProvider(s); return Number.isFinite(h)?Math.max(0,Math.min(100,h)):fallbackHumanity(s); };
 export type HumBand='human'|'mixed'|'chrome'|'psycho';
 export const humBand=(h:number):HumBand=>h>=70?'human':h>=35?'mixed':h>=15?'chrome':'psycho';

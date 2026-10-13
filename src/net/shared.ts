@@ -46,7 +46,6 @@ export const partyHpMul = (n: number) => 1 + 0.65 * (Math.max(1, n) - 1);
 export const partyDmgMul = (n: number) => 1 + 0.2 * (Math.max(1, n) - 1);
 
 /** Open every door so a party can reach the boss (phase 1 simplification: gate/lock puzzles are not networked yet). */
-export function openAllDoors(lv: Level) { for (const d of lv.doors) for (const [x, y] of d.tiles) lv.solid[y * lv.w + x] = 0; }
 
 const solidAt = (lv: Level, ix: number, iy: number) => ix < 0 || iy < 0 || ix >= lv.w || iy >= lv.h || lv.solid[iy * lv.w + ix] === 1;
 export function circleHits(lv: Level, x: number, y: number, r: number): boolean {

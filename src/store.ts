@@ -39,7 +39,6 @@ const STARTER_SKU: Sku = { id: STARTER.id, kind: 'starter', name: STARTER.name, 
 const PASS: Sku = { id: PASS_SKU, kind: 'pass', name: SEASON.name + ' Premium Pass', desc: 'Unlocks the premium track: ' + SEASON.levels + ' levels, earned by playing. Cosmetics only.', cents: SEASON.premiumCents };
 export const CATALOG: Sku[] = [...SKINS, ...BUNDLES, ...LOCKER, ...BANK, ...LINE_SKUS, ...LINE_BUNDLES, STARTER_SKU, PASS];
 /** Earn-only legendaries: never sold, never in a SKU (tests/store_premium.mjs). */
-export const EARN_ONLY = COSMETICS.filter(d => d.rarity === 'orange' && !['premium','shop','chroma','pass','collection','starter','exclusive','bundled'].includes(d.src.k)).map(d => d.id);
 /** Limited slot: one premium legendary/epic skin rotates each week (deterministic from the week number, same for everyone). */
 export const WEEK_MS = 7 * 864e5;
 export function limitedSku(now = Date.now()): { sku: Sku; endsAt: number } { const L = CATALOG.filter(k => k.kind === 'skin' && ['orange', 'purple'].includes(COS_BY_ID[k.items![0]].rarity)); const w = Math.floor(now / WEEK_MS); return { sku: L[w % L.length], endsAt: (w + 1) * WEEK_MS }; }
@@ -94,7 +93,6 @@ export class MockProvider implements PaymentProvider {
   cancel(orderId: string) { this.pend.get(orderId)?.({ status: 'cancelled', reason: 'Cancelled' }); }
 }
 __G.provider ??= new MockProvider();
-export const setProvider = (p: PaymentProvider) => { __G.provider = p; };
 export const getProvider = (): PaymentProvider => __G.provider;
 export function configureMock(c: Partial<Pick<MockCfg, 'delayMs' | 'failureRate'>>) { if (c.delayMs !== undefined) MOCK_CFG.delayMs = c.delayMs; if (c.failureRate !== undefined) MOCK_CFG.failureRate = Math.max(0, Math.min(1, c.failureRate)); try { localStorage.setItem('wv_store_cfg', JSON.stringify({ delayMs: MOCK_CFG.delayMs, failureRate: MOCK_CFG.failureRate })); } catch { /* ignore */ } return { ...MOCK_CFG, rng: undefined }; }
 

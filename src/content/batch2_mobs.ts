@@ -54,7 +54,6 @@ export const MOBS:MobSpec[]=[
 ];
 MOBS.push(...BESTIARY_MOBS); // docs/BESTIARY.md
 export const MOB_BY_ID:Record<string,MobSpec>=Object.fromEntries(MOBS.map(m=>[m.id,m]));
-export const MOB_IDS=MOBS.map(m=>m.id);
 /** mob-only attacks (runtime in mobs.ts). base damage per attack, windup etc. */
 export const MOB_ATK:Record<string,{w:number;rec:number;cd:number;min:number;max:number;lock?:boolean;ranged?:boolean}>={
   snipe:{w:1.5,rec:.9,cd:5.5,min:5,max:18,lock:true,ranged:true}, mend:{w:.8,rec:.5,cd:4.5,min:0,max:60}, ward:{w:.8,rec:.5,cd:7.5,min:0,max:60},

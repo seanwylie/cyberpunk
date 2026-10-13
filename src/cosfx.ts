@@ -91,12 +91,10 @@ export const topTier = (list: CosDef[]): 'orange' | 'purple' | null => hasRar(li
 
 /** Trigger the signature flourish (ability use, emote, dressing-room showcase). */
 export function flourish(owner = 'me', at?: number) { const o = owners.get(owner); if (!o) { owners.set(owner, { t: 0, acc: 0, tacc: 0, flo: at ?? -1, ax: 0, ay: 0, tier: null }); return; } o.flo = at ?? -1; }
-export const flourishAge = (owner = 'me') => { const o = owners.get(owner); return o ? o.t - o.flo : 1e9; };
 
 // ------------------------------------------------------------------ main entry
 /** Feature flag: ?skinfx=0 or localStorage 'flag.skinfx'='0' turns all skin/gear FX off (cosmetics still draw). */
 export let SKIN_FX_ON = (() => { try { const q = new URLSearchParams(location.search).get('skinfx'); if (q != null) return q !== '0'; return localStorage.getItem('flag.skinfx') !== '0'; } catch { return true; } })();
-export function setSkinFx(on: boolean) { SKIN_FX_ON = on; }
 export function drawRarityFx(k: FxCtx, list: CosDef[], phase: 'back' | 'front') {
   if (!SKIN_FX_ON) return;
   const tier = topTier(list); if (!tier) return; const id = k.id || 'me'; const { c, x, y, u } = k; const red = reduced(), B = budget();

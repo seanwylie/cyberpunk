@@ -76,5 +76,4 @@ function once(spec:LevelSpec,seed:number):Level{
   (L as any).noConds=true; L.theme=spec.theme; return L;
 }
 /** legacy 4-room left-to-right chain (kept for reference / tests); the shipped generator is mapgen_arch.ts */
-export const genBatch1Chain=(spec:LevelSpec,seed:number)=>gen(seed,s=>once(spec,s),spec.id);
 export { genArch as genBatch1 } from './mapgen_arch';

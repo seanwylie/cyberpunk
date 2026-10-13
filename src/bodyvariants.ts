@@ -10,7 +10,6 @@ import { equippedCos, COS_BODY_LAYERS, COS_BY_ID } from './content/appearance';
  */
 /** 'base'|'heavy'|'surgical'|'market', premium bodies ('hextech'|'bloom'|'ronin'|'founder'), optionally '@<chroma>' (src/content/skinlines.ts CHROMA_FILTER). */
 export type Variant='base'|'heavy'|'surgical'|'market'|(string&{});
-export const VARIANTS:Variant[]=['base','heavy','surgical','market'];
 /** Visible layers (no layer for the 'brain' slot). Same names as the sprite atlas layers. */
 export const BODY_SLOTS=['face','torso','armL','handL','armR','handR','legL','footL','legR','footR'] as const;
 export type BodySlot=typeof BODY_SLOTS[number];

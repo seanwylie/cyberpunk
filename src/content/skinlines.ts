@@ -26,7 +26,6 @@ export const LINES: LineDef[] = [
 export const LINE_BY_ID: Record<string, LineDef> = Object.fromEntries(LINES.map(l => [l.id, l]));
 
 /** Blender bodies shipped in public/sprites/v/<name>/ (tools/sprites/variants_premium.py). */
-export const PREMIUM_BODIES = ['hextech', 'bloom', 'ronin', 'founder'] as const;
 /** Chroma = compose-time CSS filter applied to a body's layers (cached per signature, zero per-frame cost). */
 export const CHROMA_FILTER: Record<string, string> = {
   ruby: 'hue-rotate(160deg) saturate(1.15)', obsidian: 'saturate(.35) brightness(.72) contrast(1.15)', jade: 'hue-rotate(-70deg) saturate(1.1)',
@@ -46,7 +45,6 @@ export type PmSrc =
   | { k: 'exclusive'; key: string; how: string; window: Window }
   | { k: 'bundled'; with: string };                                             // included with a Legendary/Ultimate skin, never sold alone                // earn-only, one-time achievement or event
 
-export type XSlot = 'emote' | 'recall' | 'weapon' | 'pet';
 export interface PmRow {
   id: string; name: string; slot: string; rarity: Rarity; style: string; c: string; c2?: string; desc: string; lore: string; src: PmSrc;
   /** full-body sprite set (Blender) for skin rows, optionally with @chroma */ body?: string; line?: string; tier?: SkinTier;
@@ -116,7 +114,6 @@ export const PM_ROWS: PmRow[] = [
   { id: 'ex_world_first_gateway', name: 'Gateway Breaker Crest', slot: 'head', rarity: 'orange', style: 'crown', c: '#ffd36a', c2: '#5a3a14', desc: 'Earned by being among the first crews to clear a gateway dungeon.', lore: 'First through the gate. The gate remembers.', src: { k: 'exclusive', key: 'world_first_gateway', how: 'Clear a gateway dungeon during the launch window', window: W_FOUNDER } },
   { id: 'ex_alpha_visor', name: 'Alpha Tester Visor', slot: 'eyes', rarity: 'purple', style: 'slit', c: '#7affc0', desc: 'Earned by playing the closed alpha.', lore: 'You saw it when it was held together with tape.', src: { k: 'exclusive', key: 'alpha_tester', how: 'Play the closed alpha', window: W_ALPHA } },
 ];
-export const PM_BY_ID: Record<string, PmRow> = Object.fromEntries(PM_ROWS.map(r => [r.id, r]));
 /** What a Legendary/Ultimate purchase also grants (never sold alone). */
 export const INCLUDES: Record<string, string[]> = {};
 for (const r of PM_ROWS) if (r.src.k === 'bundled') (INCLUDES[r.src.with] ??= []).push(r.id);
