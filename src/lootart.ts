@@ -130,7 +130,7 @@ export function atlasRef(s:LootSpec):{name:string;mirror:boolean;orange:boolean;
   if(s.kind==='item'&&s.id&&has('p_'+s.id)) return { name:'p_'+s.id, mirror:false, orange:s.rar==='orange', painted:true }; // bespoke painted icon (tools/loot/gen_painted.py, docs/LOOT_ART.md)
   let name='', mirror=false; const orange=s.rar==='orange';
   if(s.kind==='credits') name='credits_'+Math.min(3,Math.max(1,s.amount));
-  else if(s.kind==='stim') name='patch';
+  else if(s.kind==='stim') name='stim'; // atlas sprite id stays 'stim' (player-facing name is Patch)
   else if(s.kind==='chip') name=orange&&has('orange_chip')?'orange_chip':'chip';
   else { const b=(s.slot||'').replace(/[LR]$/,''); mirror=/L$/.test(s.slot||''); const sn=s.id?'sig_'+s.id.replace(/^sig_/,''):''; name=orange&&sn&&has(sn)?sn:orange?`orange_${b}_${s.mfr}`:`base_${b}_${s.mfr}`; }
   if(!has(name)) return null; return { name, mirror, orange: name.startsWith('orange_')||name.startsWith('sig_') };
