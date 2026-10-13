@@ -847,7 +847,7 @@ export const BOSS_HIT_CAP=.42;
 export const FINAL_MUSIC_AT=.25;
 /** docs/BALANCE.md "Stand-still rule": boss damage is a share of the player's max HP, so standing in a telegraphed boss attack is lethal at every level.
  *  tick = lingering ground zone, per 0.5 s tick; burst = one-shot ground telegraph; hit = boss melee/projectile floor. Early dungeons still get earlyMul. */
-export const BOSS_AOE={ tick:.14, burst:.26, hit:.18, armorMax:.25, armorEarly:.5 }; /* armorMax: flat armor may remove at most this share of a boss hit (flat armor used to erase boss ticks entirely) */
+export const BOSS_AOE={ tick:.11, burst:.22, hit:0, armorMax:.4, armorEarly:.5 }; /* armorMax: flat armor may remove at most this share of a boss hit (flat armor used to erase boss ticks entirely) */
 export const ATK:Record<string,AtkDef> = {
   swing:{w:.55,rec:.5,cd:1.1,min:0,max:1.4}, shot:{w:.8,rec:.6,cd:2.6,min:0,max:9,lock:true,ranged:true}, turretshot:{w:1.1,rec:.4,cd:2.8,min:0,max:10,lock:true,ranged:true},
   cleave:{w:.9,rec:.7,cd:2.2,min:0,max:2.6}, charge:{w:1.1,rec:1.4,cd:7,min:3.2,max:10,lock:true}, slam:{w:1.1,rec:.9,cd:5,min:0,max:3.4}, summon:{w:.9,rec:.8,cd:26,min:0,max:40},
