@@ -34,8 +34,8 @@ export interface SnapMsg {
   flags: { bossSpawned: boolean; bossDead: boolean; completed: boolean; kills: number; total: number; wipeT: number; gate1?: boolean; lock2?: boolean; controller?: boolean; bossKey?: string | null; cond?: string | null };
   ev?: any[];
 }
-export interface PartyMember { id: string; name: string; ready: boolean; leader: boolean; lvl: number; look?: Look }
-export interface PartyState { t: 'party'; code: string; members: PartyMember[]; dungeon: string | null; inInstance: boolean }
+export interface PartyMember { id: string; name: string; ready: boolean; leader: boolean; lvl: number; look?: Look; /** inside the party's running instance */ inRun?: boolean }
+export interface PartyState { t: 'party'; code: string; members: PartyMember[]; dungeon: string | null; inInstance: boolean; /** ready check in progress (leader stepped into an entrance) */ check?: { dungeon: string; ms: number; yes: string[]; no: string[] } }
 
 /** Deterministic mulberry32 */
 export function rng32(seed: number) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }

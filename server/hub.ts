@@ -13,14 +13,15 @@ import { CityHub, CITY_SYNC_MS, CITY_SAVE_MS, CITY_NEWS_MS } from './city_srv';
 export interface HubOpts { /** allowed browser Origins (exact match, or '*.example.com'); empty/undefined = allow all (dev). Requests with no Origin header (bots/CLI) are allowed only when `allowNoOrigin` */ /** optional extra HTTP route handler (e.g. story proxy); return true when handled */ extra?: (req: any, res: any) => boolean; origins?: string[]; allowNoOrigin?: boolean; /** max concurrent instance rooms / parties (server refuses new ones when full) */ maxRooms?: number; maxParties?: number; port?: number; dev?: boolean; dmgMul?: number; host?: string; maxConns?: number; log?: boolean; /** living city (docs/LIVING_CITY.md); omitted = off */ city?: CityHub | null; citySyncMs?: number }
 class Bucket { tokens: number; last = Date.now(); constructor(public rate: number, public burst: number) { this.tokens = burst; } take() { const n = Date.now(); this.tokens = Math.min(this.burst, this.tokens + (n - this.last) / 1000 * this.rate); this.last = n; if (this.tokens < 1) return false; this.tokens--; return true; } }
 interface Guest { id: string; token: string; name: string; lvl: number; look?: Look; build?: any; ws: WebSocket | null; party: Party | null; shard: Shard | null; pos: { x: number; y: number; face: number; moving: boolean; em?: number; t: number; town: string }; ready: boolean; b: { all: Bucket; input: Bucket; chat: Bucket; ping: Bucket; pos: Bucket }; viol: number }
-interface Party { code: string; leader: string; members: Guest[]; dungeon: string | null; room: Room | null; ready: Set<string> }
+interface Party { code: string; leader: string; members: Guest[]; dungeon: string | null; room: Room | null; ready: Set<string>; check: { dungeon: string; until: number; yes: Set<string>; no: Set<string> } | null }
+interface Invite { from: string; kind: 'invite' | 'join'; at: number }
 interface RPlayer { id: string; name: string; lvl: number; look?: Look; x: number; y: number; f: number; hp: number; mh: number; dn: boolean; mv: boolean; at: boolean; em?: number; dirty: boolean; t: number; budget: number; viol: number; dmgB: Bucket; killB: Bucket; reviveAt: number; freeUntil: number; kills: number; dmgTotal: number }
 interface Room { id: string; party: Party; dungeon: string; seed: number; hpMul: number; dmgMul: number; w: number; h: number; spawn: { x: number; y: number }; cps: { x: number; y: number }[]; homes: { x: number; y: number }[]; players: Map<string, RPlayer>; killed: Set<number>; flags: Record<string, any>; bossDead: boolean; completed: boolean; allDownT: number; tick: number; stats: { stateRejected: number; kills: number; killsRejected: number; dmgClipped: number; revives: number; revivesRejected: number; flagsRejected: number } }
 interface Shard { id: string; town: string; members: Set<Guest> }
 const CODE_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 export function startHub(o: HubOpts = {}) {
-  const guests = new Map<string, Guest>(); const parties = new Map<string, Party>(); const shards = new Map<string, Shard>(); const rooms = new Map<string, Room>();
+  const guests = new Map<string, Guest>(); const parties = new Map<string, Party>(); const shards = new Map<string, Shard>(); const rooms = new Map<string, Room>(); const invites = new Map<string, Map<string, Invite>>(); // target guest id -> pending invites/join requests by sender id
   const stats = { badOrigin: 0, roomCapHits: 0, conns: 0, msgs: 0, rateLimited: 0, rejected: 0, snaps: 0, versionRefused: 0, kicked: 0 };
   const originOk = (origin: string | undefined) => { const list = o.origins; if (!list || !list.length) return true; if (!origin) return !!o.allowNoOrigin; return list.some(p => p === origin || (p.startsWith('*.') && (() => { try { return new URL(origin).hostname.endsWith(p.slice(1)); } catch { return false; } })())); };
   let draining = false;
@@ -38,12 +39,12 @@ export function startHub(o: HubOpts = {}) {
   const mkBuckets = () => ({ all: new Bucket(120, 160), input: new Bucket(14, 24), kill: new Bucket(8, 30), chat: new Bucket(1.5, 4), ping: new Bucket(1, 3), pos: new Bucket(14, 20) });
 
   // ---------- parties
-  const partyState = (p: Party): PartyState => ({ t: 'party', code: p.code, dungeon: p.dungeon, inInstance: !!p.room, members: p.members.map(m => ({ id: m.id, name: m.name, ready: p.ready.has(m.id) || m.id === p.leader, leader: m.id === p.leader, lvl: m.lvl, look: m.look })) });
+  const partyState = (p: Party): PartyState => ({ t: 'party', code: p.code, dungeon: p.dungeon, inInstance: !!p.room, ...(p.check ? { check: { dungeon: p.check.dungeon, ms: Math.max(0, p.check.until - Date.now()), yes: [...p.check.yes], no: [...p.check.no] } } : {}), members: p.members.map(m => ({ inRun: !!p.room?.players.has(m.id), id: m.id, name: m.name, ready: p.ready.has(m.id) || m.id === p.leader, leader: m.id === p.leader, lvl: m.lvl, look: m.look })) });
   const bcastParty = (p: Party) => { const s = partyState(p); for (const m of p.members) send(m, s); };
   const partyOf = (g: Guest) => g.party;
   function newCode() { for (;;) { let c = ''; const b = randomBytes(5); for (let i = 0; i < 5; i++) c += CODE_ALPHA[b[i] % CODE_ALPHA.length]; if (!parties.has(c)) return c; } }
   function leaveParty(g: Guest, why = 'left') {
-    const p = g.party; if (!p) return; g.party = null; p.members = p.members.filter(m => m !== g); p.ready.delete(g.id);
+    const p = g.party; if (!p) return; g.party = null; p.members = p.members.filter(m => m !== g); p.ready.delete(g.id); if (p.check) { p.check.yes.delete(g.id); p.check.no.delete(g.id); }
     if (p.room) { p.room.players.delete(g.id); send(g, { t: 'instance_end', reason: why }); if (!p.room.players.size) { rooms.delete(p.room.id); p.room = null; } }
     if (!p.members.length) { if (p.room) rooms.delete(p.room.id); parties.delete(p.code); } else { if (p.leader === g.id) p.leader = p.members[0].id; bcastParty(p); }
     send(g, { t: 'party', code: '', members: [], dungeon: null, inInstance: false });
@@ -60,14 +61,14 @@ export function startHub(o: HubOpts = {}) {
   const rosterOf = (r: Room) => [...r.players.values()].map(x => ({ id: x.id, name: x.name, lvl: x.lvl, look: x.look }));
   const startMsg = (r: Room, id: string, resume = false) => ({ t: 'instance_start', proto: PROTO, dungeon: r.dungeon, seed: r.seed, you: id, hpMul: r.hpMul, dmgMul: r.dmgMul, stateHz: STATE_HZ, players: [...r.players.keys()], roster: rosterOf(r), nSpawns: r.homes.length, flags: r.flags, killed: [...r.killed], resume, graceMs: 5000 });
   const toRoom = (r: Room, m: any, except?: string) => { const s = JSON.stringify(m); for (const x of r.party.members) if (x.id !== except && r.players.has(x.id) && x.ws && x.ws.readyState === WebSocket.OPEN) x.ws.send(s); };
-  function startInstance(p: Party, dungeon: string) {
+  function startInstance(p: Party, dungeon: string, who: Guest[] = p.members) {
     const seed = (Math.random() * 1e9) | 0; const lv = dungeonOf(dungeon).build(seed); // layout is only used for bounds + enemy home points (claim sanity); no enemies are simulated here
-    const players = new Map<string, RPlayer>(); for (const m of p.members) players.set(m.id, mkRP(m, lv.spawn));
-    const room: Room = { id: 'r-' + p.code + '-' + seed, party: p, dungeon, seed, hpMul: partyHpMul(p.members.length), dmgMul: (o.dmgMul ?? 1) * partyDmgMul(p.members.length), w: lv.w, h: lv.h, spawn: { x: lv.spawn.x, y: lv.spawn.y }, cps: [lv.spawn, ...((lv as any).checkpoints || [])].map((c: any) => ({ x: c.x, y: c.y })), homes: lv.spawns.map((q: any) => ({ x: q.x + .5, y: q.y + .5 })), players, killed: new Set(), flags: {}, bossDead: false, completed: false, allDownT: 0, tick: 0,
+    const players = new Map<string, RPlayer>(); for (const m of who) players.set(m.id, mkRP(m, lv.spawn));
+    const room: Room = { id: 'r-' + p.code + '-' + seed, party: p, dungeon, seed, hpMul: partyHpMul(who.length), dmgMul: (o.dmgMul ?? 1) * partyDmgMul(who.length), w: lv.w, h: lv.h, spawn: { x: lv.spawn.x, y: lv.spawn.y }, cps: [lv.spawn, ...((lv as any).checkpoints || [])].map((c: any) => ({ x: c.x, y: c.y })), homes: lv.spawns.map((q: any) => ({ x: q.x + .5, y: q.y + .5 })), players, killed: new Set(), flags: {}, bossDead: false, completed: false, allDownT: 0, tick: 0,
       stats: { stateRejected: 0, kills: 0, killsRejected: 0, dmgClipped: 0, revives: 0, revivesRejected: 0, flagsRejected: 0 } };
     p.room = room; rooms.set(room.id, room);
-    for (const m of p.members) { leaveShard(m); send(m, startMsg(room, m.id)); }
-    bcastParty(p); log('instance', dungeon, p.code, p.members.length);
+    for (const m of who) { leaveShard(m); send(m, startMsg(room, m.id)); }
+    p.dungeon = dungeon; bcastParty(p); log('instance', dungeon, p.code, who.length);
   }
   const mkRP = (m: Guest, sp: { x: number; y: number }): RPlayer => ({ id: m.id, name: m.name, lvl: m.lvl, look: m.look, x: sp.x, y: sp.y, f: 0, hp: 100, mh: 100, dn: false, mv: false, at: false, dirty: true, t: Date.now(), budget: MOVE_BUDGET, viol: 0, dmgB: new Bucket(400 + 60 * m.lvl, 1200 + 180 * m.lvl), killB: new Bucket(8, 30), reviveAt: 0, freeUntil: 0, kills: 0, dmgTotal: 0 });
   function endInstance(p: Party, reason: string) { const r = p.room; if (!r) return; for (const m of p.members) if (r.players.has(m.id)) send(m, { t: 'instance_end', reason }); rooms.delete(r.id); p.room = null; p.ready.clear(); bcastParty(p); }
@@ -118,6 +119,38 @@ export function startHub(o: HubOpts = {}) {
     if (r.players.size && [...r.players.values()].every(q => q.dn)) { r.allDownT += dt; if (r.allDownT >= 3) { r.allDownT = 0; for (const q of r.players.values()) { q.dn = false; q.x = r.spawn.x; q.y = r.spawn.y; q.dirty = true; q.budget = MOVE_BUDGET; q.freeUntil = Date.now() + 3000; } toRoom(r, { t: 'wipe' }); } } else r.allDownT = 0;
   }
 
+  // ---------- zero-config grouping: invite / join request from town, ready check on the world entrance, drop-in (docs/MULTIPLAYER.md section 2b)
+  const INVITE_MS = 60000, CHECK_MS = 15000;
+  function mkParty(g: Guest): Party { if (g.party) return g.party; const p: Party = { code: newCode(), leader: g.id, members: [g], dungeon: null, room: null, ready: new Set(), check: null }; parties.set(p.code, p); g.party = p; return p; }
+  function addMember(p: Party, g: Guest) { if (g.party === p) return true; if (p.members.length >= MAX_PARTY) { err(g, 'full', 'Party is full (4 max).'); return false; } if (g.party) leaveParty(g); p.members.push(g); g.party = p; bcastParty(p); for (const x of p.members) if (x !== g) send(x, { t: 'sys', msg: g.name + ' joined the party.' }); return true; }
+  function onInvite(g: Guest, m: any) {
+    if (!g.b.chat.take()) return err(g, 'slow', 'Slow down.'); const to = guests.get(String(m.to || '')); if (!to || !to.ws || to === g) return err(g, 'gone', 'That player is not online.');
+    const kind: 'invite' | 'join' = m.kind === 'join' ? 'join' : 'invite'; if (kind === 'invite' && g.party && g.party === to.party) return;
+    if (kind === 'invite' && parties.size >= (o.maxParties ?? 500) && !g.party) { stats.roomCapHits++; return err(g, 'busy', 'Server is full, try again later.'); }
+    let box = invites.get(to.id); if (!box) { box = new Map(); invites.set(to.id, box); } box.set(g.id, { from: g.id, kind, at: Date.now() }); if (box.size > 8) box.delete(box.keys().next().value!);
+    send(to, { t: 'invite', from: g.id, name: g.name, lvl: g.lvl, kind }); send(g, { t: 'sys', msg: (kind === 'join' ? 'Asked to join ' : 'Invited ') + to.name + '.' });
+  }
+  function onInviteReply(g: Guest, m: any) {
+    const box = invites.get(g.id); const inv = box?.get(String(m.from || '')); if (!inv) return; box!.delete(inv.from); const from = guests.get(inv.from); if (!from || Date.now() - inv.at > INVITE_MS) return err(g, 'expired', 'That invite expired.');
+    if (!m.ok) { send(from, { t: 'sys', msg: g.name + (inv.kind === 'join' ? ' declined your request.' : ' declined.') }); return; }
+    if (inv.kind === 'invite') addMember(mkParty(from), g); else addMember(mkParty(g), from); // join request: the asker joins the accepter's party
+  }
+  function onGo(g: Guest, m: any) {
+    const p = g.party; if (!p || p.leader !== g.id || p.room || p.check) return; const d = String(m.dungeon || ''); if (!DUNGEONS[d]) return err(g, 'baddungeon', 'Unknown dungeon.');
+    if (rooms.size >= (o.maxRooms ?? 100)) { stats.roomCapHits++; return err(g, 'busy', 'All dungeon rooms are busy, try again in a minute.'); }
+    p.dungeon = d; p.check = { dungeon: d, until: Date.now() + CHECK_MS, yes: new Set([g.id]), no: new Set() }; bcastParty(p); checkDone(p);
+  }
+  function onCheckReply(g: Guest, m: any) { const c = g.party?.check; if (!c) return; c.yes.delete(g.id); c.no.delete(g.id); (m.ok ? c.yes : c.no).add(g.id); bcastParty(g.party!); checkDone(g.party!); }
+  /** start with whoever said yes once everyone answered or the countdown ran out; declined / timed-out members stay in town, still in the party */
+  function checkDone(p: Party, force = false) {
+    const c = p.check; if (!c) return; const all = p.members.every(x => c.yes.has(x.id) || c.no.has(x.id)); if (!all && !force && Date.now() < c.until) return; p.check = null;
+    if (!p.members.some(x => x.id === p.leader) || !c.yes.has(p.leader)) { bcastParty(p); return; }
+    const who = p.members.filter(x => c.yes.has(x.id)); startInstance(p, c.dungeon, who);
+    for (const x of p.members) if (!c.yes.has(x.id)) send(x, { t: 'sys', msg: 'Your party went in. Press Join in the Party panel to drop in.' });
+  }
+  /** drop-in: a party member in town joins the running instance (gets seed, killed set and flags; spawns at the entrance). Party scaling stays as it was at the start. */
+  function onDropIn(g: Guest) { const p = g.party, r = p?.room; if (!p || !r || r.players.has(g.id) || r.completed) return; if (r.players.size >= MAX_PARTY) return err(g, 'full', 'That run is full.'); leaveShard(g); r.players.set(g.id, mkRP(g, r.spawn)); send(g, startMsg(r, g.id)); toRoom(r, { t: 'sys', msg: g.name + ' dropped in.' }, g.id); bcastParty(p); }
+
   function onMsg(g: Guest, m: any) {
     if (!m || typeof m !== 'object' || typeof m.t !== 'string') return;
     if (m.t === 'st') { if (!g.b.input.take()) { stats.rateLimited++; return; } const r = g.party?.room; if (r) onState(r, g, m); return; }
@@ -126,9 +159,14 @@ export function startHub(o: HubOpts = {}) {
       case 'ping': send(g, { t: 'pong', c: m.c, s: Date.now() }); break;
       case 'build': break; // protocol v1 leftover: gameplay is client-side now, the server keeps no build
       case 'profile': g.name = cleanName(m.name, g.name); if (m.pub !== undefined) o.city?.setPublic(g.id, cleanName(m.name, g.name), m.pub === 1); g.lvl = clamp(Math.floor(+m.lvl) || 1, 1, 50); g.look = cleanLook(m.look) ?? g.look; if (g.party) bcastParty(g.party); break;
-      case 'party_create': { if (parties.size >= (o.maxParties ?? 500) && !g.party) { stats.roomCapHits++; return err(g, 'busy', 'Server is full, try again later.'); } if (g.party) leaveParty(g); const p: Party = { code: newCode(), leader: g.id, members: [g], dungeon: null, room: null, ready: new Set() }; parties.set(p.code, p); g.party = p; bcastParty(p); break; }
-      case 'party_join': { const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); const p = parties.get(code); if (!p) return err(g, 'nocode', 'No party with that code.'); if (g.party === p) return; if (p.members.length >= MAX_PARTY) return err(g, 'full', 'Party is full (4 max).'); if (p.room) return err(g, 'started', 'That party is already in a dungeon.'); if (g.party) leaveParty(g); p.members.push(g); g.party = p; bcastParty(p); for (const x of p.members) if (x !== g) send(x, { t: 'sys', msg: g.name + ' joined the party.' }); break; }
+      case 'party_create': { if (parties.size >= (o.maxParties ?? 500) && !g.party) { stats.roomCapHits++; return err(g, 'busy', 'Server is full, try again later.'); } if (g.party) leaveParty(g); const p: Party = { code: newCode(), leader: g.id, members: [g], dungeon: null, room: null, ready: new Set(), check: null }; parties.set(p.code, p); g.party = p; bcastParty(p); break; }
+      case 'party_join': { const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); const p = parties.get(code); if (!p) return err(g, 'nocode', 'No party with that code.'); if (g.party === p) return; if (p.members.length >= MAX_PARTY) return err(g, 'full', 'Party is full (4 max).'); if (g.party) leaveParty(g); p.members.push(g); g.party = p; bcastParty(p); for (const x of p.members) if (x !== g) send(x, { t: 'sys', msg: g.name + ' joined the party.' }); break; }
       case 'party_leave': leaveParty(g); break;
+      case 'invite': onInvite(g, m); break;
+      case 'invite_reply': onInviteReply(g, m); break;
+      case 'party_go': onGo(g, m); break;
+      case 'rcheck': onCheckReply(g, m); break;
+      case 'drop_in': onDropIn(g); break;
       case 'party_kick': { const p = g.party; if (!p || p.leader !== g.id || p.room) return; const v = p.members.find(x => x.id === m.id); if (v && v !== g) { send(v, { t: 'sys', msg: 'You were removed from the party.' }); leaveParty(v, 'kicked'); } break; }
       case 'party_ready': { const p = g.party; if (!p) return; if (m.ready) p.ready.add(g.id); else p.ready.delete(g.id); bcastParty(p); break; }
       case 'party_dungeon': { const p = g.party; if (!p || p.leader !== g.id || p.room) return; const d = String(m.dungeon || ''); if (!DUNGEONS[d]) return err(g, 'baddungeon', 'Unknown dungeon.'); p.dungeon = d; p.ready.clear(); bcastParty(p); break; }
@@ -163,14 +201,14 @@ export function startHub(o: HubOpts = {}) {
       onMsg(g, m);
     });
     ws.on('close', () => { if (!g || g.ws !== ws) return; g.ws = null; leaveShard(g); const gg = g; // grace period: keep party seat 60 s for reconnects
-      setTimeout(() => { if (!gg.ws) { leaveParty(gg, 'disconnected'); guests.delete(gg.id); } }, 60000).unref?.(); });
+      setTimeout(() => { if (!gg.ws) { leaveParty(gg, 'disconnected'); guests.delete(gg.id); invites.delete(gg.id); } }, 60000).unref?.(); });
     ws.on('error', () => {});
   });
 
   // ---------- main loops
   // one light 8 Hz loop for all rooms: relay changed player state + wipe check. No combat simulation runs here.
   let lastRoomT = Date.now();
-  const simTimer = setInterval(() => { const now = Date.now(), dt = (now - lastRoomT) / 1000; lastRoomT = now; for (const r of rooms.values()) { roomTick(r, dt); if (r.players.size === 0) endInstance(r.party, 'empty'); } }, 1000 / STATE_HZ);
+  const simTimer = setInterval(() => { const now = Date.now(), dt = (now - lastRoomT) / 1000; lastRoomT = now; for (const p of parties.values()) if (p.check && now >= p.check.until) checkDone(p, true); for (const r of rooms.values()) { roomTick(r, dt); if (r.players.size === 0) endInstance(r.party, 'empty'); } }, 1000 / STATE_HZ);
   const townTimer = setInterval(() => {
     for (const sh of shards.values()) { const list = [...sh.members].filter(m => m.pos.t).map(m => ({ id: m.id, name: m.name, x: r2(m.pos.x), y: r2(m.pos.y), face: r2(m.pos.face), moving: m.pos.moving, em: m.pos.em || 0, look: m.look, lvl: m.lvl })); for (const m of sh.members) send(m, { t: 'town_snap', players: list.filter(p => p.id !== m.id), pop: sh.members.size }); }
   }, 1000 / TOWN_HZ);
