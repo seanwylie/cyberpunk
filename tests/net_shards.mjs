@@ -19,7 +19,7 @@ G[3].send({ t: 'town_leave' }); G[1].send({ t: 'town_leave' }); await sleep(100)
 const f = await guest('f'); ok((await enter(f)).shard !== 'rustline-1', 'away party mate keeps a reserved seat (newcomer not put into copy 1)');
 ok((await enter(G[3])).shard === 'rustline-1', 'returning party member goes back to the leader\'s copy');
 // empty copies close after the idle time; numbers are reused
-await enter(G[1]); for (const c of [e, f]) c.send({ t: 'town_leave' }); await sleep(100); ok(hub.shards.has('rustline-2'), 'empty copy stays open briefly (people coming back)');
+for (const c of [e, f]) c.send({ t: 'town_leave' }); await sleep(100); ok(hub.shards.has('rustline-2'), 'empty copy stays open briefly (people coming back)');
 ok(await until(() => !hub.shards.has('rustline-2'), 3000), 'empty copy closes after the idle time');
 const g2 = await guest('g'); ok((await enter(g2)).n === 2, 'lowest free number is reused');
 ok(/^\w+ \d$/.test('Rustline ' + g2.town.n) && g2.town.pop >= 1, 'town message carries the copy number, cap and population');
