@@ -26,12 +26,21 @@ const DOOR_FLAGS = new Set(['gate1', 'lock2', 'controller', 'armory']);
  *  server. This glue (a) reports display state, (b) relays damage and kill claims, (c) applies teammates' damage / kills / flags / revives, (d) defers kill rewards until the
  *  server confirms the claim (every participant then rolls their OWN rewards locally, from their own save and pity timers). */
 export class NetSession {
-  active = false; ic: InstanceClient | null = null; draw: RemoteDrawer; private prevInst: InstanceState | null = null; private saved: Record<string, any> = {}; private reviveHeld = false; private lastTownKey = ''; mouse = { x: 0, y: 0 }; onExit?: (reason: string) => void; onEnter?: () => void;
+  active = false; ic: InstanceClient | null = null; draw: RemoteDrawer; private prevInst: InstanceState | null = null; private saved: Record<string, any> = {}; private reviveHeld = false; private lastTownKey = ''; mouse = { x: 0, y: 0 }; onExit?: (reason: string) => void; onEnter?: () => void; /** town: clicked another player (screen coords) */ onTownMenu?: (p: any, x: number, y: number) => void;
   private applying = false; private claimed = new Map<number, En>(); private hurtBy = new Set<number>(); private flagSeen: Record<string, any> = {}; private flagT = 0; private holdT = 0; private holdId = ''; private origKill: ((e: En) => void) | null = null; private pendingClear: En | null = null;
   constructor(public g: Game, public rend: Renderer, public net: NetClient) {
     this.draw = new RemoteDrawer(rend);
     // click / tap another player to inspect their exclusives (town and party)
-    try { rend.canvas.addEventListener('click', ev => { const r = rend.canvas.getBoundingClientRect(); const x = (ev.clientX - r.left) * rend.canvas.width / r.width, y = (ev.clientY - r.top) * rend.canvas.height / r.height; const p = this.draw.hitTest(x, y); if (p) openInspect(p as any); }); } catch { /* headless */ }
+    try { rend.canvas.addEventListener('click', ev => { const r = rend.canvas.getBoundingClientRect(); const x = (ev.clientX - r.left) * rend.canvas.width / r.width, y = (ev.clientY - r.top) * rend.canvas.height / r.height; const p = this.draw.hitTest(x, y); if (!p) return; if (!this.active && this.g.mode === 'town' && this.onTownMenu && (p as any).id) this.onTownMenu(p, ev.clientX, ev.clientY); else openInspect(p as any); }); } catch { /* headless */ }
+    // the world entrance is the dungeon picker: when a party leader steps in, everyone gets a ready check instead of the leader going alone.
+    // A member whose party is already inside that dungeon drops in. Anyone else (solo, or a member entering a different dungeon) plays solo as before.
+    const origStart = g.startRun.bind(g); (g as any).startRun = (id = 'annex', seed?: number) => {
+      const n = this.net, p = n.party; if (this.active || g.mode !== 'town' || n.state !== 'online' || !p || p.members.length < 2) return origStart(id, seed);
+      const me = p.members.find(m => m.id === n.id);
+      if (p.inInstance && !me?.inRun && p.dungeon === id) { n.dropIn(); g.toast('Joining your party…'); return true; }
+      if (me?.leader && !p.inInstance) { if (p.check) { g.toast('Ready check already running.'); return true; } n.go(id); g.toast('Ready check sent to your party.'); return true; }
+      return origStart(id, seed);
+    };
     (g as any).netHook = (dt: number) => this.hook(dt); (rend as any).netItems = (items: any[]) => this.items(items);
     net.on('instance_start', (ic: InstanceClient) => this.enter(ic));
     net.on('instance_end', (why: string) => { if (this.active) this.exit(why, false); });

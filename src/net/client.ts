@@ -10,12 +10,17 @@ export interface LinkSim { delayMs: number; jitterMs?: number; loss: number; los
 type Fn = (...a: any[]) => void;
 export interface NetOpts { url: string; name?: string; lvl?: number; look?: Look; WS?: any; store?: { get(k: string): string | null; set(k: string, v: string): void }; link?: LinkSim }
 
-/** where the server URL comes from: ?server=, localStorage wv_server, build-time VITE_WV_SERVER; empty = single-player only */
+/** where the server URL comes from: build-time VITE_WV_SERVER (production: wss://game.<domain>, set by update.sh). `?server=` is a dev/test override
+ *  (remembered in localStorage only on dev hosts). Dev hosts with nothing configured use ws://<host>:8787. Empty = single-player only. */
 export function configuredServer(): string {
-  try { const q = new URLSearchParams(location.search).get('server'); if (q) { try { localStorage.setItem('wv_server', q); } catch {} return q; } } catch {}
-  try { const s = localStorage.getItem('wv_server'); if (s) return s; } catch {}
-  try { return String((import.meta as any).env?.VITE_WV_SERVER || ''); } catch { return ''; }
+  const dev = isDevHost();
+  try { const q = new URLSearchParams(location.search).get('server'); if (q) { if (dev) { try { localStorage.setItem('wv_server', q); } catch {} } return q; } } catch {}
+  if (dev) { try { const s = localStorage.getItem('wv_server'); if (s) return s; } catch {} }
+  try { const e = String((import.meta as any).env?.VITE_WV_SERVER || ''); if (e) return e; } catch {}
+  if (dev) { try { return (location.protocol === 'https:' ? 'wss://' : 'ws://') + (location.hostname || 'localhost') + ':8787'; } catch {} }
+  return '';
 }
+export function isDevHost(): boolean { try { return !!(import.meta as any).env?.DEV || /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname); } catch { return false; } }
 
 /** Client side of a party dungeon (protocol v2). Gameplay is LOCAL and never waits on the server: `move`/`setState` change position immediately;
  *  this class only (a) reports display state at STATE_HZ, (b) batches damage dealt, (c) sends pivotal claims (kill, flag, revive) and (d) interpolates teammates. */
@@ -94,6 +99,10 @@ export class NetClient {
   // ---- party API
   createParty() { this.send({ t: 'party_create' }); } joinParty(code: string) { this.send({ t: 'party_join', code }); } leaveParty() { this.send({ t: 'party_leave' }); this.party = null; }
   setReady(r: boolean) { this.onBuild?.(); this.send({ t: 'party_ready', ready: r }); } onBuild?: () => void; setDungeon(d: string) { this.send({ t: 'party_dungeon', dungeon: d }); } start() { this.send({ t: 'party_start' }); }
+  /** invite a player (by guest id) into your party, or ask to join theirs (kind 'join'); they get an accept/decline prompt */
+  invite(to: string, kind: 'invite' | 'join' = 'invite') { this.send({ t: 'invite', to, kind }); } inviteReply(from: string, ok: boolean) { this.send({ t: 'invite_reply', from, ok }); }
+  /** leader stepped into a world entrance: start a ready check for that dungeon */ go(dungeon: string) { this.send({ t: 'party_go', dungeon }); }
+  checkReply(ok: boolean) { this.send({ t: 'rcheck', ok }); } /** join the party's running instance */ dropIn() { this.send({ t: 'drop_in' }); }
   kick(id: string) { this.send({ t: 'party_kick', id }); } chat(text: string, scope: 'party' | 'town' = 'party') { this.send({ t: 'chat', text, scope }); } mark(x: number, y: number) { this.send({ t: 'mark', x, y }); }
   profile(name: string, lvl: number, look?: Look, pub?: 0 | 1) { this.o.name = name; this.o.lvl = lvl; this.o.look = look; this.send({ t: 'profile', name, lvl, look, pub: pub ?? 0 }); }
   /** the validated-on-server combat build (installed hardware, chips, rep, pity) */
