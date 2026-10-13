@@ -149,7 +149,7 @@ export class Renderer {
       if(!near) continue; const door=L.doors.find(d=>d.tiles.some(t=>t[0]===x&&t[1]===y));
       items.push({d:x+y+.5,f:()=>{ const dd=(x+y)-(g.px+g.py), sd=(x-g.px)-(y-g.py); const fade=dd>0&&dd<4.5&&Math.abs(sd)<2.8; c.save(); if(fade) c.globalAlpha=.3; if(this.env){ if(door) this.doorBox(x,y); else this.wallBox(x,y); } else if(door){ this.box(x,y,1,1,1.5,'#4a4c4e','#3a3c3e','#2d2f31'); this.hazard(x,y); } else this.box(x,y,1,1,1.6,'#46484a','#303234','#232426'); c.restore(); }}); }
     if(L.kind==='town'&&this.town?.ready) this.townItems(items);
-    for(const it of L.interacts){ if(!this.interactVisible(it.id)) continue; items.push({d:it.x+it.y,f:()=>this.drawInteract(it)}); }
+    for(const it of L.interacts){ if(!this.interactVisible(it.id)) continue; items.push({d:L.kind==='town'?-1e9:it.x+it.y,f:()=>this.drawInteract(it)}); /* town rings are floor decals: drawn before every character and prop */ }
     for(const dr of (g.inst&&g.mode==='run'?g.inst.drops:[])) items.push({d:dr.x+dr.y,f:()=>this.drawDrop(dr)});
     for(const e of g.enemies){ if(e.dead){ if(this.eart.dying(e,g.time)) items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); continue; } items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); }
     if(!g.downed||true) items.push({d:g.px+g.py,f:()=>this.drawPlayer()});
@@ -479,7 +479,6 @@ export class Renderer {
     const lift0=(st.key==='gate'?72:58)*k*.6+8*k; /* ONE label per station, ONE anchor (pillGeom): idle dim -> bright prompt changes state in place, never position or size */
     const bl=this.labelBlend(it.id,ready,d); (this as any).ringInfo[it.id]={x:it.x,y:it.y,r:R,ax:a,ay:b};
     if(bl.a>.02){ this.lblQ.push(()=>{ const r=bl.r;
-      if(r>.02){ /* pad ring re-drawn above props so the trigger is visible even when a prop hides the ground ring (same centre and radius as the trigger) */ c.save(); c.globalAlpha=r; this.poly(this.circle(it.x,it.y,R*.5),undefined,'#ffffff',.7,3); c.globalAlpha=.9*r; c.fillStyle=st.color; c.beginPath(); c.arc(a,b,3.5*s,0,7); c.fill(); c.restore(); }
       c.save(); const G=this.pillGeom(st,it,a,b,s,lift0); const {x0,y0,pw,ph,ix,tx,tw,isz,tailX,txt,inkL,capH}=G; const dpr=this.dpr; const q=(v:number)=>Math.round(v*dpr)/dpr;
       (this as any).lblRects.push({id:it.id,lim:70*s,tailX,vcx:G.vcx,x:x0,y:y0,w:pw,h:ph,text:txt,ix,tx,tw,isz,ready:r>.5,alpha:bl.a});
       /* crisp edges: pixel-aligned geometry, integer-device-pixel stroke inset so it never straddles a pixel, no shadowBlur */ const lw=Math.max(1,Math.round(2*dpr))/dpr, hi=lw/2;
@@ -495,8 +494,8 @@ export class Renderer {
   /** shared geometry of a station's interact pill (the idle pin is centred on the same point). Depends only on the station anchor, UI scale, prop art and the screen, never on the player. */
   private pillGeom(st:any,it:{id:string;x:number;y:number},a:number,b:number,s:number,lift0:number){ const c=this.ctx; const FS=uiFs(); const fs=cpx(12*s*1.3*FS); const font=`700 ${fs}px ${FONT}`; c.font=font; const txt=st.name.toUpperCase(); const ik=this.inkBox(txt,font); const inkL=ik.l, tw=ik.w, capH=ik.cap; const dpr=this.dpr, q=(v:number)=>Math.round(v*dpr)/dpr;
     const ph=q(fs*1.7), pad=Math.round(fs*.9), isz=Math.round(fs*1.1), gap=Math.round(fs*.5), pw=q(Math.max(ph*2.2,2*pad+isz+gap+tw)); const vis=this.stationVisual(st.key); const xc=a; /* ONE anchor: label centred over the ring/trigger centre; prop art only pushes it up */
-    let x0=xc-pw/2, y0=vis?vis.y-Math.max(8,10*s)-ph:b-lift0-ph-14*s; const x0u=x0; x0=Math.max(8,Math.min(this.w-pw-8,x0));
-    { const gapPx=Math.max(8,10*s); const props=this.stationProps(st.key); for(let k=0;k<3;k++){ for(const r of props){ if(r.x<x0+pw+2&&r.x+r.w>x0-2&&r.y<y0+ph+gapPx&&r.y+r.h>y0-2&&r.y+r.h>y0){ y0=Math.min(y0,r.y-gapPx-ph); } } } y0=Math.min(y0,b-ph-20*s); const y0u=y0; y0=Math.max(8,Math.min(this.h-ph-8,y0)); (this as any).__cl=x0!==x0u||y0!==y0u; }
+    const Rr=(it as any).r||2.4; let x0=xc-pw/2, y0=b-Rr*this.TW*.25-ph-8*s; /* just above the ring's far edge (labels draw over props, so no need to clear the art) */ const x0u=x0; x0=Math.max(8,Math.min(this.w-pw-8,x0));
+    { const y0u=y0; y0=Math.max(8,Math.min(this.h-ph-8,y0)); (this as any).__cl=x0!==x0u||y0!==y0u; }
     x0=q(x0); y0=q(y0); const slack=(pw-(2*pad+isz+gap+tw))/2, ix=x0+pad+slack, tx=ix+isz+gap; const tailX=Math.max(x0+ph*.6,Math.min(x0+pw-ph*.6,xc)); return {x0,y0,pw,ph,ix,tx,tw,isz,tailX,xc,txt,inkL,capH,font,clamped:!!(this as any).__cl,vcx:vis?vis.cx:null}; }
   private nearK=''; private nearT=-1; nearestStation():string{ const g=this.g; if(g.time-this.nearT<.25) return this.nearK; this.nearT=g.time; let b=1e9,k=''; for(const st of STATIONS){ const d=Math.hypot(g.px-st.x,g.py-st.y); if(d<b){ b=d; k=st.key; } } this.nearK=b<30?k:''; return this.nearK; }
   /** edge-of-screen arrows toward stations that are off screen (Settings: Show station markers) */
