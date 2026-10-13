@@ -40,7 +40,7 @@ Regenerate with `python3 tools/gen_music.py --pack7 --force` (needs `ELEVENLABS_
 
 | Track | Use | Measured |
 |---|---|---|
-| `theme_lofi_dust`, `theme_lofi_rain`, `theme_lofi_tape` | Rustline and Harrow town pools. On the first town track of a session, there's a 60% chance (`BOOT_THEME`) one of them plays, unless it is in the recent-play history. | D minor, 83 bpm |
+| `theme_lofi_dust`, `theme_lofi_rain`, `theme_lofi_tape` | Rustline and Harrow town pools. On the first town track of a session, there's a 50% chance (`BOOT_THEME`) one of them plays, unless it is in the recent-play history. | D minor, 83 bpm |
 | `boss_theme_wall`, `boss_theme_siege`, `boss_theme_storm` | Boss pool (intensity 4, 3 and 4). `storm` is also an elite escalation stem. | D minor or D, double or triplet readings of the same pulse |
 
 A variation is regenerated when it drifts. It passes when it has the same key, or a chroma correlation of at least 0.8 with the theme, and a tempo within 6% of 84 bpm at a half, 2/3, 1, 4/3, 1.5 or 2 multiple. The first takes of `theme_lofi_rain` (B♭ major) and `boss_theme_siege` (C minor) drifted and were regenerated.
@@ -56,3 +56,9 @@ Every file in `public/audio/music`, loops included, must end with a smooth fade 
 - **Hard loops:** the file is the seamless loop body, then the first 4.5 s of that body faded out, then 0.5 s of silence. The loop point goes in `src/music_loops.ts` (generated). In game the source loops `0..loopEnd` sample-accurately (`src.loopStart/loopEnd`), so the faded tail is never heard. The loop seam is the original blended seam.
 - **Everything else:** a 4.5 s ring-out (a light echo tail where the file is short) faded to silence.
 - `tools/fade_all.py` applies the rule. It is idempotent and makes the fade steeper when a loud passage would bump it.
+
+## theme_main_long
+`tools/extend_theme.py` re-arranges theme_main's own audio at its phrase downbeats (4 bars at 84 bpm), using equal-power one-beat crossfades, so it is literally the same music. It follows Sean's shape: intro/A, dip 1, build 1, dip 2, build 2, a hard dip (near-silent lone piano), a final build to the biggest climax, then a long fade (241 s). `tools/theme_envelope.py` checks the shape and draws `docs/img/theme_main_long_envelope.png`: peaks −18.3 < −14.5 < −11.4 dB, troughs −34.2 / −34.4 / −45.6 dB. In game, a quarter of boot-roll hits (in Rustline, the starting town) open the session with it, and it plays through to its ending.
+
+## Snare-forward bosses (pack 9)
+The boss prompts now open with a drum-style description: a crisp, prominent snare, rolling fills into each section, 16th- and 32nd-note snare rushes before drops, and ghost-note grooves. It names no artists. `tools/snare_ab.py` compares onset density and flux in the 150–250 Hz and 2–6 kHz bands against the previous takes.

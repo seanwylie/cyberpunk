@@ -312,7 +312,7 @@ SNARE = ("Snare-forward drum production: a prominent crisp, bright snare high in
          "rapid 16th-note then 32nd-note snare rushes accelerating into each drop; busy ghost-note snare grooves between the backbeats; "
          "the driving rolling snare gives constant forward momentum. ")
 SNARE9 = ['boss_theme_wall','boss_theme_siege','boss_theme_storm','boss_wall_dread','boss_wall_siege','boss_wall_storm','boss_wall_end','boss_fight','elite_escalate_a','elite_escalate_b']
-for _n in SNARE9: TRACKS[_n] = (TRACKS[_n][0], TRACKS[_n][1], SNARE + TRACKS[_n][2])
+for _n in SNARE9: TRACKS[_n] = (TRACKS[_n][0], TRACKS[_n][1], SNARE + TRACKS[_n][2] + (' The snare drum leads the arrangement: loud cracking snare on every backbeat with constant rolling snare fills.' if _n in ('boss_theme_storm','elite_escalate_b') else ''))
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'
     if raw.exists(): return raw

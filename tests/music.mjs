@@ -115,7 +115,7 @@ ok(C.pendWait && C.pendStart, 'boss track not yet decoded: waits, then fades in 
   ok(Sx.retry >= 1 && Sx.flags, 'sim: boss reset after death emits musicretry (' + JSON.stringify(Sx) + ')'); }
 // --- rotation logic + asset existence (variety pack) ---
 import fs from 'fs';
-const M = await ev(async () => { const m = await import('/src/music.ts'); return { pools: { ...m.POOLS, towns: Object.values(m.TOWN_POOLS).flat(), esc: m.ESCALATE, areas: Object.values(m.AREA_TRACKS).flat() }, boss: m.BOSS_MAP, sig: [...m.SIG_TRACKS, ...m.STINGERS], core: m.CORE_TRACKS }; });
+const M = await ev(async () => { const m = await import('/src/music.ts'); return { pools: { ...m.POOLS, towns: Object.values(m.TOWN_POOLS).flat(), esc: m.ESCALATE, long: [m.THEME_LONG], areas: Object.values(m.AREA_TRACKS).flat() }, boss: m.BOSS_MAP, sig: [...m.SIG_TRACKS, ...m.STINGERS], core: m.CORE_TRACKS }; });
 const files = new Set(fs.readdirSync('public/audio/music').map(f => f.replace(/\.mp3$/, '')));
 const used = [...new Set([...Object.values(M.pools).flat(), ...Object.values(M.boss), ...M.core, ...M.sig])];
 ok(used.every(n => files.has(n)), 'every pooled track has an mp3: missing ' + used.filter(n => !files.has(n)).join());
@@ -325,7 +325,7 @@ ok(!(await b2.page.evaluate(() => window.__audio.useFiles)), 'fallback to proced
   mm.rnd = () => 0; mm.bootThemeDone = false; delete mm.nextUp[k]; const boot = mm.planFirst(); mm.rnd = () => 0.99; mm.bootThemeDone = false; delete mm.nextUp[k]; const noBoot = mm.planFirst(); delete mm.nextUp[k]; const later = mm.bootThemeDone;
   [mm.rnd, mm.bootThemeDone] = keep; if (keep[2]) mm.nextUp[k] = keep[2]; else delete mm.nextUp[k];
   return { boot, noBoot, later, lofi: mod.THEME_LOFI, inTown: mod.THEME_LOFI.every(x => mod.TOWN_POOLS.rustline.includes(x) && mod.TOWN_POOLS.harrow.includes(x)), inBoss: mod.BOSS_THEME.every(x => mod.POOLS.bosscombat.includes(x)), lazy: [...mod.THEME_LOFI, ...mod.BOSS_THEME].every(x => mod.LAZY.has(x)), esc: mod.ESCALATE.includes('boss_theme_storm') }; });
-  ok(V.lofi.includes(V.boot), 'first town boot draws a lo-fi main-theme variation when the roll hits: ' + V.boot);
+  ok(V.lofi.includes(V.boot) || V.boot === 'theme_main_long', 'first town boot draws the long main theme or a lo-fi variation when the roll hits: ' + V.boot);
   ok(!V.lofi.includes(V.noBoot) || true, 'boot roll miss falls back to the bag: ' + V.noBoot);
   ok(V.inTown && V.inBoss && V.lazy && V.esc, 'lo-fi variations in Rustline + Harrow pools, boss variations in the boss pool + escalation, all lazy'); }
 // --- every file ends in a real fade; hard loops loop in game at their loop point, before the faded tail ---
