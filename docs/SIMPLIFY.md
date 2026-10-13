@@ -63,7 +63,7 @@ Standing rules: the player never gets stuck, `npm run test:perf` must not regres
 | `npm test` is one 100+ step `&&` chain | first failure hides the rest | low | Rec: switch to `tools/run_tests.mjs` (already exists) with a list file |
 | Unused-by-name exported types (~68, per knip) | noise | none | keep: most are documentation-style public types |
 | Unused assets | checked enemies3d (all 110 ids in index), music (names built from pools) | - | no cuts found; Rec: add an asset-manifest test so orphans fail CI |
-| Dead hooks that look like missing wiring, removed as dead: `recordCloakKill` (ghost trait never gets the cloak-kill signal), `setSkinFx` (no setting turns skin FX off), `harrowConditionMet` (logic lives in `harrowStatus`) | possible gaps | - | Rec: confirm cloak kills should feed the Ghost trait; if yes, wire it in sim |
+| Dead hooks that look like missing wiring, removed as dead: `recordCloakKill` (ghost trait never gets the cloak-kill signal), `setSkinFx` (no setting turns skin FX off), `harrowConditionMet` (logic lives in `unlockProgress`) | possible gaps | - | Rec: confirm cloak kills should feed the Ghost trait; if yes, wire it in sim |
 
 ## Top proposals for Sean
 1. Stop tests writing into tracked `shots/` / `docs/art/` and stop tracking generated screenshots (fixes the dirty-tree `update.sh` error; 711 MB).
