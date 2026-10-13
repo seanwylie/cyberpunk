@@ -829,12 +829,12 @@ export class Game {
   eliteExchange(){ this.eliteEng=8; }
   isElite(e:En){ return !!(ENEMIES[e.type].elite||(e as any).affix?.length); }
   /** Music state (docs/AUDIO.md): only 'traversal' (calm pool), 'elite' (hit/hurt by an elite in the last 8 s), 'bossreveal'/'bosscombat' (boss encounter) and 'resolution'. Ordinary mobs, proximity, alert and map position never change it. */
-  lastKey=''; lastPh=0; lastInt=0; updateMusic(dt:number){
+  lastKey=''; lastPh=0; lastInt=0; lastFinal=false; updateMusic(dt:number){
     let st='traversal'; if(this.combatHold>0) this.combatHold-=dt; if(this.eliteEng>0) this.eliteEng-=dt; const boss=this.enemies.find(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal<=0&&this.inst!.flags.bossSpawned);
     const bossRev=this.enemies.some(e=>ENEMIES[e.type].boss&&!e.dead&&e._rt.reveal>0);
     if(this.resPending>0){ this.resPending-=dt; st='resolution'; } else if(bossRev) st='bossreveal'; else if(boss) st='bosscombat'; else if(this.eliteEng>0&&this.enemies.some(e=>!e.dead&&e.faction==='enemy'&&this.isElite(e)&&!ENEMIES[e.type].boss)) st='elite';
-    if(st==='bosscombat'&&boss&&this.lastKey!==boss.type){ this.lastKey=boss.type; this.emit('musickey',boss.type); this.lastPh=0; }
-    if(st==='bosscombat'&&boss){ const ph=(boss as any).phase||0; if(ph!==this.lastPh){ this.lastPh=ph; this.emit('musicphase',ph); } }
+    if(st==='bosscombat'&&boss&&this.lastKey!==boss.type){ this.lastKey=boss.type; this.emit('musickey',boss.type); this.lastPh=0; this.lastFinal=false; }
+    if(st==='bosscombat'&&boss){ const ph=(boss as any).phase||0; if(ph!==this.lastPh){ this.lastPh=ph; this.emit('musicphase',ph); } if(!this.lastFinal&&boss.hp<boss.maxHp*FINAL_MUSIC_AT){ this.lastFinal=true; this.emit('musicphase',{n:ph+1,final:true}); } else if(this.lastFinal&&boss.hp>boss.maxHp*.6) this.lastFinal=false; /* boss reset after a wipe */ } else if(st!=='bosscombat') this.lastFinal=false; /* final stretch of every boss (gateway finale is at 22%): escalation / theme boss track */
     if(st==='elite'){ const n=Math.min(4,this.enemies.filter(e=>!e.dead&&e.faction==='enemy'&&this.isElite(e)&&!ENEMIES[e.type].boss&&Math.hypot(e.x-this.px,e.y-this.py)<10).length); if(n!==this.lastInt){ this.lastInt=n; this.emit('musicint',n); } } else if(this.lastInt){ this.lastInt=0; this.emit('musicint',0); }
     this.musicSet(st);
   }
@@ -842,6 +842,7 @@ export class Game {
 export interface AtkDef { w:number; rec:number; cd:number; min:number; max:number; lock?:boolean; ranged?:boolean }
 /** largest share of the player's max HP a single boss attack may take (riposte x hard-mode reached 60%) */
 export const BOSS_HIT_CAP=.42;
+export const FINAL_MUSIC_AT=.25;
 /** docs/BALANCE.md "Stand-still rule": boss damage is a share of the player's max HP, so standing in a telegraphed boss attack is lethal at every level.
  *  tick = lingering ground zone, per 0.5 s tick; burst = one-shot ground telegraph; hit = boss melee/projectile floor. Early dungeons still get earlyMul. */
 export const BOSS_AOE={ tick:.14, burst:.26, hit:.18, armorMax:.25, armorEarly:.5 }; /* armorMax: flat armor may remove at most this share of a boss hit (flat armor used to erase boss ticks entirely) */

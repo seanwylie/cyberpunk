@@ -61,7 +61,7 @@ const R = await ev(async () => { const mm = window.__audio.music, mod = await im
   mm.setState('traversal'); off(30); o.after = mm.state; o.afterTrack = mm.cur; return o; });
 ok(R.seq.length >= 4 && R.pl.includes(R.seq[0]), 'boss fight opens with a boss-pool track: ' + R.seq[0]);
 ok(R.seq.length >= 4 && R.seq.every((x, i) => i === 0 || x !== R.seq[i - 1]) && R.seq.every(x => R.pl.includes(x)), 'rotates at loop boundaries through the boss pool, no immediate repeat: ' + R.seq.join('>') + ' ' + R.dbg.join(' '));
-ok(R.gaps.length >= 3 && R.gaps.every(g => g >= 300), 'boss mid-fight rotation only after >= 300 s: ' + R.gaps.map(g => g.toFixed(0)));
+ok(R.gaps.length >= 3 && R.gaps.every(g => g >= 120 && g < 300), 'boss mid-fight rotation every 120-300 s (at loop boundaries): ' + R.gaps.map(g => g.toFixed(0)));
 ok(R.pOk && R.pHigher && R.pRepeat && R.pTooSoon, 'phase change switches to a more intense playlist track (' + R.pStart + ' -> ' + R.pEnd + '), not repeated/too soon');
 ok(!R.eliteEarly && R.eliteInPool && R.e1 !== R.e0, 'elite pool rotates at loop boundary after dwell: ' + R.e0 + ' -> ' + R.e1);
 ok(R.after === 'traversal' && !/^(elite_|boss_)/.test(R.afterTrack), 'disengage returns to calm: ' + R.afterTrack);
@@ -187,21 +187,30 @@ ok(mgr.rot && mgr.rot !== mgr.town0 && mgr.rotLog.state === 'town' && mgr.rotLog
   const Sg = await ev(async () => { const m = await import('/src/music.ts'), mm = window.__audio.music; { const g = window.__game; if (g.inst) g.abandonInstance(); } const off = s => { mm.__off += s; mm.tick(); }; const o = {}; const wait = async (c, ms = 60000) => { const t0 = performance.now(); while (!c() && performance.now() - t0 < ms) { await new Promise(r => setTimeout(r, 200)); mm.tick(); } return c(); };
     const settle = () => { mm.setState('traversal', null); off(60); mm.state = 'traversal'; mm.want = 'traversal'; };
     // signature boss with a phase-two variant
-    settle(); mm.setState('bossreveal', 'recall'); off(3); mm.setState('bosscombat', 'recall'); o.loaded = await wait(() => mm.cur === 'boss_sig_recall'); o.start = mm.cur; off(25); o.rot = (() => { const n = mm.log.length; off(200); const l = mm.live.find(x => !x.ending); return mm.log.length === n; })();
+    settle(); mm.setState('bossreveal', 'recall'); off(3); mm.setState('bosscombat', 'recall'); o.loaded = await wait(() => mm.cur === 'boss_sig_recall'); o.start = mm.cur; off(25); o.rot = (() => { const n = mm.log.length; off(80); return mm.log.length === n; })();
     mm.onPhase(1); await wait(() => { if (mm.cur !== 'boss_sig_recall_p2') { mm.tick(); } return mm.buffers['boss_sig_recall_p2'] && mm.cur === 'boss_sig_recall_p2'; }); if (mm.cur !== 'boss_sig_recall_p2') { off(30); mm.onPhase(1); await wait(() => mm.cur === 'boss_sig_recall_p2'); } o.p2 = mm.cur; const n2 = mm.log.length; off(25); mm.onPhase(2); off(1); o.p2stay = mm.cur === 'boss_sig_recall_p2' && mm.log.length === n2;
     // new fight starts at the main theme again (retry)
     window.__audio.noteMusicRetry(); settle(); mm.setState('bossreveal', 'recall'); off(3); mm.setState('bosscombat', 'recall'); await wait(() => mm.cur === 'boss_sig_recall'); o.retryMain = mm.cur === 'boss_sig_recall';
     // signature boss without a p2: stays on its theme through phases
     settle(); mm.setState('bossreveal', 'resonance'); off(3); mm.setState('bosscombat', 'resonance'); await wait(() => mm.cur === 'boss_sig_resonance'); o.rStart = mm.cur; off(25); mm.onPhase(1); off(5); o.rStay = mm.cur === 'boss_sig_resonance';
+    // long signature fight: rotates into the boss pool after BOSS_ROTATE at a loop boundary (never into another boss's signature theme)
+    for (let i = 0; i < 12 && mm.cur === 'boss_sig_resonance'; i++) { off(30); await wait(() => { mm.tick(); return true; }, 50); } { const l = mm.live.find(x => !x.ending); if (mm.cur === 'boss_sig_resonance' && l) { off(Math.max(0, mm.buffers[l.name].duration - 1)); off(2); } } await wait(() => mm.cur !== 'boss_sig_resonance' && !!mm.buffers[mm.cur], 20000); o.sigRot = mm.cur; o.sigRotOk = m.POOLS.bosscombat.includes(mm.cur) && !m.SIG_TRACKS.includes(mm.cur);
+    // final phase: escalation / theme boss track
+    off(25); mm.onPhase({ n: 3, final: true }); await wait(() => { mm.tick(); return m.FINAL_POOL.includes(mm.cur); }, 30000); o.fin = mm.cur; o.finOk = m.FINAL_POOL.includes(mm.cur); { const n = mm.log.length; off(25); mm.onPhase(4); off(1); o.finStay = mm.log.length === n; }
+    // per-boss memory: four fights with the same (non-signature) boss never open on one of its last three tracks
+    o.opens = []; for (let i = 0; i < 4; i++) { settle(); mm.setState('bossreveal', 'lineman'); off(3); mm.setState('bosscombat', 'lineman'); o.opens.push(mm.cur); }
     // memory: decoded set stays bounded
     o.decoded = Object.keys(mm.buffers).length; o.cap = mm.maxDecoded; settle(); return o; });
-  ok(Sg.loaded && Sg.start === 'boss_sig_recall' && Sg.rot, 'signature boss opens with its own theme and does not rotate mid-fight');
+  ok(Sg.loaded && Sg.start === 'boss_sig_recall' && Sg.rot, 'signature boss opens with its own theme and holds it before BOSS_ROTATE');
   ok(Sg.p2 === 'boss_sig_recall_p2' && Sg.p2stay, 'phase change -> phase-two variant, then stays (no repeat)');
   ok(Sg.retryMain, 'retry of a signature boss restarts its own theme');
   ok(Sg.rStart === 'boss_sig_resonance' && Sg.rStay, 'signature boss without a variant keeps its theme through phase changes');
+  ok(Sg.sigRotOk, 'long signature fight rotates into the boss pool after BOSS_ROTATE (no endless loop of one track): ' + Sg.sigRot);
+  ok(Sg.finOk && Sg.finStay, 'final phase switches to an escalation / theme boss track and stays: ' + Sg.fin);
+  ok(Sg.opens.length === 4 && Sg.opens.every((x, i) => Sg.opens.slice(Math.max(0, i - 3), i).indexOf(x) < 0), 'same boss never reopens on one of its last 3 tracks: ' + Sg.opens.join('>'));
   ok(Sg.decoded <= Math.max(Sg.cap, 40) || Sg.cap >= 1e9, 'decoded track count bounded by cap (' + Sg.decoded + ' / ' + Sg.cap + ')');
   const sigFiles = await ev(async () => (await import('/src/music.ts')).SIG_TRACKS); ok(sigFiles.length >= 11 && sigFiles.every(n => files.has(n)), 'signature mp3s exist (' + sigFiles.length + ')'); }
-// --- sim-driven boss fights: no fade-out/restart of the fight track except at deliberate points (phase change, 5-min rotation, boss death, leaving) ---
+// --- sim-driven boss fights: no fade-out/restart of the fight track except at deliberate points (phase change, >= 120 s boss rotation, boss death, leaving) ---
 { const F = await ev(async () => { const g = window.__game, mm = window.__audio.music, { ENEMIES } = await import('/src/config.ts'); const m = await import('/src/music.ts');
     clearInterval(mm.timer); { const base = mm.ctx.currentTime + (mm.__off || 0); mm.__off = 0; mm.now = () => base + mm.__off; } // pure fake clock: only the simulated seconds count
     const wait = async (c, ms = 60000) => { const t0 = performance.now(); while (!c() && performance.now() - t0 < ms) { await new Promise(r => setTimeout(r, 100)); mm.tick(); } return c(); };
@@ -226,12 +235,12 @@ ok(mgr.rot && mgr.rot !== mgr.town0 && mgr.rotLog.state === 'town' && mgr.rotLog
     // 4) signature boss (needs its lazy track)
     o.d = await runFight('annex', null, 5, [], o); return o; });
   const bc = (r) => r.log.filter(x => x.s === 'bosscombat'); const fightTracks = (r) => bc(r).map(x => x.to);
-  ok(!F.a.bossGone && bc(F.a).length >= 1 && bc(F.a).length <= 3, '5-min fight with strafing, dashes, aggro flaps, downed/revived, memory handlers: fight-track changes only at the opening + 2 phase changes: ' + fightTracks(F.a).join('>'));
+  ok(!F.a.bossGone && bc(F.a).length >= 3 && bc(F.a).length <= 5, '5-min fight with strafing, dashes, aggro flaps, downed/revived, memory handlers: fight-track changes only at the opening, 2 phase changes and >= 120 s rotations: ' + fightTracks(F.a).join('>'));
   ok(fightTracks(F.a).every((x, i, a) => i === 0 || x !== a[i - 1]), 'no restart of the same fight track');
   ok(F.a.log.every(x => x.s === 'bossreveal' || x.s === 'bosscombat' || x.s === 'town'), 'no fade to calm/other states mid-fight: ' + F.a.log.map(x => x.s + ':' + x.to + '@' + x.t).join(' '));
   ok(F.a.live.length === 1, 'exactly one active track after the fight');
-  ok(bc(F.b).length === 1, '290 s fight without phases: the fight track never changes (' + fightTracks(F.b).join('>') + ')');
-  ok(bc(F.c).length === 2 && F.c.log.filter(x => x.s === 'bosscombat')[1].t - F.c.log.filter(x => x.s === 'bosscombat')[0].t >= 295, '330 s fight without phases: exactly one smooth rotation, not before 5 minutes (' + fightTracks(F.c).join('>') + ')'); }
+  { const ts = bc(F.b).map(x => x.t); ok(ts.length >= 2 && ts.length <= 3 && ts.every((x, i) => !i || x - ts[i - 1] >= 119), '290 s fight without phases: rotates through the pool at loop boundaries, >= 120 s apart (' + fightTracks(F.b).join('>') + ')'); }
+  { const ts = bc(F.c).map(x => x.t), tr = fightTracks(F.c); ok(ts.length >= 3 && ts.every((x, i) => !i || x - ts[i - 1] >= 119) && new Set(tr).size === tr.length, '330 s fight without phases: >= 2 smooth rotations, >= 120 s apart, no track twice (' + tr.join('>') + ')'); } }
 // --- calm cadence: jittered 90-150 s dwell, 7 s crossfades, mood-family contrast, history, natural-trigger nudges, 40+ calm tracks ---
 { const K = await ev(async () => { const m = await import('/src/music.ts'), mm = window.__audio.music; clearInterval(mm.timer); { const g = window.__game; if (g.inst) g.abandonInstance(); } { const base = mm.ctx.currentTime + (mm.__off || 0); mm.__off = 0; mm.now = () => base + mm.__off; }
     const off = s => { mm.__off += s; mm.tick(); }; const wait = async (c, ms = 60000) => { const t0 = performance.now(); while (!c() && performance.now() - t0 < ms) { await new Promise(r => setTimeout(r, 100)); mm.tick(); } return c(); };
