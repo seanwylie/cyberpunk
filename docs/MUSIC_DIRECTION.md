@@ -70,3 +70,12 @@ The boss prompts now open with a drum-style description: a crisp, prominent snar
 Every splice in `tools/extend_theme.py` now cuts on a true phrase downbeat (84 bpm, first downbeat 0.064 s, cut phase TP-0.27 s), so each segment is a whole number of 4/4 bars. The final hard dip, the build and the climax use the same source ranges and gains as before (re-encode difference only). The outro piano tail is phase-locked too, which removes the stray note in the fade. `tools/meter_check.py` checks that no bar is off by more than 2% and that each 2-bar median grid offset is within 40 ms. Plot: `docs/img/theme_main_long_meter.png`. After: 10 ms. Before: 75 ms.
 
 Swells, not jumps: the joins into dip 1 (0:45.5), build 1 (0:56.9) and build 2 (1:31.2) stepped up by 10 to 12 dB within half a second. Those sections now swell in from level-matched joins, linear in dB, starting on the join downbeat: dip 1 from -9 dB over 2 bars, build 1 from -9 dB over 4 bars, and build 2 from -11 dB over 4 bars. Join steps are now about 2 dB. The hard-dip-to-climax entry, the climax and the ending are unchanged. The plot `docs/img/theme_main_long_envelope.png` shows before and after.
+
+### Snare-layered theme boss takes (`boss_theme_siege_snare`, `boss_theme_storm_snare`)
+Regenerated snare takes of Siege and Storm drifted off the melody, so these keep the original recordings. `tools/snare_layer.py` adds a rolling snare layer locked to each track's tracked beat grid:
+- backbeats on 2 and 4, with 16th ghost notes;
+- a crescendo rush into every 8-bar phrase (16ths, then 32nds on Siege's last beat; 32nds are too fast for Storm's 168 bpm);
+- an accent on each phrase downbeat;
+- the snare follows the arrangement's level.
+
+Samples are ElevenLabs SFX one-shots in `tools/snare_samples/`. The layer stops before the loop point, so loop points (copied from the originals), faded tails, key and melody are unchanged (chroma corr ≥ 0.99, sample-exact alignment, limiter latency compensated). `snare_ab.py`: crack onsets/s Siege 4.67 → 6.07, Storm 5.83 → 7.77. Both join `BOSS_THEME` (boss pool and final-phase pool) alongside the originals.
