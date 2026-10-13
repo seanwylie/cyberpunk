@@ -1,9 +1,10 @@
+import { playRecall, playEmote } from '../pmfx';
 // Draws other players (town presence + party instances) with the real animated sprite/cosmetics and ONE name plate each.
 // Plate rules (no clutter): shown only within PLATE_RANGE tiles of the local player (fading out), never two plates overlapping, party members always in instances.
 import type { Renderer } from '../render';
 import { PlayerAnimator } from '../sprites';
 import { COS_BY_ID, CosDef } from '../content/appearance';
-import { drawCosmetics, CosCtx } from '../cosmetics';
+import { drawCosmetics, drawTrail, trailSample, CosCtx, TrailPt } from '../cosmetics';
 import { drawGearFx, decodeGear, topTier } from '../cosfx';
 import { cpx } from '../config';
 import { isExclusive, badgeOf } from '../retire';
@@ -13,7 +14,7 @@ export interface RemoteP { id: string; name: string; x: number; y: number; face:
 const PLATE_RANGE = 7.5;
 const TINTS = ['#e8c46a', '#7fd6c2', '#e58f7b', '#9fb8ff', '#c9a3ff'];
 export class RemoteDrawer {
-  private an = new Map<string, { a: PlayerAnimator; t: number; hp: number; atk: number }>(); private plates: { x0: number; y0: number; x1: number; y1: number }[] = []; private frameT = -1;
+  private an = new Map<string, { a: PlayerAnimator; t: number; hp: number; atk: number }>(); private trails = new Map<string, TrailPt[]>(); private em = new Map<string, number>(); private plates: { x0: number; y0: number; x1: number; y1: number }[] = []; private frameT = -1;
   /** device-pixel hit boxes of players drawn this frame (inspect card) and first-seen times (hub arrival flair) */
   private hits: { p: RemoteP; x0: number; y0: number; x1: number; y1: number }[] = []; private seen = new Map<string, number>(); /** last flair alpha per player (tests) */ flair = new Map<string, number>();
   constructor(private r: Renderer) {}
@@ -21,19 +22,21 @@ export class RemoteDrawer {
   /** exclusives this player advertises (equipped or owned) and the badge to flash on arrival */
   static exInfo(p: RemoteP): { n: number; badge: string } { const l = p.look || {}; const ids = [...(l.ex || []).map((e: any) => e[0]), ...(l.cos || [])].filter((id: string) => isExclusive(id)); const sc = l.sc && isExclusive(l.sc) ? l.sc : ids[0]; return { n: new Set(ids).size, badge: sc ? badgeOf(sc) || 'Exclusive' : '' }; }
   private animFor(p: RemoteP) { let o = this.an.get(p.id); const base = this.r.anim; if (!o && base) { o = { a: new PlayerAnimator(base.loaded), t: performance.now(), hp: p.hp ?? 100, atk: 0 }; this.an.set(p.id, o); } return o; }
-  forget(id: string) { this.an.delete(id); this.seen.delete(id); this.seen.delete('ex:' + id); this.flair.delete(id); }
+  forget(id: string) { this.em.delete(id); this.an.delete(id); this.trails.delete(id); this.seen.delete(id); this.seen.delete('ex:' + id); this.flair.delete(id); }
   /** the animator wants a Game-like state; synthesise it from the networked view */
   private fake(p: RemoteP, o: { atk: number }) { const m = !!p.moving; const wx = Math.cos(p.face), wy = Math.sin(p.face); return { hp: p.hp ?? 100, downed: !!p.down, moving: m, dodgeT: 0, cast: null, atkCd: o.atk, face: p.face, inputMove: { x: wx - wy, y: (wx + wy) / 2 }, dodgeDx: 0, dodgeDy: 0, abCd: [0, 0, 0] }; }
   draw(p: RemoteP, me: { x: number; y: number }, alwaysPlate: boolean) {
     const r = this.r, c = r.ctx; const s = r.TW / 64; const a = r.sx(p.x, p.y), b = r.sy(p.x, p.y); const now = performance.now();
     if (now !== this.frameT) { this.frameT = now; }
     { const m = c.getTransform(); const p0 = m.transformPoint(new DOMPoint(a - 14 * s, b - 60 * s)), p1 = m.transformPoint(new DOMPoint(a + 14 * s, b + 6 * s)); this.hits.push({ p, x0: Math.min(p0.x, p1.x), y0: Math.min(p0.y, p1.y), x1: Math.max(p0.x, p1.x), y1: Math.max(p0.y, p1.y) }); }
-    if (!this.seen.has(p.id)) this.seen.set(p.id, now / 1000);
+    const cosL = ((p.look?.cos || []) as string[]).map(id => COS_BY_ID[id]).filter(Boolean) as CosDef[];
+    if (!this.seen.has(p.id)) { this.seen.set(p.id, now / 1000); try { playRecall(cosL, 'net:' + p.id, false); } catch {} } // arrival: their recall plays for you too
+    { const e = (p as any).em | 0, was = this.em.get(p.id); if (was !== undefined && e !== was) try { playEmote(cosL, 'net:' + p.id, false); } catch {} this.em.set(p.id, e); }
     c.save(); c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(a, b, 13 * s, 6 * s, 0, 0, 7); c.fill();
     const o = this.animFor(p); let drew = false;
     if (o) { const dt = Math.min(.1, (now - o.t) / 1000); o.t = now; if (p.atk) o.atk = .5; else o.atk = Math.max(0, o.atk - dt); try { if (p.look?.body) o.a.setBody(p.look.body); } catch {} o.a.update(this.fake(p, o) as any, dt);
       const cos = ((p.look?.cos || []) as string[]).map(id => COS_BY_ID[id]).filter(Boolean) as CosDef[]; const ck: CosCtx = { c, x: a, y: b, u: s, t: now / 1000, moving: !!p.moving, face: p.face, id: 'net:' + p.id, cast: !!p.atk };
-      try { if (cos.length) drawCosmetics(ck, cos, 'back'); } catch {} drew = o.a.draw(c, a, b, s); try { if (drew && cos.length) drawCosmetics(ck, cos, 'front'); } catch {} try { if (drew && p.look?.gear?.length) drawGearFx({ ...ck, id: 'net:' + p.id }, decodeGear(p.look.gear), topTier(cos)); } catch {} }
+      try { const tr = cos.find(d => d.slot === 'trail'); if (tr) { let buf = this.trails.get(p.id); if (!buf) this.trails.set(p.id, buf = []); trailSample(buf, p.x, p.y, ck.t, !!p.moving); (globalThis as any).__cosOwner = 'net:' + p.id; drawTrail(c, buf.map(q => ({ x: r.sx(q.x, q.y), y: r.sy(q.x, q.y), t: q.t })), ck.t, s, tr, p.moving ? { x: a, y: b } : undefined); (globalThis as any).__cosOwner = undefined; } else this.trails.delete(p.id); } catch {} try { if (cos.length) drawCosmetics(ck, cos, 'back'); } catch {} drew = o.a.draw(c, a, b, s); try { if (drew && cos.length) drawCosmetics(ck, cos, 'front'); } catch {} try { if (drew && p.look?.gear?.length) drawGearFx({ ...ck, id: 'net:' + p.id }, decodeGear(p.look.gear), topTier(cos)); } catch {} }
     if (!drew) { c.translate(a, b); c.fillStyle = TINTS[(p.id.charCodeAt(1) || 0) % TINTS.length]; c.beginPath(); c.arc(0, -22 * s, 9 * s, 0, 7); c.fill(); c.fillRect(-6 * s, -14 * s, 12 * s, 14 * s); }
     c.restore();
     this.plate(p, a, b, s, Math.hypot(p.x - me.x, p.y - me.y), alwaysPlate);

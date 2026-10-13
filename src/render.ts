@@ -11,7 +11,7 @@ import { drawBossZone } from './boss_draw';
 import { PlayerAnimator, loadAtlas } from './sprites';
 import { bodyOf } from './bodyvariants';
 import { equippedCos, CosDef } from './content/appearance';
-import { drawCosmetics, drawTrail, CosCtx, TrailPt } from './cosmetics';
+import { drawCosmetics, drawTrail, trailSample, CosCtx, TrailPt } from './cosmetics';
 import { Env, makeEnv, S as TS, FLOOR_VARIANTS } from './envtex';
 import type { Level } from './level';
 import { TownArt, GP, decorDepth } from './town';
@@ -206,7 +206,7 @@ export class Renderer {
   private fxImp=-1; /** signature skin flourish on ability/attack impact */
   private cosTrail:TrailPt[]=[]; private cosTrailAt=0;
   /** Wardrobe: trail particles + aura + back gear (behind the body). Trail points are stored in screen space relative to the world so they stay put while the camera follows. */
-  private cosBack(cos:CosDef[],k:CosCtx){ const g=this.g; const tr=cos.find(x=>x.slot==='trail'); if(tr){ if(g.moving&&g.time-this.cosTrailAt>.045){ this.cosTrailAt=g.time; this.cosTrail.push({x:g.px,y:g.py,t:g.time}); } this.cosTrail=this.cosTrail.filter(p=>g.time-p.t<.9).slice(-40); drawTrail(k.c,this.cosTrail.map(p=>({x:this.sx(p.x,p.y),y:this.sy(p.x,p.y),t:p.t})),g.time,k.u,tr); } else this.cosTrail.length=0; drawCosmetics(k,cos,'back'); }
+  private cosBack(cos:CosDef[],k:CosCtx){ const g=this.g; const tr=cos.find(x=>x.slot==='trail'); if(tr){ trailSample(this.cosTrail,g.px,g.py,g.time,!!g.moving); drawTrail(k.c,this.cosTrail.map(p=>({x:this.sx(p.x,p.y),y:this.sy(p.x,p.y),t:p.t})),g.time,k.u,tr,g.moving?{x:k.x,y:k.y}:undefined); } else this.cosTrail.length=0; drawCosmetics(k,cos,'back'); }
   drawPlayer(){
     const g=this.g, c=this.ctx; const s=this.TW/64; const a=this.sx(g.px,g.py), b=this.sy(g.px,g.py); const L=installedLayout(g.save); const broken=g.inst?.broken||[];
     c.save(); c.fillStyle='rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(a,b,13*s,6*s,0,0,7); c.fill();

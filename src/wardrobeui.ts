@@ -8,7 +8,7 @@ import { playEmote, playRecall } from './pmfx';
 import { badgeOf as xBadge, isExclusive, provenance, fmtDate } from './retire';
 import { COSMETICS, COS_BY_ID, COS_SLOTS, COS_SLOT_ICON, COS_SLOT_LABEL, COS_THEME_LABEL, CosDef, CosSlot, buyCos, checkAchievements, cosOf, equipCos, ownsCos, ACHIEVEMENTS } from './content/appearance';
 import { applyCosmeticVariants, bodyOf } from './bodyvariants';
-import { drawCosmetics, drawTrail } from './cosmetics';
+import { drawCosmetics, drawTrail, TRAIL_LIFE, TRAIL_STEP } from './cosmetics';
 import { PlayerAnimator, Dir8, DIR_ORDER, dirFromWorld } from './sprites';
 import { persist } from './state';
 import { track, fmtUsd } from './analytics';
@@ -200,7 +200,9 @@ export function wardrobeAfter(ui: UIx) {
     if (WD.showcase && !reducedFx()) { if (t - lastTurn > 1.6) { lastTurn = t; WD.dir = ((WD.dir + 1) % 8) as Dir8; } const tops = list.filter(x => x.rarity === 'orange' || x.rarity === 'purple'); if (tops.length && t - lastShow > 6) { lastShow = t; revT = t; flourish('dr'); revTier = tops.some(x => x.rarity === 'orange') ? 'orange' : 'purple'; } }
     (window as any).__drReveal = { t: t - revT, tier: revTier }; let plate: (() => void) | null = null;
     if (revTier && t - revT < 3.4) { const rd = list.find(x => x.rarity === revTier); const sg = rd && SIGNATURE[rd.id]; drawReveal(ctx, fx, fy, u, t - revT, revTier as any, W, H, reducedFx(), '', sg ? PALETTES[sg.pal] : undefined); plate = () => drawPlate(ctx, t - revT, revTier as any, W, H, reducedFx(), rd?.name || '', sg ? PALETTES[sg.pal] : undefined); }
-    const tr = list.find(x => x.slot === 'trail'); if (tr) drawTrail(ctx, Array.from({ length: 14 }, (_, i) => ({ x: fx - 8 - i * 7, y: fy + (i % 2) * 2, t: t - i * .06 })), t, u, tr);
+    const tr = list.find(x => x.slot === 'trail'); if (tr) { // same renderer + timing as in game: a looping run that sweeps in to the feet, then a stop so the fade is visible
+      const cyc = 2.6, ph = t % cyc, run = 1.6, c0 = t - ph, hd = Math.min(t, c0 + run), V = 34 * u; const pts: { x: number; y: number; t: number }[] = [];
+      for (let tt = Math.max(c0, hd - TRAIL_LIFE); tt <= hd; tt += TRAIL_STEP) pts.push({ x: fx - (hd - tt) * V, y: fy + Math.sin(tt * 3) * 2 * u - Math.sin(hd * 3) * 2 * u, t: tt }); (globalThis as any).__cosOwner = 'dr'; drawTrail(ctx, pts, t, u, tr, ph < run ? { x: fx, y: fy } : undefined); (globalThis as any).__cosOwner = undefined; }
     drawCosmetics(k, list, 'back'); let drew = false;
     if (anim) { try { const body = applyCosmeticVariants(bodyOf({ ...s, cosmetics: { owned: {}, equipped: {} } } as any, null), { cosmetics: { owned: Object.fromEntries(list.map(x => [x.id, 1])), equipped: look } } as any); anim.setBody(body); anim.anim = 'idle'; anim.t = t;
       // cross-fade the two nearest baked directions while snapping (no ghost at rest)

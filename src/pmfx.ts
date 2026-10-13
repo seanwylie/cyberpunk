@@ -6,6 +6,7 @@ import type { CosDef } from './content/appearance';
 import { LINE_BY_ID } from './content/skinlines';
 import { isExclusive } from './retire';
 import { glowSprite, reduced, playCosSfx } from './cosfx';
+const aud = (o: string, sl: string, id: string, f: () => void) => { const A = (globalThis as any).__cosAudit; if (!A) { f(); return; } const n0 = (globalThis as any).__ops || 0; try { f(); } finally { const k = o + '|' + sl + '|' + id; A[k] = (A[k] || 0) + ((globalThis as any).__ops || 0) - n0; } };
 type C = CanvasRenderingContext2D;
 export interface PmCtx { c: C; x: number; y: number; u: number; t: number; moving: boolean; face: number; id?: string; cast?: boolean }
 const rgba = (hex: string, a: number) => { const n = parseInt(hex.replace('#', ''), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; };
@@ -64,20 +65,21 @@ export function drawPm(k: PmCtx, list: CosDef[], phase: 'back' | 'front') {
   const sk = lineOf(list);
   if (k.cast && !o.lastCast) { o.flo = t; if (id === 'me' && sk?.body && (sk.tier === 'legendary' || sk.tier === 'ultimate')) playCosSfx('pm_' + sk.body.split('@')[0] + '_flourish', .4); } o.lastCast = !!k.cast; o.lastT = t; const pal = sk ? LINE_BY_ID[sk.line!].pal : null;
   const pet = list.find(d => d.slot === 'pet');
-  if (pet && PET[pet.style]) { const a = t * .9; const px = x + Math.cos(a) * 15 * u, py = y - (34 + Math.sin(t * 2.1) * 2) * u + Math.sin(a) * 5 * u; const behind = Math.sin(a) < 0; if ((phase === 'back') === behind) { c.save(); c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(px, y + Math.sin(a) * 5 * u, 3 * u, 1.2 * u, 0, 0, 7); c.fill(); PET[pet.style]({ ...k, x: px, y: py }, pet, []); c.restore(); } }
+  if (pet && PET[pet.style]) { const a = t * .9; const px = x + Math.cos(a) * 15 * u, py = y - (34 + Math.sin(t * 2.1) * 2) * u + Math.sin(a) * 5 * u; const behind = Math.sin(a) < 0; if ((phase === 'back') === behind) { c.save(); c.fillStyle = 'rgba(0,0,0,.18)'; c.beginPath(); c.ellipse(px, y + Math.sin(a) * 5 * u, 3 * u, 1.2 * u, 0, 0, 7); c.fill(); aud(id, 'pet', pet.id, () => PET[pet.style]({ ...k, x: px, y: py }, pet, [])); c.restore(); } }
   if (phase === 'back') {
     // exclusive signature: a thin brass filigree arc behind the feet + one slow glint. Subtle on purpose.
     if (list.some(d => isExclusive(d.id))) { c.save(); c.strokeStyle = 'rgba(232,196,106,.55)'; c.lineWidth = Math.max(1, .7 * u); c.beginPath(); c.ellipse(x, y, 11 * u, 4 * u, 0, Math.PI * 1.08, Math.PI * 1.92); c.stroke(); if (!red) { const g = (t * .25) % 1; soft(c, x + Math.cos(Math.PI * (1.08 + .84 * g)) * 11 * u, y + Math.sin(Math.PI * (1.08 + .84 * g)) * 4 * u, 3 * u, '#ffe6a6', .5 * Math.sin(g * Math.PI)); } c.restore(); }
     return;
   }
   if (sk && pal) {
-    const acc = ACC[sk.id.split('__')[0]]; if (acc) { c.save(); acc(k, sk, pal); c.restore(); }
+    const acc = ACC[sk.id.split('__')[0]]; if (acc) { c.save(); aud(id, 'line', sk.id, () => acc(k, sk, pal)); c.restore(); }
     const pts = EMIT[(sk.body || '').split('@')[0]]; if (pts) for (const [px, py] of pts) soft(c, x + px * u, y + py * u, 4.5 * u, pal[2], red ? .35 : .3 + .12 * Math.sin(t * 1.6 + px));
     // ability flourish: one painted arc (Legendary/Ultimate) when an ability fires
     const fa = (t - o.flo) / FLO_S; if (!red && fa >= 0 && fa < 1 && (sk.tier === 'legendary' || sk.tier === 'ultimate')) { c.save(); c.globalCompositeOperation = 'lighter'; const r = (10 + 10 * ease(fa)) * u; const g = c.createLinearGradient(x - r, y - 30 * u, x + r, y - 30 * u); g.addColorStop(0, rgba(pal[2], 0)); g.addColorStop(.5, rgba(pal[2], .55 * (1 - fa))); g.addColorStop(1, rgba(pal[1], 0)); c.strokeStyle = g; c.lineWidth = (3 - 2 * fa) * u; c.beginPath(); c.ellipse(x, y - 26 * u, r, r * .45, -.2, Math.PI * .9, Math.PI * 2.2); c.stroke(); c.restore(); }
   }
-  const w = list.find(d => d.slot === 'weapon'); if (w && WEAPON[w.style]) { c.save(); WEAPON[w.style](k, w, []); c.restore(); }
-  drawMoments(k, o);
+  const w = list.find(d => d.slot === 'weapon'); if (w && WEAPON[w.style]) { c.save(); aud(id, 'weapon', w.id, () => WEAPON[w.style](k, w, [])); c.restore(); }
+  const em = o.emote ? list.find(d => d.slot === 'emote') : undefined, rc = o.recall ? list.find(d => d.slot === 'recall') : undefined;
+  aud(id, 'moment', (em?.id || '') + (rc ? '+' + rc.id : ''), () => drawMoments(k, o));
 }
 function drawMoments(k: PmCtx, o: Own) {
   const { c, x, y, u, t } = k;

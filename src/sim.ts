@@ -40,7 +40,7 @@ import { altPrompt, altInteract, relay as altRelay, hackTier, applyPayoff, altTi
 import { recordAbility, recordAuto, recordDodge, recordHack, closeRun, refreshOffer, traitEffects, famBonus, statBonus } from './traitstate';
 import { traitPrior } from './traithooks';
 import { passXp, onClear as monetClear } from './monet';
-import { playRecall } from './pmfx';
+import { playRecall, playEmote } from './pmfx';
 import { equippedCos as eqCos, COS_BY_ID as COS_PM } from './content/appearance';
 import type { Effect } from './traits';
 import { record, newStory, EventKind } from './story';
@@ -277,6 +277,8 @@ export class Game {
     const V=HEAT.vent; const hot=this.heat>=V.hotAt; const amt=V.amount+(hot?V.hotBonus:0); this.cast=null; this.aim=null; this.heat=Math.max(0,this.heat-amt); this.ventCd=V.cd; this.ventLock=V.lockT; this.weaponOff=Math.max(this.weaponOff,V.lockT); this.heatSoak=0; this.vents=(this.vents||0)+1;
     if(this.overheated&&this.heat<=COMBAT.heat.overheatRecover&&this.ohT<=0){ this.overheated=false; this.emit('sfx','cooled'); }
     this.popup(this.px,this.py-1,hot?'HOT VENT -'+amt:'VENT -'+amt,'#e8c46a'); this.emit('sfx','cooled'); this.fx.push({kind:'ring',x:this.px,y:this.py,r:1.8,t:0,life:.45,c:'#e8c46a'}); return true; }
+  /** play the equipped emote cosmetic (G); emoteSeq is relayed with town_pos so nearby players see it too */
+  emoteSeq=0; emote(){ if(this.downed) return; if(playEmote(eqCos(this.save))) this.emoteSeq++; }
   useStim(){ if(this.stimCd>0) return; const c=this.inst?.carried; if(!c||this.downed){ if(this.mode==='town'&&this.save.stims>0){ this.save.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); } return; } if(c.stims>0&&this.hp<this.maxHp){ c.stims--; this.stimCd=HARD.stimCd; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); this.heat=Math.max(0,this.heat-HEAT.stimVent); this.emit('sfx','heal'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.8,text:'+'+COMBAT.stimHeal,c:'#9fb98a'}); } else if(c.stims<=0 && this.save.stims>0 && false){} }
   musicSet(s:string){ if(this.musicState!==s){ this.musicState=s; if(s!=='town') this.emit('musicarea',this.inst?dungeonOf(this.inst.dungeon).mfr:null); this.emit('music',s); } }
 

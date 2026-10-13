@@ -121,7 +121,7 @@ export class NetSession {
   // ---------- town presence
   private townTick() {
     const g = this.g, n = this.net; if (n.state !== 'online' || this.active) return;
-    if (g.mode === 'town') { const key = g.townId; if (key !== this.lastTownKey) { this.lastTownKey = key; n.send({ t: 'town_join', town: key, cv: cityVersion() }); n.townPlayers.clear(); } n.send({ t: 'town_pos', x: +g.px.toFixed(2), y: +g.py.toFixed(2), face: +g.face.toFixed(2), moving: !!g.moving }); }
+    if (g.mode === 'town') { const key = g.townId; if (key !== this.lastTownKey) { this.lastTownKey = key; n.send({ t: 'town_join', town: key, cv: cityVersion() }); n.townPlayers.clear(); } n.send({ t: 'town_pos', x: +g.px.toFixed(2), y: +g.py.toFixed(2), face: +g.face.toFixed(2), moving: !!g.moving, em: (g as any).emoteSeq & 255 }); }
     else if (this.lastTownKey) { this.lastTownKey = ''; n.send({ t: 'town_leave' }); }
   }
   // ---------- rendering

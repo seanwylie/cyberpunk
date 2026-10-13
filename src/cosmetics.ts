@@ -13,6 +13,9 @@ const glow=(c:C,x:number,y:number,r:number,col:string,a:number)=>{ const g=c.cre
 const poly=(c:C,pts:number[][],fill?:string,stroke?:string,lw=1)=>{ c.beginPath(); pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1])); c.closePath(); if(fill){ c.fillStyle=fill; c.fill(); } if(stroke){ c.strokeStyle=stroke; c.lineWidth=lw; c.stroke(); } };
 
 type Fn=(k:CosCtx,d:CosDef)=>void;
+/** Render audit (tests/cosmetics_render.mjs): when a test sets globalThis.__cosAudit = {} and counts canvas ops in globalThis.__ops,
+ *  every cosmetic draw records how many canvas ops it issued under `${owner}|${slot}|${id}`. Off (one global read) in normal play. */
+export function cosAudit(owner:string,slot:string,id:string,f:()=>void){ const A=(globalThis as any).__cosAudit; if(!A){ f(); return; } const n0=(globalThis as any).__ops||0; try{ f(); } finally{ const k=owner+'|'+slot+'|'+id; A[k]=(A[k]||0)+((globalThis as any).__ops||0)-n0; } }
 const pulse=(k:CosCtx,sp=2,lo=.55)=>lo+(1-lo)*(.5+.5*Math.sin(k.t*sp));
 const add=(c:C,f:()=>void)=>{ c.save(); c.globalCompositeOperation='lighter'; f(); c.restore(); };
 
@@ -105,10 +108,10 @@ const EYES:Record<string,Fn>={
 // ---------- back gear (drawn behind the body) ----------
 const BACK:Record<string,Fn>={
   pack:(k,d)=>{ const {c,x,y,u}=k; c.fillStyle=rgba(d.c,.95); c.fillRect(x-6*u,y-37*u,12*u,15*u); c.fillStyle=rgba('#000',.25); c.fillRect(x-6*u,y-30*u,12*u,1*u); },
-  cable:(k,d)=>{ const {c,x,y,u,t}=k; c.strokeStyle=rgba(d.c,.95); c.lineWidth=Math.max(1.4,1.4*u); c.lineCap='round'; c.beginPath(); c.moveTo(x,y-22*u); c.bezierCurveTo(x-6*u,y-16*u,x+5*u,y-10*u+Math.sin(t*3)*u,x+1*u,y-2*u); c.stroke(); add(c,()=>{ c.fillStyle=rgba('#ffd060',Math.sin(t*9)>.4?.9:0); ell(c,x+1*u,y-2*u,1.1*u,1.1*u); c.fill(); }); },
+  cable:(k,d)=>{ const {c,x,y,u,t}=k; c.lineCap='round'; for(const sx of [-1,1]){ c.strokeStyle='rgba(10,12,16,.7)'; c.lineWidth=Math.max(2.2,2.4*u); c.beginPath(); c.moveTo(x+sx*4*u,y-38*u); c.bezierCurveTo(x+sx*13*u,y-34*u,x+sx*12*u,y-20*u+Math.sin(t*3+sx)*u,x+sx*9*u,y-12*u); c.stroke(); c.strokeStyle=rgba(d.c,.95); c.lineWidth=Math.max(1.4,1.5*u); c.stroke(); } add(c,()=>{ for(const sx of [-1,1]){ c.fillStyle=rgba('#ffd060',.55+.4*Math.sin(t*4+sx)); ell(c,x+sx*9*u,y-12*u,1.2*u,1.2*u); c.fill(); } }); },
   cape:(k,d)=>{ const {c,x,y,u,t}=k; const sw=Math.sin(t*2)*(k.moving?2.4:.8)*u; poly(c,[[x-7*u,y-37*u],[x+7*u,y-37*u],[x+10*u+sw,y-8*u],[x-10*u+sw,y-8*u]],rgba(d.c,.88),rgba('#000',.3),1); },
   vents:(k,d)=>{ const {c,x,y,u,t}=k; for(const sx of [-1,1]){ c.fillStyle=rgba(d.c,.95); c.fillRect(x+(sx*7-1.4)*u,y-41*u,2.8*u,7*u); c.fillStyle=rgba(d.c2||'#333',.9); c.fillRect(x+(sx*7-1.4)*u,y-41.4*u,2.8*u,1.2*u); add(c,()=>{ glow(c,x+sx*7*u,y-43*u-((t*4)%1)*3*u,3*u,'#aaaaaa',.12); }); } },
-  tank:(k,d)=>{ const {c,x,y,u}=k; c.fillStyle=rgba(d.c,.92); c.beginPath(); c.roundRect?.(x-3.4*u,y-38*u,6.8*u,14*u,3*u); c.fill(); c.fillStyle=rgba(d.c2||'#fff',.7); c.fillRect(x-2.2*u,y-35*u,1.4*u,8*u); },
+  tank:(k,d)=>{ const {c,x,y,u}=k; for(const sx of [-1,1]){ c.fillStyle='rgba(10,12,16,.6)'; c.beginPath(); c.roundRect?.(x+sx*6*u-3.6*u,y-47*u,7.2*u,17*u,3.2*u); c.fill(); c.fillStyle=rgba(d.c,.95); c.beginPath(); c.roundRect?.(x+sx*6*u-3*u,y-46.4*u,6*u,16*u,3*u); c.fill(); c.fillStyle=rgba(d.c2||'#fff',.7); c.fillRect(x+sx*6*u-1.8*u,y-44*u,1.3*u,10*u); c.fillStyle='rgba(30,30,34,.95)'; c.fillRect(x+sx*6*u-1.6*u,y-48.6*u,3.2*u,2.2*u); } },
   array:(k,d)=>{ const {c,x,y,u,t}=k; c.strokeStyle=rgba(d.c,.95); c.lineWidth=Math.max(1,.8*u); for(let i=0;i<3;i++){ c.beginPath(); c.moveTo(x+(i-1)*2*u,y-36*u); c.lineTo(x+(i-1)*5*u,y-(50+i%2*3)*u); c.stroke(); add(c,()=>{ c.fillStyle=rgba(d.c2||d.c,Math.sin(t*3+i*2)>0?.95:.25); ell(c,x+(i-1)*5*u,y-(50+i%2*3)*u,.9*u,.9*u); c.fill(); }); } },
   banner:(k,d)=>{ const {c,x,y,u,t}=k; c.strokeStyle=rgba('#333',.95); c.lineWidth=Math.max(1,.8*u); c.beginPath(); c.moveTo(x+4*u,y-48*u); c.lineTo(x+4*u,y-22*u); c.stroke(); const sw=Math.sin(t*2.4)*1.2*u; poly(c,[[x+4*u,y-47*u],[x+11*u+sw,y-45*u],[x+10*u+sw,y-36*u],[x+4*u,y-37*u]],rgba(d.c,.92)); c.fillStyle=rgba(d.c2||'#fff',.8); c.fillRect(x+5.4*u,y-43.6*u,3.4*u,.9*u); },
   spine:(k,d)=>{ const {c,x,y,u}=k; for(let i=0;i<7;i++){ ell(c,x,y-(38-i*2.6)*u,(2.6-i*.12)*u,1.1*u); c.fillStyle=rgba(d.c,.95); c.fill(); c.strokeStyle=rgba(d.c2||'#888',.9); c.lineWidth=.8; c.stroke(); } },
@@ -135,21 +138,42 @@ const FRONT_SLOTS:CosSlot[]=['skin','legs','torso','arms','hands','tattoo','hair
 
 export function drawCosmetics(k:CosCtx,list:CosDef[],phase:'back'|'front'){
   const order=phase==='back'?BACK_SLOTS:FRONT_SLOTS; k.c.save();
-  for(const sl of order){ const d=list.find(x=>x.slot===sl); if(!d) continue; if(d.variant&&d.style==='shell') continue; const f=FN[sl]?.[d.style]; if(f){ k.c.save(); try{ f(k,d); }catch{ /* never break the frame */ } k.c.restore(); } }
-  k.c.restore(); try{ drawRarityFx(k,list,phase); }catch{ /* never break the frame */ }
+  for(const sl of order){ const d=list.find(x=>x.slot===sl); if(!d) continue; if(d.variant&&d.style==='shell') continue; const f=FN[sl]?.[d.style]; if(f){ k.c.save(); try{ cosAudit(k.id||'me',sl,d.id,()=>f(k,d)); }catch{ /* never break the frame */ } k.c.restore(); } }
+  k.c.restore(); try{ cosAudit(k.id||'me','rarityfx',phase,()=>drawRarityFx(k,list,phase)); }catch{ /* never break the frame */ }
   try{ k.c.save(); drawPm(k,list,phase); }catch{ /* never break the frame */ } finally{ k.c.restore(); }
 }
-/** Trail: afterimage particles sampled behind the player (world->screen done by the caller). */
+/** Trail: one painted brush-stroke ribbon that follows the feet (world->screen done by the caller). Tier-scaled (docs/COSMETIC_TRAILS.md):
+ *  grey/green = a single soft stroke, blue = stroke + bright core, purple = two-tone stroke with ink edge + painted flecks, orange = signature
+ *  (wide gilded stroke, inner light, slow brush flecks). No random/time jitter per point, so nothing flickers; points age out (TRAIL_LIFE)
+ *  and the ribbon tapers + fades from the tail, so it melts away smoothly when you stop. A fixed handful of fills per frame (no particles). */
 export interface TrailPt { x:number; y:number; t:number }
-export function drawTrail(c:C,pts:TrailPt[],now:number,u:number,d:CosDef){
-  c.save(); for(const p of pts){ const a=1-(now-p.t)/.9; if(a<=0) continue; const r=(1.2+(1-a)*2)*u;
-    switch(d.style){
-      case 'dust': c.fillStyle=rgba(d.c,.28*a); ell(c,p.x,p.y-1*u,r*1.6,r*.8); c.fill(); break;
-      case 'smoke': c.fillStyle=rgba(d.c,.3*a); ell(c,p.x,p.y-(1+(1-a)*8)*u,r*1.8,r*1.5); c.fill(); break;
-      case 'sparks': c.globalCompositeOperation='lighter'; c.fillStyle=rgba(d.c,.9*a); ell(c,p.x+Math.sin(p.t*50)*3*u,p.y-(1+(1-a)*5)*u,.7*u,.7*u); c.fill(); break;
-      case 'embers': c.globalCompositeOperation='lighter'; c.fillStyle=rgba(d.c,.85*a); ell(c,p.x+Math.sin(p.t*37)*4*u,p.y-(2+(1-a)*12)*u,1.1*u,1.1*u); c.fill(); glow(c,p.x,p.y-3*u,4*u,d.c,.2*a); break;
-      case 'ghost': c.globalCompositeOperation='lighter'; c.fillStyle=rgba(d.c,.2*a); ell(c,p.x,p.y-24*u,5*u,12*u); c.fill(); break;
-      case 'glitch': c.globalCompositeOperation='lighter'; c.fillStyle=rgba(d.c,.7*a); c.fillRect(p.x+Math.sin(p.t*91)*6*u,p.y-(3+Math.abs(Math.sin(p.t*53))*26)*u,2.4*u,1.1*u); break;
-      default: c.fillStyle=rgba(d.c,.3*a); ell(c,p.x,p.y,r,r*.5); c.fill(); } }
+export const TRAIL_LIFE=.75, TRAIL_STEP=.03, TRAIL_MAX=32;
+const TIER:Record<string,{w:number;a:number;core:number;ink:number;fl:number;halo:number}>={ grey:{w:3,a:.36,core:0,ink:.25,fl:0,halo:0}, green:{w:4,a:.55,core:.4,ink:.35,fl:0,halo:0}, blue:{w:5,a:.66,core:.7,ink:.45,fl:2,halo:.18}, purple:{w:6.2,a:.8,core:.9,ink:.6,fl:4,halo:.28}, orange:{w:7.4,a:.92,core:1,ink:.7,fl:6,halo:.4} };
+/** per-style shape: lift (u above the feet), widen, light core colour, additive? */
+const TSTYLE:Record<string,{lift:number;wide:number;core:string;add:boolean;step?:boolean;rise?:number}>={ dust:{lift:1,wide:1.5,core:'#e8dcc4',add:false}, smoke:{lift:3,wide:1.9,core:'#b8b8b0',add:false,rise:6}, sparks:{lift:2,wide:.85,core:'#fff4d0',add:true}, embers:{lift:3,wide:1,core:'#ffe0a0',add:true,rise:4}, ghost:{lift:18,wide:2.6,core:'#ffffff',add:true}, glitch:{lift:6,wide:1,core:'#ffffff',add:true,step:true} };
+/** keep a trail buffer in world coords: sample while moving, age out always */
+export function trailSample(buf:TrailPt[],x:number,y:number,t:number,moving:boolean):TrailPt[]{ const last=buf[buf.length-1]; if(moving&&(!last||t-last.t>=TRAIL_STEP)) buf.push({x,y,t}); let i=0; while(i<buf.length&&t-buf[i].t>TRAIL_LIFE) i++; if(i) buf.splice(0,i); if(buf.length>TRAIL_MAX) buf.splice(0,buf.length-TRAIL_MAX); return buf; }
+export function drawTrail(c:C,pts:TrailPt[],now:number,u:number,d:CosDef,head?:{x:number;y:number}){
+  cosAudit((globalThis as any).__cosOwner||'me','trail',d.id,()=>paintTrail(c,pts,now,u,d,head)); }
+function paintTrail(c:C,pts:TrailPt[],now:number,u:number,d:CosDef,head?:{x:number;y:number}){
+  const P=head?[...pts,{x:head.x,y:head.y,t:now}]:pts; if(P.length<2) return; const T=TIER[d.rarity]||TIER.green, S=TSTYLE[d.style]||TSTYLE.dust;
+  // smooth (one Chaikin pass) so the ribbon follows movement as a curve, not a polyline
+  const Q:{x:number;y:number;t:number}[]=[P[0]]; for(let i=0;i<P.length-1;i++){ const a=P[i],b=P[i+1]; Q.push({x:a.x*.75+b.x*.25,y:a.y*.75+b.y*.25,t:a.t*.75+b.t*.25},{x:a.x*.25+b.x*.75,y:a.y*.25+b.y*.75,t:a.t*.25+b.t*.75}); } Q.push(P[P.length-1]);
+  const n=Q.length, L:number[][]=[], R:number[][]=[]; const tail=Q[0], hd=Q[n-1]; if(Math.hypot(hd.x-tail.x,hd.y-tail.y)<2*u) return;
+  for(let i=0;i<n;i++){ const p=Q[i], a=Q[Math.max(0,i-1)], b=Q[Math.min(n-1,i+1)]; let dx=b.x-a.x, dy=b.y-a.y; const m=Math.hypot(dx,dy)||1; dx/=m; dy/=m;
+    const age=Math.min(1,(now-p.t)/TRAIL_LIFE), f=i/(n-1); // f: 0 tail .. 1 head
+    const w=T.w*S.wide*u*(.12+.88*Math.sin(Math.PI*Math.pow(f,2.2)*.92))*(1-age*.55); /* brush profile: hair-thin tail, full belly behind the feet, rounded nib */ const lift=(S.lift+(S.rise||0)*age)*u;
+    const st=S.step?Math.round(Math.sin(i*2.7)*1.2)*u:0; L.push([p.x-dy*w+st,p.y-lift+dx*w*.55]); R.push([p.x+dy*w+st,p.y-lift-dx*w*.55]); }
+  const g0=Q[0], g1=Q[n-1]; const ribbon=(scale:number,col:string,a:number,lw=0,ink='')=>{ const grd=c.createLinearGradient(g0.x,g0.y,g1.x,g1.y); grd.addColorStop(0,rgba(col,0)); grd.addColorStop(.55,rgba(col,a*.8)); grd.addColorStop(1,rgba(col,a));
+    c.beginPath(); for(let i=0;i<n;i++){ const l=L[i],r=R[i],mx=(l[0]+r[0])/2,my=(l[1]+r[1])/2; const x=mx+(l[0]-mx)*scale,y=my+(l[1]-my)*scale; i?c.lineTo(x,y):c.moveTo(x,y); } for(let i=n-1;i>=0;i--){ const l=L[i],r=R[i],mx=(l[0]+r[0])/2,my=(l[1]+r[1])/2; c.lineTo(mx+(r[0]-mx)*scale,my+(r[1]-my)*scale); } c.closePath(); c.fillStyle=grd; c.fill(); if(lw&&ink){ c.lineJoin='round'; c.strokeStyle=rgba(ink,T.ink*.8); c.lineWidth=lw; c.stroke(); } };
+  if(d.style==='ghost'){ c.save(); c.globalCompositeOperation='lighter'; for(const j of [.3,.55,.8]){ const p=Q[Math.floor(j*(n-1))], age=Math.min(1,(now-p.t)/TRAIL_LIFE), a=T.a*(1-age)*j*.7; if(a<.02) continue; const g=c.createLinearGradient(p.x,p.y-44*u,p.x,p.y); g.addColorStop(0,rgba(d.c,a*.9)); g.addColorStop(1,rgba(d.c,0)); c.fillStyle=g; c.globalAlpha=.55; c.beginPath(); c.ellipse(p.x,p.y-40*u,4.2*u,4.8*u,0,0,7); c.moveTo(p.x-7.5*u,p.y-33*u); c.quadraticCurveTo(p.x,p.y-36*u,p.x+7.5*u,p.y-33*u); c.lineTo(p.x+3.5*u,p.y-8*u); c.quadraticCurveTo(p.x,p.y-5*u,p.x-3.5*u,p.y-8*u); c.closePath(); c.fill(); c.globalAlpha=1; c.strokeStyle=rgba('#e8fbff',a*.9); c.lineWidth=Math.max(1,.8*u); c.stroke(); } c.restore(); return; }
+  c.save(); c.lineCap='round';
+  if(T.ink) ribbon(1.15,'#0b0d12',T.ink*.35);                                   // soft ink underlay: reads on bright and dark floors
+  if(S.add) c.globalCompositeOperation='lighter';
+  if(T.halo) ribbon(1.7,d.c,T.halo*(S.add?.45:1));                                             // soft painted bloom around the stroke (purple+)
+  ribbon(1,d.c,T.a);                                                             // the brush body
+  if(d.c2) ribbon(.7,d.c2,T.a*.7);
+  if(T.core) ribbon(.38,S.core,T.a*T.core*.9);                                    // light core (blue+)
+  if(T.fl){ const k=Math.min(T.fl,Math.floor(n/3)); c.fillStyle=rgba(d.c2||S.core,.8*T.a); for(let j=0;j<k;j++){ const i=Math.floor((j+.5)/k*(n-1)); const p=Q[i], age=Math.min(1,(now-p.t)/TRAIL_LIFE); const l=L[i],r=R[i]; const side=j%2?1:-1; const ox=(r[0]-l[0])*.5*side*1.4, oy=(r[1]-l[1])*.5*side*1.4; const rr=(.6+T.w*.08)*u*(1-age); if(rr<.3) continue; c.globalAlpha=1-age; c.beginPath(); c.ellipse((l[0]+r[0])/2+ox,(l[1]+r[1])/2+oy-age*(S.rise||2)*u,rr*2.2,rr*.6,Math.atan2(oy,ox)+1.57,0,7); c.fill(); } c.globalAlpha=1; } // painted flecks (deterministic, fade with age)
   c.restore();
 }
