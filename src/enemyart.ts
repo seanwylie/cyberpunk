@@ -52,7 +52,7 @@ export class EnemyArt {
     const s = mk(128, 64), x = s.getContext('2d')!; const g = x.createRadialGradient(64, 32, 2, 64, 32, 62); g.addColorStop(0, 'rgba(0,0,0,.62)'); g.addColorStop(.55, 'rgba(0,0,0,.34)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.save(); x.scale(1, .5); x.beginPath(); x.arc(64, 64, 62, 0, 7); x.fill(); x.restore(); this.shadow = s; this.load(); this.load3();
   }
   private async load() {
-    const names = [...new Set(Object.values(ART).map(a => a.spr))]; for (const n of names) for (const sfx of ['back', 'side', 'tfront']) new Promise<void>(res => { const i = new Image(); i.onload = () => { this.img[n + '_' + sfx] = i; res(); }; i.onerror = () => res(); i.src = `${this.base}${n}_${sfx}.png`; });
+    const names = [...new Set(Object.values(ART).map(a => a.spr))]; for (const n of names) for (const sfx of ['back']) /* _side/_tfront art was never shipped; probing them only produced 403/404 console noise */ new Promise<void>(res => { const i = new Image(); i.onload = () => { this.img[n + '_' + sfx] = i; res(); }; i.onerror = () => res(); i.src = `${this.base}${n}_${sfx}.png`; });
     await Promise.all(names.map(n => new Promise<void>(res => { const i = new Image(); i.onload = () => { this.img[n] = i; res(); }; i.onerror = () => res(); i.src = `${this.base}${n}.png`; })));
     this.ready = Object.keys(this.img).length > 0;
   }
