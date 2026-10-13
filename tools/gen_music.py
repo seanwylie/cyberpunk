@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Generate music via ElevenLabs /v1/music, post-process to loop-friendly mp3 in public/audio/music/.
-Usage: ELEVENLABS_API_KEY=... python3 tools/gen_music.py [name ...] [--force]
+Usage: ELEVENLABS_API_KEY=... python3 tools/gen_music.py [name ...] [--force] [--model=music_v2_5]
 Needs ffmpeg. Raw downloads are cached in tools/.music_raw (gitignored). Existing outputs are skipped unless --force."""
 import os, sys, json, subprocess, urllib.request, urllib.error, pathlib
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RAW = ROOT/'tools'/'.music_raw'; OUT = ROOT/'public'/'audio'/'music'
 RAW.mkdir(exist_ok=True); OUT.mkdir(parents=True, exist_ok=True)
 KEY = os.environ.get('ELEVENLABS_API_KEY')
+# Model for NEW generations (--model music_v1|music_v2|music_v2_5 or MUSIC_MODEL). Default music_v2_5; tracks already shipped are only regenerated when named with --force.
+MODEL = next((a.split('=',1)[1] for a in sys.argv if a.startswith('--model=')), os.environ.get('MUSIC_MODEL', 'music_v2_5'))
 NEG = "vocals, singing, lyrics, speech, pop, cheerful, orchestral strings, rock guitar"
 # name: (seconds, loop?, prompt)
 TRACKS = {
@@ -316,7 +318,7 @@ for _n in SNARE9: TRACKS[_n] = (TRACKS[_n][0], TRACKS[_n][1], SNARE + TRACKS[_n]
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'
     if raw.exists(): return raw
-    body = json.dumps({"prompt": prompt, "music_length_ms": secs*1000, "force_instrumental": True, "model_id": "music_v1"}).encode()
+    body = json.dumps({"prompt": prompt, "music_length_ms": secs*1000, "force_instrumental": True, "model_id": MODEL}).encode()
     req = urllib.request.Request("https://api.elevenlabs.io/v1/music?output_format=mp3_44100_128", body, {"xi-api-key": KEY, "Content-Type": "application/json"})
     import time
     for attempt in range(8):
