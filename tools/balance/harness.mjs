@@ -128,6 +128,16 @@ export async function runJob(job) {
       return true;
     };
 
+    if (job.mode === 'idle') {
+      // idle check: par kit stands still (no moves, autos or abilities) next to a typical pack of the dungeon's own regular mobs; reports time to death
+      if (!g.startRun(job.id)) return { error: 'startRun failed: ' + job.id };
+      for (let i = 0; i < 20; i++) stepSim(); L = g.level; const isEl = e => g.isElite(e) || ENEMIES[e.type].boss || e.minionOf || e.pylon; const types = [...new Set(g.enemies.filter(e => !e.dead && e.faction === 'enemy' && !isEl(e)).map(e => e.type))];
+      g.enemies.forEach(e => { e.dead = true; }); g.enemies = []; g.inst.carried.stims = 0; g.revealing = false; g.recompute(); g.hp = g.maxHp; g.iframes = 0; g.grace = 0;
+      const n = job.n || 4; const spots = []; const sx = g.px, sy = g.py; for (let a = 0; a < 72 && spots.length < n; a++) { const ang = a * .55, r = 3 + (a % 3); const x = sx + Math.cos(ang) * r, y = sy + Math.sin(ang) * r; if (!g.solidAt(x, y) && g.los(sx, sy, x, y)) spots.push([x, y]); }
+      const es = spots.map(([x, y], i) => { const e = g.spawnEnemy(types[i % types.length], x, y); e.alert = true; return e; }); R.kitInfo = kitInfo(); let t = 0; /* autos keep firing (the game auto-attacks); a killed mob is replaced so the pack pressure stays constant */
+      while (t < (job.maxT || 90) && !g.downed) { g.setMove(0, 0); for (let i = 0; i < es.length; i++) if (es[i].dead) { const [x, y] = spots[i]; es[i] = g.spawnEnemy(types[i % types.length], x, y); es[i].alert = true; } stepSim(); t += dt; }
+      return { id: job.id, level: job.level, kit: job.kit, types, n: es.length, ttd: g.downed ? +t.toFixed(1) : null, kitInfo: R.kitInfo, src: R.src, maxHit: R.maxHit };
+    }
     if (job.mode === 'mob') {
       // duel arena: the Annex entry yard, a pack of N of one mob placed 8 tiles away, bot fights; reports TTK / damage / one-shot risk
       if (!g.startRun('annex')) return { error: 'startRun annex failed' };

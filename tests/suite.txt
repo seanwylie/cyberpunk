@@ -111,3 +111,4 @@ contracts_personal
 npc_memory_ext
 tests/enemy_back_list.mjs
 tests/music_town_picks.mjs
+tests/idle_ttd.mjs
