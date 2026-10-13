@@ -130,18 +130,18 @@ export class PlayerAnimator {
   }
   // ---- body variants: per-slot alternate layer sets composited into one flat sheet per anim (lazy, cached, memory-bounded) ----
   private bodySig='base'; private bodyCur:Partial<Record<AnimName,HTMLCanvasElement>>|null=null; private bodyCache=new Map<string,Partial<Record<AnimName,HTMLCanvasElement>>>();
-  /** signature -> true once every anim has been composited */ bodyReady=new Set<string>(); bodyStats={composites:0,ms:0,loaded:0};
+  /** signature -> true once every anim has been composited */ bodyReady=new Set<string>(); bodyStats={composites:0,ms:0,loaded:0,cos:0};
   get bodyKey(){ return this.bodySig; }
   /** Select which variant each body slot uses. Cheap to call every frame (no-ops while unchanged). All-base uses the original flat sheets. */
-  setBody(b:Record<string,Variant>){
+  setBody(b:Record<string,Variant>,cos?:readonly (string|undefined)[]){
     const names=this.loaded.atlas.anims.idle?.layers?.map(l=>l.name); if(!names||!this.loaded.base) return;
-    const sig=names.map(n=>b[n]||'base').join(','); if(sig===this.bodySig) return; this.bodySig=sig;
-    if(names.every(n=>(b[n]||'base')==='base')){ this.bodyCur=null; return; }
+    const art=cosArtIds(cos); const sig=names.map(n=>b[n]||'base').join(',')+(art.length?'|'+art.join(','):''); if(sig===this.bodySig) return; this.bodySig=sig;
+    if(!art.length&&names.every(n=>(b[n]||'base')==='base')){ this.bodyCur=null; return; }
     let c=this.bodyCache.get(sig);
-    if(!c){ c={}; this.bodyCache.set(sig,c); while(this.bodyCache.size>2){ const k=this.bodyCache.keys().next().value as string; if(k===sig) break; this.bodyCache.delete(k); } void this.composeBody(sig,names,names.map(n=>b[n]||'base'),c); }
+    if(!c){ c={}; this.bodyCache.set(sig,c); while(this.bodyCache.size>2){ const k=this.bodyCache.keys().next().value as string; if(k===sig) break; this.bodyCache.delete(k); } void this.composeBody(sig,names,names.map(n=>b[n]||'base'),c,art); }
     this.bodyCur=c;
   }
-  private async composeBody(sig:string,names:string[],vars:string[],out:Partial<Record<AnimName,HTMLCanvasElement>>){
+  private async composeBody(sig:string,names:string[],vars:string[],out:Partial<Record<AnimName,HTMLCanvasElement>>,art:string[]=[]){
     const A=this.loaded.atlas, base=this.loaded.base!, W=A.frame.w, H=A.frame.h; const t0=performance.now();
     const order:AnimName[]=['idle','run','attack','dodge','cast','hit','down'];
     const load=(src:string)=>new Promise<HTMLImageElement|null>(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(null); im.src=src; });
@@ -153,6 +153,8 @@ export class PlayerAnimator {
       if(ims.some(i=>!i)) continue;
       const cv=document.createElement('canvas'); cv.width=W*d.frames; cv.height=H*d.dirs; const x=cv.getContext('2d')!;
       for(let row=0;row<d.dirs;row++) for(let f=0;f<d.frames;f++) for(const li of d.order[row][f]) x.drawImage(ims[li]!,f*W,row*H,W,H,f*W,row*H,W,H);
+      // cosmetic model layers: same cell grid, body occlusion baked in -> one recoloured blit per piece per anim, at compose time only
+      for(const id of art){ const im=await load(`${base}cos/${id}/${an}.webp`); if(im&&im.width===cv.width&&im.height===cv.height){ x.drawImage(recolorSheet(im,id),0,0); this.bodyStats.cos++; } }
       out[an]=cv; this.bodyStats.composites++;
       await new Promise(r=>setTimeout(r,0));
     }
@@ -178,6 +180,7 @@ export class PlayerAnimator {
   }
 }
 
+import { cosArtIds, recolorSheet } from './coslayers';
 /** Chroma: bake a CSS filter into a layer sheet once at compose time (cached by body signature, no per-frame cost). */
 import { CHROMA_FILTER } from './content/skinlines';
 function tintLayer(im:CanvasImageSource&{width:number;height:number},key:string):any{

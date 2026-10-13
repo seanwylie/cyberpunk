@@ -4,9 +4,10 @@
 import type { CosDef, CosSlot } from './content/appearance';
 import { drawRarityFx, glowSprite } from './cosfx';
 import { drawPm } from './pmfx';
+import { hasCosArt } from './coslayers';
 
 type C=CanvasRenderingContext2D;
-export interface CosCtx { c:C; x:number; y:number; u:number; t:number; moving:boolean; face:number; /** an ability fired this frame (premium flourish) */ cast?:boolean; /** owner id for the shared rarity-FX particle pool (local player = 'me') */ id?:string; }
+export interface CosCtx { c:C; x:number; y:number; u:number; t:number; moving:boolean; face:number; /** an ability fired this frame (premium flourish) */ cast?:boolean; /** owner id for the shared rarity-FX particle pool (local player = 'me') */ id?:string; /** no baked model drawn (procedural fallback): draw every piece as 2D */ noModel?:boolean; }
 const rgba=(hex:string,a:number)=>{ const h=hex.replace('#',''); const n=parseInt(h.length===3?h.split('').map(x=>x+x).join(''):h,16); return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`; };
 const ell=(c:C,x:number,y:number,rx:number,ry:number)=>{ c.beginPath(); c.ellipse(x,y,rx,ry,0,0,Math.PI*2); };
 const glow=(c:C,x:number,y:number,r:number,col:string,a:number)=>{ const g=c.createRadialGradient(x,y,0,x,y,r); g.addColorStop(0,rgba(col,a)); g.addColorStop(1,rgba(col,0)); c.fillStyle=g; c.fillRect(x-r,y-r,r*2,r*2); };
@@ -153,7 +154,7 @@ const FRONT_SLOTS:CosSlot[]=['skin','legs','torso','arms','hands','tattoo','hair
 
 export function drawCosmetics(k:CosCtx,list:CosDef[],phase:'back'|'front'){
   const order=phase==='back'?BACK_SLOTS:FRONT_SLOTS; k.c.save();
-  for(const sl of order){ const d=list.find(x=>x.slot===sl); if(!d) continue; if(d.variant&&d.style==='shell') continue; const f=FN[sl]?.[d.style]; if(f){ k.c.save(); try{ cosAudit(k.id||'me',sl,d.id,()=>f(k,d)); }catch{ /* never break the frame */ } k.c.restore(); } }
+  for(const sl of order){ const d=list.find(x=>x.slot===sl); if(!d) continue; if(d.variant&&d.style==='shell') continue; if(hasCosArt(d.id)&&!k.noModel) continue; /* real model layer is baked into the body sheet (src/coslayers.ts) */ const f=FN[sl]?.[d.style]; if(f){ k.c.save(); try{ cosAudit(k.id||'me',sl,d.id,()=>f(k,d)); }catch{ /* never break the frame */ } k.c.restore(); } }
   k.c.restore(); try{ cosAudit(k.id||'me','rarityfx',phase,()=>drawRarityFx(k,list,phase)); }catch{ /* never break the frame */ }
   try{ k.c.save(); drawPm(k,list,phase); }catch{ /* never break the frame */ } finally{ k.c.restore(); }
 }

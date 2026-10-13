@@ -193,7 +193,7 @@ export function wardrobeAfter(ui: UIx) {
     ctx.globalAlpha = .5 + .1 * Math.sin(t * 2); const rim = ctx.createRadialGradient(fx, fy, 20, fx, fy, 95); rim.addColorStop(0, 'rgba(0,0,0,0)'); rim.addColorStop(.8, glow + '55'); rim.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = rim; ctx.beginPath(); ctx.ellipse(fx, fy, 95, 26, 0, 0, 7); ctx.fill(); ctx.restore();
     ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.beginPath(); ctx.ellipse(fx, fy, 52, 13, 0, 0, 7); ctx.fill();
     const u = 6.2, dA = Math.floor(WD.dirF) % 8 as Dir8, frac = WD.dirF - Math.floor(WD.dirF), dB = (dA + 1) % 8 as Dir8; const dShow = (frac < .5 ? dA : dB) as Dir8;
-    const k = { c: ctx, x: fx, y: fy, u, t, moving: false, face: FACE[dShow], id: 'dr' };
+    const k = { c: ctx, x: fx, y: fy, u, t, moving: false, face: FACE[dShow], id: 'dr', noModel: !anim };
     // rarity reveal: selecting a purple/orange piece plays a beam + burst + tinted spotlight (orange bigger, longer, brighter); showcase loops it
     if (sel && look[sel.slot] === sel.id && sel.id !== revSel) { revSel = sel.id; if (sel.rarity === 'orange' || sel.rarity === 'purple') { revT = t; revTier = sel.rarity; flourish('dr'); equipSound([sel]); } }
     if (!sel || look[sel.slot] !== sel.id) revSel = '';
@@ -204,7 +204,7 @@ export function wardrobeAfter(ui: UIx) {
       const cyc = 2.6, ph = t % cyc, run = 1.6, c0 = t - ph, hd = Math.min(t, c0 + run), V = 34 * u; const pts: { x: number; y: number; t: number }[] = [];
       for (let tt = Math.max(c0, hd - TRAIL_LIFE); tt <= hd; tt += TRAIL_STEP) pts.push({ x: fx - (hd - tt) * V, y: fy + Math.sin(tt * 3) * 2 * u - Math.sin(hd * 3) * 2 * u, t: tt }); (globalThis as any).__cosOwner = 'dr'; drawTrail(ctx, pts, t, u, tr, ph < run ? { x: fx, y: fy } : undefined); (globalThis as any).__cosOwner = undefined; }
     drawCosmetics(k, list, 'back'); let drew = false;
-    if (anim) { try { const body = applyCosmeticVariants(bodyOf({ ...s, cosmetics: { owned: {}, equipped: {} } } as any, null), { cosmetics: { owned: Object.fromEntries(list.map(x => [x.id, 1])), equipped: look } } as any); anim.setBody(body); anim.anim = 'idle'; anim.t = t;
+    if (anim) { try { const body = applyCosmeticVariants(bodyOf({ ...s, cosmetics: { owned: {}, equipped: {} } } as any, null), { cosmetics: { owned: Object.fromEntries(list.map(x => [x.id, 1])), equipped: look } } as any); anim.setBody(body, list.map(x => x.id)); anim.anim = 'idle'; anim.t = t;
       // cross-fade the two nearest baked directions while snapping (no ghost at rest)
       if (frac > .01 && frac < .99) { anim.dir = dA; drew = anim.draw(ctx, fx, fy, u); ctx.save(); ctx.globalAlpha = frac; anim.dir = dB; anim.draw(ctx, fx, fy, u); ctx.restore(); } else { anim.dir = dShow; drew = anim.draw(ctx, fx, fy, u); } } catch { drew = false; } }
     if (!drew) { const sx = Math.cos(WD.dirF / 8 * Math.PI * 2); ctx.fillStyle = '#5c5f5a'; ctx.beginPath(); ctx.ellipse(fx, fy - 28 * u, 8.5 * u * (.75 + .25 * Math.abs(sx)), 10 * u, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#b8a48c'; ctx.beginPath(); ctx.ellipse(fx, fy - 41 * u, 5.2 * u, 5.8 * u, 0, 0, 7); ctx.fill(); ctx.fillRect(fx - 8 * u, fy - 20 * u, 6.5 * u, 20 * u); ctx.fillRect(fx + 1.5 * u, fy - 20 * u, 6.5 * u, 20 * u); }
@@ -232,9 +232,9 @@ export function storePreviewsAfter(ui: UIx) {
       const look = wornLook(s); look[d.slot] = d.id; const list = COS_SLOTS.map(sl => look[sl] ? COS_BY_ID[look[sl]!] : null).filter(Boolean) as CosDef[];
       const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#101418'); bg.addColorStop(1, '#1d2023'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = rc(d.rarity) + '44'; ctx.beginPath(); ctx.ellipse(fx, fy, W * .32, W * .08, 0, 0, 7); ctx.fill();
-      const dir = (Math.floor(t / 1.4) % 8) as Dir8, k = { c: ctx, x: fx, y: fy, u, t, moving: false, face: FACE[dir], id: 'st' };
+      const dir = (Math.floor(t / 1.4) % 8) as Dir8, k = { c: ctx, x: fx, y: fy, u, t, moving: false, face: FACE[dir], id: 'st', noModel: !anim };
       drawCosmetics(k, list, 'back'); let drew = false;
-      if (anim) { try { anim.setBody(applyCosmeticVariants(bodyOf({ ...s, cosmetics: { owned: {}, equipped: {} } } as any, null), { cosmetics: { owned: Object.fromEntries(list.map(x => [x.id, 1])), equipped: look } } as any)); anim.anim = 'idle'; anim.t = t; anim.dir = dir; drew = anim.draw(ctx, fx, fy, u); } catch { drew = false; } }
+      if (anim) { try { anim.setBody(applyCosmeticVariants(bodyOf({ ...s, cosmetics: { owned: {}, equipped: {} } } as any, null), { cosmetics: { owned: Object.fromEntries(list.map(x => [x.id, 1])), equipped: look } } as any), list.map(x => x.id)); anim.anim = 'idle'; anim.t = t; anim.dir = dir; drew = anim.draw(ctx, fx, fy, u); } catch { drew = false; } }
       if (!drew) { ctx.fillStyle = '#5c5f5a'; ctx.beginPath(); ctx.ellipse(fx, fy - 28 * u, 8.5 * u, 10 * u, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#b8a48c'; ctx.beginPath(); ctx.ellipse(fx, fy - 41 * u, 5.2 * u, 5.8 * u, 0, 0, 7); ctx.fill(); }
       drawCosmetics(k, list, 'front'); }
     miniRaf = requestAnimationFrame(frame); };

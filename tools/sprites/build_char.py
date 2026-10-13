@@ -352,7 +352,12 @@ for o in SLOTOBJ['face']:
     mw=o.matrix_world.copy(); mi=mw.inverted()
     for v in bm.verts: v.co=mi@(c+((mw@v.co)-c)*HS)
     bm.to_mesh(o.data); bm.free()
+COSLAYERS=[]
+if os.environ.get('COS'):   # cosmetic model pieces (cos3d.py): rendered as extra layers with the body as holdout
+    exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'cos3d.py')).read())
 ALLOBJ=[o for s in SLOTS for o in SLOTOBJ[s]]
+COSOBJ={l:[o for (o,_,_) in SLOTOBJ[l]] for l in COSLAYERS}
+for l in COSLAYERS: SLOTOBJ[l]=COSOBJ[l]
 if os.environ.get('NOALLSH'):
     for o in ALLOBJ: o.visible_shadow=False
 bpy.context.view_layer.update()
@@ -426,6 +431,14 @@ for anim,n in ANIMS.items():
             if os.environ.get('PREVIEW'):
                 for o in ALLOBJ: o.hide_render=False; o.visible_camera=True; o.visible_shadow=True
                 sc.render.use_border=False; sc.render.filepath=f'{OUT}/{anim}/all/{d}_{f}.png'; bpy.ops.render.render(write_still=True); cnt+=1; continue
+            if COSLAYERS:
+                for l in COSLAYERS:
+                    for o in ALLOBJ: o.hide_render=False; o.visible_camera=True; o.is_holdout=True; o.visible_shadow=True
+                    for ll in COSLAYERS:
+                        for o in COSOBJ[ll]: o.visible_camera=(ll==l); o.visible_shadow=(ll==l); o.is_holdout=False
+                    b=slot_border(l); sc.render.use_border=True; sc.render.use_crop_to_border=False; sc.render.border_min_x,sc.render.border_max_x,sc.render.border_min_y,sc.render.border_max_y=b
+                    sc.render.filepath=f'{OUT}/{anim}/{l}/{d}_{f}.png'; bpy.ops.render.render(write_still=True); cnt+=1
+                print(anim,d,f,f'{cnt} renders {time.time()-T1:.0f}s',flush=True); continue
             for s in ([] if os.environ.get('ORDERONLY') else SLR):
                 for o in ALLOBJ: o.hide_render=False; o.visible_camera=False; o.visible_shadow=False
                 for o in SLOTOBJ[s]: o.visible_camera=True; o.visible_shadow=True
@@ -435,5 +448,5 @@ for anim,n in ANIMS.items():
                 except RuntimeError as e:
                     print('EMPTY layer',anim,d,f,s,b,flush=True); Image_empty=bpy.data.images.new('e',RES,RES,alpha=True); Image_empty.filepath_raw=sc.render.filepath; Image_empty.file_format='PNG'; Image_empty.save()
             print(anim,d,f,f'{cnt} renders {time.time()-T1:.0f}s',flush=True)
-json.dump({'layers':SLOTS,'order':order},open(ofile,'w'))
+json.dump({'layers':COSLAYERS or SLOTS,'order':order,'cos':bool(COSLAYERS)},open(ofile,'w'))
 print('DONE',cnt,'renders',round(time.time()-T1),'s',flush=True)

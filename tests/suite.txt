@@ -110,5 +110,6 @@ npc_memory
 contracts_personal
 npc_memory_ext
 tests/enemy_back_list.mjs
+tests/cos_art_gaps.mjs
 tests/music_town_picks.mjs
 tests/idle_ttd.mjs
