@@ -726,8 +726,8 @@ body.reducefx .tile.r-orange,body.reducefx .tile.r-orange::after,body.reducefx .
 .xi-name{display:inline-block;max-width:68%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
 .xi-prov{font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sthero{gap:10px;align-items:center;min-width:0}.sthero>span{min-width:0;overflow:hidden}.sthero b{white-space:nowrap}
-img.splash{width:84px;height:112px;object-fit:cover;border-radius:4px;border:1px solid rgba(232,196,106,.4);flex:0 0 auto;float:left;margin-right:8px}
-.wdsel img.splash{width:96px;height:128px}
+.splash{width:84px;height:112px;object-fit:cover;border-radius:4px;border:1px solid rgba(232,196,106,.4);flex:0 0 auto;float:left;margin-right:8px}
+.wdsel .splash{width:96px;height:128px}
 .stwhen{font-size:12px;color:#ffd58a;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stlines{flex-wrap:wrap;gap:4px;margin-bottom:4px}.ststarter{gap:8px;border:1px dashed rgba(232,196,106,.35);padding:6px;border-radius:4px}.ststarter>span{min-width:0}
 .drb.ex{background:rgba(40,30,14,.9);color:#ffd58a;border:1px solid #b8955a}
