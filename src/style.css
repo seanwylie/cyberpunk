@@ -770,3 +770,6 @@ img.splash{width:84px;height:112px;object-fit:cover;border-radius:4px;border:1px
 .pcblock .pcbrief{white-space:normal;overflow-wrap:anywhere}
 .pcblock .pcmod{border-color:#c79bff}
 .pcblock .od-mem{font-style:italic;margin-bottom:4px}
+
+/* replacement confirm: details scroll, the Install/Cancel row never covers them */
+.pop.popsplit{ overflow:hidden; } .pop.popsplit .popbody{ flex:1 1 auto; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:8px; } .pop.popsplit .popbtns{ position:static; flex:none; }
