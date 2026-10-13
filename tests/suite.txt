@@ -84,6 +84,7 @@ town_no_abilities
 ability_sfx
 ability_audit
 store
+store_preview
 rarity
 story_panel
 locker_swap
