@@ -1,4 +1,4 @@
-// Premium line skins: painterly LoL/Arcane-style accents drawn with the cosmetics (local player, remote players, dressing room).
+// Premium line skins: painterly, stylized accents drawn with the cosmetics (local player, remote players, dressing room).
 // Restraint rules (docs/MONETIZATION.md art direction): no floor rings or particle spam. Glow lives ON the character (inlays,
 // crystals, edges) and motion happens on moments: an occasional idle flourish, ability casts, recalls and emotes.
 // Also: weapon skins, pet drones, recall + emote animations, the subtle exclusive signature and nameplate flair.
@@ -24,7 +24,7 @@ export const RECALL_S = 1.6, EMOTE_S = 2.2, FLO_S = .7;
 export function playRecall(list: CosDef[], id = 'me', sound = true): string | null {
   const r = list.find(d => d.slot === 'recall'); const sk = list.find(d => d.slot === 'skin' && d.line); const style = r?.style || (sk && (sk.tier === 'legendary' || sk.tier === 'ultimate') ? sk.line! : null); if (!style) return null;
   const L = LINE_BY_ID[style]; own(id).recall = { style, t0: NaN, c: r?.c || L?.pal[2] || '#9fd8ff', c2: r?.c2 || L?.pal[1] || '#fff' };
-  if (sound && id === 'me') playCosSfx('pm_' + (['hextech', 'bloom', 'ronin', 'founder'].includes(style) ? style : 'hextech') + '_recall', .5); return style;
+  if (sound && id === 'me') playCosSfx('pm_' + (['arcforge', 'bloom', 'ronin', 'founder'].includes(style) ? style : 'arcforge') + '_recall', .5); return style;
 }
 export function playEmote(list: CosDef[], id = 'me', sound = true): string | null {
   const e = list.find(d => d.slot === 'emote'); if (!e) return null; own(id).emote = { style: e.style, t0: NaN, c: e.c }; if (sound && id === 'me') playCosSfx('pm_emote', .45); return e.style;
@@ -33,9 +33,9 @@ export function playEmote(list: CosDef[], id = 'me', sound = true): string | nul
 // ---------------------------------------------------------------- epic accents: one unique silhouette piece per skin
 type Fn = (k: PmCtx, d: CosDef, pal: string[]) => void;
 const ACC: Record<string, Fn> = {
-  pm_hextech_warden: ({ c, x, y, u }, d, p) => { for (const s of [-1, 1]) { c.fillStyle = p[1]; c.beginPath(); c.moveTo(x + s * 7 * u, y - 37 * u); c.lineTo(x + s * 14 * u, y - 39 * u); c.lineTo(x + s * 12 * u, y - 32 * u); c.closePath(); c.fill(); } soft(c, x, y - 30 * u, 5 * u, p[2], .55); },
-  pm_hextech_lancer: ({ c, x, y, u }, d, p) => { c.strokeStyle = p[1]; c.lineWidth = Math.max(1, 1.1 * u); c.beginPath(); c.moveTo(x + 9 * u, y - 4 * u); c.lineTo(x + 13 * u, y - 60 * u); c.stroke(); c.fillStyle = p[2]; c.beginPath(); c.moveTo(x + 13 * u, y - 66 * u); c.lineTo(x + 15 * u, y - 59 * u); c.lineTo(x + 11.2 * u, y - 59 * u); c.closePath(); c.fill(); soft(c, x + 13 * u, y - 61 * u, 5 * u, p[2], .5); },
-  pm_hextech_standard: ({ c, x, y, u }, d, p) => { c.strokeStyle = rgba(p[1], .9); c.lineWidth = Math.max(1, 1.6 * u); c.beginPath(); c.moveTo(x - 7 * u, y - 36 * u); c.lineTo(x + 7 * u, y - 22 * u); c.stroke(); },
+  pm_arcforge_warden: ({ c, x, y, u }, d, p) => { for (const s of [-1, 1]) { c.fillStyle = p[1]; c.beginPath(); c.moveTo(x + s * 7 * u, y - 37 * u); c.lineTo(x + s * 14 * u, y - 39 * u); c.lineTo(x + s * 12 * u, y - 32 * u); c.closePath(); c.fill(); } soft(c, x, y - 30 * u, 5 * u, p[2], .55); },
+  pm_arcforge_lancer: ({ c, x, y, u }, d, p) => { c.strokeStyle = p[1]; c.lineWidth = Math.max(1, 1.1 * u); c.beginPath(); c.moveTo(x + 9 * u, y - 4 * u); c.lineTo(x + 13 * u, y - 60 * u); c.stroke(); c.fillStyle = p[2]; c.beginPath(); c.moveTo(x + 13 * u, y - 66 * u); c.lineTo(x + 15 * u, y - 59 * u); c.lineTo(x + 11.2 * u, y - 59 * u); c.closePath(); c.fill(); soft(c, x + 13 * u, y - 61 * u, 5 * u, p[2], .5); },
+  pm_arcforge_standard: ({ c, x, y, u }, d, p) => { c.strokeStyle = rgba(p[1], .9); c.lineWidth = Math.max(1, 1.6 * u); c.beginPath(); c.moveTo(x - 7 * u, y - 36 * u); c.lineTo(x + 7 * u, y - 22 * u); c.stroke(); },
   pm_bloom_courier: ({ c, x, y, u }, d, p) => { for (const s of [-1, 1]) for (let i = 0; i < 3; i++) { c.fillStyle = rgba(i % 2 ? p[1] : p[0], .9); c.beginPath(); c.ellipse(x + s * (9 + i * 2) * u, y - (20 + i * 2) * u, 1.6 * u, 4.6 * u, s * (.5 + i * .3), 0, 7); c.fill(); } soft(c, x, y - 22 * u, 6 * u, p[2], .35); },
   pm_bloom_medic: ({ c, x, y, u }, d, p) => { c.fillStyle = rgba(p[1], .92); c.beginPath(); c.ellipse(x, y - 44 * u, 7.2 * u, 6.4 * u, 0, Math.PI * 1.05, Math.PI * 1.95); c.lineTo(x + 6 * u, y - 36 * u); c.lineTo(x - 6 * u, y - 36 * u); c.closePath(); c.fill(); soft(c, x, y - 47 * u, 4 * u, p[2], .5); },
   pm_ronin_initiate: ({ c, x, y, u, t }, d, p) => { c.strokeStyle = p[1]; c.lineWidth = Math.max(1, 1.2 * u); c.beginPath(); c.moveTo(x - 7 * u, y - 20 * u); c.quadraticCurveTo(x - 10 * u, y - 12 * u + Math.sin(t * 2) * u, x - 9 * u, y - 6 * u); c.stroke(); c.fillStyle = p[1]; c.fillRect(x - 10 * u, y - 7 * u, 2 * u, 3 * u); },
@@ -46,7 +46,7 @@ const ACC: Record<string, Fn> = {
   pm_void_breach: ({ c, x, y, u, t }, d, p) => { for (let i = 0; i < 4; i++) { const a = i * 1.7 + t * .3; c.fillStyle = rgba(i % 2 ? p[2] : p[1], .85); c.beginPath(); const cx = x + Math.cos(a) * 11 * u, cy = y - 30 * u + Math.sin(a * 1.3) * 6 * u; c.moveTo(cx, cy - 2.4 * u); c.lineTo(cx + 1.4 * u, cy); c.lineTo(cx, cy + 2.4 * u); c.lineTo(cx - 1.4 * u, cy); c.closePath(); c.fill(); } },
 };
 /** Legendary/Ultimate: integrated emissive points (the body frames already carry the glow; this adds a soft bloom only) */
-const EMIT: Record<string, number[][]> = { hextech: [[0, -30], [-9, -37], [9, -37], [0, -56]], bloom: [[0, -28], [-6, -34], [6, -34]], ronin: [[0, -50], [-8, -24]], founder: [[0, -31]] };
+const EMIT: Record<string, number[][]> = { arcforge: [[0, -30], [-9, -37], [9, -37], [0, -56]], bloom: [[0, -28], [-6, -34], [6, -34]], ronin: [[0, -50], [-8, -24]], founder: [[0, -31]] };
 const lineOf = (list: CosDef[]) => list.find(d => d.slot === 'skin' && d.line);
 
 // ---------------------------------------------------------------- weapon skins + pets
@@ -87,7 +87,7 @@ function drawMoments(k: PmCtx, o: Own) {
   const { c, x, y, u, t } = k;
   if (o.recall && isNaN(o.recall.t0)) o.recall.t0 = t; if (o.emote && isNaN(o.emote.t0)) o.emote.t0 = t;
   if (o.recall) { const f = (t - o.recall.t0) / RECALL_S; if (f >= 1 || f < 0) o.recall = undefined; else { const { style, c: c1, c2 } = o.recall; c.save(); c.globalCompositeOperation = 'lighter';
-    if (style === 'hextech') { for (let i = 0; i < 6; i++) { const yy = y - (6 + i * 9) * u - ease(f) * 8 * u, a = (1 - f) * (1 - i / 7); c.strokeStyle = rgba(i % 2 ? c2 : c1, .7 * a); c.lineWidth = Math.max(1, u); c.beginPath(); for (let j = 0; j < 7; j++) { const ang = j * Math.PI / 3 + i * .3; c.lineTo(x + Math.cos(ang) * (9 - i) * u, yy + Math.sin(ang) * (3.4 - i * .3) * u); } c.stroke(); } }
+    if (style === 'arcforge') { for (let i = 0; i < 6; i++) { const yy = y - (6 + i * 9) * u - ease(f) * 8 * u, a = (1 - f) * (1 - i / 7); c.strokeStyle = rgba(i % 2 ? c2 : c1, .7 * a); c.lineWidth = Math.max(1, u); c.beginPath(); for (let j = 0; j < 7; j++) { const ang = j * Math.PI / 3 + i * .3; c.lineTo(x + Math.cos(ang) * (9 - i) * u, yy + Math.sin(ang) * (3.4 - i * .3) * u); } c.stroke(); } }
     else if (style === 'bloom') { for (let i = 0; i < 6; i++) { const ang = i * Math.PI / 3, r = (16 - 12 * ease(f)) * u; c.fillStyle = rgba(i % 2 ? c1 : c2, .55 * (1 - f * .6)); c.beginPath(); c.ellipse(x + Math.cos(ang) * r, y - 24 * u + Math.sin(ang) * r * .6, 2.4 * u, 7 * u, ang, 0, 7); c.fill(); } }
     else if (style === 'ronin') { const s = ease(f * 1.6); c.strokeStyle = rgba(c1, .9 * (1 - f)); c.lineWidth = Math.max(1, 1.6 * u * (1 - f)); c.beginPath(); c.moveTo(x - 22 * u * s, y - 28 * u); c.lineTo(x + 22 * u * s, y - 30 * u); c.stroke(); }
     else if (style === 'founder') { const g = c.createRadialGradient(x, y, 0, x, y, 18 * u); g.addColorStop(0, rgba(c1, .5 * (1 - f))); g.addColorStop(1, rgba(c1, 0)); c.fillStyle = g; c.beginPath(); c.ellipse(x, y, 18 * u, 7 * u, 0, 0, 7); c.fill(); c.strokeStyle = rgba(c2, .7 * (1 - f)); c.lineWidth = Math.max(1, u); c.beginPath(); c.ellipse(x, y - 50 * u, 4 * u + f * 8 * u, 2 * u + f * 3 * u, 0, 0, 7); c.stroke(); }

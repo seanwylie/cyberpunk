@@ -12,7 +12,7 @@ const buy = (id) => ev(async id => { const S = window.__S, s = window.__game.sav
 // ---- data: tiers, lines, ladder, every top skin has a Blender body, epics 2-3, chromas
 let r = await ev(() => { const L = window.__L, AP = window.__AP; const lines = L.LINES.map(l => { const sk = AP.COSMETICS.filter(d => d.line === l.id && d.slot === 'skin' && d.src.k === 'shop'); return { id: l.id, top: sk.filter(d => d.tier === 'legendary' || d.tier === 'ultimate').map(d => d.body), epics: sk.filter(d => d.tier === 'epic').length, chromas: AP.COSMETICS.filter(d => d.src.k === 'chroma' && sk.some(s => s.id === d.src.of)).length }; });
   const ladder = ['standard', 'epic', 'legendary', 'ultimate'].map(t => L.TIER[t].cents); return { lines, ladder, noStats: AP.COSMETICS.every(d => !('stats' in d)) }; });
-const full = r.lines.filter(l => l.top.length && l.top.every(b => ['hextech', 'bloom', 'ronin', 'founder'].includes(b)) && l.epics >= 1 && l.chromas >= 1);
+const full = r.lines.filter(l => l.top.length && l.top.every(b => ['arcforge', 'bloom', 'ronin', 'founder'].includes(b)) && l.epics >= 1 && l.chromas >= 1);
 ok(full.length >= 3, 'at least 3 full lines (Legendary/Ultimate Blender body + epics + chromas): ' + JSON.stringify(r.lines));
 ok(r.lines.filter(l => l.top.length).every(l => l.epics >= 2 || l.id === 'founder'), 'each premium line ships 2-3 Epics');
 ok(r.ladder.every((c, i) => i === 0 || c > r.ladder[i - 1]), 'tier price ladder escalates: ' + r.ladder);

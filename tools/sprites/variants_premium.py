@@ -1,5 +1,5 @@
 # Premium skin-line bodies (store skins, docs/MONETIZATION.md). exec'd at the end of variants.py.
-# Each premium body = an existing variant mesh set (same rig, same slots) re-materialed in a painterly LoL/Arcane palette
+# Each premium body = an existing variant mesh set (same rig, same slots) re-materialed in a painterly, stylized palette
 # (flat-ish base colour, soft spec, emissive inlays) PLUS unique silhouette pieces (crystal pauldrons, halo crest, petal fins,
 # kasa hat, scabbard, founder mantle). Emission is integrated in the mesh, so the glow is baked into the frames, not overlaid.
 def pm_mat(name,col,rough=0.45,metal=0.0,emit=None,es=0.0,spec=0.5,coat=0.0):
@@ -11,7 +11,7 @@ def pm_mat(name,col,rough=0.45,metal=0.0,emit=None,es=0.0,spec=0.5,coat=0.0):
     if emit: b.inputs['Emission Color'].default_value=rgba(emit); b.inputs['Emission Strength'].default_value=es
     M[name]=m; return m
 PAL={
- 'hextech':{ # Hextech Saint: ivory enamel, brushed gold, deep-blue cloth, hextech-blue crystal
+ 'arcforge':{ # Arc-Forge Saint: ivory enamel, brushed gold, deep-blue cloth, arcforge-blue crystal
    'enamel':('#efe6cf',0.35,0.0), 'gold':('#d7a63e',0.28,0.95), 'navy':('#1d2c5a',0.7,0.0), 'gem':('#7fd8ff',0.12,0.0,'#5ac8ff',7.0), 'dark':('#2a2c33',0.5,0.3)},
  'bloom':{   # Chrome Bloom: pearl chrome, orchid biotech flesh, magenta glow veins
    'enamel':('#e9dcf0',0.25,0.6), 'gold':('#b98ad8',0.22,0.9), 'navy':('#43244f',0.65,0.0), 'gem':('#ff7ad9',0.15,0.0,'#ff5ccf',6.0), 'dark':('#2b1d33',0.45,0.2)},
@@ -20,7 +20,7 @@ PAL={
  'founder':{ # Founder's Mark: blackened brass, oxblood leather, warm amber filament
    'enamel':('#3a2f26',0.4,0.7), 'gold':('#b88a46',0.3,0.95), 'navy':('#5a1e1c',0.75,0.0), 'gem':('#ffc06a',0.15,0.0,'#ffb04a',5.0), 'dark':('#17130f',0.55,0.4)},
 }
-BASE_OF={'hextech':'surgical','bloom':'market','ronin':'heavy','founder':'heavy'}
+BASE_OF={'arcforge':'surgical','bloom':'market','ronin':'heavy','founder':'heavy'}
 # old material -> role
 ROLE={'ivory':'enamel','redsteel':'enamel','olive':'enamel','metal':'gold','iron':'dark','slate':'navy','burlap':'navy','canvas':'navy','cloth':'navy','jacket':'navy','pants':'navy','rubber':'dark','boot':'dark','glass':'gem','amber':'gem','skin':'skin'}
 def _mats(v):
@@ -34,7 +34,7 @@ def _remap(v,slot):
     SLOTOBJ[slot]=out
 def _extra(v,slot):
     E=v+'_gem'; G=v+'_gold'; N=v+'_navy'; D=v+'_dark'; En=v+'_enamel'
-    if v=='hextech':
+    if v=='arcforge':
         if slot=='face':
             torus('face',G,headP,0.17,0.012,(0,0.05,hb+0.33),(0.35,0,0))                         # floating halo crest
             for k in range(5): sph('face',E,headP,0.022,(math.cos(k*1.256)*0.17,0.05+math.sin(k*1.256)*0.06,hb+0.33+math.sin(k*1.256)*0.05),(1,1,1.6),seg=6,rings=4)

@@ -16,7 +16,7 @@ Code: `src/moments.ts` (selection), `src/moment_card.ts` (card), `src/clipbuf.ts
 You get one capture per session. A strictly better moment replaces it until you share, copy or download it, and then it's locked.
 
 ## Card
-A painterly splash frame in the League / Arcane direction: a warm painted wash, soft brush strokes, a thin gold double frame, a scaled screenshot of the moment, the title and line, stats (runner, level, dungeon, kills, trait), the build code (the full code is in the share link), and the wordmark. No particles.
+A painterly splash frame in a painterly, stylized, restrained direction: a warm painted wash, soft brush strokes, a thin gold double frame, a scaled screenshot of the moment, the title and line, stats (runner, level, dungeon, kills, trait), the build code (the full code is in the share link), and the wordmark. No particles.
 
 ## Clip buffer
 * **Off by default.** Behind flag `momentClip`, under Settings > Display > Clip buffer.

@@ -1,8 +1,8 @@
-# Rarity FX (painterly, LoL/Arcane direction)
+# Rarity FX (painterly, stylized, restrained)
 
 The v1 rings, pillars, embers, scanlines and spark bursts are gone.
 
-- **Look:** flat-shaded painterly shapes with ink outlines and tapered brush strokes. Four limited palettes live in `PALETTES`: hextech blue/gold, shimmer pink/purple, chem-punk green, and forge. Each orange item has its own `SIGNATURE` (an fx type plus a palette).
+- **Look:** flat-shaded painterly shapes with ink outlines and tapered brush strokes. Four limited palettes live in `PALETTES`: arcforge blue/gold, shimmer pink/purple, chem-punk green, and forge. Each orange item has its own `SIGNATURE` (an fx type plus a palette).
 - **On the model:** inlays, crystal growths and accessories are drawn per slot (`ACCESSORY`). There is no floor ring.
 - **Motion:** `flourishCurve` runs anticipation (0–.12 s), then a snap (to .26 s), then a soft settle (to 1.1 s).
 - **When effects play:**

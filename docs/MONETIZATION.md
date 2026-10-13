@@ -7,7 +7,7 @@ Hard rule: **no pay-to-win.** We sell cosmetics, convenience and account-wide st
 
 | Game | What works | What we adopt | What we avoid |
 |---|---|---|---|
-| League of Legends | Tier ladder (Standard → Epic → Legendary → Ultimate), themed skin **lines**, chromas, recall animations, rotating sale + "Your Shop" | Tier ladder, lines, chromas, custom recall, weekly hero discount | Gacha capsules / Mythic essence loops |
+| Premium skin-line stores | Tier ladder (Standard → Epic → Legendary → Ultimate), themed skin **lines**, chromas, recall animations, rotating sale + "Your Shop" | Tier ladder, lines, chromas, custom recall, weekly hero discount | Gacha capsules / Mythic essence loops |
 | Valorant | Bundles of weapon skins with finishers and VFX levels; 2-week bundle rotation | Line bundles (~25% off), weapon skins, finishers (as ability flourish) | Very high bundle prices ($60–100) |
 | Path of Exile | Pure cosmetics + **stash tabs** (account-wide storage); supporter packs | Locker/bank tiers, starter/supporter pack, "Founder" line | Storage pressure tuned so tabs feel mandatory |
 | Fortnite | Daily/weekly item shop, battle pass that pays back its own price, emotes | Weekly featured + 6-slot deterministic rotation, Season pass skeleton, emotes | Artificial FOMO timers on non-dated items |
@@ -23,7 +23,7 @@ Hard rule: **no pay-to-win.** We sell cosmetics, convenience and account-wide st
 | Ultimate | orange | $24.99 | Legendary + bundled pet / extra recall, crest silhouette |
 | Chroma | (skin's) | $2.99 | palette variant; requires the base skin |
 
-Legendary/Ultimate are only sold while **featured or in rotation** ("Returns in a future rotation" otherwise) — same as LoL's legendary-in-shop model, with no expiry pressure (they always come back). Source: `src/content/skinlines.ts` `TIER`.
+Legendary/Ultimate are only sold while **featured or in rotation** ("Returns in a future rotation" otherwise) — the common legendary-in-shop model, with no expiry pressure (they always come back). Source: `src/content/skinlines.ts` `TIER`.
 
 **Currency:** the sim prices in USD directly for transparency. For live, recommend one premium currency ("Credits") with packs that **match** item prices (no leftover-orphan amounts), always showing the real-money equivalent next to the credit price.
 **No loot boxes.** If a random cosmetic box is ever added: show exact odds, use a pity counter shown in the UI (guaranteed at N), never put new or exclusive items only in boxes, and disable boxes in regions that ban them (BE/NL) and for under-18 accounts.
@@ -32,7 +32,7 @@ Legendary/Ultimate are only sold while **featured or in rotation** ("Returns in 
 
 | Line | Top skin | Epics | Chromas | Collection reward |
 |---|---|---|---|---|
-| Hextech Saints | **Hextech Saint** (Ultimate, halo crest, crystal pauldrons, hextech pet) | Hextech Warden, Hextech Lancer (+ Standard Recruit) | ruby, obsidian, jade | `col_hextech_*` banner |
+| Arc-Forge Saints | **Arc-Forge Saint** (Ultimate, halo crest, crystal pauldrons, arcforge pet) | Arc-Forge Warden, Arc-Forge Lancer (+ Standard Recruit) | ruby, obsidian, jade | `col_arcforge_*` banner |
 | Chrome Bloom | **Chrome Bloom Empress** (Legendary, petal fins, glow veins, orchid crest) | Bloom Courier, Orchid Medic | violet, jade, frost | `col_bloom_*` |
 | Neon Ronin | **Neon Ronin** (Legendary, kasa hat with neon brim, scabbard, sash) | Ronin Initiate, Street Ronin | gold + 2 | `col_ronin_*` |
 | Undercity | — | Pipefitter, Alchemist | — | `col_undercity_*` |

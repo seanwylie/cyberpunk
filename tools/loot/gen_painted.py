@@ -1,4 +1,4 @@
-# Painted (LoL/Arcane-style) loot icons via OpenAI Images. Usage: python gen_painted.py RAWDIR [--only=a,b] [--rar=orange]
+# Painted (painterly, stylized) loot icons via OpenAI Images. Usage: python gen_painted.py RAWDIR [--only=a,b] [--rar=orange]
 # Reads tools/loot/painted_prompts.json {id:[rarity, subject, identity]}; writes RAWDIR/<id>.png (1024, transparent). Needs OPENAI_API_KEY.
 import os, sys, json, base64, urllib.request, concurrent.futures as cf
 RAW=sys.argv[1]; os.makedirs(RAW,exist_ok=True)
@@ -11,7 +11,7 @@ STYLE={'orange':"Elaborate legendary composition: the piece shown heroic three-q
 def gen(k):
     r,subj,ident=P[k]; out=f'{RAW}/{k}.png'
     if os.path.exists(out): return k,'cached'
-    prompt=(f"Hand-painted game item icon in the style of League of Legends splash art and the Arcane series: painterly brush strokes, gritty dieselpunk-cyberpunk industrial realism, muted palette. "
+    prompt=(f"Hand-painted game item icon in a painterly, stylized splash-art style: painterly brush strokes, gritty dieselpunk-cyberpunk industrial realism, muted palette. "
             f"Subject: {subj}. {('Identity: '+ident+'. ') if ident else ''}{STYLE[r]} Single isolated object centered, filling 80% of the frame, transparent background, no text, no letters, no logos, no frame, no character, no people.")
     body=json.dumps({'model':'gpt-image-1','prompt':prompt,'size':'1024x1024','quality':'medium','background':'transparent','n':1}).encode()
     req=urllib.request.Request('https://api.openai.com/v1/images/generations',body,{'Authorization':'Bearer '+os.environ['OPENAI_API_KEY'],'Content-Type':'application/json'})

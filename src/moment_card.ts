@@ -1,4 +1,4 @@
-// Moment card renderer (docs/MOMENTS.md): 1200x630 PNG, painterly splash-art frame (League / Arcane direction: warm painted wash,
+// Moment card renderer (docs/MOMENTS.md): 1200x630 PNG, painterly splash-art frame (painterly, stylized, restrained direction: warm painted wash,
 // brushed vignette, thin gold frame, no particles). Runs only at capture time, on idle, on its own canvas: never on the frame path.
 import type { Moment } from './moments';
 export const CARD_W = 1200, CARD_H = 630;

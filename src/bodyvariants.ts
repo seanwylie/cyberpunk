@@ -8,7 +8,7 @@ import { equippedCos, COS_BODY_LAYERS, COS_BY_ID } from './content/appearance';
  * Parts are per slot, so mixed-brand builds give mixed-brand bodies. All variants are rendered on the same rig and animation set,
  * so layers composite cleanly; sheets live in public/sprites/v/<variant>/ and are only fetched when something non-stock is equipped.
  */
-/** 'base'|'heavy'|'surgical'|'market', premium bodies ('hextech'|'bloom'|'ronin'|'founder'), optionally '@<chroma>' (src/content/skinlines.ts CHROMA_FILTER). */
+/** 'base'|'heavy'|'surgical'|'market', premium bodies ('arcforge'|'bloom'|'ronin'|'founder'), optionally '@<chroma>' (src/content/skinlines.ts CHROMA_FILTER). */
 export type Variant='base'|'heavy'|'surgical'|'market'|(string&{});
 /** Visible layers (no layer for the 'brain' slot). Same names as the sprite atlas layers. */
 export const BODY_SLOTS=['face','torso','armL','handL','armR','handR','legL','footL','legR','footR'] as const;

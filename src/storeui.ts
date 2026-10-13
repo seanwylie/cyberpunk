@@ -17,7 +17,7 @@ import { cosIcon } from './coslayers';
 import { esc } from './esc';
 type UIx = any;
 export type StTab = 'featured' | 'lines' | 'pass' | 'skins' | 'bundles' | 'storage';
-export const ST = ((globalThis as any).__wvStoreUi ??= { tab: 'featured' as StTab, line: 'hextech', sel: '', phase: 'idle' as 'idle' | 'confirm' | 'processing' | 'done', orderId: '', msg: '', funnel: false, from: 'town' as 'town' | 'wardrobe' | 'locker' | 'bank' });
+export const ST = ((globalThis as any).__wvStoreUi ??= { tab: 'featured' as StTab, line: 'arcforge', sel: '', phase: 'idle' as 'idle' | 'confirm' | 'processing' | 'done', orderId: '', msg: '', funnel: false, from: 'town' as 'town' | 'wardrobe' | 'locker' | 'bank' });
 const tabOf = (k: Sku): StTab => k.kind === 'skin' ? 'skins' : k.kind === 'bundle' ? 'bundles' : k.kind === 'line' || k.kind === 'line_bundle' ? (ST.tab === 'featured' ? 'featured' : 'lines') : k.kind === 'starter' ? 'featured' : k.kind === 'pass' ? 'pass' : 'storage';
 const usd = (c: number) => fmtUsd(c);
 function view(id: string) { if (ST.sel === id) return; ST.sel = id; track('sku_view', id, { tab: ST.tab }); }
@@ -102,7 +102,7 @@ export function storeClick(ui: UIx, el: HTMLElement, a: string): boolean {
       break; }
     case 'st-cancel': { if (ST.orderId) cancelOrder(ST.orderId); ST.phase = 'idle'; ST.msg = 'Purchase cancelled. You were not charged.'; break; }
     case 'st-funnel': ST.funnel = !ST.funnel; break;
-    case 'st-line': ST.line = el.dataset.line || 'hextech'; ST.sel = ''; ST.phase = 'idle'; ST.msg = ''; break;
+    case 'st-line': ST.line = el.dataset.line || 'arcforge'; ST.sel = ''; ST.phase = 'idle'; ST.msg = ''; break;
     case 'st-claim': { const got = claimPass(s); persist(s); ST.msg = got.length ? 'Claimed: ' + got.map(i => COS_BY_ID[i].name).join(', ') : 'Nothing to claim yet.'; break; }
     case 'st-export': { const j = exportJson(); try { console.log(j); (navigator as any).clipboard?.writeText(j); } catch { /* ignore */ } ST.msg = 'Funnel exported to the browser console (and clipboard if allowed).'; break; }
     case 'st-back': ui.open(ST.from); return true;

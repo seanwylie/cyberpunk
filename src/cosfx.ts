@@ -1,4 +1,4 @@
-// Rarity FX for cosmetics, painterly (Arcane / LoL skin-line direction, docs/RARITY_FX.md):
+// Rarity FX for cosmetics, painterly (painterly, stylized skin-line direction, docs/RARITY_FX.md):
 //  - less but better: no floor rings, light pillars, ember spam, scanlines or spark bursts.
 //  - orange (legendary): a cohesive themed look INTEGRATED on the model: flat-shaded emissive inlays with ink outlines, crystalline
 //    growths, brush-stroke energy wisps on hair/cloth, a painterly smear trail while moving. Idle motion is slow breathing; the
@@ -13,7 +13,7 @@ export interface FxCtx { c: C; x: number; y: number; u: number; t: number; movin
 export const ORANGE = '#ffb54a', PURPLE = '#b48cff';
 /** Deliberate limited palettes: [ink, base, light, glow]. */
 export const PALETTES: Record<string, [string, string, string, string]> = {
-  hextech: ['#0d1420', '#2e7fd6', '#9fe6ff', '#ffd27a'],   // hextech blue / gold
+  arcforge: ['#0d1420', '#2e7fd6', '#9fe6ff', '#ffd27a'],   // arcforge blue / gold
   shimmer: ['#1a0d1e', '#c23fa0', '#ff9be0', '#b48cff'],   // shimmer pink / purple
   chem: ['#0c1a10', '#3fb04a', '#c8ff6a', '#e8ffb0'],      // chem-punk green
   forge: ['#1a0e08', '#d9631a', '#ffc070', '#fff0c8'],     // furnace gold-orange
@@ -26,11 +26,11 @@ export const SIGNATURE: Record<string, { name: string; fx: string; pal: keyof ty
   torso_nova: { name: 'Heartstar inlay', fx: 'veins', pal: 'forge' },
   back_wings: { name: 'Cinder wing panels', fx: 'wings', pal: 'forge' },
   skin_holo: { name: 'Shimmer inlays', fx: 'holo', pal: 'shimmer' },
-  aura_nova: { name: 'Hextech corona shards', fx: 'swarm', pal: 'hextech' },
-  head_cowl: { name: 'Hextech seam', fx: 'chrome', pal: 'hextech' },
+  aura_nova: { name: 'Arc-Forge corona shards', fx: 'swarm', pal: 'arcforge' },
+  head_cowl: { name: 'Arc-Forge seam', fx: 'chrome', pal: 'arcforge' },
   pm_skin_plasma: { name: 'Chem-vein dermis', fx: 'veins', pal: 'chem' },
-  pm_aura_swarm: { name: 'Hextech orbit shards', fx: 'swarm', pal: 'hextech' },
-  pm_back_chrome: { name: 'Hextech wing panels', fx: 'wings', pal: 'hextech' },
+  pm_aura_swarm: { name: 'Arc-Forge orbit shards', fx: 'swarm', pal: 'arcforge' },
+  pm_back_chrome: { name: 'Arc-Forge wing panels', fx: 'wings', pal: 'arcforge' },
   back_s1_halo: { name: 'Storm halo wings', fx: 'wings', pal: 'storm' },
   aura_s1_bloom: { name: 'Static bloom corona', fx: 'swarm', pal: 'storm', n: 4 }, // 4 shards: a sparser corona that reads as stilled static (and keeps the town draw-call budget)
 };
@@ -179,10 +179,10 @@ function signature(k: FxCtx, d: CosDef, phase: 'back' | 'front', t: number, fc: 
     case 'holo': if (phase === 'front') { // shimmer inlays: 3 crisp diamond inlays on chest/shoulders + one slow iridescent brush streak across the body
       for (const [ix, iy, s] of [[0, -31, 1.3], [-7, -34, .9], [7, -34, .9]]) shard(c, x + ix * u, y + iy * u, 2.2 * u * s * amp, 1.4 * u * s, 0, P, .95);
       const ph = (t * .25) % 1.6; if (ph < 1) { const sy = y - (8 + ph * 36) * u; stroke(c, x - 10 * u, sy + 3 * u, x, sy - 1 * u, x + 10 * u, sy + 2 * u, 2.2 * u, P[2], .35 * Math.sin(ph * Math.PI)); } } break;
-    case 'swarm': { // hextech corona: 6 crystal shards on a slow ellipse, depth sorted, gold rim on the near ones
+    case 'swarm': { // arcforge corona: 6 crystal shards on a slow ellipse, depth sorted, gold rim on the near ones
       const n = sg.n || 6; for (let i = 0; i < n; i++) { const a = t * .45 + i / n * Math.PI * 2; const z = Math.sin(a); if ((z > 0) !== (phase === 'front')) continue; const r = (13 + fc.k * 5) * u;
         shard(c, x + Math.cos(a) * r, y - 24 * u + z * 3.5 * u + Math.sin(t + i) * 1.2 * u, (3 + z) * u, 1.6 * u, Math.cos(a) * .4, z > 0 ? [P[0], P[1], P[3], P[3]] : P, .95); } } break;
-    case 'chrome': if (phase === 'front') { // hextech seam: gold seam inlay down the cowl + two small crystal studs
+    case 'chrome': if (phase === 'front') { // arcforge seam: gold seam inlay down the cowl + two small crystal studs
       const cy = y - 46 * u; shape(c, [[x - .8 * u, cy - 4 * u], [x + .8 * u, cy - 4 * u], [x + .5 * u, cy + 5 * u], [x - .5 * u, cy + 5 * u]], P[3], ink, lw * .8, .9);
       shard(c, x - 3.4 * u, cy + 1 * u, 1.8 * u * amp, 1.1 * u, -.3, P, 1); shard(c, x + 3.4 * u, cy + 1 * u, 1.8 * u * amp, 1.1 * u, .3, P, 1); blob(c, x, cy, 4 * u, P[1], .2 + .2 * br); } break;
   }

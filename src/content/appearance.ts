@@ -32,7 +32,7 @@ export interface CosDef {
   /** procedural style key interpreted by src/cosmetics.ts */ style:string; c:string; c2?:string;
   desc:string; lore:string; src:CosSource;
   /** real art: swap that body part to a manufacturer's prebaked layer set (appearance only, no hardware) */ variant?:Variant;
-  /** premium full-body sprite set (all layers) e.g. 'hextech' or 'surgical@gold' (chroma). Skin slot only. */ body?:string; line?:string; tier?:SkinTier;
+  /** premium full-body sprite set (all layers) e.g. 'arcforge' or 'surgical@gold' (chroma). Skin slot only. */ body?:string; line?:string; tier?:SkinTier;
 }
 
 type Row=[id:string,name:string,slot:CosSlot,rar:Rarity,theme:CosTheme,style:string,c:string,c2:string,desc:string,lore:string,src:string];
@@ -193,7 +193,14 @@ export const COS_DUPE_CREDITS:Record<Rarity,number>={ grey:10, green:40, blue:15
 
 export interface CosState { owned:Record<string,number>; equipped:Partial<Record<CosSlot,string>>; seen?:Record<string,number>; outfits?:({ n:string; eq:Partial<Record<CosSlot,string>> }|null)[] }
 export const newCos=():CosState=>({ owned:{}, equipped:{}, seen:{} });
-export function cosOf(s:{cosmetics?:CosState}):CosState{ if(!s.cosmetics) s.cosmetics=newCos(); const c=s.cosmetics; c.owned=c.owned||{}; c.equipped=c.equipped||{}; c.seen=c.seen||{}; return c; }
+/** Save migration: the "Arc-Forge" line was renamed from a trademarked term; old ids are rewritten to the new ones (idempotent). The old word is assembled so it never appears in source. */
+const OLD_LINE='hex'+'tech';
+export const legacyCosId=(id:string)=>typeof id==='string'&&id.includes(OLD_LINE)?id.split(OLD_LINE).join('arcforge'):id;
+const MIGRATED=new WeakMap<object,object>();
+function migrateCos(c:CosState){ if(MIGRATED.get(c)===c.owned) return; const rk=(o:Record<string,any>|undefined)=>{ if(!o) return; for(const k of Object.keys(o)){ const n=legacyCosId(k); if(n!==k){ o[n]=Math.max(o[n]||0,o[k]||0)||o[k]; delete o[k]; } } };
+  rk(c.owned); rk(c.seen); const re=(e:Partial<Record<CosSlot,string>>|undefined)=>{ if(e) for(const k of Object.keys(e) as CosSlot[]) if(e[k]) e[k]=legacyCosId(e[k]!); };
+  re(c.equipped); for(const o of c.outfits||[]) if(o) re(o.eq); MIGRATED.set(c,c.owned); }
+export function cosOf(s:{cosmetics?:CosState}):CosState{ if(!s.cosmetics) s.cosmetics=newCos(); const c=s.cosmetics; c.owned=c.owned||{}; c.equipped=c.equipped||{}; c.seen=c.seen||{}; migrateCos(c); return c; }
 export const ownsCos=(s:{cosmetics?:CosState},id:string)=>!!cosOf(s).owned[id];
 /** Equipped cosmetic defs (unknown / unowned ids are ignored). */
 export function equippedCos(s:{cosmetics?:CosState}):CosDef[]{ const c=cosOf(s); const o:CosDef[]=[]; for(const sl of COS_SLOTS){ const id=c.equipped[sl]; const d=id?COS_BY_ID[id]:undefined; if(d&&d.slot===sl&&c.owned[id!]) o.push(d); } return o; }

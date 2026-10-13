@@ -1,4 +1,4 @@
-// Prestige drop beam (docs/LOOT_ECONOMY.md "Meaningful moments"). LoL/Arcane painted style (docs/RARITY_FX.md art direction):
+// Prestige drop beam (docs/LOOT_ECONOMY.md "Meaningful moments"). Painterly, stylized, restrained style (docs/RARITY_FX.md art direction):
 // one soft, hand-painted light column with a brushed base flare and a slow sway, a short rising entrance, and at most three
 // drifting motes. No particle spam, no scanlines. Orange = warm gold/amber, seasonal = teal into violet.
 type C=CanvasRenderingContext2D;

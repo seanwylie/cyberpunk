@@ -212,5 +212,5 @@ def apply_variant(name,slots):
         for (o,mat,j) in SLOTOBJ.get(sl,[]): bpy.data.objects.remove(o,do_unlink=True)
         SLOTOBJ[sl]=[]
         BUILD[name][sl]()
-# premium store skin bodies (hextech, bloom, ronin, founder): see variants_premium.py
+# premium store skin bodies (arcforge, bloom, ronin, founder): see variants_premium.py
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'variants_premium.py')).read())
