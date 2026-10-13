@@ -1,4 +1,4 @@
-# GIFs (docs/art/dungeons/anim3d/<id>.gif) + contact sheet from /tmp/gif_<id>_front (tests/enemy_gifs.mjs) and a raw 8-direction sheet from RAW (idle frame 0)
+# GIFs (docs/art/dungeons/anim3d/<id>.gif) + contact sheet from /tmp/gif_<id>_front (tools/shots/enemy_gifs.mjs) and a raw 8-direction sheet from RAW (idle frame 0)
 import glob,os,sys
 from PIL import Image,ImageDraw
 out='docs/art/dungeons/anim3d'; os.makedirs(out,exist_ok=True); tiles=[]

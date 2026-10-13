@@ -1,4 +1,4 @@
-import { launch, sleep } from './lib.mjs'; import fs from 'fs';
+import { launch, sleep } from '../../tests/lib.mjs'; import fs from 'fs';
 const out = process.argv[2] || 'shots/town2'; fs.mkdirSync(out, { recursive: true });
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } }); await sleep(3500);
 const go = async (name, x, y, w = 1200) => { await page.evaluate(([x, y]) => { const g = window.__game; g.px = x; g.py = y; }, [x, y]); await sleep(w); await page.screenshot({ path: `${out}/${name}.png` }); };

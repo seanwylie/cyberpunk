@@ -1,5 +1,5 @@
-// HUD screenshots at 1280x720 and 1920x1080: node tests/hud_shots.mjs <outdir> <tag>
-import { launch, sleep } from './lib.mjs'; import fs from 'fs';
+// HUD screenshots at 1280x720 and 1920x1080: node tools/shots/hud_shots.mjs <outdir> <tag>
+import { launch, sleep } from '../../tests/lib.mjs'; import fs from 'fs';
 const dir = process.argv[2] || '/tmp/hudshots', tag = process.argv[3] || 'after'; fs.mkdirSync(dir, { recursive: true });
 for (const [w, h] of [[1280, 720], [1920, 1080]]) {
   const { browser, page } = await launch({ viewport: { width: w, height: h }, query: '?splash=hold' });

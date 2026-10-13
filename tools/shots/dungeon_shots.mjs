@@ -1,5 +1,5 @@
 // Captures a screenshot of each dungeon (entry, mid-hall, boss arena) plus the dungeon select and contacts screens.
-import { launch, sleep } from './lib.mjs';
+import { launch, sleep } from '../../tests/lib.mjs';
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } });
 const ev = (f, a) => page.evaluate(f, a); const out = 'shots/dungeons/';
 await ev(() => { const g = window.__game; g.save.level = 34; g.dbg.god = true; window.__ui.showAll = true; window.__ui.open('gate'); }); await sleep(300); await page.screenshot({ path: out + 'select.png' });

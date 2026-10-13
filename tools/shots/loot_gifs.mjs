@@ -1,5 +1,5 @@
 // Renders loot-drop previews (per-rarity grids, spawn toss, pickup) as frame PNGs, then tools/loot/make_gifs.py assembles GIFs.
-import { launch } from './lib.mjs'; import fs from 'fs';
+import { launch } from '../../tests/lib.mjs'; import fs from 'fs';
 const out = (process.env.LOOT_OUT || 'docs/art/loot3d') + '/frames'; fs.rmSync(out, { recursive: true, force: true }); fs.mkdirSync(out, { recursive: true });
 const { browser, page, errors } = await launch({ viewport: { width: 900, height: 700 } });
 await page.evaluate(async () => { window.__M = await import('/src/lootart.ts'); await window.__M.ensureAtlas(); });

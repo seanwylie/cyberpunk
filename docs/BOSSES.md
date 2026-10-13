@@ -79,7 +79,7 @@ Every boss (12 original, 20 from content batch 1) has a **kit** of 2-3 themed me
 | `recall` | Recall Everything | magenta | Heat overload (24, <=70% HP); Laser grid (16, <=50% HP) |
 
 ## Balance check
-`URL=http://127.0.0.1:PORT/ node tools/balance/bosskits_ab.mjs out.json 3` runs boss-only fights per boss at par kit; run it against a baseline dev server and the new one and compare clear rate / deaths. The harness bot is shape-aware (flees lines/cones/rings, walks to safe circles). Tests: `tests/boss_kits.mjs`, screenshots `tests/boss_shots.mjs` -> `shots/bosses/`.
+`URL=http://127.0.0.1:PORT/ node tools/balance/bosskits_ab.mjs out.json 3` runs boss-only fights per boss at par kit; run it against a baseline dev server and the new one and compare clear rate / deaths. The harness bot is shape-aware (flees lines/cones/rings, walks to safe circles). Tests: `tests/boss_kits.mjs`, screenshots `tools/shots/boss_shots.mjs` -> `shots/bosses/`.
 
 ## Resolution audit (tests/boss_resolve.mjs)
 Every ground telegraph of all 32 bosses is instrumented during a 110 s fight (HP held in thirds so every phase fires). When a telegraph's windup ends, the real `tickZone` is run on a clone with a probe target inside it and the effect is measured (damage, heat, push/pull, hook, or projectiles spawned within 0.7 s). The test fails on:

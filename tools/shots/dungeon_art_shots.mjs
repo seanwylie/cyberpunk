@@ -1,5 +1,5 @@
 // Art QA captures: hazard close-ups per dungeon, a lineup of every enemy/boss sprite, and an attack/hit/death animation strip. Output: shots/dungeons_art/
-import { launch, sleep } from './lib.mjs';
+import { launch, sleep } from '../../tests/lib.mjs';
 import fs from 'fs';
 const out = 'shots/dungeons_art/'; fs.mkdirSync(out, { recursive: true });
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } });

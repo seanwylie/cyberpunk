@@ -1,5 +1,5 @@
 // Screenshots of the 20 batch-1 levels (entry hall, control gantry, boss arena) -> shots/content1/<id>_{a,b,c}.png (+ contact sheet via tools/content/sheet.py)
-import fs from 'fs'; import { launch, sleep } from './lib.mjs';
+import fs from 'fs'; import { launch, sleep } from '../../tests/lib.mjs';
 const only = (process.env.ONLY || '').split(',').filter(Boolean);
 const { browser, page } = await launch({ viewport: { width: 960, height: 540 } }); const ev = (fn, a) => page.evaluate(fn, a); fs.mkdirSync('shots/content1', { recursive: true });
 const ids = await ev(async () => (await import('/src/content/dungeons.ts')).BATCH1_IDS);

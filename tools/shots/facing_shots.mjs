@@ -1,5 +1,5 @@
 // 8-direction preview: each enemy driven along E,SE,S,SW,W,NW,N,NE in game -> /tmp/facing/<id>_<dir>.png (tools/dungeons/facing_sheet.py assembles docs/art/dungeons/enemy_facing_8way.png)
-import { launch, sleep } from './lib.mjs'; import fs from 'fs';
+import { launch, sleep } from '../../tests/lib.mjs'; import fs from 'fs';
 const ids = (process.env.IDS || 'worker,sawhand,overseer,cinderhound,teague,ore9').split(','); fs.mkdirSync('/tmp/facing', { recursive: true });
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } }); const ev = (f, a) => page.evaluate(f, a);
 await sleep(1500); await ev(() => { const g = window.__game; g.save.level = 34; g.dbg.god = true; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.startRun('annex'); }); await sleep(1000);

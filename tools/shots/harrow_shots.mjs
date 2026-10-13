@@ -1,5 +1,5 @@
-// Screenshots of Harrow Reach stations (evidence for prop / landmark visibility fixes): node tests/harrow_shots.mjs [outdir]
-import { launch, sleep } from './lib.mjs'; import fs from 'fs';
+// Screenshots of Harrow Reach stations (evidence for prop / landmark visibility fixes): node tools/shots/harrow_shots.mjs [outdir]
+import { launch, sleep } from '../../tests/lib.mjs'; import fs from 'fs';
 const out = process.argv[2] || 'shots/harrow'; fs.mkdirSync(out, { recursive: true });
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } });
 await page.waitForFunction(() => window.__rend?.town?.ready, null, { timeout: 60000 }); await sleep(1500);

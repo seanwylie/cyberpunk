@@ -1,5 +1,5 @@
 // Screenshots of the new town: plaza hub + a close-up of every station, then a contact sheet (shots/townlayout/contact.png).
-import { launch, sleep } from './lib.mjs'; import fs from 'fs'; import { execSync } from 'child_process';
+import { launch, sleep } from '../../tests/lib.mjs'; import fs from 'fs'; import { execSync } from 'child_process';
 const out = 'shots/townlayout'; fs.mkdirSync(out, { recursive: true });
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } });
 await page.waitForFunction(() => window.__rend?.town?.ready, null, { timeout: 60000 }); await sleep(2500);

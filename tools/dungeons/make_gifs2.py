@@ -1,4 +1,4 @@
-# front/back preview GIFs (tests/enemy_gifs.mjs with SIDE=front|back) -> docs/art/dungeons/anim/<id>_front.gif, <id>_back.gif and docs/art/dungeons/enemy_contact_backs.png (front | back, mid-attack frame)
+# front/back preview GIFs (tools/shots/enemy_gifs.mjs with SIDE=front|back) -> docs/art/dungeons/anim/<id>_front.gif, <id>_back.gif and docs/art/dungeons/enemy_contact_backs.png (front | back, mid-attack frame)
 import glob,os
 from PIL import Image,ImageDraw
 out='docs/art/dungeons/anim'; os.makedirs(out,exist_ok=True); ids=sorted({d.split('gif_')[1].rsplit('_',1)[0] for d in glob.glob('/tmp/gif_*_back')})

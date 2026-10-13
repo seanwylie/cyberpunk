@@ -1,4 +1,4 @@
-# assemble /tmp/gif_<id>/NN.png (from tests/enemy_gifs.mjs) into docs/art/dungeons/anim/<id>.gif plus a contact sheet docs/art/dungeons/enemy_contact_v2.png
+# assemble /tmp/gif_<id>/NN.png (from tools/shots/enemy_gifs.mjs) into docs/art/dungeons/anim/<id>.gif plus a contact sheet docs/art/dungeons/enemy_contact_v2.png
 import glob,os
 from PIL import Image
 out='docs/art/dungeons/anim'; os.makedirs(out,exist_ok=True); tiles=[]

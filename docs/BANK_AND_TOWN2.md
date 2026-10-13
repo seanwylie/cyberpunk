@@ -92,6 +92,6 @@ UNIVERSE.md section 1.2 already names Harrow Reach as the *larger foundry-distri
 (appended as phases land)
 
 ### Phase 2 (Bank) status: implemented
-`src/bank.ts` (pure logic), `src/bankui.ts` (modal), hooks in `ui.ts`/`sim.ts`/`state.ts`/`recommend.ts`, `tests/bank.mjs` (in `npm test`), `tests/bank_shots.mjs` (shots in `shots/bank/`).
+`src/bank.ts` (pure logic), `src/bankui.ts` (modal), hooks in `ui.ts`/`sim.ts`/`state.ts`/`recommend.ts`, `tests/bank.mjs` (in `npm test`), `tools/shots/bank_shots.mjs` (shots in `shots/bank/`).
 Done: 6x60 tabs (2 open, 4 buyable), item/chip deposit+withdraw, search/type/rarity/sort, bulk deposit grey / spare chips / all, withdraw matches, auto-sort, credits vault, overflow-to-bank on return, migration, bank hints in recommendations, persistence, death/abandon protection test.
 Not yet: the world station (landmark/sign/icon) is added once the town-layout station registry lands on main; tutorial tip card (optional) not implemented; vendor "send to bank" purchase flow not implemented.

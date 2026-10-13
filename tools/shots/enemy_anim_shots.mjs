@@ -1,5 +1,5 @@
 // Enemy animation strip: windup -> strike (lunge) -> hit flash -> death collapse for one ordinary enemy and a boss, saved as a contact strip. Output: shots/dungeons_art/anim_*.png
-import { launch, sleep } from './lib.mjs'; import fs from 'fs';
+import { launch, sleep } from '../../tests/lib.mjs'; import fs from 'fs';
 const out = 'shots/dungeons_art/'; fs.mkdirSync(out, { recursive: true });
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 } }); const ev = (f, a) => page.evaluate(f, a);
 await ev(() => { const g = window.__game; g.save.level = 34; g.dbg.god = true; g.enterTown(); g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.startRun('foundry'); }); await sleep(800);

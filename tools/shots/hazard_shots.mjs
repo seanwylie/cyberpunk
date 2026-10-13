@@ -1,5 +1,5 @@
 // Screenshots of permanent hazards in a few dungeons (far view: floor art only; near view: danger cue). OUT=shots/hazards/<tag>
-import { launch, sleep } from './lib.mjs';
+import { launch, sleep } from '../../tests/lib.mjs';
 import fs from 'fs';
 const out = process.env.OUT || 'shots/hazards/after'; fs.mkdirSync(out, { recursive: true });
 const { browser, page } = await launch({ query: '?splash=hold', viewport: { width: 1100, height: 700 } });

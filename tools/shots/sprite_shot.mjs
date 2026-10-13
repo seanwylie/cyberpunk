@@ -1,5 +1,5 @@
 // Game screenshots with the real layered player sprites (run + idle, several directions). Output: docs/art/
-import { launch, sleep } from './lib.mjs'; import fs from 'fs';
+import { launch, sleep } from '../../tests/lib.mjs'; import fs from 'fs';
 fs.mkdirSync('docs/art',{recursive:true});
 const { browser, page, errors } = await launch({ viewport:{width:1280,height:720}, dpr:2 });
 await page.evaluate(()=>{ window.__ui.kit('A',true); window.__game.startRun(); window.__game.dbg.god=true; }); await sleep(600);

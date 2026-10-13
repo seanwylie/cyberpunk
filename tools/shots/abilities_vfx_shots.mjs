@@ -1,5 +1,5 @@
-// Contact sheets of every ability's VFX (cast + travel + impact) for before/after review: SHOTS=shots/abilities_vfx/after node tests/abilities_vfx_shots.mjs
-import fs from 'fs'; import { PNG } from 'pngjs'; import { launch, sleep } from './lib.mjs';
+// Contact sheets of every ability's VFX (cast + travel + impact) for before/after review: SHOTS=shots/abilities_vfx/after node tools/shots/abilities_vfx_shots.mjs
+import fs from 'fs'; import { PNG } from 'pngjs'; import { launch, sleep } from '../../tests/lib.mjs';
 const OUT = process.env.SHOTS || 'shots/abilities_vfx/after'; fs.mkdirSync(OUT, { recursive: true });
 const { browser, page } = await launch({ viewport: { width: 1000, height: 700 } }); const ev = (f, a) => page.evaluate(f, a);
 await ev(async () => { const g = window.__game; if (g.mode === 'run') g.enterTown(true); window.__ui.kit('A', true); g.recompute(); g.startRun(); g.dbg.god = true; g.revealing = false; g.save.settings.reducedFx = false; g.save.settings.damageNumbers = true; });

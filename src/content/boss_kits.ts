@@ -196,5 +196,5 @@ function originalSupport(sim:any,e:any,dt:number,rt:any){ const def=ENEMIES[e.ty
   const pyl=sim.enemies.filter((o:any)=>o.pylon&&!o.dead&&o.bossAdd).length; if(rt.pylPrev===undefined) rt.pylPrev=0;
   if(rt.pylPrev>0&&pyl===0){ rt.vuln=Math.max(rt.vuln||0,4); sim.toast('Tether broken: '+def.name+' is exposed!'); } rt.pylPrev=pyl;
   if(pyl>0){ rt.tl=(rt.tl||0)-dt; if(rt.tl<=0){ rt.tl=.25; for(const o of sim.enemies) if(o.pylon&&!o.dead&&o.bossAdd){ const a=Math.atan2(o.y-e.y,o.x-e.x), L=Math.hypot(o.x-e.x,o.y-e.y); sim.fx.push({kind:'line',x:e.x,y:e.y,a,len:L,w:.1,t:0,life:.3,c:'#e0c060'}); } } } }
-/** dev/test hook: cast one mechanic right now (tests/boss_kits.mjs, tests/boss_shots.mjs, tools/balance). Returns its duration or null if it declined. */
+/** dev/test hook: cast one mechanic right now (tests/boss_kits.mjs, tools/shots/boss_shots.mjs, tools/balance). Returns its duration or null if it declined. */
 export function castMech(sim:any,e:any,m:MechId,palKey?:string):number|null{ const kit:Kit=KITS[e.type]||{pal:(palKey as any)||'amber',mechs:[],title:''}; const rt=e._rt; if(!rt.kit) rt.kit={t:0,n:0,busy:0,next:{},last:'',ph:kph(e),snipeT:0,hex:null,bufPrev:0}; return MECHS[m](mkCtx(sim,e,{m,cd:10},kit,rt.kit.n++)); }

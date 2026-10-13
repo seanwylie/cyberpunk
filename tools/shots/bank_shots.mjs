@@ -1,4 +1,4 @@
-import { launch } from './lib.mjs';
+import { launch } from '../../tests/lib.mjs';
 const sizes = [[1280, 720], [1024, 700], [390, 760]];
 for (const [w, h] of sizes) {
   const { browser, page } = await launch({ viewport: { width: w, height: h }, touch: w < 600, query: '?splash=hold' });

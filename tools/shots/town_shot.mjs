@@ -1,5 +1,5 @@
-// Screenshots the town and a few annex rooms: node tests/town_shot.mjs <outdir> [query]
-import { launch, sleep } from './lib.mjs'; import fs from 'fs';
+// Screenshots the town and a few annex rooms: node tools/shots/town_shot.mjs <outdir> [query]
+import { launch, sleep } from '../../tests/lib.mjs'; import fs from 'fs';
 const out = process.argv[2] || 'shots/env'; const q = process.argv[3] || ''; fs.mkdirSync(out, { recursive: true });
 const { browser, page, errors } = await launch({ viewport: { width: 1280, height: 720 }, query: q });
 const ev = (f, a) => page.evaluate(f, a); await sleep(2500);

@@ -1,5 +1,5 @@
-// Screenshots of every boss mechanic telegraph (warn + live) into shots/bosses/. Usage: URL=http://127.0.0.1:5391/ node tests/boss_shots.mjs [mech ...]
-import { launch } from './lib.mjs'; import fs from 'fs';
+// Screenshots of every boss mechanic telegraph (warn + live) into shots/bosses/. Usage: URL=http://127.0.0.1:5391/ node tools/shots/boss_shots.mjs [mech ...]
+import { launch } from '../../tests/lib.mjs'; import fs from 'fs';
 const MECH = ['beam','grid','scythe','vortex','conveyor','ricochet','pylons','safe','gaze','tiles','bombs','strike','overload','buffers','shockring','shield'];
 const only = process.argv.slice(2); const list = only.length ? only : MECH;
 const { browser, page, errors } = await launch({ query: '?splash=hold', viewport: { width: 1280, height: 720 } });

@@ -1,5 +1,5 @@
 // In-game animation previews for every dungeon enemy/boss: approach/idle/attack/hit then death collapse -> /tmp/gif_<id>/NN.png (assembled into docs/art/dungeons/anim/<id>.gif by tools/dungeons/make_gifs.py)
-import { launch, sleep } from './lib.mjs'; import fs from 'fs';
+import { launch, sleep } from '../../tests/lib.mjs'; import fs from 'fs';
 const ids = (process.env.IDS || 'slaghauler,ladlecrew,cinderhound,slagcannon,brakeman,quenchpriest,teague,brannoch,ore9,orderly,nursebot,gurneyrunner,sentry,matron,anesthetist,surgeon,autosurgeon,recovered,picker,loader,forkbot,scanner,camgun,shiftlead,hobbs,stockmgr,retrieval,reclaimer').split(',');
 const SIDE = process.env.SIDE || 'front'; const SG = SIDE === 'back' ? -1 : 1;
 const BIG = new Set(['teague', 'brannoch', 'ore9', 'surgeon', 'autosurgeon', 'recovered', 'stockmgr', 'retrieval', 'reclaimer']);
