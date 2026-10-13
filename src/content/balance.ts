@@ -10,7 +10,7 @@ export const BAL:{ g:{ hp:number; tier:Record<number,number> }; boss:Record<stri
     // tier I (par kit: green/blue 'mid')
     pitboss:{ hp:0.8, dmg:.65 }, gantrymother:{ hp:0.85, dmg:.85 },
     // tier II (par kit: blue)
-    apothecary:{ hp:0.68, dmg:.6 }, cryo:{ hp:1.12, dmg:1.3 }, bellfounder:{ hp:0.82, dmg:.85 }, auditor:{ hp:1.5, dmg:.85 }, mirrorpt:{ hp:1.4, dmg:.85 }, clearance:{ hp:1.42, dmg:.9 }, tidewarden:{ hp:0.79, dmg:1 },
+    apothecary:{ hp:0.68, dmg:.5 }, cryo:{ hp:1.12, dmg:1.3 }, bellfounder:{ hp:0.82, dmg:.85 }, auditor:{ hp:1.5, dmg:.85 }, mirrorpt:{ hp:1.4, dmg:.85 }, clearance:{ hp:1.42, dmg:.9 }, tidewarden:{ hp:0.79, dmg:1 },
     // tier III (par kit: purple): boss HP up (longer exposure) rather than only flat damage, since armour subtracts a flat amount per hit
     resonance:{ hp:2.02, dmg:2 }, liquidator:{ hp:1.34, dmg:1.6 }, courier:{ hp:2.85, dmg:1.6 }, dispatcher:{ hp:1.65, dmg:2.2 }, warrantor:{ hp:0.94, dmg:1.25 }, rattle:{ hp:2.44, dmg:2 }, breaker:{ hp:1.65, dmg:2 }, widow:{ hp:2.45, dmg:2.2 },
     // tier IV
