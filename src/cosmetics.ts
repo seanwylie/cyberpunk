@@ -155,7 +155,7 @@ const FRONT_SLOTS:CosSlot[]=['skin','legs','torso','arms','hands','tattoo','hair
 export function drawCosmetics(k:CosCtx,list:CosDef[],phase:'back'|'front'){
   const order=phase==='back'?BACK_SLOTS:FRONT_SLOTS; k.c.save();
   for(const sl of order){ const d=list.find(x=>x.slot===sl); if(!d) continue; if(d.variant&&d.style==='shell') continue; if(hasCosArt(d.id)&&!k.noModel) continue; /* real model layer is baked into the body sheet (src/coslayers.ts) */ const f=FN[sl]?.[d.style]; if(f){ k.c.save(); try{ cosAudit(k.id||'me',sl,d.id,()=>f(k,d)); }catch{ /* never break the frame */ } k.c.restore(); } }
-  k.c.restore(); try{ cosAudit(k.id||'me','rarityfx',phase,()=>drawRarityFx(k,list,phase)); }catch{ /* never break the frame */ }
+  k.c.restore(); try{ cosAudit(k.id||'me','rarityfx',phase,()=>drawRarityFx(k,k.noModel?list:list.filter(d=>!hasCosArt(d.id)),phase)); }catch{ /* never break the frame */ }
   try{ k.c.save(); drawPm(k,list,phase); }catch{ /* never break the frame */ } finally{ k.c.restore(); }
 }
 /** Trail: one painted brush-stroke ribbon that follows the feet (world->screen done by the caller). Tier-scaled (docs/COSMETIC_TRAILS.md):
