@@ -25,7 +25,7 @@ const R = await page.evaluate(async () => {
   const ids = Object.keys((await import('/src/content/dungeons.ts')).DUNGEONS || {}); out.dungeons = ids;
   const DM = await import('/src/content/dungeons.ts'); g.save.cleared = Object.fromEntries(DM.DUNGEON_IDS.map(i => [i, 1]));
   out.stages.mid = stage('mid (L24, rank 1, Foundry)', 24, 1, 'foundry', 100, 111);
-  out.stages.late = stage('late (L40, rank 3, tier IV)', 40, 3, DM.DUNGEON_IDS[DM.DUNGEON_IDS.length - 1], 100, 211);
+  out.stages.late = stage('late (L40, rank 3, tier IV)', 40, 3, DM.DUNGEON_IDS.filter(i => !DM.DUNGEONS[i].gateway).at(-1) /* top regular dungeon; gateways are longer, so extra trash dilutes the rare share */, 100, 211);
   out.knob = Cfg.DROP_RATE_SCALE; out.acq = JSON.parse(JSON.stringify(HW.ABILITY_ACQ)); return out; });
 const med = a => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
 const e = R.stages.early, m = R.stages.mid, l = R.stages.late; console.log(JSON.stringify({ firsts: R.firsts, early: { ...e, perRun: undefined }, mid: { ...m, perRun: undefined }, late: { ...l, perRun: undefined } }));
