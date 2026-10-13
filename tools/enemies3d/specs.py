@@ -1,4 +1,4 @@
-# Per-enemy specs: archetype + palette + parts. Palettes follow the concept sheets (public/dungeons/source/enemies_*.jpg).
+# Per-enemy specs: archetype + palette + parts. Palettes follow the concept sheets (tools/dungeons/source/enemies_*.jpg).
 ANIM_SPEC = {  # n frames, fps (game playback), loop, hit frame (attack)
     'idle':   dict(n=8,  fps=6,  loop=True,  hit=None),
     'walk':   dict(n=8,  fps=12, loop=True,  hit=None),

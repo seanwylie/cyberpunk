@@ -131,7 +131,7 @@ Environment hazards are persistent damaging zones that also add heat (they reuse
 
 ## 6. Assets that need art (everything is procedural placeholder)
 
-See `docs/DUNGEON_ART_PROMPTS.md` for the full request list. Summary: per-dungeon floor/wall textures and set pieces (concept sheets in `public/dungeons/source`), all new enemy and boss sprites, hazard rendering (currently a generic circle), orange item animations and icons, contact portraits, and a hub-level noticeboard interaction for contacts. Also needs music identity per dungeon (spec: reuse manufacturer foundation plus a boss motif layer).
+See `docs/DUNGEON_ART_PROMPTS.md` for the full request list. Summary: per-dungeon floor/wall textures and set pieces (concept sheets in `tools/dungeons/source`), all new enemy and boss sprites, hazard rendering (currently a generic circle), orange item animations and icons, contact portraits, and a hub-level noticeboard interaction for contacts. Also needs music identity per dungeon (spec: reuse manufacturer foundation plus a boss motif layer).
 
 ## 7. What is NOT in the prototype
 

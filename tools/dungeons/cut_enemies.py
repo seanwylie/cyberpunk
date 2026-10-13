@@ -20,7 +20,7 @@ SHEETS={
 EX={'teague':[[0,55,140,110]],'brannoch':[[330,55,452,112]],'slaghauler':[[0,300,110,338]],'ladlecrew':[[195,305,300,335]],'quenchpriest':[[880,300,1010,330]],'matron':[[740,318,870,334]],'forkbot':[[380,330,428,382]],'scanner':[[545,340,578,382]],'camgun':[[775,375,812,402]]}
 man={}
 for sh,boxes in SHEETS.items():
-    rgb0=np.array(Image.open(f'public/dungeons/source/{sh}.jpg').convert('RGB')); im=rgb0.astype(float); lum=im.mean(2); chroma=im.max(2)-im.min(2)
+    rgb0=np.array(Image.open(f'tools/dungeons/source/{sh}.jpg').convert('RGB')); im=rgb0.astype(float); lum=im.mean(2); chroma=im.max(2)-im.min(2)
     loc=np.sqrt(np.maximum(nd.uniform_filter(lum**2,5)-nd.uniform_filter(lum,5)**2,0))
     H,W=lum.shape; yy,xx=np.mgrid[0:H,0:W]; F=lambda x,y:np.stack([np.ones_like(x),x,y,x*x,x*y,y*y],-1).astype(float)
     cand=(loc<2.2)&(chroma<9)&(lum>(55 if sh=='enemies_foundry_back' else 95))&(lum<160)

@@ -9,4 +9,4 @@ def seamless(im,n=128):
     out=a*w+sh*(1-w); return Image.fromarray(out.clip(0,255).astype(np.uint8))
 C={'slag':('foundry',(272,160,302,182)),'tile':('clinic',(300,262,350,300)),'conc':('warehouse',(842,588,882,608))}
 for k,(sh,box) in C.items():
-    im=Image.open(f'public/dungeons/source/{sh}.jpg').convert('RGB').crop(box); seamless(im).save(f'public/dungeons/tex/{k}.png'); print(k)
+    im=Image.open(f'tools/dungeons/source/{sh}.jpg').convert('RGB').crop(box); seamless(im).save(f'public/dungeons/tex/{k}.png'); print(k)

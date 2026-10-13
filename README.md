@@ -99,7 +99,7 @@ Debug hooks: `window.__game`, `__ui`, `__rend`; `game.dbg.god/oneShot` for tests
 
 ## Universe & dungeon pack (v0.2)
 
-Lore bible, factions, recurring cast, districts, season-1 framing, MMO roadmap and the decision log: **`docs/UNIVERSE.md`**. Art requests: `docs/DUNGEON_ART_PROMPTS.md`. Concept sheets: `public/dungeons/source/`.
+Lore bible, factions, recurring cast, districts, season-1 framing, MMO roadmap and the decision log: **`docs/UNIVERSE.md`**. Art requests: `docs/DUNGEON_ART_PROMPTS.md`. Concept sheets: `tools/dungeons/source/`.
 
 **Dungeons** (all from the town gate, `Dungeon gates`; the select screen filters to your level band by default, tick "Show all" for every dungeon; entry is never level-gated):
 

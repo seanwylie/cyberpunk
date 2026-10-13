@@ -1,6 +1,6 @@
 # Dungeon art requests (dungeon pack)
 
-Everything below is currently procedural placeholder. Visual target: `public/dungeons/source/foundry.jpg`, `clinic.jpg`, `warehouse.jpg`; palette per style guide (concrete grey, soot black, dirty bone, oxidized metal, faded textile; accents muted oxide red / slate-blue / muted olive; NO neon). Isometric ~45 degrees, stylized realism. Gameplay readability first: floor values (cover, hazard, interact, elevation) must read at mobile scale; telegraphs must stay readable.
+Everything below is currently procedural placeholder. Visual target: `tools/dungeons/source/foundry.jpg`, `clinic.jpg`, `warehouse.jpg`; palette per style guide (concrete grey, soot black, dirty bone, oxidized metal, faded textile; accents muted oxide red / slate-blue / muted olive; NO neon). Isometric ~45 degrees, stylized realism. Gameplay readability first: floor values (cover, hazard, interact, elevation) must read at mobile scale; telegraphs must stay readable.
 
 Zone slot names in code (yard, proc, junction, boss, salvage, passage) map to concept panels via `DungeonDef.zoneLabels` in `src/content/dungeons.ts`.
 

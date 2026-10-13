@@ -4,7 +4,7 @@ import { thinHazards } from '../level';
 // (guard-gate, elite-or-hack lock, objective controller, boss reveal, checkpoints, daily lockout) applies unchanged.
 // Zone SLOT names (yard/proc/junction/boss/salvage/passage) are reused so existing renderer palettes/textures apply;
 // each dungeon's concept-sheet names live in zoneLabels. ART NEEDED: per-dungeon floor/wall textures per the concept sheets
-// in public/dungeons/source (foundry.jpg, clinic.jpg, warehouse.jpg).
+// in tools/dungeons/source (foundry.jpg, clinic.jpg, warehouse.jpg).
 import { buildAnnex } from '../level';
 import type { Level, Interact, Hazard } from '../level';
 import { genFoundry, genClinic, genWarehouse, varyAnnex } from './mapgen';
