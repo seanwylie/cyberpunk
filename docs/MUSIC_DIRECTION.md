@@ -50,3 +50,9 @@ A variation is regenerated when it drifts. It passes when it has the same key, o
 - Hard loops (`combat_`, `boss_`, `elite_`) are trimmed to their steady body, without the generated intro swell or outro fade. The tail is blended into the head over 3 s, with a static gain and no limiter, because a limiter's look-ahead shifts the seam.
 - `tools/check_music_tails.py` checks both rules. `tools/fix_music_endings.py` repairs from the shipped mp3.
 - In game, `MusicManager.tailGuard` ramps any non-looping track that is about to end to silence, so nothing ever hard-stops.
+
+## Strict ending rule (Oct 12)
+Every file in `public/audio/music`, loops included, must end with a smooth fade of at least 4 s, and its final 0.5 s must be below -45 dBFS. `tools/check_music_tails.py` enforces this and `tests/music.mjs` fails on any violation.
+- **Hard loops:** the file is the seamless loop body, then the first 4.5 s of that body faded out, then 0.5 s of silence. The loop point goes in `src/music_loops.ts` (generated). In game the source loops `0..loopEnd` sample-accurately (`src.loopStart/loopEnd`), so the faded tail is never heard. The loop seam is the original blended seam.
+- **Everything else:** a 4.5 s ring-out (a light echo tail where the file is short) faded to silence.
+- `tools/fade_all.py` applies the rule. It is idempotent and makes the fade steeper when a loud passage would bump it.

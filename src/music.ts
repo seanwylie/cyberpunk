@@ -1,5 +1,6 @@
 // File-based adaptive music (ElevenLabs-generated tracks, see docs/AUDIO.md). State-driven with equal-power crossfades.
 // Falls back to the procedural scheduler in audio.ts when files are missing (isReady() === false).
+import { LOOP_END } from './music_loops';
 export type MState='town'|'traversal'|'combat'|'elite'|'bossreveal'|'bosscombat'|'resolution';
 interface TrackDef { file:string; loop:boolean; keepPos:boolean }
 const LOOPS=['harrow_forge','harrow_ember','harrow_steam','town','traversal_a','traversal_b','combat_a','combat_b','boss_fight','calm_drift','calm_rust','calm_neon','calm_vents','calm_static','elite_siege','elite_hunt','boss_overclock','boss_meltdown','boss_hydraulic','boss_lineman','boss_pitboss','boss_bellfounder','boss_cryo','boss_auditor','boss_apothecary','boss_clearance','boss_resonance','boss_liquidator','boss_courier','boss_dispatcher','boss_warrantor','boss_rattle','boss_widow','boss_recall'];
@@ -194,7 +195,7 @@ export class MusicManager {
   private maybeRotate(t:number){ const hard=this.state==='elite'||this.state==='bosscombat'; if(!hard&&this.state!=='town'&&this.state!=='traversal') return; if(this.state==='bosscombat'&&this.sig) return; // signature fights never rotate
     const l=this.live.find(x=>!x.ending); if(!l) return; const b=this.buffers[l.name]; if(!b) return; const tail=!hard&&(l.offset+(t-l.startedAt))>b.duration-(this.CALM_FADE+2); // calm track nearly over: rotate now so it never ends or loops
     if(hard? t-this.lastSwitchAt<this.HARD_ROTATE : (!tail&&t-this.lastSwitchAt<this.calmDwell)) return; if(!hard&&(this.want!==this.state||this.leaveSince>=0)) return;
-    if(hard){ const played=l.offset+(t-l.startedAt); if(played<b.duration-this.ROTATE_FADE) return; } // hard fights rotate (rarely) at a loop boundary; calm tracks crossfade mid-track after their jittered dwell
+    if(hard){ const played=l.offset+(t-l.startedAt); if(played<this.loopLen(l.name)-this.ROTATE_FADE) return; } // hard fights rotate (rarely) at a loop boundary; calm tracks crossfade mid-track after their jittered dwell
     if(!hard){ const k=this.bagKey(this.state!); if(!this.nextUp[k]) this.prefetch(this.state!); if(!this.buffers[this.nextUp[k]]&&!tail&&t-this.lastSwitchAt<this.calmDwell+15) return; }
     let n:string; if(this.state==='bosscombat'){ const bag=this.fightBag??=this.bossBag(bossTier(this.key)); let nu=this.nextUp.boss; if(!nu||nu===l.name) nu=this.nextUp.boss=bag.next(x=>x!==l.name); this.ensure(nu); if(!this.buffers[nu]) return; delete this.nextUp.boss; n=nu; this.setHard(n); } else n=this.pick(this.state!);
     if(n===l.name) return; this.lastSwitchAt=t; this.counts.total++; if(hard) this.counts.hard++; else this.counts.calm++; this.crossfade(n,hard?this.ROTATE_FADE:this.CALM_FADE,this.state!); }
@@ -211,8 +212,8 @@ export class MusicManager {
     const out=this.live.filter(l=>!l.ending);
     for(const l of out){ l.ending=true; this.savePos(l,t); const g=l.gain.gain; g.cancelScheduledValues(t); const v=g.value; try{ g.setValueAtTime(v,t); }catch{} this.curve(g,v,0,t,dur); l.src.stop(t+dur+.05); setTimeout(()=>{ this.live=this.live.filter(x=>x!==l); this.evict(l.name); },(dur+.2)*1000); }
     this.log.push({t,from:this.cur,to:name,dur,state:s}); this.cur=name; if(!name) return; this.usedAt[name]=performance.now();
-    const d=T[name], buf=this.buffers[name]; const src=this.ctx.createBufferSource(); src.buffer=buf; src.loop=d.loop; const gain=this.ctx.createGain(); gain.gain.value=0; src.connect(gain); gain.connect(this.out);
-    let off=d.keepPos?(this.pos[name]||0):0; if(off>=buf.duration-1) off=0; src.start(t,off); this.curve(gain.gain,0,1,t,inDur);
+    const d=T[name], buf=this.buffers[name]; const src=this.ctx.createBufferSource(); src.buffer=buf; src.loop=d.loop; if(d.loop&&LOOP_END[name]&&LOOP_END[name]<buf.duration){ src.loopStart=0; src.loopEnd=LOOP_END[name]; } /* files end in a faded tail past the loop point: loop sample-accurately before it */ const gain=this.ctx.createGain(); gain.gain.value=0; src.connect(gain); gain.connect(this.out);
+    let off=d.keepPos?(this.pos[name]||0):0; if(off>=this.loopLen(name)-1) off=0; src.start(t,off); this.curve(gain.gain,0,1,t,inDur);
     if(!d.loop){ const rem=buf.duration-off, fd=Math.min(1.5,Math.max(.2,(rem-inDur)/2)); if(rem-fd>inDur) this.curve(gain.gain,1,0,t+rem-fd,fd); } // one-shots (reveal, clear) fade out before their natural end: never a hard cut
     const l:Live={name,src,gain,startedAt:t,offset:off,ending:false}; this.live.push(l); if(s==='town'||s==='traversal'){ this.noteCalm(name); this.calmDwell=this.CALM_MIN+this.rnd()*(this.CALM_MAX-this.CALM_MIN); } if(s==='bosscombat'&&!this.sig&&this.fightBag&&!this.nextUp.boss){ this.nextUp.boss=this.fightBag.next(x=>x!==name); this.ensure(this.nextUp.boss); } if(s==='town'||s==='traversal'||s==='elite'){ this.prefetch(s); if(s==='traversal') this.prefetch('elite'); } }
   /** Lazy tracks are decoded PCM (~50 MB each): drop them once faded out unless they are current or queued next (re-fetched from the HTTP cache when needed). */
@@ -225,7 +226,9 @@ export class MusicManager {
   usedAt:Record<string,number>={};
   /** free every decoded track that is not playing (memory pressure / tab hidden) */
   dropIdle(){ for(const k of Object.keys(this.buffers)) if(this.evictable(k)){ delete this.buffers[k]; this.asked.delete(k); } }
-  private savePos(l:Live,t:number){ const d=T[l.name]; if(!d.keepPos) return; const b=this.buffers[l.name]; this.pos[l.name]=(l.offset+(t-l.startedAt))%b.duration; }
+  private savePos(l:Live,t:number){ const d=T[l.name]; if(!d.keepPos) return; const b=this.buffers[l.name]; this.pos[l.name]=(l.offset+(t-l.startedAt))%this.loopLen(l.name); }
+  /** Playable loop length: the loop point for hard loops (their file continues into a fade), else the whole buffer. */
+  loopLen(name:string){ const b=this.buffers[name]; const e=LOOP_END[name]; return e&&b&&e<b.duration?e:(b?b.duration:0); }
   // equal-power (cos/sin) fade curve
   private curve(p:AudioParam,a:number,b:number,t:number,dur:number){ const n=32, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=i/(n-1); c[i]=a<b?Math.sin(x*Math.PI/2)*(b-a)+a:Math.cos(x*Math.PI/2)*(a-b)+b; } try{ p.setValueCurveAtTime(c,t,dur); }catch{ p.linearRampToValueAtTime(b,t+dur); } }
   /** Combat intensity 0..n (engaged elites near the player). Sustained >= ESC_LEVEL in elite combat crossfades to an escalation stem (prefetched at level ESC_LEVEL-1); dropping back to <= 1 for 6 s returns to the pool. */

@@ -328,4 +328,9 @@ ok(!(await b2.page.evaluate(() => window.__audio.useFiles)), 'fallback to proced
   ok(V.lofi.includes(V.boot), 'first town boot draws a lo-fi main-theme variation when the roll hits: ' + V.boot);
   ok(!V.lofi.includes(V.noBoot) || true, 'boot roll miss falls back to the bag: ' + V.noBoot);
   ok(V.inTown && V.inBoss && V.lazy && V.esc, 'lo-fi variations in Rustline + Harrow pools, boss variations in the boss pool + escalation, all lazy'); }
+// --- every file ends in a real fade; hard loops loop in game at their loop point, before the faded tail ---
+{ const { spawnSync } = await import('child_process'); const r = spawnSync('python3', ['tools/check_music_tails.py'], { encoding: 'utf8' }); const bad = (r.stdout || '').split('\n').filter(l => l.startsWith('FAIL'));
+  ok(r.status === 0 && bad.length === 0, 'every music file ends with a >= 4 s smooth fade, last 0.5 s < -45 dBFS, hard loops have loop points (tools/check_music_tails.py): ' + (bad.slice(0, 5).join(' | ') || (r.stdout || '').trim().split('\n').pop() || r.stderr));
+  const LP = await ev(async () => { const mm = window.__audio.music, L = (await import('/src/music_loops.ts')).LOOP_END; const n = 'combat_a'; await new Promise(res => { mm.ensure(n); const f = () => mm.buffers[n] ? res() : setTimeout(f, 100); f(); }); mm.setState('traversal'); mm.__off += 60; mm.tick(); mm.crossfade(n, 1.5, 'elite'); const l = mm.live.find(x => x.name === n && !x.ending); return { loop: l?.src.loop, end: l?.src.loopEnd, want: L[n], dur: mm.buffers[n].duration, len: mm.loopLen(n) }; });
+  ok(LP.loop && Math.abs(LP.end - LP.want) < 1e-3 && LP.want <= LP.dur - 4.5 && LP.len === LP.want, 'hard loop plays 0..loop point (' + JSON.stringify(LP) + ')'); }
 await browser.close(); await b2.browser.close(); process.exit(fails ? 1 : 0);
