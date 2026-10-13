@@ -225,11 +225,11 @@ export class Game {
 
   // ---------- input API (called by input.ts) ----------
   setMove(x:number,y:number){ this.inputMove.x=x; this.inputMove.y=y; }
-  beginAim(idx:number){ if(this.downed||this.mode!=='run') return; /* abilities are run-only: towns are safe zones */ const ab=this.build.abilities[idx]; if(!ab) return; this.aim={ idx, wx:this.px+Math.cos(this.face), wy:this.py+Math.sin(this.face), hasDir:false }; }
+  beginAim(idx:number){ if(this.downed||this.mode!=='run') return; /* abilities are run-only: towns are safe zones */ const ab=this.build.abilities[idx]; if(!ab) return; this.aim={ idx, wx:this.px+Math.cos(this.aimFace()), wy:this.py+Math.sin(this.aimFace()), hasDir:false }; }
   updateAim(wx:number,wy:number,hasDir:boolean){ if(this.aim){ this.aim.wx=wx; this.aim.wy=wy; this.aim.hasDir=hasDir; } }
   cancelAim(){ this.aim=null; }
   /** Tap / click without dragging: aim at the current target or nearest enemy, else along facing, so a plain press still casts. */
-  quickAim(a:AimState){ if(a.hasDir) return; const t=this.pickTarget(); if(t){ a.wx=t.x; a.wy=t.y; } else { a.wx=this.px+Math.cos(this.face)*3; a.wy=this.py+Math.sin(this.face)*3; } a.hasDir=true; }
+  quickAim(a:AimState){ if(a.hasDir) return; const t=this.time-this.tapAimT<4?null:this.pickTarget(); if(t){ a.wx=t.x; a.wy=t.y; } else { a.wx=this.px+Math.cos(this.aimFace())*3; a.wy=this.py+Math.sin(this.aimFace())*3; } a.hasDir=true; }
   releaseAim(){ const a=this.aim; this.aim=null; if(!a||this.downed||this.mode!=='run') return; if(this.grace) this.grace.acted=true; const id=this.build.abilities[a.idx]; if(!id) return; const def=ABILITIES[id]; if(def.aim!=='self') this.quickAim(a);
     const v=this.validateAim(def,a); if(!v.valid){ this.emit('sfx','cancel'); this.toast('Cancelled: '+v.why); return; }
     if(this.overheated){ this.toast('Overheated: abilities offline'); this.emit('sfx','deny'); return; }
@@ -247,6 +247,9 @@ export class Game {
     }
   }
   enemyNear(x:number,y:number,r:number){ let best:En|null=null,bd=r; for(const e of this.enemies){ if(e.dead||e.faction!=='enemy'||e._rt.reveal>0) continue; const d=dist(x,y,e.x,e.y)-ENEMIES[e.type].radius*.6; if(d<bd){bd=d;best=e;} } return best; }
+  /** touch tap on empty floor: face it, and the next tap-cast ability goes that way (not to an auto-target off screen) */
+  tapAimT=-1e9; tapFace(wx:number,wy:number){ if(Math.hypot(wx-this.px,wy-this.py)<.3) return; this.face=this.tapAng=Math.atan2(wy-this.py,wx-this.px); this.target=null; this.tapAimT=this.time; }
+  tapAng=0; /** facing for an undirected cast: a recent floor tap wins over movement facing */ aimFace(){ return this.time-this.tapAimT<4?this.tapAng:this.face; }
   tapEnemy(wx:number,wy:number){ const e=this.enemyNear(wx,wy,1.1); if(e){ this.target=e.id; this.emit('sfx','select'); return true; } return false; }
   clearTarget(){ this.target=null; }
   dodge(){
