@@ -92,6 +92,8 @@ const R:Row[]=[
 ['arms_piston','Exposed Piston Sleeves','arms','blue','HI','piston','#b08a50','#3a3a3a','Brass pistons visible along both forearms.','Pressure gauges optional.','v:1600'],
 ['arms_conduit','Lit Conduit Bracers','arms','blue','PS','conduit','#70c0d0','','Bracers with a thin lit conduit running along them.','Looks like power. Often is.','e'],
 ['arms_fused','Foundry-Fused Arms','arms','purple','HI','fused','#ff8a3a','#3a3a3a','Heat-seamed arm plating with glowing weld lines.','Welded in place under a ripper strike.','b:voss'],
+['arms_pauldron','Warden Pauldron','arms','blue','HI','piston','#8a8c90','#a8483a','One huge layered pauldron on the left shoulder.','Harrow wardens wear rank on one side only.','v:1650'],
+['arms_bladed','Fin-Blade Bracers','arms','green','PS','conduit','#c9c7c0','#5a8ab0','A long curved fin along each forearm.','Aldane test rigs. The fins are not decorative.','v:460'],
 // ---- HANDS ----
 ['hands_work','Work Gloves','hands','grey','ST','gloves','#8a6a40','','Cracked leather gloves.','Everyone owns a pair.','v:50'],
 ['hands_hi','Harrow Pattern Hands','hands','green','HI','shell','#a04a34','','Armoured gunmetal hands (Harrow body part).','Built to hold a hot ingot.','v:440'],
@@ -99,6 +101,8 @@ const R:Row[]=[
 ['hands_nitrile','Clinic Nitrile','hands','blue','PS','gloves','#7fb0d0','','Snug slate-blue clinical gloves.','Ward 9 changes them every hour. Every hour.','d'],
 ['hands_signet','Signet Knuckles','hands','blue','ST','knuckle','#d0b060','','Brass knuckle rings, each with a stamped crest.','Every crew has a signet. Few survive.','e'],
 ['hands_ember','Ember-Palm Grips','hands','purple','HI','glowpalm','#ff7a30','','Palms that glow like coals when you fight.','Heat bleeds out of a press and into you.','b:lineman'],
+['hands_gauntlet','Press Gauntlets','hands','blue','HI','knuckle','#6a6c70','#c9a24a','Oversized armoured fists with knuckle spikes.','Built to punch rivets home.','v:1600'],
+['hands_claws','Scrapper Claws','hands','green','MM','knuckle','#c9c7c0','#3a3a3a','Three long curved claws off the back of each hand.','Kestrel scrap-sorters swear by them.','v:440'],
 // ---- LEGS ----
 ['legs_mm','Kestrel Pattern Legs','legs','grey','MM','shell','#7a8052','','Refurbished olive legs and boots (Kestrel body part).','Resold more often than they were worn.','v:100'],
 ['legs_stripe','Hi-Vis Leg Stripes','legs','grey','ST','stripe','#d0a030','','Reflective bands on shins and knees.','Cheap and visible.','d'],
@@ -106,6 +110,10 @@ const R:Row[]=[
 ['legs_ps','Aldane Pattern Legs','legs','green','PS','shell','#e8e4d6','','Slim ceramic strider legs (Aldane body part).','Silent on stone.','v:480'],
 ['legs_greaves','Slag-Plate Greaves','legs','blue','HI','greaves','#8a3a2a','#2a2a2a','Scorched armour plates over shin and knee.','Pulled from a cooled pour.','v:1650'],
 ['legs_rails','Strider Light Rails','legs','purple','PS','rails','#9fd0ff','','Thin lit rails running down both legs.','Aldane stride tech, unlicensed.','b:mirrorpt'],
+['legs_cargo','Cargo Utility Legs','legs','grey','ST','greaves','#8a7a5a','#c9b48a','Bulging thigh pockets, thick knee pads and taped ankles.','Carries more than the crew wagon.','v:90'],
+['legs_wraps','Runner Wraps','legs','green','MM','stripe','#a89a7a','#6a3a2a','Spiral cloth wraps from knee to ankle over strapped boots.','Kestrel couriers wrap for speed and silence.','v:420'],
+['legs_tassets','Plated Tassets','legs','blue','HI','greaves','#7a7c80','#a8483a','Overlapping armour plates hanging from the hips.','Harrow floor wardens wear the skirt of office.','v:1600'],
+['legs_hydraulic','Hydraulic Struts','legs','blue','PS','rails','#c9c7c0','#5a8ab0','Exposed hydraulic struts down the back of each leg.','Aldane loaner rigs. Never returned.','v:1700'],
 // ---- BACK ----
 ['back_rucksack','Salvage Rucksack','back','grey','ST','pack','#5a5648','','Patched canvas rucksack.','The first thing every salvager owns.','v:70'],
 ['back_cable','Trailing Cable Tail','back','grey','MM','cable','#2a2a2a','','A loose power cable trailing from the spine.','Not supposed to still be live.','d'],
