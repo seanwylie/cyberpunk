@@ -16,6 +16,7 @@ export async function launch(opts = {}) {
   if (!opts.city) await page.addInitScript(() => { try { localStorage.setItem('wv_city_neutral', '1'); } catch {} });
   if (!opts.tutorial) await page.addInitScript(() => { try { localStorage.setItem('wv_notut', '1'); } catch {} });
   if (opts.init) await page.addInitScript(opts.init);
+  if (opts.route) await opts.route(page); // e.g. delay the web font to reproduce a font-load race
   await page.goto(URL + (opts.query || ''), { waitUntil: 'load' }); await page.waitForFunction(() => window.__game);
   return { browser, ctx, page, errors };
 }
