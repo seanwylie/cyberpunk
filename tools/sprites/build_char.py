@@ -437,7 +437,10 @@ for anim,n in ANIMS.items():
                     for ll in COSLAYERS:
                         for o in COSOBJ[ll]: o.visible_camera=(ll==l); o.visible_shadow=(ll==l); o.is_holdout=False
                     b=slot_border(l); sc.render.use_border=True; sc.render.use_crop_to_border=False; sc.render.border_min_x,sc.render.border_max_x,sc.render.border_min_y,sc.render.border_max_y=b
-                    sc.render.filepath=f'{OUT}/{anim}/{l}/{d}_{f}.png'; bpy.ops.render.render(write_still=True); cnt+=1
+                    sc.render.filepath=f'{OUT}/{anim}/{l}/{d}_{f}.png'
+                    try: bpy.ops.render.render(write_still=True); cnt+=1
+                    except RuntimeError:
+                        ei=bpy.data.images.new('e',RES,RES,alpha=True); ei.filepath_raw=sc.render.filepath; ei.file_format='PNG'; ei.save()
                 print(anim,d,f,f'{cnt} renders {time.time()-T1:.0f}s',flush=True); continue
             for s in ([] if os.environ.get('ORDERONLY') else SLR):
                 for o in ALLOBJ: o.hide_render=False; o.visible_camera=False; o.visible_shadow=False
