@@ -1,0 +1,13 @@
+// Per-tier par-kit clear rates with enough samples to beat noise: node tools/balance/tiersweep.mjs [armorK...]  (armorK 0 = legacy flat armor)
+// 12 runs per tier (balance.mjs dungeons x 6 seeds), fresh page per run, WORKERS parallel pages. Needs the dev server (URL).
+import { launch } from '../../tests/lib.mjs'; import { runJob } from './harness.mjs';
+const SET0 = [['annex', 'mid', 15, 0], ['foundry', 'blue', 24, 0], ['coke_ovens', 'mid', 18, 1], ['tailings_pit', 'mid', 18, 1], ['cold_archive', 'blue', 26, 2], ['pharmacy_vault', 'blue', 26, 2], ['liquidation_floor', 'purple', 35, 3], ['night_tunnels', 'purple', 35, 3], ['recall_yard', 'purple', 44, 4]];
+const SET = process.env.TIERS ? SET0.filter(x => process.env.TIERS.split(',').includes(String(x[3]))) : SET0; const Ks = process.argv.slice(2).map(Number); const W = +(process.env.WORKERS || 6); const SEEDS = +(process.env.SEEDS || 6);
+for (const K of Ks.length ? Ks : [20]) {
+  const jobs = []; for (const [id, kit, level, tier] of SET) for (let s = 0; s < SEEDS * (tier === 4 ? 2 : 1); s++) jobs.push({ tier, job: { mode: 'level', id, kit, level, seed: 4000 + s * 53, maxT: 1100, maxDeaths: 4 } });
+  const res = []; let next = 0;
+  await Promise.all(Array.from({ length: W }, async () => { while (next < jobs.length) { const j = jobs[next++]; const f = await launch({ query: '?splash=hold' }); try { await f.page.evaluate(async K => { (await import('/src/content/balance.ts')).BAL.g.armorK = K; }, K); const r = await f.page.evaluate(runJob, j.job); res.push({ tier: j.tier, id: j.job.id, ...r }); } catch (e) { res.push({ tier: j.tier, id: j.job.id, error: String(e).slice(0, 120) }); } finally { await f.browser.close(); } } }));
+  const line = [0, 1, 2, 3, 4].map(t => { const a = res.filter(r => r.tier === t); const c = a.filter(r => r.cleared).length; const br = a.filter(r => r.bossReached != null || r.cleared).length; return `T${t} clear ${c}/${a.length} (${Math.round(100 * c / a.length)}%) boss-reached ${br}/${a.length} deaths ${(a.reduce((x, r) => x + (r.deaths || 0), 0) / a.length).toFixed(1)} stuck ${a.filter(r => r.stuck).length} err ${a.filter(r => r.error).length}`; });
+  console.log(`armorK ${K}: ` + line.join(' | '));
+  if (process.env.DETAIL) for (const r of res) console.log(' ', r.tier, r.id, r.cleared ? 'CLEAR' : 'fail', 'deaths', r.deaths, r.stuck ? 'STUCK' : '', r.error || '', r.failWhy, 'boss@', r.bossReached, 'bossHp', r.bossHpLeft, 't', r.t, r.stuckAt ? JSON.stringify({ obj: r.stuckAt.obj?.text || r.stuckAt.obj, pos: r.stuckAt.pos, near: r.stuckAt.near?.slice(0, 3), guards: r.stuckAt.guards?.slice(0,3) }) : '');
+}

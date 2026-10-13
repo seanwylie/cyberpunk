@@ -3,7 +3,7 @@
 // Measured by tools/balance (headless bot harness); guarded by tests/balance.mjs.
 export interface Mul { hp?:number; dmg?:number }
 export const BAL:{ g:{ hp:number; tier:Record<number,number>; armorK:number }; boss:Record<string,Mul>; mob:Record<string,Mul>; elite:Record<number,number>; p:{ snipe:number; hexSlow:number; hexSlowMul:number; hexHeat:number; ward:number; shieldMul:number; summonCap:number; summonCd:number; detonate:number; detonateBig:number; mend:number } } = {
-  /** global enemy HP multiplier (ability power pass: autos are weaker, so enemy HP is retuned here) */ g:{ hp:1.5, tier:{ 0:1.75, 1:1.75, 2:1.75, 3:1.4, 4:1.25 }, /** non-boss hits taken x armorK/(armorK+armor) (percentage armor; flat armor zeroed small mob hits) */ armorK:20 },
+  /** global enemy HP multiplier (ability power pass: autos are weaker, so enemy HP is retuned here) */ g:{ hp:1.5, tier:{ 0:1.75, 1:1.75, 2:1.75, 3:1.4, 4:1.25 }, /** non-boss hits taken x armorK/(armorK+armor) (percentage armor; flat armor zeroed small mob hits) */ armorK:12 },
   boss:{
     // base dungeons (original bosses; onboarding tier, par kit mid/blue/purple)
     overseer:{ hp:0.75, dmg:1.2 }, teague:{ hp:.9, dmg:.8 }, surgeon:{ hp:1.88 }, stockmgr:{ hp:1.65 },
