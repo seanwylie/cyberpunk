@@ -12,15 +12,21 @@ x = np.frombuffer(subprocess.run(['ffmpeg','-v','error','-i',str(SRC),'-ac','2',
 P = [0.07, 11.49, 22.92, 34.37, 45.51, 56.82, 68.29, 79.71, 91.14, 102.56]  # phrase downbeats (s)
 END = len(x)/SR
 # Shape (Sean): intro/A, dip 1, build 1, dip 2, build 2 (bigger), HARD dip (lone piano, near silence), massive final build, long fade.
-# (start, end, gain) spans of the original in play order; builds use the original build + climax phrases at rising gains.
-PLAN = [(P[0], P[4], .80),               # intro + A: the lonely piano statement
-        (P[3], P[4], .60),               # dip 1: sparse phrase, softer
-        (P[4], P[6], .50),               # build 1: build phrase into the first climax phrase (lowest peak)
-        (P[2], P[3], .55),               # dip 2: sparse piano
-        (P[4], P[8], .70),               # build 2: build + two climax phrases (higher peak)
-        (P[9], 106.0, .50), (P[3], P[4], .16),  # HARD dip: the fall, then a lone piano phrase near silence
-        (P[4], P[9], 1.0), (P[8], P[9], 1.0),   # final build: full build + whole climax, its loudest phrase twice (highest peak)
-        (P[9], 112.0, .80), (P[1], P[2], .55)]  # outro: the fall into a last lone-piano phrase, long fade
+# Meter: theme_main is exactly 84 bpm (beat fit: eighth 0.35714 s, first downbeat 0.064 s), bar = 2.857 s. Every join goes from an
+# end e to a start s with e - s a whole number of bars, so 4/4 never breaks. The climax chain (45.51 -> 102.56, its loudest phrase
+# again, the fall to 112) is kept exactly as shipped; all other cut points share its bar phase (true downbeat - 0.27 s).
+BAR = 4*60/84; TP = lambda k: 0.064 + 4*BAR*k          # true phrase downbeats
+q = lambda k: TP(k) - 0.27                               # cut points at the climax chain's bar phase
+PLAN = [(0.0,  q(4), .80),                               # intro + A
+        (q(3), q(4), .60),                               # dip 1 (4 bars)
+        (q(4), q(6), .50),                               # build 1 (8 bars)
+        (q(2), q(3), .55),                               # dip 2 (4 bars)
+        (q(4), 91.13, .70),                              # build 2 (16 bars, ends one phrase before the fall)
+        (102.56, 102.56 + BAR*25 - 71.43 + 2.95, .50),   # the fall (ends 25 bars after the lone-piano start)
+        (q(3), 45.51, .16),                              # HARD dip: lone piano phrase (4 bars) into the climax
+        (45.51, 102.56, 1.0), (91.14, 102.56, 1.0),      # final build + its loudest phrase again (unchanged)
+        (102.56, 112.0, .80),                            # the fall (unchanged)
+        (112.0 - 35*BAR, 112.0 - 31*BAR, .55)]           # outro lone piano, phase-locked to the fall's end (35 bars back)
 XF = 0.72  # two beats at 84 bpm... one beat each side of the downbeat
 def seg(a, b, pre, post): return x[max(0,int((a-pre)*SR)):min(len(x),int((b+post)*SR))]
 out = None
@@ -30,9 +36,9 @@ for i, (a, b, gn) in enumerate(PLAN):
     n = int(XF*SR); t = np.linspace(0, np.pi/2, n)[:, None]
     out[-n:] = out[-n:]*np.cos(t) + s[:n]*np.sin(t); out = np.concatenate([out, s[n:]])
 # long ending: the last (lone piano) span fades to silence over its final 16 s, then 0.5 s of silence
-F = int(16*SR); g = np.cos(np.linspace(0, np.pi/2, F))**2; out[-F:] *= g[:, None]; out = np.concatenate([out, np.zeros((SR//2, 2))])
+F = int(16*SR); g = np.cos(np.linspace(0, np.pi/2, F))**3; out[-F:] *= g[:, None]; out = np.concatenate([out, np.zeros((SR//2, 2))])
 ref = np.frombuffer(subprocess.run(['ffmpeg','-v','error','-i',str(OUT/'theme_main.mp3'),'-ac','2','-ar',str(SR),'-f','f32le','-'],capture_output=True).stdout, np.float32)
-def peak_rms(z, w=3*SR): z = z.reshape(-1); m = np.convolve(z**2, np.ones(w)/w, 'valid'); return np.sqrt(m.max())
+def peak_rms(z, w=3*SR): z = z.reshape(-1); c = np.concatenate([[0], np.cumsum(z**2)]); return np.sqrt(((c[w:]-c[:-w])/w).max())
 gain = peak_rms(ref.astype(np.float64)[::2].copy())*1.12/peak_rms(out[:,0].copy())  # final climax ~1 dB above theme_main's loudest moment
 out *= gain; pk = np.abs(out).max()
 if pk > 0.98: out *= 0.98/pk
