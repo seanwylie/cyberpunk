@@ -18,10 +18,10 @@ END = len(x)/SR
 BAR = 4*60/84; TP = lambda k: 0.064 + 4*BAR*k          # true phrase downbeats
 q = lambda k: TP(k) - 0.27                               # cut points at the climax chain's bar phase
 PLAN = [(0.0,  q(4), .80),                               # intro + A
-        (q(3), q(4), .60),                               # dip 1 (4 bars)
-        (q(4), q(6), .50),                               # build 1 (8 bars)
+        (q(3), q(4), .60, 2, -9),                        # dip 1 (4 bars); swells up from the intro's level over 2 bars
+        (q(4), q(6), .50, 4, -9),                        # build 1 (8 bars); swells in over 4 bars
         (q(2), q(3), .55),                               # dip 2 (4 bars)
-        (q(4), 91.13, .70),                              # build 2 (16 bars, ends one phrase before the fall)
+        (q(4), 91.13, .70, 4, -11),                      # build 2 swells in over 4 bars (16 bars, ends one phrase before the fall)
         (102.56, 102.56 + BAR*25 - 71.43 + 2.95, .50),   # the fall (ends 25 bars after the lone-piano start)
         (q(3), 45.51, .16),                              # HARD dip: lone piano phrase (4 bars) into the climax
         (45.51, 102.56, 1.0), (91.14, 102.56, 1.0),      # final build + its loudest phrase again (unchanged)
@@ -30,8 +30,14 @@ PLAN = [(0.0,  q(4), .80),                               # intro + A
 XF = 0.72  # two beats at 84 bpm... one beat each side of the downbeat
 def seg(a, b, pre, post): return x[max(0,int((a-pre)*SR)):min(len(x),int((b+post)*SR))]
 out = None
-for i, (a, b, gn) in enumerate(PLAN):
-    s = seg(a, b, XF/2 if i else 0, XF/2 if i < len(PLAN)-1 else 0).copy()*gn
+# Swells (Sean: a section must fade louder, never jump): (bars, start dB) ramps the incoming section from start dB to its gain,
+# linear in dB, starting at the join downbeat; sized so the join itself is level-matched (no >4 dB step within 0.5 s).
+for i, (a, b, gn, *sw) in enumerate(PLAN):
+    pre = XF/2 if i else 0
+    s = seg(a, b, pre, XF/2 if i < len(PLAN)-1 else 0).copy()*gn
+    if sw:
+        n = int(sw[0]*BAR*SR); r = 10**(np.linspace(sw[1], 0, n)/20); m = int(pre*SR)
+        s[:m] *= r[0]; s[m:m+n] *= r[:len(s)-m][:, None]
     if out is None: out = s; continue
     n = int(XF*SR); t = np.linspace(0, np.pi/2, n)[:, None]
     out[-n:] = out[-n:]*np.cos(t) + s[:n]*np.sin(t); out = np.concatenate([out, s[n:]])
