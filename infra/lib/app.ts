@@ -11,8 +11,8 @@ export function buildApp(app: App, cfg: WvConfig) {
   const env = (region: string) => ({ account: cfg.account, region });
   const client = new ClientStack(app, 'WvClient', cfg, { env: env('us-east-1'), crossRegionReferences: true });
   const city = new CityStack(app, 'WvCity', cfg, { env: env(cfg.region) }); // living city table + weekly news Lambda (docs/LIVING_CITY.md)
-  const server = new ServerStack(app, 'WvServer', cfg, client.url, { env: env(cfg.region), crossRegionReferences: true }, { cityTable: city.table });
-  const story = new StoryStack(app, 'WvStory', cfg, client.url, { env: env(cfg.region), crossRegionReferences: true });
+  const server = new ServerStack(app, 'WvServer', cfg, client.urls.join(','), { env: env(cfg.region), crossRegionReferences: true }, { cityTable: city.table });
+  const story = new StoryStack(app, 'WvStory', cfg, client.urls.join(','), { env: env(cfg.region), crossRegionReferences: true });
   const billing = new BillingStack(app, 'WvBilling', cfg, { env: env('us-east-1') });
   const ci = cfg.createOidcRole ? new CiStack(app, 'WvCi', cfg, client, server, { env: env(cfg.region), crossRegionReferences: true }) : undefined;
   return { client, server, story, billing, ci, city };

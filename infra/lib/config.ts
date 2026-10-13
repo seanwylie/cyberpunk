@@ -5,6 +5,7 @@ export interface WvConfig {
   domainName?: string;        // apex or parent domain you own, e.g. example.com
   hostedZoneId?: string;      // Route 53 hosted zone id of domainName
   clientSubdomain: string;    // play  -> play.example.com (CloudFront)
+  clientAliases: string[];    // extra subdomains served by the same CloudFront client, e.g. ['warrantyvoid'] (-c clientAliases=a,b)
   serverSubdomain: string;    // game  -> game.example.com (ALB, wss://)
   storySubdomain: string;     // not used by Function URL; reserved
   alertEmail?: string; monthlyBudgetUsd: number;
@@ -20,7 +21,7 @@ export function readConfig(app: App): WvConfig {
   return {
     region: c('region', 'us-east-1'), account: c('account', process.env.CDK_DEFAULT_ACCOUNT),
     domainName: c('domainName'), hostedZoneId: c('hostedZoneId'),
-    clientSubdomain: c('clientSubdomain', 'play'), serverSubdomain: c('serverSubdomain', 'game'), storySubdomain: c('storySubdomain', 'story'),
+    clientSubdomain: c('clientSubdomain', 'play'), clientAliases: (Array.isArray(c('clientAliases')) ? c('clientAliases') : String(c('clientAliases', '')).split(',')).map((s: string) => String(s).trim()).filter(Boolean), serverSubdomain: c('serverSubdomain', 'game'), storySubdomain: c('storySubdomain', 'story'),
     alertEmail: c('alertEmail'), monthlyBudgetUsd: num('monthlyBudgetUsd', 30),
     // The hub keeps parties/rooms in process memory, so more than one task needs the room-ownership layer (docs/DEPLOY_AWS.md section 8). Default cap = 1.
     minTasks: num('minTasks', 1), maxTasks: num('maxTasks', 1), desiredCount: num('desiredCount', num('minTasks', 1)), existingRepo: String(c('existingRepo', 'false')) === 'true',
@@ -33,4 +34,6 @@ export function readConfig(app: App): WvConfig {
   };
 }
 export const clientHost = (c: WvConfig) => (c.domainName ? `${c.clientSubdomain}.${c.domainName}` : undefined);
+/** every client hostname: primary first, then aliases */
+export const clientHosts = (c: WvConfig) => (c.domainName ? [`${c.clientSubdomain}.${c.domainName}`, ...c.clientAliases.map(a => `${a}.${c.domainName}`)] : []);
 export const serverHost = (c: WvConfig) => (c.domainName ? `${c.serverSubdomain}.${c.domainName}` : undefined);

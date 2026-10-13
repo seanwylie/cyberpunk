@@ -36,7 +36,7 @@ export class StoryStack extends Stack {
     const alarm = new cloudwatch.Alarm(this, 'StoryInvocationsHigh', { metric: fn.metricInvocations({ period: Duration.hours(1), statistic: 'Sum' }), threshold: L.alarmPerHour, evaluationPeriods: 1, treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING, alarmDescription: 'Story Lambda invocations/hour above STORY alarm threshold (possible abuse / AI spend).' });
     if (cfg.alertEmail) { const topic = new sns.Topic(this, 'StoryAlarmTopic'); topic.addSubscription(new subs.EmailSubscription(cfg.alertEmail)); alarm.addAlarmAction(new cwActions.SnsAction(topic)); }
     // Public URL (the game client calls it from the browser). Abuse is bounded by the service's per-IP/session/daily caps AND reserved concurrency 5.
-    const fu = fn.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE, cors: { allowedOrigins: clientUrl.startsWith('https://') ? [clientUrl] : ['*'], allowedMethods: [lambda.HttpMethod.POST], allowedHeaders: ['content-type'], maxAge: Duration.hours(1) } });
+    const fu = fn.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE, cors: { allowedOrigins: clientUrl.startsWith('https://') ? clientUrl.split(',') : ['*'], allowedMethods: [lambda.HttpMethod.POST], allowedHeaders: ['content-type'], maxAge: Duration.hours(1) } });
     this.url = fu.url; new CfnOutput(this, 'StoryUrl', { value: fu.url }); new CfnOutput(this, 'OpenAiSecretName', { value: key.secretName });
   }
 }
