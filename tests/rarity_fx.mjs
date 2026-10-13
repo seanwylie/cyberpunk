@@ -15,6 +15,9 @@ const R = await ev(async () => {
   const diff = (a, b) => { let n = 0; for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 40) n++; return n; };
   const energy = d => { let e = 0, warm = 0, vio = 0; for (let i = 0; i < d.length; i += 4) { const a = d[i + 3] / 255; e += (d[i] + d[i + 1] + d[i + 2]) * a; const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]); if (mx > 170 && mx - mn > 90 && a > .5) warm++; if (d[i + 2] > 150 && d[i] > 120 && d[i + 1] < 160 && a > .3) vio++; } return { e, warm, vio }; };
   const run = (list, id, secs, moving) => { let d; for (let f = 0; f <= secs * 30; f++) d = shot(list, 10 + f / 30, id, moving); return d; };
+  // guard: a long-running vite dev server with HMR history can hand this test a different cosfx.ts instance than cosmetics.ts uses (?t= imports),
+  // so flourish()/liveParticles() would talk to a copy that never draws. Detect it and say so instead of reporting 14 bogus FX failures.
+  { F.resetFx(); const f0 = F.stats.frames; const k = { c, x: 100, y: 210, u: 3.4, t: 1, moving: false, face: 1, id: 'dup' }; C.drawCosmetics(k, [A.COS_BY_ID.hair_flame], 'back'); if (F.stats.frames === f0) return { dup: true }; F.resetFx(); }
   const orange = A.COSMETICS.filter(d => d.rarity === 'orange' && !d.line && !d.id.startsWith('ex_') && !d.id.startsWith('col_') && !['bundled','pass','starter'].includes(d.src?.k)) /* premium line FX are owned by pmfx.ts, tested in monet.mjs */, purple = A.COSMETICS.filter(d => d.rarity === 'purple' && !d.line && !['shop','chroma','pass','collection','starter','exclusive','bundled'].includes(d.src?.k));
   const per = orange.map(d => { F.resetFx(); const a = shot([d], 5, 'o'), b = shot([d], 5.9, 'o'); run([d], 'o', 3); const idleParts = F.liveParticles('o');
     F.resetFx(); shot([d], 20, 'f'); const idle = shot([d], 20.26, 'f'); F.resetFx(); shot([d], 20, 'f'); F.flourish('f'); shot([d], 20, 'f'); const snap = shot([d], 20.26, 'f'); const after = shot([d], 21.6, 'f'); F.resetFx(); shot([d], 20, 'g'); const idle2 = shot([d], 21.6, 'g');
@@ -38,6 +41,7 @@ const R = await ev(async () => {
   const Q = (await import('/src/quality.ts')).Q; Q.setPref('low'); const lowB = F.budget(); Q.setPref('auto');
   return { curve, feet, per, fxOnly, purpAcc, oe, pe, op, pp, pair, pair2, still, mov, reduced: { d: diff(r1, r2), fx: fr }, ms, peak, dropped, max: F.POOL_MAX, lowB, nOrange: orange.length, nPurple: purple.length };
 });
+if (R.dup) { console.log('FAIL stale dev server: cosmetics.ts and this test see two different cosfx.ts module instances (HMR history). Restart vite / use a fresh URL and rerun.'); await browser.close(); process.exit(1); }
 for (const p of R.per) ok(p.sig && p.anim > 10 && p.idleParts === 0, `orange ${p.id}: themed signature, gentle idle motion (${p.anim} px over 0.9 s), no idle particle spam (${p.idleParts})`);
 for (const p of R.per) ok(p.flo > 30 && p.settle < 40, `orange ${p.id}: flourish on trigger (${p.flo} px at the snap) and settles back to idle (${p.settle} px)`);
 ok(R.curve[0].k < .3 && R.curve[0].s < 0 && R.curve[2].k > .9 && R.curve[4].k === 0, 'flourish timing: anticipation (pull back) -> snap -> settle ' + JSON.stringify(R.curve.map(c => [c.k.toFixed(2), c.s.toFixed(2)])));
