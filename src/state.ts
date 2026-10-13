@@ -1,3 +1,4 @@
+import { legacyCosId } from './content/appearance';
 import { ABILITIES, chipFits, Slot, ChipId, SLOTS, STARTING, PROGRESSION, ITEM_BY_ID, Mfr, INSTANCE_RETENTION_HOURS } from './config';
 import type { StoryState } from './story';
 import { migrateBank } from './bank';
@@ -47,7 +48,7 @@ export function newSave():Save {
 }
 export function mkInst(s:{uidN:number}, def:string):Inst { if(!ITEM_BY_ID[def]) throw new Error('unknown item '+def); return { uid:'u'+(s.uidN++), def, chips:[] }; }
 export function load():Save {
-  try { const raw = activeRaw(); if (raw) { const s = applyAccount(JSON.parse(raw),ensureRoster().account) as Save; if (s.version===1) { s.settings = { ...newSave().settings, ...s.settings }; if((s.settings.gore as any)==='standard') s.settings.gore='off'; /* old default: nothing was ever opted in to */ s.lockouts=s.lockouts||{}; s.contracts=s.contracts||{active:{},done:[],doneDay:{}}; s.abAcq=s.abAcq||{total:0,dry:0}; if(s.abPick&&!Array.isArray(s.abPick)) s.abPick=undefined; if(s.abPick) s.abPick=s.abPick.slice(0,3).map(x=>typeof x==='string'&&ABILITIES[x]?x:null); const moved=sanitizeChips(s); migrateBank(s); (s as any)._chipMigrated=moved; return s; } } } catch (e) { console.warn('load failed', e); }
+  try { const raw = activeRaw(); if (raw) { const s = applyAccount(JSON.parse(raw),ensureRoster().account) as Save; if (s.version===1) { s.settings = { ...newSave().settings, ...s.settings }; if((s.settings.gore as any)==='standard') s.settings.gore='off'; /* old default: nothing was ever opted in to */ s.lockouts=s.lockouts||{}; s.contracts=s.contracts||{active:{},done:[],doneDay:{}}; s.abAcq=s.abAcq||{total:0,dry:0}; if(s.abPick&&!Array.isArray(s.abPick)) s.abPick=undefined; if(s.abPick) s.abPick=s.abPick.slice(0,3).map(x=>typeof x==='string'&&ABILITIES[x]?x:null); if(s.purchases){ s.purchases.skins=[...new Set((s.purchases.skins||[]).map(legacyCosId))]; if(s.purchases.equippedSkin) s.purchases.equippedSkin=legacyCosId(s.purchases.equippedSkin); } const moved=sanitizeChips(s); migrateBank(s); (s as any)._chipMigrated=moved; return s; } } } catch (e) { console.warn('load failed', e); }
   return applyAccount(newSave(),ensureRoster().account);
 }
 /** Migration/enforcement: unsocket chips that do not fit their body part and return them to the locker stock. Returns number moved. */

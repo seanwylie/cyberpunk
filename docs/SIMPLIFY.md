@@ -4,7 +4,7 @@ Sean: "complexity is easy, simplicity is key." Scope: (A) the game, (B) the code
 Each item lists **impact** (what simplifying buys), **risk**, and a **recommendation**: cut / merge / tooltip (hide behind a tooltip or an advanced section) / keep.
 Phase 2 (done in this pass) is marked **DONE**. Anything that removes or merges a whole player-facing system is a **PROPOSAL** for Sean and was not changed.
 
-Standing rules: the player never gets stuck, `npm run test:perf` must not regress (docs/PERF_BUDGETS.md), keep bundle headroom, short labels with tooltips, no drug references.
+Standing rules: the player never gets stuck, `npm run test:perf` must not regress (docs/PERF_BUDGETS.md), keep bundle headroom, short labels with tooltips, MA rating without substance references.
 
 ## A. Game
 
