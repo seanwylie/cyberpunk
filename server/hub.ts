@@ -5,19 +5,19 @@ import { createServer } from 'node:http';
 import { randomBytes } from 'node:crypto';
 // Protocol v2: client-authoritative gameplay. The hub runs NO per-tick combat sim; it relays low-rate display state and arbitrates pivotal events (see docs/MULTIPLAYER.md).
 import { dungeonOf } from '../src/content/dungeons';
-import { PROTO, STATE_HZ, SHARED_FLAGS, MAX_MOVE_SPEED, MOVE_BUDGET, partyHpMul, partyDmgMul, TOWN_HZ, MAX_PARTY, TOWN_SHARD_CAP, cleanName, cleanChat, cleanLook, clamp, r2, Look, PartyState } from '../src/net/shared';
+import { PROTO, STATE_HZ, SHARED_FLAGS, MAX_MOVE_SPEED, MOVE_BUDGET, partyHpMul, partyDmgMul, TOWN_HZ, MAX_PARTY, TOWN_SHARD_CAP, TOWN_SHARD_IDLE_MS, cleanName, cleanChat, cleanLook, clamp, r2, Look, PartyState } from '../src/net/shared';
 import { DUNGEONS } from '../src/content/dungeons';
 import { COMBAT } from '../src/config';
 import { CityHub, CITY_SYNC_MS, CITY_SAVE_MS, CITY_NEWS_MS } from './city_srv';
 
-export interface HubOpts { /** allowed browser Origins (exact match, or '*.example.com'); empty/undefined = allow all (dev). Requests with no Origin header (bots/CLI) are allowed only when `allowNoOrigin` */ /** optional extra HTTP route handler (e.g. story proxy); return true when handled */ extra?: (req: any, res: any) => boolean; origins?: string[]; allowNoOrigin?: boolean; /** max concurrent instance rooms / parties (server refuses new ones when full) */ maxRooms?: number; maxParties?: number; port?: number; dev?: boolean; dmgMul?: number; host?: string; maxConns?: number; log?: boolean; /** living city (docs/LIVING_CITY.md); omitted = off */ city?: CityHub | null; citySyncMs?: number }
+export interface HubOpts { /** allowed browser Origins (exact match, or '*.example.com'); empty/undefined = allow all (dev). Requests with no Origin header (bots/CLI) are allowed only when `allowNoOrigin` */ /** optional extra HTTP route handler (e.g. story proxy); return true when handled */ extra?: (req: any, res: any) => boolean; origins?: string[]; allowNoOrigin?: boolean; /** max concurrent instance rooms / parties (server refuses new ones when full) */ maxRooms?: number; maxParties?: number; port?: number; dev?: boolean; dmgMul?: number; host?: string; maxConns?: number; log?: boolean; /** living city (docs/LIVING_CITY.md); omitted = off */ city?: CityHub | null; citySyncMs?: number; /** players per town copy (default TOWN_SHARD_CAP) */ townCap?: number; /** empty town copy lifetime (default 60 s) */ shardIdleMs?: number }
 class Bucket { tokens: number; last = Date.now(); constructor(public rate: number, public burst: number) { this.tokens = burst; } take() { const n = Date.now(); this.tokens = Math.min(this.burst, this.tokens + (n - this.last) / 1000 * this.rate); this.last = n; if (this.tokens < 1) return false; this.tokens--; return true; } }
 interface Guest { id: string; token: string; name: string; lvl: number; look?: Look; build?: any; ws: WebSocket | null; party: Party | null; shard: Shard | null; pos: { x: number; y: number; face: number; moving: boolean; em?: number; t: number; town: string }; ready: boolean; b: { all: Bucket; input: Bucket; chat: Bucket; ping: Bucket; pos: Bucket }; viol: number }
 interface Party { code: string; leader: string; members: Guest[]; dungeon: string | null; room: Room | null; ready: Set<string>; check: { dungeon: string; until: number; yes: Set<string>; no: Set<string> } | null }
 interface Invite { from: string; kind: 'invite' | 'join'; at: number }
 interface RPlayer { id: string; name: string; lvl: number; look?: Look; x: number; y: number; f: number; hp: number; mh: number; dn: boolean; mv: boolean; at: boolean; em?: number; dirty: boolean; t: number; budget: number; viol: number; dmgB: Bucket; killB: Bucket; reviveAt: number; freeUntil: number; kills: number; dmgTotal: number }
 interface Room { id: string; party: Party; dungeon: string; seed: number; hpMul: number; dmgMul: number; w: number; h: number; spawn: { x: number; y: number }; cps: { x: number; y: number }[]; homes: { x: number; y: number }[]; players: Map<string, RPlayer>; killed: Set<number>; flags: Record<string, any>; bossDead: boolean; completed: boolean; allDownT: number; tick: number; stats: { stateRejected: number; kills: number; killsRejected: number; dmgClipped: number; revives: number; revivesRejected: number; flagsRejected: number } }
-interface Shard { id: string; town: string; members: Set<Guest> }
+interface Shard { id: string; town: string; n: number; members: Set<Guest>; emptyAt: number }
 const CODE_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 export function startHub(o: HubOpts = {}) {
@@ -40,7 +40,7 @@ export function startHub(o: HubOpts = {}) {
 
   // ---------- parties
   const partyState = (p: Party): PartyState => ({ t: 'party', code: p.code, dungeon: p.dungeon, inInstance: !!p.room, ...(p.check ? { check: { dungeon: p.check.dungeon, ms: Math.max(0, p.check.until - Date.now()), yes: [...p.check.yes], no: [...p.check.no] } } : {}), members: p.members.map(m => ({ inRun: !!p.room?.players.has(m.id), id: m.id, name: m.name, ready: p.ready.has(m.id) || m.id === p.leader, leader: m.id === p.leader, lvl: m.lvl, look: m.look })) });
-  const bcastParty = (p: Party) => { const s = partyState(p); for (const m of p.members) send(m, s); };
+  const bcastParty = (p: Party) => { const s = partyState(p); for (const m of p.members) send(m, s); gatherParty(p); };
   const partyOf = (g: Guest) => g.party;
   function newCode() { for (;;) { let c = ''; const b = randomBytes(5); for (let i = 0; i < 5; i++) c += CODE_ALPHA[b[i] % CODE_ALPHA.length]; if (!parties.has(c)) return c; } }
   function leaveParty(g: Guest, why = 'left') {
@@ -50,12 +50,24 @@ export function startHub(o: HubOpts = {}) {
     send(g, { t: 'party', code: '', members: [], dungeon: null, inInstance: false });
   }
   // ---------- town shards (shared presence)
-  function joinShard(g: Guest, town: string) {
-    if (g.shard && g.shard.town === town) return; leaveShard(g); let sh = [...shards.values()].find(s => s.town === town && s.members.size < TOWN_SHARD_CAP);
-    if (!sh) { sh = { id: town + '-' + (1 + [...shards.values()].filter(s => s.town === town).length), town, members: new Set() }; shards.set(sh.id, sh); }
-    sh.members.add(g); g.shard = sh; g.pos.town = town; send(g, { t: 'town', shard: sh.id, town, pop: sh.members.size });
+  // numbered town copies ("Rustline 1"): fill the fullest copy below the cap, open the lowest free number when all are full.
+  // Party members always go to a party mate's copy (leader first) even above the cap: reserved seats, so a party is never split.
+  // Seats of party mates who are away (in a dungeon) count against the cap so they can come back. Empty copies close after shardIdleMs.
+  const townCap = Math.max(1, o.townCap ?? TOWN_SHARD_CAP);
+  const seats = (sh: Shard) => { const away = new Set<string>(); for (const m of sh.members) for (const q of m.party?.members || []) if (!q.shard) away.add(q.id); return sh.members.size + away.size; };
+  function pickShard(g: Guest, town: string): Shard {
+    const p = g.party; if (p) { const mates = [p.members.find(x => x.id === p.leader), ...p.members].filter(x => x && x !== g && x.shard?.town === town); if (mates[0]) return mates[0]!.shard!; }
+    const open = [...shards.values()].filter(s => s.town === town && seats(s) < townCap).sort((a, b) => b.members.size - a.members.size || a.n - b.n); if (open[0]) return open[0];
+    const used = new Set([...shards.values()].filter(s => s.town === town).map(s => s.n)); let n = 1; while (used.has(n)) n++;
+    const sh: Shard = { id: town + '-' + n, town, n, members: new Set(), emptyAt: 0 }; shards.set(sh.id, sh); return sh;
   }
-  function leaveShard(g: Guest) { const sh = g.shard; if (!sh) return; sh.members.delete(g); g.shard = null; for (const m of sh.members) send(m, { t: 'town_leave', id: g.id }); if (!sh.members.size) shards.delete(sh.id); }
+  function joinShard(g: Guest, town: string, force?: Shard) {
+    const sh = force ?? pickShard(g, town); if (g.shard === sh) return; leaveShard(g);
+    sh.members.add(g); sh.emptyAt = 0; g.shard = sh; g.pos.town = town; send(g, { t: 'town', shard: sh.id, town, n: sh.n, cap: townCap, pop: sh.members.size });
+  }
+  function leaveShard(g: Guest) { const sh = g.shard; if (!sh) return; sh.members.delete(g); g.shard = null; for (const m of sh.members) send(m, { t: 'town_leave', id: g.id }); if (!sh.members.size) sh.emptyAt = Date.now(); }
+  /** after a party forms/changes: pull members in the same town into the leader's copy */
+  function gatherParty(p: Party) { const lead = p.members.find(x => x.id === p.leader); const sh = lead?.shard; if (!sh) return; for (const m of p.members) if (m.shard && m.shard !== sh && m.shard.town === sh.town) joinShard(m, sh.town, sh); }
 
   // ---------- instances
   const rosterOf = (r: Room) => [...r.players.values()].map(x => ({ id: x.id, name: x.name, lvl: x.lvl, look: x.look }));
@@ -179,7 +191,7 @@ export function startHub(o: HubOpts = {}) {
       case 'chat': { if (!g.b.chat.take()) { stats.rateLimited++; return err(g, 'slow', 'Slow down.'); } const text = cleanChat(m.text); if (!text) return; const scope = m.scope === 'town' ? 'town' : 'party'; const msg = { t: 'chat', scope, from: g.id, name: g.name, text, at: Date.now() };
         if (scope === 'party' && g.party) for (const x of g.party.members) send(x, msg); else if (scope === 'town' && g.shard) for (const x of g.shard.members) send(x, msg); break; }
       case 'mark': { if (!g.b.ping.take()) return; const r = g.party?.room; if (!r) return; const x = +m.x, y = +m.y; if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > r.w || y > r.h) return; for (const q of g.party!.members) send(q, { t: 'mark', from: g.id, name: g.name, x: r2(x), y: r2(y) }); break; }
-      case 'town_join': joinShard(g, ['rustline', 'harrow'].includes(m.town) ? m.town : 'rustline'); if (o.city && m.cv !== o.city.s.v) send(g, o.city.full()); break;
+      case 'town_join': joinShard(g, typeof m.town === 'string' && /^[a-z0-9_]{1,24}$/.test(m.town) ? m.town : 'rustline'); if (o.city && m.cv !== o.city.s.v) send(g, o.city.full()); break;
       case 'cev': { if (!o.city) return; const r = o.city.claim(g.id, m, { inRoom: g.party?.room?.id ?? null }); if (!r.ok) stats.rejected++; break; }
       case 'town_leave': leaveShard(g); break;
       case 'town_pos': { if (!g.shard || !g.b.pos.take()) return; const x = +m.x, y = +m.y; if (!Number.isFinite(x) || !Number.isFinite(y)) return; const now = Date.now(), dt = Math.min(1, (now - g.pos.t) / 1000); const max = COMBAT.playerSpeed * 1.6 * Math.max(dt, .05) + 1.2; // speed gate: no teleporting
@@ -210,6 +222,7 @@ export function startHub(o: HubOpts = {}) {
   let lastRoomT = Date.now();
   const simTimer = setInterval(() => { const now = Date.now(), dt = (now - lastRoomT) / 1000; lastRoomT = now; for (const p of parties.values()) if (p.check && now >= p.check.until) checkDone(p, true); for (const r of rooms.values()) { roomTick(r, dt); if (r.players.size === 0) endInstance(r.party, 'empty'); } }, 1000 / STATE_HZ);
   const townTimer = setInterval(() => {
+    { const now = Date.now(); for (const sh of [...shards.values()]) if (!sh.members.size && sh.emptyAt && now - sh.emptyAt >= (o.shardIdleMs ?? TOWN_SHARD_IDLE_MS)) shards.delete(sh.id); }
     for (const sh of shards.values()) { const list = [...sh.members].filter(m => m.pos.t).map(m => ({ id: m.id, name: m.name, x: r2(m.pos.x), y: r2(m.pos.y), face: r2(m.pos.face), moving: m.pos.moving, em: m.pos.em || 0, look: m.look, lvl: m.lvl })); for (const m of sh.members) send(m, { t: 'town_snap', players: list.filter(p => p.id !== m.id), pop: sh.members.size }); }
   }, 1000 / TOWN_HZ);
   // living city: one slow timer. Diffs only (changed districts), every citySyncMs, to town shard members; persistence + news refresh are async best effort.

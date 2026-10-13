@@ -12,7 +12,11 @@ export const SHARED_FLAGS = ['gate1', 'lock2', 'controller', 'armory', 'passageS
 export const TICK_HZ = 20;                // legacy v1 authoritative tick (only the legacy PartyWorld test core uses it)
 export const TICK_DT = 1 / TICK_HZ;
 export const MAX_PARTY = 4;
-export const TOWN_SHARD_CAP = 30;
+/** players per numbered town copy ("Rustline 1"). 12 = the town perf gate's measured load (docs/PERF_BUDGETS.md: 12 fully dressed remote players).
+ *  A party may overfill its leader's copy by up to MAX_PARTY - 1 reserved seats. Server override: WV_TOWN_CAP / HubOpts.townCap. */
+export const TOWN_SHARD_CAP = 12;
+/** an empty town copy closes after this long */
+export const TOWN_SHARD_IDLE_MS = 60000;
 export const TOWN_HZ = 10;
 export const INTERP_DELAY = 0.12;         // seconds remote entities are rendered behind the newest snapshot
 export const CHAT_MAX = 140;
