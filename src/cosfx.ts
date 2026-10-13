@@ -95,6 +95,10 @@ export function flourish(owner = 'me', at?: number) { const o = owners.get(owner
 // ------------------------------------------------------------------ main entry
 /** Feature flag: ?skinfx=0 or localStorage 'flag.skinfx'='0' turns all skin/gear FX off (cosmetics still draw). */
 export let SKIN_FX_ON = (() => { try { const q = new URLSearchParams(location.search).get('skinfx'); if (q != null) return q !== '0'; return localStorage.getItem('flag.skinfx') !== '0'; } catch { return true; } })();
+/** Remote players (40 px tall in a crowd) carry at most REMOTE_SIGS signature layers, picked from the largest silhouette slots first:
+ *  the look still reads as orange, a town crowd stays well inside the draw-call budget. The local player and the dressing room get all of them. */
+export const REMOTE_SIGS = 3; const SIG_PRI = ['aura', 'back', 'skin', 'torso', 'hair', 'head', 'eyes', 'arms', 'hands', 'legs', 'tattoo'];
+function sigList(list: CosDef[], id: string): CosDef[] { const o = list.filter(d => d.rarity === 'orange'); if (!id.startsWith('net:') || o.length <= REMOTE_SIGS) return o; return o.sort((a, b) => SIG_PRI.indexOf(a.slot) - SIG_PRI.indexOf(b.slot)).slice(0, REMOTE_SIGS); }
 export function drawRarityFx(k: FxCtx, list: CosDef[], phase: 'back' | 'front') {
   if (!SKIN_FX_ON) return;
   const tier = topTier(list); if (!tier) return; const id = k.id || 'me'; const { c, x, y, u } = k; const red = reduced(), B = budget();
@@ -107,7 +111,7 @@ export function drawRarityFx(k: FxCtx, list: CosDef[], phase: 'back' | 'front') 
   if (phase === 'back') {
     const dt = Math.max(0, Math.min(.1, k.t - o.t)); o.t = k.t; const dx = x - o.ax, dy = y - o.ay; o.ax = x; o.ay = y;
     if (tier === 'orange') {
-      for (const d of list) if (d.rarity === 'orange') signature(k, d, 'back', t, fc);
+      for (const d of sigList(list, id)) signature(k, d, 'back', t, fc);
       // painterly smear trail while moving: a few long tapered strokes in the skin palette (no confetti)
       const pal = PALETTES[SIGNATURE[list.find(d => d.rarity === 'orange')!.id]?.pal || 'forge'];
       if (k.moving && B > 0) { o.tacc += dt * 9 * B; while (o.tacc >= 1) { o.tacc--; spawn(id + ':trail', x + (Math.random() - .5) * 8 * u, y - (8 + Math.random() * 26) * u, 0, 0, .45, (5 + Math.random() * 4) * u, Math.random() < .6 ? pal[2] : pal[1], 2); } }
@@ -118,7 +122,7 @@ export function drawRarityFx(k: FxCtx, list: CosDef[], phase: 'back' | 'front') 
       else { p.x += dx + p.vx * dt; p.y += dy + p.vy * dt; shape(c, [[p.x, p.y - p.r], [p.x + p.r * .5, p.y], [p.x, p.y + p.r], [p.x - p.r * .5, p.y]], p.col, '#000', 0, a * .8); } }
     stats.live = live; stats.frames++;
   } else {
-    if (tier === 'orange') { for (const d of list) if (d.rarity === 'orange') signature(k, d, 'front', t, fc); }
+    if (tier === 'orange') { for (const d of sigList(list, id)) signature(k, d, 'front', t, fc); }
     else { for (const d of list) if (d.rarity === 'purple') accessory(k, d, 'front', t); }
     if (tier === 'purple') { // polished material: one crisp rim highlight that slowly travels along the shoulder line
       const ph = red ? .5 : .5 + .5 * Math.sin(t * .6); c.globalAlpha = .55; c.strokeStyle = '#efe4ff'; c.lineWidth = Math.max(1, .55 * u); c.lineCap = 'round'; c.beginPath(); c.arc(x, y - 30 * u, 9.5 * u, -Math.PI * (.85 - ph * .3), -Math.PI * (.6 - ph * .3)); c.stroke(); }
