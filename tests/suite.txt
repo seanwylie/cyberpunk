@@ -109,3 +109,4 @@ npc_memory
 contracts_personal
 npc_memory_ext
 tests/enemy_back_list.mjs
+tests/music_town_picks.mjs
