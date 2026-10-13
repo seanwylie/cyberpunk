@@ -7,6 +7,7 @@ import { partyHpMul } from './shared';
 import type { Game } from '../sim';
 
 import { esc } from '../esc';
+import { TOWN_INFO } from '../towns';
 const CSS = `
 #btn-party .dot{ position:absolute; right:1px; bottom:1px; width:9px; height:9px; border-radius:50%; background:#6b6d70; box-shadow:0 0 0 1.5px #111; } #btn-party.on .dot{ background:#7bd389 } #btn-party.party .dot{ background:#e8c46a }
 #partypanel{ position:fixed; z-index:40; right:8px; top:calc(max(36px,calc(30px*var(--fs,1))) + 22px); width:min(300px,calc(100vw - 16px)); max-height:calc(100vh - 120px); overflow:auto; padding:8px 10px; border-radius:8px; background:rgba(16,17,18,.94); border:1px solid #5a5d60; color:#e6e0cf; font:600 max(var(--fmin,12px),12px)/1.3 "Roboto Condensed",sans-serif; box-shadow:0 6px 24px rgba(0,0,0,.6); display:none; }
@@ -24,11 +25,12 @@ const CSS = `
 .pprompt{ position:fixed; left:50%; top:16%; transform:translateX(-50%); z-index:46; display:none; min-width:min(280px,calc(100vw - 24px)); padding:8px 12px; border-radius:8px; background:rgba(16,17,18,.95); border:1px solid #e8c46a; color:#e6e0cf; font:600 max(var(--fmin,12px),14px)/1.3 "Roboto Condensed",sans-serif; text-align:center; box-shadow:0 6px 24px rgba(0,0,0,.6) }
 .pprompt .t{ font-size:max(var(--fmin,12px),16px); color:#e8c46a; margin-bottom:2px } .pprompt .mut{ color:#9a9788; font-weight:500 } .pprompt .bar{ height:4px; margin:6px 0; background:#2a2c2e; border-radius:2px; overflow:hidden } .pprompt .bar i{ display:block; height:100%; background:#e8c46a }
 .pprompt .row{ display:flex; gap:8px; justify-content:center; margin-top:6px } .pprompt button{ background:#2a2c2e; color:#e6e0cf; border:1px solid #6a6d70; border-radius:4px; padding:4px 14px; font:inherit; cursor:pointer } .pprompt button.go{ border-color:#7d8a52; color:#d6e8a8 }
+#shardtag{ position:fixed; z-index:20; display:none; padding:1px 6px; border-radius:4px; background:rgba(10,10,11,.45); color:rgba(230,224,207,.6); font:600 max(var(--fmin,11px),11px)/1.4 "Roboto Condensed",sans-serif; letter-spacing:.04em; pointer-events:auto; cursor:default }
 `;
 export class PartyUI {
   panel: HTMLElement; btn: HTMLButtonElement; log: { name: string; text: string; me: boolean }[] = []; open = false; chatEl: HTMLElement; downEl: HTMLElement; private last = '';
   net: NetClient | null = null; sess: NetSession | null = null;
-  menuEl: HTMLElement; inviteEl: HTMLElement; checkEl: HTMLElement; private invites: { from: string; name: string; kind: string; at: number }[] = [];
+  menuEl: HTMLElement; shardEl: HTMLElement; inviteEl: HTMLElement; checkEl: HTMLElement; private invites: { from: string; name: string; kind: string; at: number }[] = [];
   constructor(public g: Game, public url: string, public ensure: (user?: boolean) => unknown) {
     const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
     const tray = document.getElementById('topright')!; this.btn = document.createElement('button'); this.btn.id = 'btn-party'; this.btn.className = 'tbtn'; this.btn.type = 'button'; this.btn.setAttribute('aria-label', 'Party (multiplayer)');
@@ -37,7 +39,7 @@ export class PartyUI {
     this.panel = document.createElement('div'); this.panel.id = 'partypanel'; this.panel.setAttribute('role', 'dialog'); this.panel.setAttribute('aria-label', 'Party'); document.body.appendChild(this.panel);
     this.chatEl = document.createElement('div'); this.chatEl.id = 'netchat'; document.body.appendChild(this.chatEl); this.downEl = document.createElement('div'); this.downEl.id = 'netdown'; document.body.appendChild(this.downEl);
     const mk = (id: string, cls = '') => { const e = document.createElement('div'); e.id = id; if (cls) e.className = cls; document.body.appendChild(e); e.addEventListener('click', ev => this.onPrompt(ev)); e.addEventListener('pointerdown', ev => ev.stopPropagation()); return e; };
-    this.menuEl = mk('pmenu'); this.inviteEl = mk('pinvite', 'pprompt'); this.checkEl = mk('rcheck', 'pprompt'); this.inviteEl.setAttribute('role', 'alertdialog'); this.checkEl.setAttribute('role', 'alertdialog');
+    this.shardEl = document.createElement('div'); this.shardEl.id = 'shardtag'; document.body.appendChild(this.shardEl); this.menuEl = mk('pmenu'); this.inviteEl = mk('pinvite', 'pprompt'); this.checkEl = mk('rcheck', 'pprompt'); this.inviteEl.setAttribute('role', 'alertdialog'); this.checkEl.setAttribute('role', 'alertdialog');
     window.addEventListener('pointerdown', ev => { if (!this.menuEl.contains(ev.target as Node)) this.menuEl.style.display = 'none'; }, true);
     window.addEventListener('keydown', e => { const t = e.target as HTMLElement; if (t?.matches?.('input,textarea,select')) { if (e.key === 'Escape') { this.toggle(false); t.blur(); } return; } if (e.code === 'KeyP') this.toggle(); else if (e.code === 'Enter' && this.net?.state === 'online') { this.toggle(true); (this.panel.querySelector('#pp-chat') as HTMLInputElement | null)?.focus(); } });
     this.panel.addEventListener('keydown', e => e.stopPropagation()); this.panel.addEventListener('keyup', e => e.stopPropagation()); this.panel.addEventListener('click', e => this.onClick(e));
@@ -66,7 +68,12 @@ export class PartyUI {
     else if (a === 'accept' || a === 'decline') { const f = this.inviteEl.dataset.from!; n.inviteReply(f, a === 'accept'); this.invites = this.invites.filter(i => i.from !== f); this.drawInvite(); }
     else if (a === 'ready' || a === 'notready') { n.checkReply(a === 'ready'); }
   }
-  private tick() { this.invites = this.invites.filter(i => Date.now() - i.at < 30000); if (this.inviteEl.style.display === 'block' && !this.invites.length) this.drawInvite(); this.drawCheck(); const n = this.net; const inst = !!this.sess?.active; const you = inst ? this.sess!.ic!.you : null; this.downEl.style.display = you?.down ? 'block' : 'none'; if (you?.down) this.downEl.textContent = 'DOWNED: a teammate can revive you (hold F)'; if (!this.open) this.syncBtn(); else { const key = JSON.stringify([n?.state, n?.party, inst, n?.townPop, n?.shard]); if (key !== this.last) this.render(); } }
+  /** subtle "Rustline 1" tag under the minimap (or the top-right tray) while online in town */
+  private drawShard() { const n = this.net, e = this.shardEl; const on = !!n && n.state === 'online' && !!n.shardN && this.g.mode === 'town' && !this.sess?.active; if (!on) { e.style.display = 'none'; return; }
+    const name = ((TOWN_INFO as any)[n!.townId]?.name || n!.townId).split(' ')[0] + ' ' + n!.shardN; if (e.textContent !== name) e.textContent = name;
+    e.title = `Town copy ${n!.shardN} of ${(TOWN_INFO as any)[n!.townId]?.name || n!.townId}: ${n!.townPop}/${n!.townCap} players. A new copy opens when this one is full; your party always shares its leader's copy.`;
+    const mm = document.getElementById('minimap'), tr = document.getElementById('topright'); const r = (mm && mm.offsetParent && getComputedStyle(mm).display !== 'none' ? mm : tr)?.getBoundingClientRect(); e.style.display = 'block'; if (r) { e.style.top = (r.bottom + 4) + 'px'; e.style.right = Math.max(4, innerWidth - r.right) + 'px'; } }
+  private tick() { this.drawShard(); this.invites = this.invites.filter(i => Date.now() - i.at < 30000); if (this.inviteEl.style.display === 'block' && !this.invites.length) this.drawInvite(); this.drawCheck(); const n = this.net; const inst = !!this.sess?.active; const you = inst ? this.sess!.ic!.you : null; this.downEl.style.display = you?.down ? 'block' : 'none'; if (you?.down) this.downEl.textContent = 'DOWNED: a teammate can revive you (hold F)'; if (!this.open) this.syncBtn(); else { const key = JSON.stringify([n?.state, n?.party, inst, n?.townPop, n?.shard]); if (key !== this.last) this.render(); } }
   syncBtn() { const n = this.net; this.btn.classList.toggle('on', n?.state === 'online'); this.btn.classList.toggle('party', !!n?.party); const tt = this.btn.querySelector('.tt'); if (tt) tt.innerHTML = (n?.state === 'online' ? 'Party' : n?.lastErr ? 'Party: offline' : 'Party') + '<kbd>P</kbd>'; }
   private inviteLink() { const u = new URL(location.href); u.search = ''; if (new URLSearchParams(location.search).get('server')) u.searchParams.set('server', this.url); u.searchParams.set('party', this.net!.party!.code); return u.toString(); }
   private onClick(e: Event) {

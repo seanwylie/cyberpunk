@@ -57,7 +57,7 @@ export class InstanceClient {
 }
 
 export class NetClient {
-  state: 'off' | 'connecting' | 'online' = 'off'; id = ''; token = ''; party: PartyState | null = null; inst: InstanceClient | null = null; rtt = 0; devServer = false; versionError = ''; lastErr = ''; shard = ''; townPlayers = new Interp<any>(.2); townPop = 0; marks: { x: number; y: number; name: string; t: number }[] = [];
+  state: 'off' | 'connecting' | 'online' = 'off'; id = ''; token = ''; party: PartyState | null = null; inst: InstanceClient | null = null; rtt = 0; devServer = false; versionError = ''; lastErr = ''; shard = ''; shardN = 0; townCap = 0; townId = ''; townPlayers = new Interp<any>(.2); townPop = 0; marks: { x: number; y: number; name: string; t: number }[] = [];
   private ws: any = null; private h: Record<string, Fn[]> = {}; private pingT: any = null; private cn = 0; private rnd: () => number; private closedByUser = false; private retry = 0; private retryT: any = null; stats = { sent: 0, recv: 0, dropped: 0 };
   constructor(public o: NetOpts) { this.rnd = rng32(o.link?.seed ?? 7); }
   on(t: string, f: Fn) { (this.h[t] ||= []).push(f); return this; }
@@ -89,7 +89,7 @@ export class NetClient {
       case 'ps': if (this.inst) { this.inst.onPs(m, now); this.emit('ps', m); } break;
       case 'ekill': case 'flag': case 'edmg': case 'revived': case 'wipe': this.inst?.onEvent(m); this.emit(m.t, m); break;
       case 'err': if (m.code === 'version') { this.versionError = m.msg; this.lastErr = m.msg; this.closedByUser = true; clearTimeout(this.retryT); } this.emit('err', m); break;
-      case 'town': this.shard = m.shard; this.townPop = m.pop; this.emit('town', m); break;
+      case 'town': this.shard = m.shard; this.shardN = m.n | 0; this.townCap = m.cap | 0; this.townId = m.town || ''; this.townPop = m.pop; this.emit('town', m); break;
       case 'town_snap': this.townPop = m.pop; this.townPlayers.push((Date.now()) / 1000, now, m.players); this.emit('town_snap', m); break;
       case 'town_leave': this.emit('town_leave', m.id); break;
       case 'mark': this.marks.push({ x: m.x, y: m.y, name: m.name, t: Date.now() }); if (this.marks.length > 6) this.marks.shift(); this.emit('mark', m); break;
