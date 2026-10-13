@@ -40,6 +40,9 @@ export const THEME_LOFI=['theme_lofi_dust','theme_lofi_rain','theme_lofi_tape'];
 ESCALATE.push('boss_theme_storm');
 /** Long arrangement of theme_main (~4 min, tools/extend_theme.py): opens a session (main menu / first town boot) on a quarter of boot-roll hits (Rustline, the starting town), outside the rotation pools; plays through to its own ending. */
 export const THEME_LONG='theme_main_long';
+/** Sean's favorite: the main theme and its lo-fi takes get this many slots per shuffle cycle in every calm bag (town/menus, dungeon traversal). Boss/elite bags are untouched. */
+export const THEME_WEIGHT=2; export const THEME_FAV=new Set(['theme_main',THEME_LONG,'theme_lofi_dust','theme_lofi_rain','theme_lofi_tape']);
+export const favWeigh=(items:(string|[string,number])[]):[string,number][]=>items.map(it=>{ const [n,w]=Array.isArray(it)?it:[it,1]; return [n,THEME_FAV.has(n)?w*THEME_WEIGHT:w]; });
 export const PACK7=[THEME_LONG,...TOWN7,...DUNGEON7,...BOSS7,...ESCALATE,'theme_main',...THEME_LOFI,'boss_theme_wall','boss_theme_siege'];
 Object.assign(FAMILY,{ theme_main_long:'noir', theme_lofi_dust:'noir',theme_lofi_rain:'noir',theme_lofi_tape:'noir', town_dir_vigil:'noir',town_dir_pulse:'pulse',town_dir_embers:'drift',town_dir_static:'noir',town_dir_lantern:'noir',town_dir_glass:'pulse',town_dir_dust:'drift',town_dir_choir:'drift',town_dir_rain:'noir',town_dir_tick:'pulse',town_dir_hollow:'drift',town_dir_signal:'pulse',town_dir_ash:'noir',town_dir_neon:'pulse',town_dir_ascend:'drift',town_dir_watch:'industrial',theme_main:'noir',calm_dir_motif:'industrial',calm_dir_corridor:'pulse',calm_dir_vast:'drift',calm_dir_creep:'industrial' });
 export const CALM_LAZY=new Set([THEME_LONG,...THEME_LOFI,...TOWN7,...DUNGEON7,'theme_main',...CALM2,...CALM3,...CALM4,...CALM5,...WORLD6]);
@@ -52,7 +55,7 @@ export const CORE_TRACKS=['town','traversal_a','traversal_b','combat_a','combat_
 /** Per-state track pools (rotation draws from these via a shuffle bag). */
 export const POOLS:Record<MState,string[]>={
   town:['town','theme_main',...THEME_LOFI,...TOWN7.slice(0,8),'calm_drift','calm_rust','calm_vents','town_dusk','town_market','town_neonrain','town_rooftop','town_jukebox','town_dockside','town_dawnmarket','town_lastcall','town_scrapyard',...CALM5_TOWN],
-  traversal:['traversal_a','traversal_b',...DUNGEON7,'calm_neon','calm_static','calm_drift','calm_rust','calm_vents','calm_tide','calm_ghost','calm_orbit','calm_hollow','calm_relay','calm_alley','calm_conduit','calm_afterglow','calm_stasis','calm_coldopen','calm_midshift','calm_deepcut','calm_exitroute','calm_breathing','calm_wires','calm_sodium'],
+  traversal:['traversal_a','traversal_b','theme_main',...DUNGEON7,'calm_neon','calm_static','calm_drift','calm_rust','calm_vents','calm_tide','calm_ghost','calm_orbit','calm_hollow','calm_relay','calm_alley','calm_conduit','calm_afterglow','calm_stasis','calm_coldopen','calm_midshift','calm_deepcut','calm_exitroute','calm_breathing','calm_wires','calm_sodium'],
   combat:['combat_a','combat_b'],
   elite:['elite_siege','elite_hunt','boss_overclock','boss_meltdown',...ELITE2,...ELITE4],
   bossreveal:['boss_reveal'],
@@ -132,7 +135,7 @@ export class MusicManager {
   /** Pick the next track for a state: boss key mapping if known, else the state's shuffle bag (no immediate repeat). */
   /** Shuffle-bag key per state (persisted in localStorage, so rotation order survives reloads/sessions). */
   bagKey(s:MState){ return s==='town'?'town:'+this.townId:s==='traversal'?'trav:'+(this.area||'-'):s; }
-  bagFor(s:MState):ShuffleBag{ const k=this.bagKey(s); let b=this.bags[k as MState]; if(!b){ const items=s==='traversal'?areaPool(this.area):POOLS[s]; b=this.bags[k as MState]=new ShuffleBag(items,Math.random,'wv_music_bag:'+k); } return b; }
+  bagFor(s:MState):ShuffleBag{ const k=this.bagKey(s); let b=this.bags[k as MState]; if(!b){ const raw=s==='traversal'?areaPool(this.area):POOLS[s]; const items=s==='town'||s==='traversal'?favWeigh(raw):raw; b=this.bags[k as MState]=new ShuffleBag(items,Math.random,'wv_music_bag:'+k); } return b; }
   /** No intro lock: the first town track of every session / town entry is a random draw from the persisted shuffle bag + recent history. Queued as nextUp so boot decodes exactly it. */
   bootThemeDone=false; longBoot=false;
   planFirst():string{ const k=this.bagKey('town'); const nu=this.nextUp[k]; if(nu&&T[nu]&&!this.failed.has(nu)) return nu;

@@ -123,6 +123,9 @@ ok([...files].every(n => used.includes(n)), 'no orphan mp3s: ' + [...files].filt
 ok(fs.readdirSync('public/audio/music').every(f => fs.statSync('public/audio/music/' + f).size < 2.5e6), 'each track < 2.5 MB');
 ok(M.pools.town.length >= 3 && M.pools.traversal.length >= 5 && M.pools.elite.length >= 4 && !M.pools.elite.some(n => /^(combat_|traversal_|calm_)/.test(n)) && M.pools.bosscombat.length >= 4, 'pool sizes');
 ok(Object.values(M.boss).every(n => M.pools.bosscombat.includes(n)) && new Set(Object.values(M.boss)).size >= 4, 'boss map uses boss pool, >=4 distinct tracks');
+const fav = await ev(async () => { const m = await import('/src/music.ts'); const items = m.favWeigh(['theme_main', 'a', 'b', 'c']); const b = new m.ShuffleBag(items); const seq = []; for (let i = 0; i < 500; i++) seq.push(b.next()); const c = seq.filter(x => x === 'theme_main').length / seq.filter(x => x === 'a').length; let rep = 0; for (let i = 1; i < seq.length; i++) if (seq[i] === seq[i - 1]) rep++;
+  return { w: m.THEME_WEIGHT, ratio: c, rep, elite: !m.POOLS.elite.some(x => m.THEME_FAV.has(x)), boss: m.POOLS.bosscombat.every(x => !m.THEME_FAV.has(x)), trav: m.POOLS.traversal.includes('theme_main') }; });
+if (!(fav.w === 2 && fav.ratio > 1.8 && fav.ratio < 2.2 && fav.rep === 0 && fav.elite && fav.boss && fav.trav)) { console.error('FAIL theme favoring', fav); process.exit(1); } console.log('ok theme favoring', fav);
 const bag = await ev(async () => { const { ShuffleBag } = await import('/src/music.ts'); const out = {};
   for (const n of [2, 3, 4, 7]) { const items = Array.from({ length: n }, (_, i) => 't' + i); const b = new ShuffleBag(items); const seq = []; for (let i = 0; i < n * 50; i++) seq.push(b.next());
     let rep = 0; for (let i = 1; i < seq.length; i++) if (seq[i] === seq[i - 1]) rep++; let fair = true; for (let c = 0; c < 50; c++) if (new Set(seq.slice(c * n, c * n + n)).size !== n) fair = false; out[n] = { rep, fair: fair || n > 1 && rep === 0 }; }
