@@ -46,13 +46,16 @@ const mk = (w: number, h: number) => { const c = document.createElement('canvas'
 const ease = (t: number) => 1 - (1 - t) * (1 - t);
 interface St { f: number; lx: number; ly: number; lt: number; wp: number; spd: number; alive: boolean; deadAt: number; dur: number; lastHp: number; hitAt: number; prevReveal: boolean; popAt: number; phase: number; phaseAt: number; away: boolean; lastSt: string; sx: number; dir: number; pdir: number; blend: number; held: number; lock: [number, number] | null; }
 
+/** sprites with a shipped <spr>_back.png in public/dungeons/enemies (tests/enemy_back_list.mjs keeps this in sync) */
+const BACK = new Set(['autosurgeon','brannoch','camgun','drone','enforcer','foreman','gurneyrunner','ladlecrew','loader','matron','nursebot','orderly','overseer','picker','quenchpriest','reclaimer','recovered','retrieval','sawhand','sentry','shiftlead','shooter','slaghauler','stockmgr','surgeon','teague','turret','warden','worker']);
+
 export class EnemyArt {
   img: Record<string, HTMLImageElement> = {}; ready = false; private sc = new Map<string, HTMLCanvasElement>(); private fl = new Map<string, HTMLCanvasElement>(); private key = ''; private st = new Map<number, St>(); private shadow: HTMLCanvasElement;
   constructor(private base = './dungeons/enemies/') {
     const s = mk(128, 64), x = s.getContext('2d')!; const g = x.createRadialGradient(64, 32, 2, 64, 32, 62); g.addColorStop(0, 'rgba(0,0,0,.62)'); g.addColorStop(.55, 'rgba(0,0,0,.34)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.save(); x.scale(1, .5); x.beginPath(); x.arc(64, 64, 62, 0, 7); x.fill(); x.restore(); this.shadow = s; this.load(); this.load3();
   }
   private async load() {
-    const names = [...new Set(Object.values(ART).map(a => a.spr))]; for (const n of names) for (const sfx of ['back']) /* _side/_tfront art was never shipped; probing them only produced 403/404 console noise */ new Promise<void>(res => { const i = new Image(); i.onload = () => { this.img[n + '_' + sfx] = i; res(); }; i.onerror = () => res(); i.src = `${this.base}${n}_${sfx}.png`; });
+    const names = [...new Set(Object.values(ART).map(a => a.spr))]; for (const n of names) for (const sfx of BACK.has(n) ? ['back'] : []) /* only shipped _back art (BACK); probing missing files only produced 403/404 console noise */ new Promise<void>(res => { const i = new Image(); i.onload = () => { this.img[n + '_' + sfx] = i; res(); }; i.onerror = () => res(); i.src = `${this.base}${n}_${sfx}.png`; });
     await Promise.all(names.map(n => new Promise<void>(res => { const i = new Image(); i.onload = () => { this.img[n] = i; res(); }; i.onerror = () => res(); i.src = `${this.base}${n}.png`; })));
     this.ready = Object.keys(this.img).length > 0;
   }
