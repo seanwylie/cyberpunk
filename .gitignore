@@ -28,3 +28,4 @@ tools/.sfx_raw/
 secrets*.json
 .aws/
 cdk.context.json.local
+test_results/
