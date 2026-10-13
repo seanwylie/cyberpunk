@@ -89,10 +89,8 @@ export function buildGenTown(id: string): Level {
   const occludes = (x: number, y: number, fw: number, fd: number) => ST.some(st => x < st.lx + 10 && x + fw > st.lx - 8 && y + fd > st.ly - 4 && y < st.ly + 10 && x + y + fw + fd > st.lx + st.ly + 2);
   const solidFree = (x: number, y: number, fw: number, fd: number) => { if (occludes(x, y, fw, fd) || x < 0 || y < 0 || x + fw > w || y + fd > h) return false; for (let j = 0; j < fd; j++) for (let i = 0; i < fw; i++) { const k = (y + j) * w + x + i; if (!solid[k] || hide[k]) return false; } return true; };
   const border: [number, number][] = []; for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const k = y * w + x; if (solid[k] && !hide[k] && (!solid[k - 1] || !solid[k + 1] || !solid[k - w] || !solid[k + w])) border.push([x, y]); }
-  const neonIx = { i: 0 }; for (let i = border.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0; [border[i], border[j]] = [border[j], border[i]]; }
+  for (let i = border.length - 1; i > 0; i--) { const j = (R() * (i + 1)) | 0; [border[i], border[j]] = [border[j], border[i]]; }
   for (const [bx, by] of border) { const [spr, fw, fd, sw] = g.perimeter[(R() * g.perimeter.length) | 0]; for (const [dx, dy] of [[0, 0], [-1, -1], [-fw + 1, 0], [0, -fd + 1]]) if (solidFree(bx + dx, by + dy, fw, fd)) { D(spr, bx + dx, by + dy, fw, fd, sw); break; } }
-  // neon signage on the backs of the plaza (visual only)
-  for (let i = 0; i < g.signage.length * 2; i++) { const [bx, by] = border[(R() * border.length) | 0] || [0, 0]; if (bx + by > CX + CY) continue; decor.push({ spr: 'neon_' + (neonIx.i++ % g.signage.length), x: bx, y: by, fw: 1, fd: 1, sw: 2.2, solid: false, ay: .9, glow: 'lamp' }); }
   // ---- flood fill from spawn: seal pockets the player could never reach (no-stuck rule) ----
   const spawn = { x: tr.x + Math.sign(CX - tr.x) * 2.5, y: tr.y + Math.sign(CY - tr.y) * 2.5 }; if (solid[Math.floor(spawn.y) * w + Math.floor(spawn.x)]) { spawn.x = CX + .5; spawn.y = CY + .5; }
   { const seen = new Uint8Array(w * h), q = [Math.floor(spawn.y) * w + Math.floor(spawn.x)]; seen[q[0]] = 1; while (q.length) { const k = q.pop()!; for (const d of [1, -1, w, -w]) { const n = k + d; if (n >= 0 && n < w * h && !seen[n] && !solid[n]) { seen[n] = 1; q.push(n); } } } for (let k = 0; k < w * h; k++) if (!solid[k] && !seen[k]) solid[k] = 1; }
