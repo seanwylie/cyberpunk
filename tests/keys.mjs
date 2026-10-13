@@ -10,7 +10,7 @@ const files = fs.readdirSync('src').filter(f => f.endsWith('.ts')); let n = 0;
 for (const f of files) { const lines = fs.readFileSync('src/' + f, 'utf8').split('\n');
   lines.forEach((ln, i) => { for (const m of ln.matchAll(/'([^'\n]*)'|`([^`\n]*)`|"([^"\n]*)"/g)) { const str = m[1] ?? m[2] ?? m[3]; if (str.includes('${') && /key\(/.test(str)) continue;
     for (const [act, w] of Object.entries(WORDS)) { const re = [new RegExp(`${w}[^.()]{0,20}\\(([A-Z])\\)`, 'i'), new RegExp(`\\b[Pp]ress ([A-Z])\\b[^.']{0,30}${w}`), new RegExp(`\\b([A-Z]) to (?:toggle )?(?:the )?${w}`)];
-      for (const r of re) { const x = r.exec(str); if (x) { n++; if (x[1] !== KEYS[act]) ok(false, `src/${f}:${i + 1} says ${x[1]} for ${act} (should be ${KEYS[act]}): ${str.slice(0, 80)}`); } } } } }); }
+      for (const r of re) { const x = r.exec(str); if (x && /^[A-Z]$/.test(x[1])) { /* the key letter itself must be a capital: '(d)' in `${town(d)}` is a call, not a hint */ n++; if (x[1] !== KEYS[act]) ok(false, `src/${f}:${i + 1} says ${x[1]} for ${act} (should be ${KEYS[act]}): ${str.slice(0, 80)}`); } } } } }); }
 ok(true, `scanned ${files.length} files, ${n} key mentions checked`);
 // runtime objective text
 const src = fs.readFileSync('src/sim.ts', 'utf8');
