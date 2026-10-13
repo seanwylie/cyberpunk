@@ -17,6 +17,8 @@ const ease = (x: number) => x < 0 ? 0 : x > 1 ? 1 : x * x * (3 - 2 * x);
 interface Own { recall?: { style: string; t0: number; c: string; c2: string }; emote?: { style: string; t0: number; c: string }; flo: number; lastCast: boolean; lastT: number }
 const OWN: Map<string, Own> = ((globalThis as any).__wvPm ??= new Map());
 const own = (id = 'me') => { let o = OWN.get(id); if (!o) { o = { flo: -99, lastCast: false, lastT: 0 }; OWN.set(id, o); } return o; };
+/** clear every owner's recall/emote moment (used by tests/cosmetics_render.mjs between cosmetics) */
+export const resetPm = () => OWN.clear();
 export const RECALL_S = 1.6, EMOTE_S = 2.2, FLO_S = .7;
 /** Start a recall animation for owner (town arrival / teleport). Uses the recall slot, else the Legendary skin's bundled recall. */
 export function playRecall(list: CosDef[], id = 'me', sound = true): string | null {
