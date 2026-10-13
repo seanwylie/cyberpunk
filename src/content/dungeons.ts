@@ -7,7 +7,8 @@ import { thinHazards } from '../level';
 // in tools/dungeons/source (foundry.jpg, clinic.jpg, warehouse.jpg).
 import { buildAnnex } from '../level';
 import type { Level, Interact, Hazard } from '../level';
-import { genFoundry, genClinic, genWarehouse, varyAnnex } from './mapgen';
+import { genFoundry, genClinic, genWarehouse, varyAnnex, reachMap, clsOf } from './mapgen';
+import { ENEMIES } from '../config';
 import { genBatch1 } from './mapgen_batch1';
 import { symLevel, symOfSeed } from './mapgen_arch';
 import { LEVELS } from './batch1_levels';
@@ -103,7 +104,9 @@ function gwAmbush(L:Level,sp:LevelSpec):Level{ const c=L.interacts.find(i=>i.kin
   // stand on tiles the generator already validated as reachable: the junction elite (group 55) and the junction packs nearest the controller
   const J=L.spawns.filter(s=>s.group!==77&&s.group<90&&L.zone[Math.floor(s.y)*L.w+Math.floor(s.x)]===L.zone[Math.floor(c.y)*L.w+Math.floor(c.x)]).sort((a,b)=>Math.hypot(a.x-c.x,a.y-c.y)-Math.hypot(b.x-c.x,b.y-c.y));
   const el=L.spawns.find(s=>s.group===55); const types=el?[el.type,sp.alarmType,sp.alarmType,sp.alarmType]:[sp.alarmType,sp.alarmType,sp.alarmType];
-  const at=J.slice(0,types.length); at.forEach((p,i)=>L.spawns.push({type:types[i],x:p.x,y:p.y,group:77})); (L as any).setPiece={x:c.x,y:c.y,n:at.length}; return L; }
+  // each member stands on a tile reachable at ITS clearance class (a big elite on a small mob's tile can be walled in); fallback: the elite's own validated tile
+  const R=[0,1,2].map(k=>reachMap(L,L.spawn,k)); const used=new Set<number>(); const at:{x:number;y:number}[]=[];
+  for(const t of types){ const k=clsOf(ENEMIES[t]?.radius??.4); const p=J.find(q=>!used.has(q.y*L.w+q.x)&&R[k][q.y*L.w+q.x])||(el&&t===el.type&&!used.has(el.y*L.w+el.x)?el:undefined); if(!p) continue; used.add(p.y*L.w+p.x); at.push(p); L.spawns.push({type:t,x:p.x,y:p.y,group:77}); } (L as any).setPiece={x:c.x,y:c.y,n:at.length}; return L; }
 // EPIC GATEWAYS (src/content/gateways.ts): longer variants of batch-1 dungeons that open the Reach Line to the next town
 export const GATEWAY_SPECS:LevelSpec[]=GATEWAY_BASES.map(g=>{ const b=LEVELS.find(l=>l.id===g.base)!; const sp=gatewaySpec(b,g.to,g.title); ARCH_OF[sp.id]=ARCH_OF[b.id]; const d=makeBatch1Dungeon(sp) as any; d.gateway=g.to; const b0=d.build; d.build=(sd?:number)=>gwAmbush(b0(sd),sp); DUNGEONS[sp.id]=d; return sp; });
 /** every dungeon's generated level goes through the hazard budget (no overlaps, capped count) */
