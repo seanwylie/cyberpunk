@@ -117,17 +117,20 @@ export function bossStatus(sim:any,e:any):string{ const rt=e._rt; const bits:str
 
 /** Boss pressure (HARD.press): camping next to the boss triggers a quake ring + knockback, a hazard is placed under the player on a timer so standing still is punished,
  *  reinforcements arrive, and after enrageAt seconds damage and tempo ramp. All telegraphed (zone windup) so dodging/moving/abilities beat it. */
-function pressureTick(sim:any,e:any,dt:number){ const P=HARD.press, rt=e._rt, def=ENEMIES[e.type]; if(sim.downed||sim.revealing||e.dead) return;
+/** original (pre-batch) bosses have no phase spec: they still get the stand-still punishers (camp quake + hazard under the player), without enrage or adds. */
+export function bossStillTick(sim:any,e:any,dt:number){ const rt=e._rt; rt.q??=[]; for(const j of rt.q) j.t-=dt; if(rt.q.length){ const due=rt.q.filter((j:any)=>j.t<=0); rt.q=rt.q.filter((j:any)=>j.t>0); for(const j of due) j.f(); } pressureTick(sim,e,dt,true); }
+function pressureTick(sim:any,e:any,dt:number,lite=false){ const P=HARD.press, rt=e._rt, def=ENEMIES[e.type]; if(sim.downed||sim.revealing||e.dead) return;
   const dm=(def.dmgMul||1); const d=Math.hypot(sim.px-e.x,sim.py-e.y); rt.fightT=(rt.fightT||0)+dt;
   // enrage ramp
-  if(rt.fightT>P.enrageAt){ const k=Math.min(P.enrageMax,1+(rt.fightT-P.enrageAt)*P.enrageRamp); if(!rt.enraged){ rt.enraged=true; sim.toast(def.name+' is enraged!'); sim.fx.push({kind:'ring',x:e.x,y:e.y,r:4.5,t:0,life:.8,c:'#d85a3a'}); } rt.hardDmg=k; rt.hardCd=k; } 
+  if(!lite&&rt.fightT>P.enrageAt){ const k=Math.min(P.enrageMax,1+(rt.fightT-P.enrageAt)*P.enrageRamp); if(!rt.enraged){ rt.enraged=true; sim.toast(def.name+' is enraged!'); sim.fx.push({kind:'ring',x:e.x,y:e.y,r:4.5,t:0,life:.8,c:'#d85a3a'}); } rt.hardDmg=k; rt.hardCd=k; } 
   const cdk=rt.hardCd||1; if(cdk>1){ const extra=dt*(1-1/(1+(cdk-1)*.6)); for(const k in rt.acd) rt.acd[k]-=extra; }
   // camping next to the boss
   rt.quakeCd=(rt.quakeCd||0)-dt; if(d<def.radius+P.campR) rt.camp=(rt.camp||0)+dt; else rt.camp=Math.max(0,(rt.camp||0)-dt*2);
-  if(rt.camp>=P.campT&&rt.quakeCd<=0){ rt.camp=0; rt.quakeCd=P.quakeCd; const R=def.radius+P.quakeR; sim.zones.push({x:e.x,y:e.y,r:R,t:0,life:P.quakeWind+.6,dps:P.quakeDmg*sim.maxHp*(rt.hardDmg||1),heat:12,windup:P.quakeWind,src:e.type+':quake',style:'quake',pal:palOf(e.type)}); sim.emit('sfx','telegraph_elite');
+  const early=lite||(sim.earlyMul?.()??1)<1;
+  if(!lite&&rt.camp>=P.campT&&rt.quakeCd<=0){ rt.camp=0; rt.quakeCd=P.quakeCd; const R=def.radius+P.quakeR; sim.zones.push({x:e.x,y:e.y,r:R,t:0,life:P.quakeWind+.6,dps:P.quakeDmg*sim.maxHp*(rt.hardDmg||1),heat:12,windup:P.quakeWind,src:e.type+':quake',style:'quake',pal:palOf(e.type)}); sim.emit('sfx','telegraph_elite');
     rtQ(e,P.quakeWind,()=>{ if(e.dead||sim.downed) return; if(Math.hypot(sim.px-e.x,sim.py-e.y)<R){ const a=Math.atan2(sim.py-e.y,sim.px-e.x); sim.slideFx=Math.cos(a)*P.quakePush/.15; sim.slideFy=Math.sin(a)*P.quakePush/.15; sim.slideT=.15; sim.fx.push({kind:'ring',x:e.x,y:e.y,r:R,t:0,life:.4,c:'#e8d890'}); } }); }
   // a hazard under the player, so passivity is punished
   const hurt=e.hp<e.maxHp*.5; rt.underT=(rt.underT===undefined?P.underEvery*.6:rt.underT)-dt/(hurt?1.4:1)/(rt.hardCd||1)*(HARD.mech.tierUnder[bossTierOf(e.type)]||1);
-  if(rt.underT<=0){ rt.underT=P.underEvery*(.85+Math.random()*.3); if(d<30) sim.zones.push({x:sim.px,y:sim.py,r:P.underR,t:0,life:P.underWind+.6,dps:P.underDmg*sim.maxHp*(rt.hardDmg||1),heat:8,windup:P.underWind,src:e.type+':hazard',style:'reticle',pal:palOf(e.type)}); }
+  /* original + early-band bosses: rarer, shorter hazard (forgiving, not free) */ if(rt.underT<=0){ rt.underT=P.underEvery*(early?1.6:1)*(.85+Math.random()*.3); if(d<30) sim.zones.push({x:sim.px,y:sim.py,r:P.underR,t:0,life:P.underWind+(early?.6:(P.underLinger??.6)),dps:P.underDmg*sim.maxHp*(rt.hardDmg||1),heat:8,windup:P.underWind,src:e.type+':hazard',style:'reticle',pal:palOf(e.type)}); }
   // reinforcements: flanking ranged adds
-  rt.addsT=(rt.addsT===undefined?P.addsEvery*.5:rt.addsT)-dt; if(rt.addsT<=0){ rt.addsT=P.addsEvery; if(ENEMIES[P.addsType]) spawnAdds(sim,e,P.addsType,P.addsN,P.addsCap); } }
+  if(lite) return; rt.addsT=(rt.addsT===undefined?P.addsEvery*.5:rt.addsT)-dt; if(rt.addsT<=0){ rt.addsT=P.addsEvery; if(ENEMIES[P.addsType]) spawnAdds(sim,e,P.addsType,P.addsN,P.addsCap); } }

@@ -27,7 +27,7 @@ import { DUNGEONS } from './content/dungeons';
 import { kitTick, KITS, palOf } from './content/boss_kits';
 import { tickZone, endZones } from './content/zoneshape';
 import type { ZX } from './content/zoneshape';
-import { movePattern, resolveMove, bossTick, filterDamage, clearBossAdds } from './content/mechanics';
+import { movePattern, resolveMove, bossTick, bossStillTick, filterDamage, clearBossAdds } from './content/mechanics';
 import { mobTick, mobDeath, mobAfterHit, resolveMobAttack, mobPattern, MOB_COND } from './content/mobs';
 import { MOB_ATK } from './content/batch2_mobs';
 import { CONTRACT_BY_ID, Goal } from './content/npcs';
@@ -448,7 +448,7 @@ export class Game {
     cand.sort((a,b)=>dist(a.x,a.y,e.x,e.y)-dist(b.x,b.y,e.x,e.y)); for(const o of cand){ if(stag&&!ENEMIES[o.type]?.boss){ k++; o._rt.wake=Math.min(GRACE.wakeMax,GRACE.wakeBase+GRACE.wakeStep*k); o._rt.hit=Math.max(o._rt.hit||0,.16); /* tell: white flash when it notices */ } else o.alert=true; } }
   hurtPlayer(dmg:number,sx:number,sy:number){
     if(this.downed||this.iframes>0||this.revealing||this.mode!=='run'||this.dbg.god||this.grace) return;
-    const st=this.stat(); { const em=this.earlyMul(); if(em<1){ const k=String(this.dmgSrc).split(':')[0]; dmg*=em*(ENEMIES[k]?.boss?Math.sqrt(em):1); } } dmg=abxIncoming(this,dmg,sx,sy); if(dmg<=.01) return; dmg=Math.max(1,dmg-st.armor); if(this.overheated) dmg*=HEAT.overheat.takenMul; let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
+    const st=this.stat(); const em=this.earlyMul(); { if(em<1){ const k=String(this.dmgSrc).split(':')[0]; dmg*=em*(ENEMIES[k]?.boss?Math.sqrt(em):1); } } dmg=abxIncoming(this,dmg,sx,sy); if(dmg<=.01) return; { const k=String(this.dmgSrc).split(':')[0]; dmg=ENEMIES[k]?.boss?Math.max(dmg*(1-(em<1?BOSS_AOE.armorEarly:BOSS_AOE.armorMax)),dmg-st.armor):Math.max(1,dmg-st.armor); } if(this.overheated) dmg*=HEAT.overheat.takenMul; let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg*AB.reflect; dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
     if(this.channel&&!this.channel.hard){ this.townInterrupt('Town return interrupted by damage',true); this.channel=null; }
     this.fx.push({kind:'blood',x:this.px,y:this.py,t:0,life:.6,c:'#7a2f26'});
     if(this.inst?.flags.bossSpawned) (this.inst as any)._bossHits=((this.inst as any)._bossHits||0)+1;
@@ -593,7 +593,7 @@ export class Game {
   updateEnemies(dt:number){
     this.frame++; this.flowT-=dt; if(this.flowHook) this.flowHook(); else if(this.flowT<=0){ this.flowT=.35; const need=[false,false,false]; for(const e of this.enemies){ if(!e.dead&&e.faction==='enemy'&&e.alert&&!ENEMIES[e.type].static) need[this.flowCls(ENEMIES[e.type].radius)]=true; } need[0]=true; for(let c=0;c<3;c++){ if(need[c]) this.flowField(c); } }
     const alive=this.enemies.filter(e=>!e.dead);
-    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.hack>0) rt.hack-=dt; if(rt.reveal>0) continue; this.bindTarget?.(e); if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); else mobTick(this,e,dt); if(KITS[e.type]) kitTick(this,e,dt); this.updateEnemy(e,dt); }
+    for(const e of alive){ const rt=e._rt; for(const k in rt.acd) rt.acd[k]-=dt; if(rt.hit>0) rt.hit-=dt; if(rt.vuln>0) rt.vuln-=dt; if(rt.hack>0) rt.hack-=dt; if(rt.reveal>0) continue; this.bindTarget?.(e); if(BOSS_BY_ID[e.type]) bossTick(this,e,dt); else { if(ENEMIES[e.type].boss&&e.alert&&e.faction==='enemy') bossStillTick(this,e,dt); mobTick(this,e,dt); } if(KITS[e.type]) kitTick(this,e,dt); this.updateEnemy(e,dt); }
     // separation
     for(let i=0;i<alive.length;i++){ const a=alive[i]; if(ENEMIES[a.type].static) continue; for(let j=i+1;j<alive.length;j++){ const b=alive[j]; const dx=b.x-a.x, dy=b.y-a.y; const d2=dx*dx+dy*dy; const rr=(ENEMIES[a.type].radius+ENEMIES[b.type].radius)*.9; if(d2<rr*rr&&d2>1e-4){ const d=Math.sqrt(d2), push=(rr-d)*.5; const nx=dx/d, ny=dy/d; if(!ENEMIES[b.type].static){ const pb=this.moveCircle(b.x,b.y,nx*push,ny*push,ENEMIES[b.type].radius*.8); b.x=pb.x; b.y=pb.y; } const pa=this.moveCircle(a.x,a.y,-nx*push,-ny*push,ENEMIES[a.type].radius*.8); a.x=pa.x; a.y=pa.y; } } }
     this.enemies=this.enemies.filter(e=>!e.dead||e._rt.bornT>-1); // keep dead for persistence
@@ -644,10 +644,11 @@ export class Game {
   zoneSlow(e:En){ return false; }
   beginAttack(e:En,a:string,ang:number,tx:number,ty:number){
     const rt=e._rt; const A=ATK[a]; rt.st='tele'; rt.atk=a; rt.t=0; rt.ang=ang; rt.acd[a]=A.cd*(.85+Math.random()*.3); rt.shots=[]; this.emit('sfx','telegraph_'+(ENEMIES[e.type].elite?'elite':'basic'));
-    const zp=this.zonePattern(e,a,tx,ty); if(zp) rt.shots=zp;
+    const z0=this.zones.length; const zp=this.zonePattern(e,a,tx,ty); if(zp) rt.shots=zp;
     if(a==='zones'){ // three ground zones around the player's position (readable, lingering)
       for(let i=0;i<3;i++){ const aa=Math.random()*Math.PI*2, rr=i===0?0:2.4+Math.random()*1.6; const zx=tx+Math.cos(aa)*rr, zy=ty+Math.sin(aa)*rr; if(!this.solidAt(zx,zy)){ rt.shots.push({x:zx,y:zy}); this.zones.push({x:zx,y:zy,r:2.1,t:0,life:6,dps:ENEMY_DMG.zones,heat:12,windup:1.5}); } }
     }
+    if(ENEMIES[e.type].boss&&e.faction==='enemy') for(let i=z0;i<this.zones.length;i++){ const z:any=this.zones[i]; if(z.dps>0&&z.hpPct===undefined) z.hpPct=z.burst?BOSS_AOE.burst:BOSS_AOE.tick; } /* stand-still rule: boss ground attacks scale with max HP */
   }
   /** Boss/elite ground-pattern attacks added by dungeon content. Reuses the lingering-zone system (telegraphed windup, then damaging). */
   zonePattern(e:En,a:string,tx:number,ty:number):{x:number;y:number}[]|null{
@@ -663,7 +664,7 @@ export class Game {
     }
     return out; }
   resolveAttack(e:En,a:string,tx:number,ty:number){
-    const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg0=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1)*(rt.hardDmg||1); const dmg=def.boss&&fac==='enemy'?Math.min(dmg0,BOSS_HIT_CAP*this.maxHp):dmg0; /* docs/BALANCE.md: no boss melee/projectile hit takes more than BOSS_HIT_CAP of max HP */ this.dmgSrc=e.type+':'+a;
+    const def=ENEMIES[e.type]; const rt=e._rt; const fac=e.faction; const ang=rt.ang; const dmg0=ENEMY_DMG[a]*(fac==='ally'?1.2:1)*(def.dmgMul||1)*(rt.hardDmg||1); const dmg=def.boss&&fac==='enemy'?Math.min(this.earlyMul()<1?dmg0:Math.max(dmg0,BOSS_AOE.hit*this.maxHp),BOSS_HIT_CAP*this.maxHp):dmg0; /* boss hits: floor BOSS_AOE.hit (not in the early band), cap BOSS_HIT_CAP of max HP */ /* docs/BALANCE.md: no boss melee/projectile hit takes more than BOSS_HIT_CAP of max HP */ this.dmgSrc=e.type+':'+a;
     const cone=(r:number,arc:number)=>{ this.fx.push({kind:'slash',x:e.x,y:e.y,a:ang,r,t:0,life:.25,w:arc,c:'#b8b09a'}); for(const o of this.opponents(fac)){ if(dist(e.x,e.y,o.x,o.y)-o.r<=r&&Math.abs(angDiff(Math.atan2(o.y-e.y,o.x-e.x),ang))<=arc/2) o.hurt(dmg,e.x,e.y); } this.emit('sfx','enemy_swing'); };
     const proj=(aa:number,speed:number)=>{ this.projs.push({x:e.x+Math.cos(aa)*.6,y:e.y+Math.sin(aa)*.6,vx:Math.cos(aa)*speed,vy:Math.sin(aa)*speed,dmg,r:.22,life:1.6,faction:fac==='ally'?'ally':'enemy',kind:'bolt'}); this.emit('sfx','enemy_shot'); };
     if(MOB_ATK[a]){ resolveMobAttack(this,e,a,tx,ty,dmg); return; }
@@ -841,6 +842,9 @@ export class Game {
 export interface AtkDef { w:number; rec:number; cd:number; min:number; max:number; lock?:boolean; ranged?:boolean }
 /** largest share of the player's max HP a single boss attack may take (riposte x hard-mode reached 60%) */
 export const BOSS_HIT_CAP=.42;
+/** docs/BALANCE.md "Stand-still rule": boss damage is a share of the player's max HP, so standing in a telegraphed boss attack is lethal at every level.
+ *  tick = lingering ground zone, per 0.5 s tick; burst = one-shot ground telegraph; hit = boss melee/projectile floor. Early dungeons still get earlyMul. */
+export const BOSS_AOE={ tick:.14, burst:.26, hit:.18, armorMax:.25, armorEarly:.5 }; /* armorMax: flat armor may remove at most this share of a boss hit (flat armor used to erase boss ticks entirely) */
 export const ATK:Record<string,AtkDef> = {
   swing:{w:.55,rec:.5,cd:1.1,min:0,max:1.4}, shot:{w:.8,rec:.6,cd:2.6,min:0,max:9,lock:true,ranged:true}, turretshot:{w:1.1,rec:.4,cd:2.8,min:0,max:10,lock:true,ranged:true},
   cleave:{w:.9,rec:.7,cd:2.2,min:0,max:2.6}, charge:{w:1.1,rec:1.4,cd:7,min:3.2,max:10,lock:true}, slam:{w:1.1,rec:.9,cd:5,min:0,max:3.4}, summon:{w:.9,rec:.8,cd:26,min:0,max:40},

@@ -12,8 +12,8 @@ export const HARD = {
     quakeCd:3.6,    // minimum seconds between quakes
     quakeR:3.9,     // quake ring radius beyond the boss body
     quakeWind:1.1, quakeDmg:.18, quakePush:3.4 /* quakeDmg/underDmg are fractions of the player's max HP per hit, so pressure scales with the kit, not with boss dmgMul */,
-    underEvery:6.5, // a ground hazard is placed under the player (stationary or not) this often; faster below half HP
-    underWind:1.25, underR:2.1, underDmg:.11,
+    underEvery:4.5, // a ground hazard is placed under the player (stationary or not) this often; faster below half HP
+    underWind:1.25, underR:2.1, underDmg:.13, underLinger:1.6, /* seconds the hazard stays live after its windup (3 ticks): standing in it costs ~25-30% max HP */
     addsEvery:26, addsN:2, addsCap:6, addsType:'shooter',
     enrageAt:100,   // seconds in the fight before it enrages (damage and tempo ramp): a DPS check on top of the mechanics
     enrageRamp:.02, enrageMax:2.4,

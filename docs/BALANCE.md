@@ -331,3 +331,9 @@ Per boss (after; tank clear column is 2 seeds):
 
 overall: clear 77%, <=1 death 66%; per tier (<=1 death): base 56%, 1 88%, 2 68%, 3 56%, 4 75%
 
+
+## Stand-still rule (boss AoE)
+Standing in boss attacks must be lethal; dodging must stay fair. Root cause of the old "stand in the AoE and live" bug: boss ground zones dealt flat numbers (6-24 per 0.5 s tick) and flat armor (10-29) erased them down to 1 damage; the only stand-still punisher (hazard under the player) lingered 0.6 s (one tick), and the 12 original bosses had no punisher at all.
+- `BOSS_AOE` (src/sim.ts): boss ground zones deal at least `tick` (14%) of max HP per 0.5 s tick, burst telegraphs at least `burst` (26%), boss melee/projectile hits at least `hit` (18%, not in the level-1 band). Flat armor may remove at most `armorMax` (25%; 50% in the early band) of a boss hit. Per-hit caps unchanged: `BOSS_HIT_CAP` 42%, kit `KIT_HIT_CAP` 30% (kit floor `KIT_HIT_FLOOR` 16%).
+- `HARD.press`: the hazard under the player every 4.5 s, 13% per tick, lives 1.6 s after its 1.25 s telegraph (3 ticks). Original/early-band bosses get it too (rarer, one tick, no camp quake, no enrage/adds).
+- Test: `node tests/boss_standstill.mjs` (every dungeon, condition and gateway boss; par level and par kit; stand still): down or under 20% HP within 14 s, early band under 50% within 18 s, no single hit above 45%.

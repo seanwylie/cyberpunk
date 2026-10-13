@@ -152,7 +152,17 @@ export async function runJob(job) {
     // ---- full level run ----
     if (!g.startRun(job.id)) return { error: 'startRun failed: ' + job.id };
     g.recompute(); g.hp = g.maxHp; L = g.level; result.kitInfo = kitInfo();
-    if (job.bossOnly) { /* skip the dungeon: stand at the boss door with the gates open and a few stims, fight starts at the reveal */ for (let i = 0; i < 20; i++) stepSim(); const f0 = g.inst.flags; f0.gate1 = f0.lock2 = f0.controller = true; g.inst.carried.stims = job.stims ?? 3; { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } g.hp = g.maxHp; } const nEnemies = g.enemies.length; let bossSeen = 0, stuckT = 0, lastPos = [g.px, g.py], lastCheck = 0, deathsHere = 0;
+    if (job.bossOnly) { /* skip the dungeon: stand at the boss door with the gates open and a few stims, fight starts at the reveal */ for (let i = 0; i < 20; i++) stepSim(); const f0 = g.inst.flags; f0.gate1 = f0.lock2 = f0.controller = true; if (job.bossKey) f0.bossKey = job.bossKey; g.inst.carried.stims = job.stims ?? 3; { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } g.hp = g.maxHp; } const nEnemies = g.enemies.length; let bossSeen = 0, stuckT = 0, lastPos = [g.px, g.py], lastCheck = 0, deathsHere = 0;
+    if (job.profile === 'still') {
+      /* stand-still probe (tests/boss_standstill.mjs): walk to the boss, then never move, attack, dodge or stim. Reports time to <20% HP / down and what did the damage. */
+      g.inst.carried.stims = 0; let t0 = null, t20 = null, t50 = null, tDown = null; const W = job.window || 20; let hpMin = 1;
+      while (simT < 240) { const boss = g.enemies.find(e => !e.dead && ENEMIES[e.type].boss && e._rt.reveal <= 0);
+        if (g.revealing || !boss) { if (!g.revealing) { const rp = g.revealPoint(); if (dist(g.px, g.py, rp.x, rp.y) > 1) nav(rp.x, rp.y); else g.setMove(0, 0); } else g.setMove(0, 0); stepSim(); continue; }
+        if (t0 === null) { if (dist(g.px, g.py, boss.x, boss.y) > 3 + (ENEMIES[boss.type].radius || .5)) { nav(boss.x, boss.y); stepSim(); continue; } t0 = simT; g.hp = g.maxHp; g.iframes = 0; for (const k of Object.keys(R.src)) delete R.src[k]; R.maxHit = 0; }
+        g.setMove(0, 0); g.target = null; boss.hp = Math.max(boss.hp, boss.maxHp * (job.bossHp ?? .99)); stepSim(); hpMin = Math.min(hpMin, g.hp / g.maxHp);
+        if (t20 === null && g.hp < g.maxHp * .2) t20 = simT - t0; if (t50 === null && g.hp < g.maxHp * .5) t50 = simT - t0; if (g.downed) { tDown = simT - t0; break; } if (simT - t0 > W) break; }
+      return { ...result, boss: g.inst.flags.bossKey || g.dd.defaultBoss, still: true, t20: t20 === null ? null : +t20.toFixed(1), t50: t50 === null ? null : +t50.toFixed(1), tDown: tDown === null ? null : +tDown.toFixed(1), hpMin: +hpMin.toFixed(2), reached: t0 !== null, src: R.src, maxHit: +R.maxHit.toFixed(1), maxHitSrc: R.maxHitSrc, hitCapPct: +(R.maxHit / g.maxHp).toFixed(2) };
+    }
     const dd = g.dd; let phaseLog = {}; let reachCache = { key: '', t: -9, ok: true };
     while (simT < maxT && !g.inst.flags.bossDead) {
       if (g.downed) { R.deaths++; deathsHere++; if (R.deaths >= maxDeaths) break; g.returnToCheckpoint(); if (job.bossOnly) { g.inst.carried.stims = Math.max(g.inst.carried.stims, job.stims ?? 3); { const rp = g.revealPoint(); g.px = rp.x; g.py = rp.y; } } flowKey = ''; stuckT = 0; continue; }

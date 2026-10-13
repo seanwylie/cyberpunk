@@ -42,6 +42,8 @@ export function stepZone(sim:any,z:any,dt:number){
     if(bx||by){ if(bx) z.vx=-z.vx; if(by) z.vy=-z.vy; z.bounces=(z.bounces??0)-1; if(z.bounces<0){ z.life=Math.min(z.life,z.t+.25); z.vx=0; z.vy=0; } if(z.onBounce) z.onBounce(sim,z); } else { z.x=nx; z.y=ny; } }
 }
 /** one zone for one step: motion, one-time onFire, forces and damage on the given targets. `targets` are {px,py,g(game-like with heat, zoneTick, moveCircle), hurt(dmg,sx,sy)}. */
+/** damage one hit/tick of zone z does to g: boss zones carry hpPct (share of the target's max HP, sim.ts BOSS_AOE) as a floor over their flat dps */
+export function zoneDmg(z:any,g:any):number{ return z.hpPct>0&&g.maxHp>0?Math.max(z.dps,z.hpPct*g.maxHp):z.dps; }
 export function tickZone(sim:any,z:any,dt:number,targets:{px:number;py:number;g:any;hurt:(d:number,sx:number,sy:number)=>void}[],heatMax:number,bodyR:number){
   z.t+=dt; stepZone(sim,z,dt); if(z.t<z.windup) return;
   if(!z.fired){ z.fired=true; if(z.onFire) z.onFire(sim,z); }
@@ -49,8 +51,8 @@ export function tickZone(sim:any,z:any,dt:number,targets:{px:number;py:number;g:
     if(z.pull||z.push){ let mx=0,my=0; if(z.pull){ const d=Math.hypot(z.x-tg.px,z.y-tg.py)||1; mx=(z.x-tg.px)/d*z.pull*dt; my=(z.y-tg.py)/d*z.pull*dt; if(z.pull>0&&d<.5){ mx*=d/.5; my*=d/.5; } } if(z.push){ mx+=Math.cos(z.pushA||0)*z.push*dt; my+=Math.sin(z.pushA||0)*z.push*dt; } if(g.moveCircle&&(mx||my)){ const p=g.moveCircle(tg.px,tg.py,mx,my,bodyR); if(!(z.keepIn&&g.zoneAt&&g.zoneAt(p.x,p.y)!=='boss')){ g.px=p.x; g.py=p.y; } } }
     if(z.heat&&g.heat!==undefined) g.heat=Math.min(heatMax,g.heat+z.heat*dt);
     if(!(z.dps>0)||z.heatOnly) continue;
-    if(z.burst){ if(z.rearm){ z.rt2=(z.rt2||0)+dt/Math.max(1,targets.length); if(z.rt2>z.rearm){ z.rt2=0; z.hitSet?.clear(); } } const hs=z.hitSet||(z.hitSet=new Set()); if(!hs.has(g)){ hs.add(g); tg.hurt(z.dps,z.x,z.y); } }
-    else { g.zoneTick=(g.zoneTick||0)+dt; if(g.zoneTick>.5){ g.zoneTick=0; tg.hurt(z.dps,z.x,z.y); } } }
+    if(z.burst){ if(z.rearm){ z.rt2=(z.rt2||0)+dt/Math.max(1,targets.length); if(z.rt2>z.rearm){ z.rt2=0; z.hitSet?.clear(); } } const hs=z.hitSet||(z.hitSet=new Set()); if(!hs.has(g)){ hs.add(g); tg.hurt(zoneDmg(z,g),z.x,z.y); } }
+    else { g.zoneTick=(g.zoneTick||0)+dt; if(g.zoneTick>.5){ g.zoneTick=0; tg.hurt(zoneDmg(z,g),z.x,z.y); } } }
 }
 /** call after the per-step filter: fire onEnd for zones that just expired */
 export function endZones(sim:any,zs:any[]){ for(const z of zs) if(z.t>=z.life&&!z.ended){ z.ended=true; if(z.onEnd) z.onEnd(sim,z); } }
