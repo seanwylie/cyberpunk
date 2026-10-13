@@ -90,7 +90,7 @@ export class NetSession {
   private hook(dtRaw: number): boolean {
     if (!this.active || !this.ic) return false; const g = this.g, ic = this.ic;
     if (g.mode !== 'run') { this.exit('returned', true); return false; } // Game moved us (cheat/menu): treat as leaving
-    const dt = Math.min(dtRaw, .05); ic.setState(g.px, g.py, g.face, g.hp, g.maxHp, g.downed, !!g.moving, g.mode === 'run' && g.atkCd > .3);
+    const dt = Math.min(dtRaw, .05); ic.em = (g as any).emoteSeq & 255; ic.setState(g.px, g.py, g.face, g.hp, g.maxHp, g.downed, !!g.moving, g.mode === 'run' && g.atkCd > .3);
     this.flagT -= dt; if (this.flagT <= 0) { this.flagT = .25; this.pollFlags(); }
     this.reviveLogic(dt); this.finishClear(); return false;
   }

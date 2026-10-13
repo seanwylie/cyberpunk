@@ -8,7 +8,7 @@ export function helpHtml():string{
   +row(kb(KEYS.moveUp,KEYS.moveLeft,KEYS.moveDown,KEYS.moveRight),'Move','Arrow keys also work')
   +row(kb(KEYS.aim1,KEYS.aim2,KEYS.aim3),'Aim and cast abilities','Hold to aim, release to cast. 1 / 2 / 3 also work')
   +row(kb(KEYS.dodge),'Dodge')+row(kb('Click'),'Target an enemy','X or right-click clears it')
-  +row(kb(KEYS.interact),'Interact','Doors, caches, terminals')+row(kb(KEYS.contacts),'Contacts','In town')
+  +row(kb(KEYS.interact),'Interact','Doors, caches, terminals')+row(kb(KEYS.contacts),'Contacts','In town')+row(kb('J'),'Emote','Plays your equipped emote cosmetic')
   +row(kb(KEYS.stim),'Use patch')+row(kb(KEYS.town),'Return to town','Channelled; damage or moving interrupts')
   +row(kb(KEYS.pack),'Live pack','Items carried in a run')+row(kb(KEYS.minimap),'Toggle minimap')+row(kb(KEYS.music),'Mute music')
   +row(kb(KEYS.help,'F1'),'This help')+row(kb(KEYS.menu),'Close panel / clear target')

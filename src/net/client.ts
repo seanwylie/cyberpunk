@@ -21,7 +21,7 @@ export function configuredServer(): string {
  *  this class only (a) reports display state at STATE_HZ, (b) batches damage dealt, (c) sends pivotal claims (kill, flag, revive) and (d) interpolates teammates. */
 export interface RosterEntry { id: string; name: string; lvl: number; look?: Look }
 export class InstanceClient {
-  level: Level; px: number; py: number; face = 0; hp = 100; maxHp = 100; down = false; moving = false; atk = false;
+  level: Level; px: number; py: number; face = 0; hp = 100; maxHp = 100; down = false; moving = false; atk = false; /** emote counter (Game.emoteSeq & 255), relayed so teammates play your emote */ em = 0;
   players = new Interp<PlayerView & { id: string }>(INTERP_DELAY + .05); roster = new Map<string, RosterEntry>();
   flags: Record<string, any> = {}; killed = new Set<number>(); nSpawns = 0; you: { down: boolean; hp: number; maxHp: number } | null = null; snaps = 0; lastN = 0;
   graceMs = 5000; stats = { stateSent: 0, dmgSent: 0, claims: 0, flagsSent: 0 }; private known = new Map<string, any>(); private lastX = 0; private lastY = 0; private lastSent = 0; private lastKey = ''; private dmgAcc = new Map<number, number>(); private dmgAt = 0;
@@ -35,7 +35,7 @@ export class InstanceClient {
   /** throttled to STATE_HZ; sends only when something changed (plus a 1 s heartbeat). Returns true if a message was sent. */
   report(nowMs = Date.now()): boolean {
     this.flushDmg(nowMs); if (nowMs - this.lastSent < 1000 / STATE_HZ - 2) return false;
-    const jump = Math.hypot(this.px - this.lastX, this.py - this.lastY) > 12; this.lastX = this.px; this.lastY = this.py; const m: any = { t: 'st', ...(jump ? { tp: 1 } : {}), x: +this.px.toFixed(2), y: +this.py.toFixed(2), f: +this.face.toFixed(2), hp: Math.round(this.hp), mh: Math.round(this.maxHp), dn: this.down ? 1 : 0, mv: this.moving ? 1 : 0, at: this.atk ? 1 : 0 }; const key = m.x + ',' + m.y + ',' + m.f + ',' + m.hp + ',' + m.mh + m.dn + m.mv + m.at;
+    const jump = Math.hypot(this.px - this.lastX, this.py - this.lastY) > 12; this.lastX = this.px; this.lastY = this.py; const m: any = { t: 'st', ...(jump ? { tp: 1 } : {}), x: +this.px.toFixed(2), y: +this.py.toFixed(2), f: +this.face.toFixed(2), hp: Math.round(this.hp), mh: Math.round(this.maxHp), dn: this.down ? 1 : 0, mv: this.moving ? 1 : 0, at: this.atk ? 1 : 0, ...(this.em ? { em: this.em } : {}) }; const key = '' + m.em + ',' + m.x + ',' + m.y + ',' + m.f + ',' + m.hp + ',' + m.mh + m.dn + m.mv + m.at;
     if (key === this.lastKey && nowMs - this.lastSent < 1000) return false; this.lastKey = key; this.lastSent = nowMs; this.stats.stateSent++; this.net.send(m); return true;
   }
   /** damage this player dealt to an enemy (id 0 = boss); batched and relayed so teammates' copies of that enemy lose the same HP */
@@ -45,7 +45,7 @@ export class InstanceClient {
   claimKill(id: number) { this.flushDmg(Date.now(), true); this.stats.claims++; this.net.send({ t: 'kill', id }); }
   setFlag(k: string, v: any) { if (this.flags[k] === v) return; this.flags[k] = v; this.stats.flagsSent++; this.net.send({ t: 'flag', k, v }); }
   revive(id: string) { this.net.send({ t: 'revive', id }); }
-  onPs(m: any, nowMs: number) { this.snaps++; this.lastN = m.n; const list = (m.p as any[]).filter(p => p.id !== this.myId).map(p => { const r = this.roster.get(p.id); return { id: p.id, name: r?.name || 'Guest', lvl: r?.lvl || 1, look: r?.look, x: p.x, y: p.y, face: p.f, hp: p.hp, maxHp: p.mh, down: !!p.dn, moving: !!p.mv, atk: !!p.at } as any; });
+  onPs(m: any, nowMs: number) { this.snaps++; this.lastN = m.n; const list = (m.p as any[]).filter(p => p.id !== this.myId).map(p => { const r = this.roster.get(p.id); return { id: p.id, name: r?.name || 'Guest', lvl: r?.lvl || 1, look: r?.look, x: p.x, y: p.y, face: p.f, hp: p.hp, maxHp: p.mh, down: !!p.dn, moving: !!p.mv, atk: !!p.at, em: p.em | 0 } as any; });
     // merge with the previous known set so players that did not change this tick stay visible (server sends deltas)
     for (const l of list) this.known.set(l.id, l); this.players.push(m.n / STATE_HZ, nowMs, [...this.known.values()]); }
   onEvent(m: any) { if (m.t === 'ekill') { if (m.id) this.killed.add(m.id); else this.flags.bossDead = true; } else if (m.t === 'flag') this.flags[m.k] = m.v; }

@@ -36,7 +36,7 @@ export class Input {
     else if(k==='i'||k==='tab'){ this.opts.onToggleInv(); e.preventDefault(); }
     else if(k==='x') this.g.clearTarget();
     else if(k==='t') this.g.useStim();
-    else if(k==='g') this.g.emote();
+    else if(k==='j') this.g.emote(); // G is the party ping
     else if(k==='v') this.g.ventNow();
     else if(k==='n'){ const st=this.g.save.settings; st.minimap=st.minimap===false; persist(this.g.save); document.getElementById('btn-map')?.classList.toggle('on',st.minimap!==false); document.getElementById('btn-map')?.classList.toggle('off',st.minimap===false); }
     else if(k==='m'){ const s=this.g.save.settings; s.music=!s.music; this.audio.setMusicOn(s.music); }

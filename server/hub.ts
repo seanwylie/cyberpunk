@@ -14,7 +14,7 @@ export interface HubOpts { /** allowed browser Origins (exact match, or '*.examp
 class Bucket { tokens: number; last = Date.now(); constructor(public rate: number, public burst: number) { this.tokens = burst; } take() { const n = Date.now(); this.tokens = Math.min(this.burst, this.tokens + (n - this.last) / 1000 * this.rate); this.last = n; if (this.tokens < 1) return false; this.tokens--; return true; } }
 interface Guest { id: string; token: string; name: string; lvl: number; look?: Look; build?: any; ws: WebSocket | null; party: Party | null; shard: Shard | null; pos: { x: number; y: number; face: number; moving: boolean; em?: number; t: number; town: string }; ready: boolean; b: { all: Bucket; input: Bucket; chat: Bucket; ping: Bucket; pos: Bucket }; viol: number }
 interface Party { code: string; leader: string; members: Guest[]; dungeon: string | null; room: Room | null; ready: Set<string> }
-interface RPlayer { id: string; name: string; lvl: number; look?: Look; x: number; y: number; f: number; hp: number; mh: number; dn: boolean; mv: boolean; at: boolean; dirty: boolean; t: number; budget: number; viol: number; dmgB: Bucket; killB: Bucket; reviveAt: number; freeUntil: number; kills: number; dmgTotal: number }
+interface RPlayer { id: string; name: string; lvl: number; look?: Look; x: number; y: number; f: number; hp: number; mh: number; dn: boolean; mv: boolean; at: boolean; em?: number; dirty: boolean; t: number; budget: number; viol: number; dmgB: Bucket; killB: Bucket; reviveAt: number; freeUntil: number; kills: number; dmgTotal: number }
 interface Room { id: string; party: Party; dungeon: string; seed: number; hpMul: number; dmgMul: number; w: number; h: number; spawn: { x: number; y: number }; cps: { x: number; y: number }[]; homes: { x: number; y: number }[]; players: Map<string, RPlayer>; killed: Set<number>; flags: Record<string, any>; bossDead: boolean; completed: boolean; allDownT: number; tick: number; stats: { stateRejected: number; kills: number; killsRejected: number; dmgClipped: number; revives: number; revivesRejected: number; flagsRejected: number } }
 interface Shard { id: string; town: string; members: Set<Guest> }
 const CODE_ALPHA = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -82,7 +82,7 @@ export function startHub(o: HubOpts = {}) {
     const d = Math.hypot(x - q.x, y - q.y);
     const warp = d > q.budget && (r.cps.some(c => Math.hypot(x - c.x, y - c.y) < 3) /* checkpoint / entrance respawns */ || (o.dev && m.tp === 1) /* test-only teleport */); if (warp) q.budget = MOVE_BUDGET + d;
     if (d > q.budget && now > q.freeUntil) { r.stats.stateRejected++; stats.rejected++; if (++q.viol > 25) kickCheater(r, g, 'impossible movement'); return; } // keep the last good position; the sender's own game is unaffected
-    q.budget -= d; q.x = x; q.y = y; q.f = num(m.f, -7, 7); q.mh = num(m.mh, 1, 20000, 100); q.hp = num(m.hp, 0, q.mh, q.mh); q.dn = !!m.dn; q.mv = !!m.mv; q.at = !!m.at; q.dirty = true; if (q.viol > 0 && d < 1) q.viol = Math.max(0, q.viol - .1);
+    q.budget -= d; q.x = x; q.y = y; q.f = num(m.f, -7, 7); q.mh = num(m.mh, 1, 20000, 100); q.hp = num(m.hp, 0, q.mh, q.mh); q.dn = !!m.dn; q.mv = !!m.mv; q.at = !!m.at; q.em = (+m.em | 0) & 255; q.dirty = true; if (q.viol > 0 && d < 1) q.viol = Math.max(0, q.viol - .1);
   }
   /** batched damage a client dealt to enemies, relayed so teammates' copies of the same enemy lose the same HP. Clipped by a per-player damage-rate budget. */
   function onDmg(r: Room, g: Guest, m: any) {
@@ -112,7 +112,7 @@ export function startHub(o: HubOpts = {}) {
     a.reviveAt = now; b.dn = false; b.dirty = true; r.stats.revives++; toRoom(r, { t: 'revived', id: b.id, by: a.id });
   }
   function roomTick(r: Room, dt: number) {
-    r.tick++; const list: any[] = []; for (const q of r.players.values()) { if (!q.dirty) continue; q.dirty = false; list.push({ id: q.id, x: r2(q.x), y: r2(q.y), f: r2(q.f), hp: Math.round(q.hp), mh: Math.round(q.mh), dn: q.dn ? 1 : 0, mv: q.mv ? 1 : 0, at: q.at ? 1 : 0 }); }
+    r.tick++; const list: any[] = []; for (const q of r.players.values()) { if (!q.dirty) continue; q.dirty = false; list.push({ id: q.id, x: r2(q.x), y: r2(q.y), f: r2(q.f), hp: Math.round(q.hp), mh: Math.round(q.mh), dn: q.dn ? 1 : 0, mv: q.mv ? 1 : 0, at: q.at ? 1 : 0, ...(q.em ? { em: q.em } : {}) }); }
     if (list.length) { toRoom(r, { t: 'ps', n: r.tick, p: list }); stats.snaps++; }
     // party wipe: everyone down for 3 s -> everyone back at the entrance (clients reset their own boss/enemy aggro)
     if (r.players.size && [...r.players.values()].every(q => q.dn)) { r.allDownT += dt; if (r.allDownT >= 3) { r.allDownT = 0; for (const q of r.players.values()) { q.dn = false; q.x = r.spawn.x; q.y = r.spawn.y; q.dirty = true; q.budget = MOVE_BUDGET; q.freeUntil = Date.now() + 3000; } toRoom(r, { t: 'wipe' }); } } else r.allDownT = 0;
