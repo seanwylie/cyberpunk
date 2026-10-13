@@ -8,14 +8,15 @@ const args = process.argv.slice(2); const VAL = ['--out', '--timeout', '--reruns
 const OUT = opt('--out', '/workspace/test_results.txt'), TMO = +opt('--timeout', 900) * 1000, RERUNS = +opt('--reruns', 3), SLOW = +opt('--slow', 300);
 const SKIP = /^(lib|mobile_lib|net_lib)$|_shots?$|gifs$|^screenshots$|^sprite_shot$|^prod$/;
 const LIST = opt('--list', null); // a file with one test name per line (# comments ok): tests/suite.txt is the npm test list
-const named = [...args.filter((a, i) => !a.startsWith('--') && !VAL.includes(args[i - 1])), ...(LIST ? fs.readFileSync(LIST, 'utf8').split('\n').map(l => l.replace(/#.*/, '').trim()).filter(Boolean) : [])];
+const ENV = {}; // per-test env from 'VAR=val name' list lines
+const named = [...args.filter((a, i) => !a.startsWith('--') && !VAL.includes(args[i - 1])), ...(LIST ? fs.readFileSync(LIST, 'utf8').split('\n').map(l => l.replace(/#.*/, '').trim()).filter(Boolean).map(l => { const t = l.split(/\s+/), n = t.pop(); for (const kv of t) { const i = kv.indexOf('='); (ENV[n] ??= {})[kv.slice(0, i)] = kv.slice(i + 1); } return n; }) : [])];
 fs.mkdirSync(path.dirname(OUT), { recursive: true }); if (args.includes('--fresh')) fs.writeFileSync(OUT, '');
 const lines = () => fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8').split('\n').filter(Boolean) : [];
 const done = new Set(lines().filter(l => / (PASS|FLAKY) /.test(l)).map(l => l.split(' ')[0]));
 const files = fs.readdirSync('tests').filter(f => f.endsWith('.mjs')).map(f => path.basename(f, '.mjs')).filter(n => named.length ? named.includes(n) : !SKIP.test(n)).sort();
 { const miss = named.filter(n => !fs.existsSync(`tests/${n}.mjs`)); if (miss.length) { console.error('missing tests: ' + miss.join(' ')); process.exit(2); } }
 const logDir = path.join(path.dirname(OUT), 'test_logs'); fs.mkdirSync(logDir, { recursive: true });
-const run = (n, k) => new Promise(res => { const log = fs.openSync(path.join(logDir, k ? `${n}.rerun${k}.log` : `${n}.log`), 'w'); const p = spawn('node', ['tests/' + n + '.mjs'], { stdio: ['ignore', log, log], env: process.env }); const to = setTimeout(() => { p.kill('SIGKILL'); res('TIMEOUT'); }, TMO); p.on('exit', c => { clearTimeout(to); res(c); }); });
+const run = (n, k) => new Promise(res => { const log = fs.openSync(path.join(logDir, k ? `${n}.rerun${k}.log` : `${n}.log`), 'w'); const p = spawn('node', ['tests/' + n + '.mjs'], { stdio: ['ignore', log, log], env: { ...process.env, ...(ENV[n] || {}) } }); const to = setTimeout(() => { p.kill('SIGKILL'); res('TIMEOUT'); }, TMO); p.on('exit', c => { clearTimeout(to); res(c); }); });
 const clean = () => { try { execSync('git checkout -- shots docs/art 2>/dev/null; git clean -fdq shots 2>/dev/null', { stdio: 'ignore' }); } catch { } }; // tests rewrite tracked screenshots
 for (const n of files) {
   if (done.has(n)) continue; const t0 = Date.now(); let code = await run(n, 0), att = 1; clean();
