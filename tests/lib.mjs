@@ -15,6 +15,8 @@ export async function launch(opts = {}) {
   // living city effects (prices, events, guards) are neutral for every other test; pass city:true to leave them live (tests/city_ui.mjs)
   if (!opts.city) await page.addInitScript(() => { try { localStorage.setItem('wv_city_neutral', '1'); } catch {} });
   if (!opts.tutorial) await page.addInitScript(() => { try { localStorage.setItem('wv_notut', '1'); } catch {} });
+  // the boot character select is off for every other test (tests/charsel.mjs covers it); pass chars:true to leave it on
+  if (!opts.chars) await page.addInitScript(() => { try { localStorage.setItem('wv_nocharsel', '1'); } catch {} });
   if (opts.init) await page.addInitScript(opts.init);
   if (opts.route) await opts.route(page); // e.g. delay the web font to reproduce a font-load race
   await page.goto(URL + (opts.query || ''), { waitUntil: 'load' }); await page.waitForFunction(() => window.__game);

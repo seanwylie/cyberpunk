@@ -7,7 +7,7 @@ export const CHAR_LIMIT=10;
 export const ROSTER_KEY='wv_roster_v1';
 export const LEGACY_KEY='arpg-proto-save-v1';
 export const CHAR_KEY=(id:string)=>'wv_char_'+id;
-export interface CharSummary { id:string; name:string; level:number; created:number; played:number; trait1?:string|null; trait2?:string|null }
+export interface CharSummary { id:string; name:string; level:number; created:number; played:number; trait1?:string|null; trait2?:string|null; /** last town id (src/towns.ts) */ town?:string; /** auto-made on a first boot with no save: the selector opens straight into naming it */ fresh?:boolean }
 export interface Account { settings?:any; purchases?:{ lockerBlocks:number; skins:string[] }; store?:any; cosOwned?:Record<string,number>; cosSeen?:Record<string,number>; cosOutfits?:any[]; /** account mailbox (src/mail.ts) */ mail?:any[] }
 export interface Roster { v:1; active:string; chars:CharSummary[]; account:Account; nextN:number }
 type KV={ get(k:string):string|null; set(k:string,v:string):void; del(k:string):void };
@@ -20,7 +20,7 @@ export function ensureRoster(kv:KV=lsKV):Roster{ let r=readRoster(kv); if(r&&r.c
   const id=newId(); const legacy=kv.get(LEGACY_KEY); let level=1; let acct:Account={};
   { const nm=kv.get('wv_name'); if(nm) kv.set('wv_name_'+id,nm); }
   if(legacy){ kv.set(CHAR_KEY(id),legacy); try{ const s=JSON.parse(legacy); level=s.level||1; acct=extractAccount(s); }catch{} }
-  r={ v:1, active:id, chars:[{ id, name:'Runner 1', level, created:Date.now(), played:Date.now() }], account:acct, nextN:2 }; writeRoster(r,kv); return r; }
+  r={ v:1, active:id, chars:[{ id, name:'Runner 1', level, created:Date.now(), played:Date.now(), ...(legacy?{}:{ fresh:true }) }], account:acct, nextN:2 }; writeRoster(r,kv); return r; }
 export function extractAccount(s:any):Account{ return { settings:s.settings, purchases:s.purchases?{ lockerBlocks:s.purchases.lockerBlocks||0, skins:[...(s.purchases.skins||[])] }:undefined, store:s.store, cosOwned:s.cosmetics?.owned, cosSeen:s.cosmetics?.seen, cosOutfits:s.cosmetics?.outfits }; }
 /** Overlay account-wide data onto a character save (load path). Purchases are merged (max / union) so nothing bought is ever lost. */
 export function applyAccount(s:any,a:Account){ if(!a) return s; if(a.settings) s.settings={ ...s.settings, ...a.settings };
@@ -31,7 +31,7 @@ export function applyAccount(s:any,a:Account){ if(!a) return s; if(a.settings) s
 /** Read the active character's raw save JSON (falls back to the legacy mirror). */
 export function activeRaw(kv:KV=lsKV):string|null{ const r=ensureRoster(kv); return kv.get(LEGACY_KEY)??kv.get(CHAR_KEY(r.active)); }
 /** Persist path: character data to its own key + legacy mirror; account fields + summary to the roster. */
-export function saveActive(json:string,s:any,kv:KV=lsKV){ const r=ensureRoster(kv); kv.set(CHAR_KEY(r.active),json); kv.set(LEGACY_KEY,json); r.account={ ...r.account, ...extractAccount(s) }; const c=r.chars.find(x=>x.id===r.active); if(c){ c.level=s.level||1; c.played=Date.now(); c.trait1=s.traits?.l10?.id??null; c.trait2=s.traits?.l20?.id??null; } writeRoster(r,kv); }
+export function saveActive(json:string,s:any,kv:KV=lsKV){ const r=ensureRoster(kv); kv.set(CHAR_KEY(r.active),json); kv.set(LEGACY_KEY,json); r.account={ ...r.account, ...extractAccount(s) }; const c=r.chars.find(x=>x.id===r.active); if(c){ c.level=s.level||1; c.played=Date.now(); c.trait1=s.traits?.l10?.id??null; c.trait2=s.traits?.l20?.id??null; c.town=s.town; } writeRoster(r,kv); }
 export type CharResult={ ok:true; id:string }|{ ok:false; why:string };
 /** Free character creation, capped at CHAR_LIMIT. The new save is built by the caller's factory (state.newSave) so it gets the stock loadout. */
 export function createChar(name:string,make:()=>any,kv:KV=lsKV):CharResult{ const r=ensureRoster(kv); if(r.chars.length>=CHAR_LIMIT) return { ok:false, why:`Character limit reached (${CHAR_LIMIT}). Delete one to make room.` };
@@ -45,6 +45,9 @@ export function deleteChar(id:string,kv:KV=lsKV):CharResult{ const r=ensureRoste
   if(!r.chars.length){ kv.del(LEGACY_KEY); kv.del(ROSTER_KEY); const r2=ensureRoster(kv); r2.account=r.account; writeRoster(r2,kv); return { ok:true, id:r2.active }; }
   if(r.active===id){ writeRoster(r,kv); return selectChar(r.chars[0].id,kv); } writeRoster(r,kv); return { ok:true, id:r.active }; }
 /** Raw save of any character (transfers / selector previews). */
+export function charSave(id:string,kv:KV=lsKV):any{ try{ return JSON.parse(kv.get(CHAR_KEY(id))||'null'); }catch{ return null; } }
+/** Name the auto-made first character (first-time player creation). */
+export function nameFresh(name:string,kv:KV=lsKV):boolean{ const r=ensureRoster(kv); const c=r.chars.find(x=>x.id===r.active); if(!c?.fresh) return false; const nm=(name||'').replace(/[<>"&]/g,'').trim().slice(0,16); if(nm) c.name=nm; delete c.fresh; writeRoster(r,kv); return true; }
 /** Multiplayer identity is per character: party display name defaults to the character name; a custom party name is remembered per character. */
 export const partyName=(kv:KV=lsKV)=>{ try{ const r=ensureRoster(kv); return kv.get('wv_name_'+r.active)||(r.chars[0]?.id===r.active?kv.get('wv_name'):null)||r.chars.find(c=>c.id===r.active)?.name||'Guest'; }catch{ return 'Guest'; } };
 export const setPartyName=(n:string,kv:KV=lsKV)=>{ const r=ensureRoster(kv); kv.set('wv_name_'+r.active,n); };

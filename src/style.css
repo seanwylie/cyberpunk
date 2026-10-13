@@ -662,6 +662,12 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 .cscard.on{ border-color:#3ef0ff; box-shadow:0 0 0 1px #3ef0ff inset; }
 .cscard .csn,.cscard small{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cscard.csempty{ align-items:center; justify-content:center; cursor:pointer; opacity:.85; }
+.cscard .csprev{ width:96px; height:112px; align-self:center; border-radius:4px; }
+.cscard.csempty{ font-size:1.1em; font-weight:700; color:#3ef0ff; }
+.csdelin{ width:100%; min-width:0; }
+.csfirst{ max-width:340px; margin:0 auto; }
+.stab.sswitch{ margin-top:12px; border-top:1px solid rgba(255,255,255,.12); }
+.stab.sswitch[disabled]{ opacity:.45; cursor:not-allowed; }
 .cscard.dim{ opacity:.3; cursor:default; }
 .cscard .csrow{ display:flex; gap:6px; margin-top:auto; }
 .cscard .csrow .btn{ flex:1; min-height:32px; }

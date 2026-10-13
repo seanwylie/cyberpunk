@@ -20,12 +20,14 @@ First boot after the update: no roster exists, so the existing save JSON is copi
 
 ## Selector
 
-- Shown on load when the account has **2+ characters** (with one character there is nothing to choose, so the game loads straight in), or with `?chars` in the URL.
-- Always reachable from **Settings > Gameplay > Characters**.
-- 10 slots; `+ New` asks for a name (16 chars max) and starts a fresh character at **level 1** (`PROGRESSION.startLevel`) with the Standard Issue stock kit (grey, level 1, every slot) and starting credits/chips. The level 10 trait is earned in play. The Reclamation Annex (Lv 1–10) is the first dungeon; see *Early game (levels 1–10)* below.
-- Existing saves are not touched: the character migrated from the legacy single save keeps its stored level, gear and traits.
-- Delete needs a second click on a red **Delete** (Keep cancels). Deleting the active character switches to the next one; deleting the last one leaves a fresh character 1. Account purchases are never deleted.
-- Switching persists the current character and reloads the page (all systems boot cleanly on the new save).
+- **Shown on every boot** (in town). A first-time player (no save, no roster) goes straight to naming their runner (level 1, stock gear); closing it keeps "Runner 1" and asks again next boot.
+- Each card: live model preview (own body + worn cosmetics, idle, slowly turning, one rAF at ~15 fps), name, level, last town; details in the tooltip.
+- `+ New` asks for a name (16 chars max) and starts a fresh character at **level 1** (`PROGRESSION.startLevel`) with the Standard Issue stock kit. Hidden at the 10-character cap.
+- Delete asks you to **type the character's name**, then click the red **Delete** (Keep cancels). Deleting the active character switches to the next one; deleting the last one leaves a fresh character (naming again). Account purchases are never deleted.
+- In-game menu (Settings) has **Switch character** under the tabs: town only (disabled with a tooltip in a run; the selector also refuses to open in a run). Also Settings > Gameplay > Characters.
+- Switching persists the current character and reloads the page.
+- Tests: `tests/charsel.mjs` (boot, first-time naming, create/switch/typed delete, cap, menu). Every other test opts out of the boot selector via `wv_nocharsel` (tests/lib.mjs).
+- Existing saves are not touched: the migrated character keeps its stored level, gear and traits.
 
 ## Multiplayer identity
 

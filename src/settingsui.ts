@@ -78,7 +78,7 @@ export function settingsHtml(ui:UIx):string{
   else if(tab==='story') c=storyHtml(ui);
   else c=aboutHtml(ui);
   const tabs=TABS.map(([id,n])=>`<button type="button" class="stab${id===tab?' on':''}" role="tab" id="stab-${id}" aria-selected="${id===tab}" aria-controls="spanel" tabindex="${id===tab?0:-1}" data-act="s-tab" data-tab="${id}">${esc(n)}</button>`).join('');
-  return `<div class="stabs" role="tablist" aria-orientation="vertical" aria-label="Settings sections">${tabs}</div><div class="sbody" id="spanel" role="tabpanel" aria-labelledby="stab-${tab}" tabindex="-1">${c}</div>`;
+  return `<div class="stabs" role="tablist" aria-orientation="vertical" aria-label="Settings sections">${tabs}<button type="button" class="stab sswitch" data-act="s-chars"${g.mode==='town'?' data-tip="Pick, create or delete a character."':' disabled data-tip="Only in town. Finish or leave the run first."'}>Switch character</button></div><div class="sbody" id="spanel" role="tabpanel" aria-labelledby="stab-${tab}" tabindex="-1">${c}</div>`;
 }
 
 function confirmBox(id:string,msg:string,go:string,label:string,danger=true){ if(S.confirm!==id) return ''; return `<div class="sconf${danger?' danger':''}" role="alertdialog" aria-label="Confirm"><p>${msg}</p><span class="sbtns"><button type="button" class="btn ${danger?'dng':'primary'}" data-act="${go}">${label}</button><button type="button" class="btn" data-act="s-cancel">Cancel</button></span></div>`; }

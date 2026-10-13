@@ -93,6 +93,7 @@ net_latency
 mobs2
 screen_dirs
 chars
+charsel
 traits
 traits_ui
 trait_rank

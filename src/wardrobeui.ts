@@ -241,6 +241,19 @@ export function storePreviewsAfter(ui: UIx) {
     miniRaf = requestAnimationFrame(frame); };
   frame();
 }
+/** One character mini preview (character select): own save's body + worn look. Same renderer as the Outfitter minis. */
+export function drawMini(cv: HTMLCanvasElement, s: any, t: number) {
+  const rend = (window as any).__rend; if (rend?.anim && animSrc !== rend.anim.loaded) { anim = new PlayerAnimator(rend.anim.loaded); animSrc = rend.anim.loaded; }
+  const ctx = cv.getContext('2d')!, W = cv.width, H = cv.height, fx = W / 2, fy = H - 8, u = H / 70;
+  const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, '#101418'); bg.addColorStop(1, '#1d2023'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.beginPath(); ctx.ellipse(fx, fy, W * .3, W * .07, 0, 0, 7); ctx.fill(); if (!s) return;
+  const look = wornLook(s), list = COS_SLOTS.map(sl => look[sl] ? COS_BY_ID[look[sl]!] : null).filter(Boolean) as CosDef[];
+  const dir = (Math.floor(t / 1.6) % 8) as Dir8, k = { c: ctx, x: fx, y: fy, u, t, moving: false, face: FACE[dir], id: 'cs', noModel: !anim };
+  drawCosmetics(k, list, 'back'); let drew = false;
+  if (anim) { try { anim.setBody(applyCosmeticVariants(bodyOf({ ...s, cosmetics: { owned: {}, equipped: {} } } as any, null), { cosmetics: { owned: Object.fromEntries(list.map(x => [x.id, 1])), equipped: look } } as any), list.map(x => x.id)); anim.anim = 'idle'; anim.t = t; anim.dir = dir; drew = anim.draw(ctx, fx, fy, u); } catch { drew = false; } }
+  if (!drew) { ctx.fillStyle = '#5c5f5a'; ctx.beginPath(); ctx.ellipse(fx, fy - 28 * u, 8.5 * u, 10 * u, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#b8a48c'; ctx.beginPath(); ctx.ellipse(fx, fy - 41 * u, 5.2 * u, 5.8 * u, 0, 0, 7); ctx.fill(); }
+  drawCosmetics(k, list, 'front');
+}
 /** test / console hook */
 if (typeof window !== 'undefined') (window as any).__dr = { WD, previewLook: () => previewLook((window as any).__game.save), wornLook: () => wornLook((window as any).__game.save), diff: () => lookDiff((window as any).__game.save), activeOrder };
 const reducedFx = () => document.body.classList.contains('reducefx');

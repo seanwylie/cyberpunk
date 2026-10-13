@@ -41,7 +41,7 @@ ok(await page.evaluate(() => !document.querySelector('[data-act="cs-new"]')), 'f
 const victim = await page.evaluate(() => JSON.parse(localStorage.getItem('wv_roster_v1')).chars[9].id);
 await page.click(`[data-act="cs-del"][data-id="${victim}"]`); await sleep(80);
 ok(await page.evaluate(v => !!document.querySelector(`[data-act="cs-delgo"][data-id="${v}"]`) && JSON.parse(localStorage.getItem('wv_roster_v1')).chars.length === 10, victim), 'delete asks for confirmation first');
-await page.click(`[data-act="cs-delgo"][data-id="${victim}"]`); await sleep(80);
+await page.fill('#csdelname', await page.evaluate(v => JSON.parse(localStorage.getItem('wv_roster_v1')).chars.find(c => c.id === v).name, victim)); /* typed-name confirm */ await page.click(`[data-act="cs-delgo"][data-id="${victim}"]`); await sleep(80);
 ok(await page.evaluate(v => { const r = JSON.parse(localStorage.getItem('wv_roster_v1')); return r.chars.length === 9 && !localStorage.getItem('wv_char_' + v) && window.__game.save.level === 17; }, victim), 'delete: roster and save removed, active character untouched');
 // phone screenshot
 await page.setViewportSize({ width: 844, height: 390 }); await sleep(200); await page.evaluate(() => document.getElementById('splash')?.remove()); await page.screenshot({ path: 'shots/chars/select_phone.png' });
