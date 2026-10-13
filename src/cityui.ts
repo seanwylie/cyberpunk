@@ -6,8 +6,8 @@ import { FACTION_SHORT } from './city';
 import { WORLD_BY_ID } from './world';
 // @ts-ignore plain ESM shared with the server + news Lambda
 import { generateNews } from '../server/city_news.mjs';
+import { esc } from './esc';
 type UIx = any;
-const esc = (s: any) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export const NEWS: { feed: any | null; at: number; loading: boolean; err: string } = { feed: null, at: 0, loading: false, err: '' };
 const httpBase = () => { const n = (globalThis as any).__net?.client; const u = n?.state === 'online' ? String(n.o?.url || '') : ''; return u ? u.replace(/^ws/, 'http').replace(/\/+$/, '') : ''; };
 /** news: server cache (Lambda-written weekly feed) when online, else a canned feed written locally from the offline city's real numbers */

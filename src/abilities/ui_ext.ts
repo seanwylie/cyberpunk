@@ -5,14 +5,13 @@ import type { Save } from '../state';
 import { ABILITY_BY_ID, ABILITY_DATA, ROLE_LABEL } from './registry';
 import { ABILITY_ACQ, chipsFor } from './hw';
 import { CHIPS } from '../config';
-const esc=(s:string)=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+import { esc } from '../esc';
 const KEYS=['Q','E','R'];
 export const abIcon=(id:string)=>'abilities/'+id+'.webp';
 /** Inline type-coloured glyph used if an ability icon file is missing (every ability also ships a generated medallion). */
 export function abFallbackIcon(id:string):string{ const t=ABILITY_TYPE[id]||'attack'; const c=ABILITY_TYPE_COLOR[t]; const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="29" fill="#201d1a" stroke="${c}" stroke-width="4"/><text x="32" y="42" font-size="28" text-anchor="middle" fill="${c}" font-family="monospace">${esc((ABILITIES[id]?.name||'?')[0])}</text></svg>`; return 'data:image/svg+xml;utf8,'+encodeURIComponent(svg); }
 export const imgTag=(id:string,cls='')=>`<img class="${cls}" src="${abIcon(id)}" alt="" onerror="this.onerror=null;this.src='${abFallbackIcon(id).replace(/'/g,'%27')}'">`;
 const rarityOf=(id:string):string=>ABILITIES[id]?.rarity||ITEMS.filter(i=>i.abilities?.includes(id)).sort((a,b)=>RARITY_RANK[a.rarity]-RARITY_RANK[b.rarity])[0]?.rarity||'grey';
-export const abilityRarity=rarityOf;
 /** Full hover text for one ability. */
 export function abTip(id:string,withChips=true):string{ const d=ABILITIES[id]; if(!d) return ''; const x=ABILITY_BY_ID[id]; const rar=rarityOf(id);
   let h=`<b style="color:${RARITY_COLOR[rar as keyof typeof RARITY_COLOR]}">${esc(d.name)}</b> <i style="color:${ABILITY_TYPE_COLOR[d.type]}">${ABILITY_TYPE_LABEL[d.type]}</i> <span class="mut">${rar}</span><br>${esc(d.desc)}<br><span class="mut">Heat ${d.heat} · Cooldown ${d.cd}s${d.range?' · Range '+d.range:''}</span>`;

@@ -4,8 +4,8 @@ import { CHIPS, ChipId, ITEM_BY_ID, MFR, RARITY_COLOR, SLOT_LABEL } from './conf
 import { BANK_TABS_MAX, BANK_TAB_SLOTS, bankCapacity, bankOf, bankUsed, depositChip, depositCredits, depositItem, depositMany, entryName, entryRarity, filterEntries, lockerCapOf, lockerFree, lockerUsed, nextTabPrice, sortTab, storedItems, tabUsed, unlockTab, withdraw, withdrawCredits, withdrawMany, BankFilter } from './bank';
 import { persist } from './state';
 import { storagePromptHtml } from './store';
+import { esc } from './esc';
 type UIx = any;
-const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export const BK = { tab: 0 as number, q: '', type: 'all' as 'all' | 'item' | 'chip', rarity: 'all', sort: 'slot' as 'slot' | 'rarity' | 'name' | 'new', msg: '' };
 const rc = (r: string) => (RARITY_COLOR as any)[r] || '#b4b6b2';
 const itemTip = (id: string) => { const d = ITEM_BY_ID[id]; if (!d) return ''; return `<b style="color:${rc(d.rarity)}">${esc(d.name)}</b><br>${esc(SLOT_LABEL[d.slot])} · ${esc(MFR[d.mfr].short)} · Lv ${d.lvl}<br>${Object.entries(d.stats).map(([k, v]) => `${k} ${v}`).join(', ')}${d.abilities?.length ? '<br>Abilities: ' + d.abilities.join(', ') : ''}`; };

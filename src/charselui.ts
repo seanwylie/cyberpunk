@@ -3,8 +3,8 @@
 import { ensureRoster, createChar, selectChar, deleteChar, CHAR_LIMIT } from './chars';
 import { newSave, persist } from './state';
 import { TRAIT_BY_ID } from './traits';
+import { esc } from './esc';
 type UIx=any;
-const esc=(s:string)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
 export const CS={ confirmDel:'' as string, naming:false, msg:'' };
 const ago=(t:number)=>{ if(!t) return 'never played'; const m=Math.round((Date.now()-t)/60000); return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'; };
 export function charsHtml(ui:UIx):string{ const r=ensureRoster(); let h=`<div class="csbody"><p class="mut csintro">Each character keeps its own level, traits, gear, bank and reputation. Cosmetics, settings and locker upgrades are shared.</p><div class="csgrid">`;

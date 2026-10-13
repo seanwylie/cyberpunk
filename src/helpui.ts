@@ -1,5 +1,5 @@
 import { KEYS, key } from './config';
-const esc=(s:string)=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'} as any)[c]);
+import { esc } from './esc';
 const kb=(...k:string[])=>`<span class="kcaps">${k.map(x=>`<kbd>${esc(x)}</kbd>`).join('')}</span>`;
 const row=(k:string,what:string,note='')=>`<div class="krow">${k}<span class="kw"><b>${what}</b>${note?`<small>${note}</small>`:''}</span></div>`;
 /** Controls overlay (tray "?" button, H or F1). Every key cap comes from KEYS. */

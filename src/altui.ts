@@ -2,7 +2,7 @@
 import { humanityOfSave, band, BAND_LABEL, humanityDelta, humanityCost, persuadeMod } from './altplay';
 import { miniPos, miniResolve, miniSkip } from './altsim';
 import type { ItemDef } from './config';
-const esc=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as any)[c]);
+import { esc } from './esc';
 export function humGauge(s:any):string{ const h=humanityOfSave(s); const b=band(h); const tip=`<b>Humanity ${h}</b> · ${BAND_LABEL[b]}<br>Talk odds ${persuadeMod(h)>=0?'+':''}${Math.round(persuadeMod(h)*100)}%<br>${b==='human'?'Vendors trust you':b==='mixed'?'Neutral':b==='chrome'?'Intimidate up, prices up':'Dark bonus, some vendors refuse'}`;
   return `<div class="humg hb-${b}" data-tip="${esc(tip)}" tabindex="0" aria-label="Humanity ${h}"><span>HUM</span><i><u style="width:${h}%"></u></i><b>${h}</b></div>`; }
 /** plain text for item tooltips: cost + delta vs installed */

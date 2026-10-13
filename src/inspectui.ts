@@ -4,7 +4,7 @@ import { COS_BY_ID } from './content/appearance';
 import { badgeOf, provenance, ownersOf, isExclusive } from './retire';
 import { RARITY_COLOR } from './config';
 import { track } from './analytics';
-const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as any)[c]);
+import { esc } from './esc';
 export interface InspectTarget { id: string; name: string; lvl?: number; look?: { cos?: string[]; ex?: [string, number][]; sc?: string } }
 /** Exclusives a look advertises (owned list with acquisition time, falling back to equipped exclusive ids). */
 export function exclusivesOf(p: InspectTarget): { id: string; at: number }[] {

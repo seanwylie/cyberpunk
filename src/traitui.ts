@@ -5,8 +5,8 @@ import { traitsOf, refreshOffer, chooseTrait, unlockedTier, lean } from './trait
 import { traitPrior } from './traithooks';
 import { persist } from './state';
 import { rankOffer } from './traitrank';
+import { esc } from './esc';
 type UIx=any;
-const esc=(s:string)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
 export const TS={ confirm:'' as string, msg:'' };
 /** Odalys recognition lines by leading family (no numbers, no meter). */
 export const RECOG:Record<Family,string[]>={

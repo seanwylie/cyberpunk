@@ -9,8 +9,8 @@ import { exportBuild, encodeBuild, decodeBuild, buildUrl, buildText, layoutOf, a
 import { snapshot, diffBuild, type Change, type Snap } from './catalog_snap';
 import { TRAIT_BY_ID, describeEffect } from './traits';
 import { CATALOG_VERSION } from './catalog_version';
+import { esc } from './esc';
 type UIx = any;
-const esc=(s:string)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
 export interface BdState { preview:BuildExport|null; diff:Change[]|'loading'|'unavailable'|null; msg:string; importText:string }
 export const bd=(ui:UIx):BdState=>ui._bd||(ui._bd={preview:null,diff:null,msg:'',importText:''});
 let curSnap:Snap|null=null; const cur=()=>curSnap||(curSnap=snapshot());

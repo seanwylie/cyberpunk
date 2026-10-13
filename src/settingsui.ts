@@ -8,7 +8,6 @@ import { DUNGEONS } from './content/dungeons';
 import { Q } from './quality';
 
 type UIx=any;
-const esc=(s:string)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
 export const TABS:[string,string][]=[['gameplay','Gameplay'],['display','Display & UI'],['audio','Audio'],['controls','Controls'],['content','Content'],['instance','Instance'],['story','Story AI'],['about','About & Data']];
 const TAB_KEY='wv_settings_tab';
 const BVG='<span class="bvg"><span>With Big Viking Games</span><img src="/brand/bvg_logo_bone.png" alt="Big Viking Games" width="64"></span>';
@@ -111,6 +110,7 @@ function storyHtml(ui:UIx):string{ const st=ui.g.save.settings, l=st.llm; const 
   +`<div class="stest" role="status" aria-live="polite">${esc(S.test)}</div><p class="sd">Stored only in this browser's localStorage and sent only to the endpoint you enter.</p>`; }
 
 import { buildLabel } from './version';
+import { esc } from './esc';
 function aboutHtml(ui:UIx):string{ const st=ui.g.save.settings;
   return head('About & Data','')
   +`<div class="scard"><b>Warranty Void</b><small>An isometric cyberpunk loot-ARPG prototype. Void where prohibited.</small><span class="abt">${BVG}</span><small id="buildid">Build ${buildLabel()}</small></div>`

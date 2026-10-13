@@ -2,8 +2,8 @@
 import { playTaunt } from './nemesis_voice';
 import { nemOf, MODULES } from './nemesis';
 import { nameNemesis } from './nemesis_ai';
+import { esc } from './esc';
 let node: HTMLDivElement | null = null; let hideT: any = 0;
-const esc = (s: string) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 export function showNemesis(g: any, p: any) { if (typeof document === 'undefined') return;
   if (!node) { node = document.createElement('div'); node.id = 'nemCard'; node.className = 'nem-card'; document.body.appendChild(node); }
   const n = nemOf(g.save).list.find(x => x.id === p.id); const head = p.kind === 'killed' ? 'Nemesis slain' : p.kind === 'created' ? 'New nemesis' : p.kind === 'promoted' ? 'Promoted' : p.kind === 'recruited' ? 'Recruited' : p.kind === 'return' ? 'Nemesis returns' : 'Stronger';

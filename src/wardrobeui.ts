@@ -14,9 +14,9 @@ import { persist } from './state';
 import { track, fmtUsd } from './analytics';
 import { equipSound, flourish, PALETTES, SIGNATURE } from './cosfx';
 import { CATALOG, SKU_BY_ID, Sku, activeOrder, cancelOrder, confirmPurchase, skuAvail, startPurchase } from './store';
+import { esc } from './esc';
 type UIx = any;
 type Look = Partial<Record<CosSlot, string>>;
-const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const rc = (r: Rarity) => RARITY_COLOR[r];
 
 /** Dressing-room state. `staged` holds preview overrides per slot (id = try on, null = take off); empty = preview equals what you wear. */

@@ -13,8 +13,8 @@ import { featured, rotation, weekEnds, collections, lineSkins, passOf, passLevel
 import { LINES, LINE_BY_ID, TIER, SEASON } from './content/skinlines';
 import { statusOf, countdown, fmtDate, badgeOf, now as rnow } from './retire';
 import { persist } from './state';
+import { esc } from './esc';
 type UIx = any;
-const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export type StTab = 'featured' | 'lines' | 'pass' | 'skins' | 'bundles' | 'storage';
 export const ST = ((globalThis as any).__wvStoreUi ??= { tab: 'featured' as StTab, line: 'hextech', sel: '', phase: 'idle' as 'idle' | 'confirm' | 'processing' | 'done', orderId: '', msg: '', funnel: false, from: 'town' as 'town' | 'wardrobe' | 'locker' | 'bank' });
 const tabOf = (k: Sku): StTab => k.kind === 'skin' ? 'skins' : k.kind === 'bundle' ? 'bundles' : k.kind === 'line' || k.kind === 'line_bundle' ? (ST.tab === 'featured' ? 'featured' : 'lines') : k.kind === 'starter' ? 'featured' : k.kind === 'pass' ? 'pass' : 'storage';

@@ -6,7 +6,7 @@ import { DUNGEONS } from '../content/dungeons';
 import { partyHpMul, partyDmgMul } from './shared';
 import type { Game } from '../sim';
 
-const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+import { esc } from '../esc';
 const CSS = `
 #btn-party .dot{ position:absolute; right:1px; bottom:1px; width:9px; height:9px; border-radius:50%; background:#6b6d70; box-shadow:0 0 0 1.5px #111; } #btn-party.on .dot{ background:#7bd389 } #btn-party.party .dot{ background:#e8c46a }
 #partypanel{ position:fixed; z-index:40; right:8px; top:calc(max(36px,calc(30px*var(--fs,1))) + 22px); width:min(300px,calc(100vw - 16px)); max-height:calc(100vh - 120px); overflow:auto; padding:8px 10px; border-radius:8px; background:rgba(16,17,18,.94); border:1px solid #5a5d60; color:#e6e0cf; font:600 max(var(--fmin,12px),12px)/1.3 "Roboto Condensed",sans-serif; box-shadow:0 6px 24px rgba(0,0,0,.6); display:none; }

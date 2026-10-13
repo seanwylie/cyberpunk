@@ -6,8 +6,8 @@ import { persist } from './state';
 import { WORLD, WORLD_BY_ID, FIRST_VISIT_XP, GATEWAY_TO } from './world';
 import { stationsOf } from './worldtowns';
 import { worldOf, dungeonsAt, discoveredCount } from './discovery';
+import { esc } from './esc';
 type UIx = any;
-const esc = (s: string) => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 export const TV: { msg: string; sel: string } = { msg: '', sel: '' };
 /** Reach Line transit screen: a world map of every district (short labels, full details on hover/tap) plus a detail card for the selected town. */
 export function travelHtml(ui: UIx): string {

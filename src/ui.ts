@@ -55,13 +55,13 @@ import { settingsHtml, settingsAfterRender, settingsReset, settingsEsc, settings
 import { HEAT, heatCost, heatBand, dissipation } from './heat';
 import { planSwap, performSwap, undoSwap, unequipTarget, unequipCost, statDeltas, isStock, type SwapUndo, type SwapPlan } from './lockerswap';
 
+import { esc } from './esc';
 export const abIconUrl=(id:string)=>'abilities/'+id+'.webp';
 const abChip=(id:keyof typeof ABILITIES)=>abChipX(id);
 const abChips=(ids:(keyof typeof ABILITIES)[],sep=' ')=>ids.map(abChip).join(sep);
 
 
 const $=(id:string)=>document.getElementById(id)!;
-const esc=(s:string)=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]!));
 export const BUILD_KITS:Record<string,{name:string;items:Partial<Record<Slot,string>>;chips:Partial<Record<ChipId,number>>}> = {
   A:{ name:'Ripper & cooling (heavy industrial)', items:{ armR:'hi_ripper_arm', handR:'hi_cutting_head', handL:'hi_clamp', legL:'hi_legs_l', legR:'hi_legs_r', torso:'hi_torso_cool' }, chips:{ speed:2, cutwide:1, coolant:3, sustain:2, power:1, plating:1 } },
   B:{ name:'Cloak & blade (precision surgical)', items:{ armR:'ps_blade_arm', handR:'ps_blade_hand_r', handL:'ps_blade_hand_l', torso:'ps_veil_torso', legL:'ps_legs_l', legR:'ps_legs_r', face:'ps_face' }, chips:{ speed:2, bladepat:1, cloakdur:2, coolant:2, sustain:2 } },
