@@ -13,6 +13,7 @@ import { featured, rotation, weekEnds, collections, lineSkins, passOf, passLevel
 import { LINES, LINE_BY_ID, TIER, SEASON } from './content/skinlines';
 import { statusOf, countdown, fmtDate, badgeOf, now as rnow } from './retire';
 import { persist } from './state';
+import { cosIcon } from './coslayers';
 import { esc } from './esc';
 type UIx = any;
 export type StTab = 'featured' | 'lines' | 'pass' | 'skins' | 'bundles' | 'storage';
@@ -27,7 +28,7 @@ export function openStore(ui: UIx, from: typeof ST.from, sku?: string) {
   if (k) ST.sel = ''; ui.open('store'); if (ui.modal !== 'store') { return; } track('store_open', undefined, { from }); if (k) { view(k.id); ui.render(); }
 }
 
-const swatch = (k: Sku) => { if (k.kind === 'line') { const d = COS_BY_ID[k.items![0]]; return `<span class="cosw" style="--c:${d.c};--c2:${d.c2 || d.c}">${d.slot === 'skin' ? (tierOf(d) || 'ch').slice(0, 2).toUpperCase() : COS_SLOT_ICON[d.slot]}</span>`; } if (k.kind === 'skin') { const d = COS_BY_ID[k.items![0]]; return `<span class="cosw" style="--c:${d.c};--c2:${d.c2 || d.c}">${COS_SLOT_ICON[d.slot]}</span>`; } return `<span class="cosw" style="--c:#c9a24a;--c2:#fff0b0">${k.kind === 'bundle' ? '★' : k.kind === 'storage_bank' ? 'BK' : 'LK'}</span>`; };
+const swatch = (k: Sku) => { if ((k.kind === 'skin' || k.kind === 'line') && k.items && cosIcon(k.items[0])) return `<span class="cosw art">${cosIcon(k.items[0])}</span>`; if (k.kind === 'line') { const d = COS_BY_ID[k.items![0]]; return `<span class="cosw" style="--c:${d.c};--c2:${d.c2 || d.c}">${d.slot === 'skin' ? (tierOf(d) || 'ch').slice(0, 2).toUpperCase() : COS_SLOT_ICON[d.slot]}</span>`; } if (k.kind === 'skin') { const d = COS_BY_ID[k.items![0]]; return `<span class="cosw" style="--c:${d.c};--c2:${d.c2 || d.c}">${COS_SLOT_ICON[d.slot]}</span>`; } return `<span class="cosw" style="--c:#c9a24a;--c2:#fff0b0">${k.kind === 'bundle' ? '★' : k.kind === 'storage_bank' ? 'BK' : 'LK'}</span>`; };
 const RS = ['grey', 'green', 'blue', 'purple', 'orange'];
 const rar = (k: Sku) => k.kind === 'skin' || k.kind === 'line' ? COS_BY_ID[k.items![0]].rarity : (k.kind === 'bundle' || k.kind === 'line_bundle') && k.items ? k.items.map(i => COS_BY_ID[i].rarity).reduce((m, r) => RS.indexOf(r) > RS.indexOf(m) ? r : m, 'green') : 'green';
 const RANK = (k: Sku) => RS.indexOf(rar(k));

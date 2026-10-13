@@ -69,7 +69,7 @@ def head_item(iid):
         for k in range(12):
             a=k/12*2*math.pi; box(s,'cAm',j,(0.012,0.012,0.04 if k%3 else 0.06),(math.cos(a)*0.135,cy+math.sin(a)*0.135,top+0.08),0.003)
         box(s,'cAm',j,(0.09,0.01,0.008),(0.04,cy,top+0.08),0.002,rot=(0,0,0.6))
-    elif iid=='col_hextech_halo':
+    elif iid.startswith('col_') and iid.endswith('_halo'):   # Saint's Halo (collection reward)
         cyl(s,'cAm',j,0.12,0.12,0.012,(0,B+0.03,top-0.02),(math.radians(80),0,0),v=40,bevel=0.003)
         for k in range(16):
             a=k/16*2*math.pi; L=0.07 if k%2 else 0.11

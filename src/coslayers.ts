@@ -24,3 +24,5 @@ export function recolorSheet(im: CanvasImageSource & { width: number; height: nu
     p[i] = R * c[0] + G * c2[0] + B * gl[0] + w; p[i + 1] = R * c[1] + G * c2[1] + B * gl[1] + w; p[i + 2] = R * c[2] + G * c2[2] + B * gl[2] + w; }
   x.putImageData(img, 0, 0); return cv;
 }
+/** Store / locker / wardrobe icon: the real model piece (packed by pack_cos.py), or '' when the item has no art yet. */
+export const cosIcon = (id: string) => hasCosArt(id) ? `<img class="cosicon" src="sprites/cos/${id}/icon.webp" alt="" loading="lazy" draggable="false">` : '';

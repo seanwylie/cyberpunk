@@ -15,6 +15,7 @@ import { track, fmtUsd } from './analytics';
 import { equipSound, flourish, PALETTES, SIGNATURE } from './cosfx';
 import { CATALOG, SKU_BY_ID, Sku, activeOrder, cancelOrder, confirmPurchase, skuAvail, startPurchase } from './store';
 import { esc } from './esc';
+import { cosIcon } from './coslayers';
 type UIx = any;
 type Look = Partial<Record<CosSlot, string>>;
 const rc = (r: Rarity) => RARITY_COLOR[r];
@@ -56,7 +57,7 @@ const isNew = (s: any, d: CosDef) => { const c = cosOf(s), t = c.owned[d.id]; re
 const badgeOf = (s: any, d: CosDef): [string, string, string] | null => xBadge(d.id) ? ['ex', xBadge(d.id) === 'Founder' ? 'F' : xBadge(d.id) === 'Retired' ? 'R' : 'X', xBadge(d.id) + (ownsCos(s, d.id) ? ': ' + provenance(d.id, cosOf(s).owned[d.id]) : '')] : !ownsCos(s, d.id) && d.src.k === 'event' ? ['ltd', 'LTD', 'Limited'] : isNew(s, d) ? ['new', 'NEW', 'New: not previewed yet'] : !ownsCos(s, d.id) && FEATURED.has(d.id) ? ['feat', '★', 'Featured in a set'] : null;
 const priceOf = (d: CosDef) => storeSkuOf(d) ? fmtUsd((d.src as any).cents) : d.src.k === 'vendor' ? d.src.price + 'c' : '';
 const tipOf = (s: any, d: CosDef) => { const known = isKnown(s, d), own = ownsCos(s, d.id); return `<b style="color:${rc(d.rarity)}">${known ? esc(d.name) : '???'}</b><br>${esc(COS_SLOT_LABEL[d.slot])} · ${d.rarity}${known ? ' · ' + esc(COS_THEME_LABEL[d.theme]) : ''}<br>` + (known ? `${esc(d.desc)}<br><span class="mut">${esc(d.lore)}</span><br>` : '') + `<span class="mut">${own ? 'Owned' : esc(SRC_HINT(d))}</span><br><i>Click: try on (preview only)</i>`; };
-const swatch = (d: CosDef, known: boolean) => known ? `<span class="cosw" style="--c:${d.c};--c2:${d.c2 || d.c}">${COS_SLOT_ICON[d.slot]}</span>` : `<span class="cosw unk">?</span>`;
+const swatch = (d: CosDef, known: boolean) => known && cosIcon(d.id) ? `<span class="cosw art">${cosIcon(d.id)}</span>` : known ? `<span class="cosw" style="--c:${d.c};--c2:${d.c2 || d.c}">${COS_SLOT_ICON[d.slot]}</span>` : `<span class="cosw unk">?</span>`;
 
 /** What you currently wear (owned + equipped only). */
 export function wornLook(s: any): Look { const c = cosOf(s), o: Look = {}; for (const sl of COS_SLOTS) { const id = c.equipped[sl]; if (id && c.owned[id] && COS_BY_ID[id]?.slot === sl) o[sl] = id; } return o; }
