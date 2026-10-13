@@ -29,29 +29,30 @@ ok(px.bad.length === 0, `pixels: all ${px.n} cosmetics change the rendered model
 // ---------- 2) in game
 await ev(() => { const c = window.__rend.ctx; window.__ops = 0; for (const m of ['drawImage', 'fill', 'stroke', 'fillRect', 'strokeRect', 'fillText', 'putImageData']) { const o = c[m]; c[m] = function (...a) { window.__ops++; return o.apply(this, a); }; } });
 const ids = await ev(async () => (await import('/src/content/appearance.ts')).COSMETICS.map(d => [d.id, d.slot, !!(d.variant || d.body)]));
-const runCase = (where) => ev(async ([where, ids]) => {
+const runCase = async (where) => { const miss = []; for (let i = 0; i < ids.length; i += 25) miss.push(...await runChunk(where, ids.slice(i, i + 25), i === 0)); return miss; };
+const runChunk = (where, ids, first) => ev(async ([where, ids, first]) => {
   const A = await import('/src/content/appearance.ts'), RR = await import('/src/net/remote_render.ts'), P = await import('/src/pmfx.ts'), B = await import('/src/bodyvariants.ts');
   const g = window.__game, R = window.__rend, s = g.save; const dt = 1 / 60; g.dbg.god = true;
-  if (where === 'dungeon') { g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.save.settings.devFreeReset = true; g.startRun('foundry', 4242); await new Promise(r => setTimeout(r, 3000)); for (const e of g.enemies) e.dead = true; } else g.enterTown(true);
+  if (!first) {} else if (where === 'dungeon') { g.save.instance = null; g.inst = null; g.save.lockouts = {}; g.save.settings.devFreeReset = true; g.startRun('foundry', 4242); await new Promise(r => setTimeout(r, 3000)); for (const e of g.enemies) e.dead = true; } else g.enterTown(true);
   const dr = new RR.RemoteDrawer(R); const remote = { id: 'aud', name: 'Auditor', x: g.px + 1.2, y: g.py + .4, face: 0, moving: true, look: { cos: [] }, lvl: 30, em: 0 };
   const prev = R.netItems; R.netItems = items => { prev?.(items); if (where === 'town') items.push({ d: remote.x + remote.y, f: () => dr.draw(remote, { x: g.px, y: g.py }, false) }); };
   const miss = [];
   for (const [id, slot, body] of ids) { s.cosmetics = A.newCos(); s.cosmetics.owned[id] = Date.now(); A.equipCos(s, id); remote.look = { cos: [id] }; P.resetPm(); dr.forget('aud'); window.__cosAudit = {};
-    for (let f = 0; f < 8; f++) { const a = f * .4; g.inputMove = { x: Math.cos(a), y: Math.sin(a) }; if (f === 3) { if (slot === 'emote') { g.emote(); remote.em++; } if (slot === 'recall') P.playRecall(A.equippedCos(s)); } remote.x += Math.cos(a) * .05; remote.y += Math.sin(a) * .05; g.update(dt); R.draw(dt); }
+    for (let f = 0; f < 12; f++) { const a = Math.floor(f / 6) * 1.6; g.inputMove = { x: Math.cos(a), y: Math.sin(a) }; if (f === 3) { if (slot === 'emote') { g.emote(); remote.em++; } if (slot === 'recall') P.playRecall(A.equippedCos(s)); } remote.x += Math.cos(a) * .05; remote.y += Math.sin(a) * .05; g.update(dt); R.draw(dt); }
     g.inputMove = { x: 0, y: 0 }; const au = window.__cosAudit; window.__cosAudit = undefined;
     const hit = (owner) => Object.entries(au).some(([k, v]) => v > 0 && k.startsWith(owner + '|') && (k.split('|')[2] === id || k.split('|')[2].split('+').includes(id) || (k.split('|')[1] === 'rarityfx')));
     const isBody = body && JSON.stringify(B.bodyOf(s, null)) !== JSON.stringify(B.bodyOf({ ...s, cosmetics: A.newCos() }, null));
     const meOk = hit('me') || isBody, netOk = where !== 'town' || hit('net:aud') || body;
     if (!meOk) miss.push(id + ':me'); if (!netOk) miss.push(id + ':remote'); }
   R.netItems = prev; return miss;
-}, [where, ids]);
+}, [where, ids, first]);
 const town = await runCase('town'); ok(town.length === 0, `town (moving) + remote player: every cosmetic draws${town.length ? ' - missing: ' + town.join(', ') : ''}`);
 await page.screenshot({ path: 'shots/cosmetics_render/town.png' });
 await page.reload(); await page.waitForFunction(() => window.__rend?.anim && window.__rend?.town?.ready, null, { timeout: 120000 }).catch(() => {}); await ev(() => { const c = window.__rend.ctx; window.__ops = 0; for (const m of ['drawImage', 'fill', 'stroke', 'fillRect', 'strokeRect', 'fillText', 'putImageData']) { const o = c[m]; c[m] = function (...a) { window.__ops++; return o.apply(this, a); }; } });
 const dun = await runCase('dungeon'); ok(dun.length === 0, `dungeon (moving): every cosmetic draws${dun.length ? ' - missing: ' + dun.join(', ') : ''}`);
 await page.screenshot({ path: 'shots/cosmetics_render/dungeon.png' });
 // ---------- 3) dressing room preview uses the same renderers
-const drMiss = await ev(async (ids) => { const A = await import('/src/content/appearance.ts'); const g = window.__game, s = g.save; g.enterTown(true); s.cosmetics = A.newCos(); for (const [id] of ids) s.cosmetics.owned[id] = Date.now(); window.__ui.open('wardrobe'); await new Promise(r => setTimeout(r, 400)); const miss = [];
+const drMiss = await ev(async (ids) => { const A = await import('/src/content/appearance.ts'); if (!window.__protoOps) { window.__protoOps = 1; const P = CanvasRenderingContext2D.prototype; for (const m of ['drawImage', 'fill', 'stroke', 'fillRect', 'strokeRect', 'fillText', 'putImageData']) { const o = P[m]; P[m] = function (...a) { window.__ops = (window.__ops || 0) + 1; return o.apply(this, a); }; } } const g = window.__game, s = g.save; g.enterTown(true); s.cosmetics = A.newCos(); for (const [id] of ids) s.cosmetics.owned[id] = Date.now(); window.__ui.open('wardrobe'); await new Promise(r => setTimeout(r, 400)); const miss = [];
   for (const [id, slot, body] of ids) { if (body) continue; const el = document.querySelector(`#modal [data-act=wd-sel][data-id="${id}"]`); if (!el) { miss.push(id + ':notile'); continue; } el.click(); await new Promise(r => setTimeout(r, 60)); if (slot === 'emote' || slot === 'recall') { const pl = document.querySelector(`#modal [data-act=wd-play][data-id="${id}"]`); pl?.click(); }
     window.__cosAudit = {}; await new Promise(r => setTimeout(r, 200)); const au = window.__cosAudit; window.__cosAudit = undefined; if (!Object.entries(au).some(([k, v]) => v > 0 && k.startsWith('dr|') && (k.includes(id) || k.split('|')[1] === 'rarityfx'))) miss.push(id); }
   window.__ui.closeAll?.(); return miss; }, ids);
