@@ -9,7 +9,7 @@ const OUT = opt('--out', '/workspace/test_results.txt'), TMO = +opt('--timeout',
 const SKIP = /^(lib|mobile_lib|net_lib)$|_shots?$|gifs$|^screenshots$|^sprite_shot$|^prod$/;
 const LIST = opt('--list', null); // a file with one test name per line (# comments ok): tests/suite.txt is the npm test list
 const named = [...args.filter((a, i) => !a.startsWith('--') && !VAL.includes(args[i - 1])), ...(LIST ? fs.readFileSync(LIST, 'utf8').split('\n').map(l => l.replace(/#.*/, '').trim()).filter(Boolean) : [])];
-if (args.includes('--fresh')) fs.writeFileSync(OUT, '');
+fs.mkdirSync(path.dirname(OUT), { recursive: true }); if (args.includes('--fresh')) fs.writeFileSync(OUT, '');
 const lines = () => fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8').split('\n').filter(Boolean) : [];
 const done = new Set(lines().filter(l => / (PASS|FLAKY) /.test(l)).map(l => l.split(' ')[0]));
 const files = fs.readdirSync('tests').filter(f => f.endsWith('.mjs')).map(f => path.basename(f, '.mjs')).filter(n => named.length ? named.includes(n) : !SKIP.test(n)).sort();
