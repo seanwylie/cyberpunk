@@ -306,6 +306,13 @@ for _n, _p in THEME8_LOFI.items(): TRACKS[_n] = (120, False, _p + " " + MOTIF + 
 LOWRATE |= set(THEME8_LOFI)
 for _n, _p in THEME8_BOSS.items(): TRACKS[_n] = (80, True, _p + " " + MOTIF + " " + D7)
 NEW8 = list(THEME8_LOFI) + list(THEME8_BOSS)
+
+# --- pack 9: snare-forward boss pool (docs/MUSIC_DIRECTION.md "Snare-forward bosses"). Drum style only, no artist references.
+SNARE = ("Snare-forward drum production: a prominent crisp, bright snare high in the mix; rolling snare fills building into every new section; "
+         "rapid 16th-note then 32nd-note snare rushes accelerating into each drop; busy ghost-note snare grooves between the backbeats; "
+         "the driving rolling snare gives constant forward momentum. ")
+SNARE9 = ['boss_theme_wall','boss_theme_siege','boss_theme_storm','boss_wall_dread','boss_wall_siege','boss_wall_storm','boss_wall_end','boss_fight','elite_escalate_a','elite_escalate_b']
+for _n in SNARE9: TRACKS[_n] = (TRACKS[_n][0], TRACKS[_n][1], SNARE + TRACKS[_n][2])
 def gen(name, secs, prompt):
     raw = RAW/f'{name}.mp3'
     if raw.exists(): return raw
@@ -369,6 +376,7 @@ if __name__ == '__main__':
     force = '--force' in sys.argv; names = [a for a in sys.argv[1:] if not a.startswith('--')] or list(TRACKS)
     if '--pack7' in sys.argv: names = NEW7
     if '--pack8' in sys.argv: names = NEW8
+    if '--pack9' in sys.argv: names = SNARE9
     for n in names:
         s, loop, p = TRACKS[n]
         if (OUT/f'{n}.mp3').exists() and not force: print('skip', n); continue
