@@ -2,7 +2,7 @@
 // Drawn around the player sprite in two phases: 'back' (aura, back gear, behind the body) and 'front' (skin, marks, clothing, hair, headgear, eyes).
 // Units: u = screen px per procedural unit; the character stands with feet at (x,y) and is ~48u tall (head ~y-41u, shoulders -34u, hips -20u).
 import type { CosDef, CosSlot } from './content/appearance';
-import { drawRarityFx } from './cosfx';
+import { drawRarityFx, glowSprite } from './cosfx';
 import { drawPm } from './pmfx';
 
 type C=CanvasRenderingContext2D;
@@ -120,15 +120,30 @@ const BACK:Record<string,Fn>={
 };
 
 // ---------- auras (ground / around) ----------
+// Painterly pass (docs/COSMETIC_TRAILS.md): tapered brush crescents and wisps, slow continuous motion (no frame-stepped jumps, no pulsing
+// rings, no dot sparks). Each aura is 1-4 canvas ops: crescents are batched into one path per colour.
+/** add a tapered brush crescent to the current path: an ellipse arc (rx, ry) from a0 to a1, w thick in the middle, pointed ends */
+function crescent(c:C,cx:number,cy:number,rx:number,ry:number,a0:number,a1:number,w:number,n=10){ for(let i=0;i<=n;i++){ const f=i/n, a=a0+(a1-a0)*f, ww=w*Math.sin(f*Math.PI); const x=cx+Math.cos(a)*(rx+ww), y=cy+Math.sin(a)*(ry+ww*ry/rx); i?c.lineTo(x,y):c.moveTo(x,y); } for(let i=n;i>=0;i--){ const f=i/n, a=a0+(a1-a0)*f, ww=w*Math.sin(f*Math.PI)*.35; c.lineTo(cx+Math.cos(a)*(rx-ww),cy+Math.sin(a)*(ry-ww*ry/rx)); } c.closePath(); }
+/** add a tapered vertical wisp (flame / mist lick) to the current path */
+function wisp(c:C,x:number,y:number,h:number,w:number,bend:number){ c.moveTo(x-w,y); c.quadraticCurveTo(x-w*.6+bend*.5,y-h*.55,x+bend,y-h); c.quadraticCurveTo(x+w*.7+bend*.4,y-h*.45,x+w,y); c.closePath(); }
+const soft=(c:C,x:number,y:number,r:number,col:string,a:number)=>{ c.save(); c.globalCompositeOperation='lighter'; c.globalAlpha=Math.min(1,a); c.drawImage(glowSprite(col),x-r,y-r,r*2,r*2); c.restore(); };
 const AURA:Record<string,Fn>={
-  dust:(k,d)=>{ const {c,x,y,u,t}=k; for(let i=0;i<8;i++){ const a=t*.7+i*.8; c.fillStyle=rgba(d.c,.2); ell(c,x+Math.cos(a)*11*u,y-3*u+Math.sin(a)*4*u,1.8*u,1.2*u); c.fill(); } },
-  haze:(k,d)=>{ const {c,x,y,u,t}=k; for(let i=0;i<4;i++){ glow(c,x+Math.cos(t*.5+i*1.6)*7*u,y-16*u+Math.sin(t*.4+i)*8*u,12*u,d.c,.16); } },
-  sparks:(k,d)=>{ const {c,x,y,u,t}=k; add(c,()=>{ for(let i=0;i<10;i++){ const a=t*1.4+i*.63, r=10+(i%3)*2; c.fillStyle=rgba(d.c,.4+.5*Math.sin(t*5+i)); ell(c,x+Math.cos(a)*r*u,y-(18+Math.sin(a*1.3)*14)*u,.7*u,.7*u); c.fill(); } }); },
-  mist:(k,d)=>{ const {c,x,y,u,t}=k; for(let i=0;i<5;i++){ glow(c,x+Math.sin(t*.8+i*1.3)*8*u,y-(6+((t*3+i*3)%14))*u,8*u,d.c,.2); } },
-  static:(k,d)=>{ const {c,x,y,u,t}=k; add(c,()=>{ c.strokeStyle=rgba(d.c,.7); c.lineWidth=Math.max(1,.8*u); for(let i=0;i<3;i++){ const a=Math.floor(t*8+i*2.3)*1.7, r=9*u; c.beginPath(); c.moveTo(x+Math.cos(a)*r,y-24*u+Math.sin(a)*r*.8); c.lineTo(x+Math.cos(a+.2)*(r+3*u),y-24*u+Math.sin(a+.2)*(r+3*u)*.8); c.lineTo(x+Math.cos(a+.1)*(r+6*u),y-24*u+Math.sin(a+.1)*(r+6*u)*.8); c.stroke(); } glow(c,x,y-24*u,16*u,d.c,.06); }); },
-  glow:(k,d)=>{ const {c,x,y,u}=k; add(c,()=>{ glow(c,x,y-3*u,18*u,d.c,.42*pulse(k,1.8,.7)); ell(k.c,x,y,12*u,4.4*u); c.strokeStyle=rgba(d.c,.5); c.lineWidth=1.2; c.stroke(); }); },
-  ring:(k,d)=>{ const {c,x,y,u,t}=k; add(c,()=>{ const r=(8+((t*6)%12))*u; c.strokeStyle=rgba(d.c,.6*(1-((t*6)%12)/12)); c.lineWidth=Math.max(1.2,1.2*u); c.beginPath(); c.ellipse(x,y,r,r*.4,0,0,7); c.stroke(); c.strokeStyle=rgba(d.c,.55); c.beginPath(); c.ellipse(x,y,9*u,3.6*u,0,0,7); c.stroke(); }); },
-  nova:(k,d)=>{ const {c,x,y,u,t}=k; add(c,()=>{ glow(c,x,y-24*u,26*u,d.c,.38*pulse(k,2,.6)); glow(c,x,y-24*u,14*u,d.c2||d.c,.3); c.strokeStyle=rgba(d.c,.55); c.lineWidth=Math.max(1,.9*u); for(let i=0;i<8;i++){ const a=t*.8+i*Math.PI/4; c.beginPath(); c.moveTo(x+Math.cos(a)*15*u,y-24*u+Math.sin(a)*15*u); c.lineTo(x+Math.cos(a)*(22+4*Math.sin(t*3+i))*u,y-24*u+Math.sin(a)*(22+4*Math.sin(t*3+i))*u); c.stroke(); } }); },
+  // grey: a low ground smudge of grit, two crescents drifting round the feet
+  dust:(k,d)=>{ const {c,x,y,u,t}=k; c.beginPath(); for(const o of [0,Math.PI]) crescent(c,x,y,11*u,4.2*u,t*.35+o,t*.35+o+1.9,2*u); c.fillStyle=rgba(d.c,.32); c.fill(); },
+  // green: two soft painted wisps orbiting the waist
+  haze:(k,d)=>{ const {c,x,y,u,t}=k; c.beginPath(); for(const o of [0,Math.PI]) crescent(c,x,y-16*u,10*u,5*u,t*.5+o,t*.5+o+2.2,3*u); c.fillStyle=rgba(d.c,.3); c.fill(); },
+  // green: weld sparks as three short brush streaks arcing round (no dots)
+  sparks:(k,d)=>{ const {c,x,y,u,t}=k; add(c,()=>{ c.beginPath(); for(let i=0;i<3;i++) crescent(c,x,y-20*u+Math.sin(t*1.3+i*2)*3*u,11*u,7*u,t*1.6+i*2.09,t*1.6+i*2.09+.9,1.4*u,6); c.fillStyle=rgba(d.c,.75); c.fill(); }); },
+  // blue: cool mist licks rising slowly from the feet
+  mist:(k,d)=>{ const {c,x,y,u,t}=k; c.beginPath(); for(let i=0;i<3;i++){ const ph=(t*.35+i/3)%1; wisp(c,x+(i-1)*6*u,y-ph*6*u,(10+ph*8)*u,(2.8-ph)*u,Math.sin(t+i)*3*u); } c.fillStyle=rgba(d.c,.26); c.fill(); soft(c,x,y-6*u,14*u,d.c,.18); },
+  // blue: one painted lightning arc that slides smoothly round the body (no stepped flicker)
+  static:(k,d)=>{ const {c,x,y,u,t}=k; const a0=t*.9; c.beginPath(); for(let i=0;i<=8;i++){ const a=a0+i*.22, r=(11+((i%2)?1.6:-1.6))*u; const px=x+Math.cos(a)*r, py=y-24*u+Math.sin(a)*r*.8; i?c.lineTo(px,py):c.moveTo(px,py); } c.lineJoin='round'; c.lineCap='round'; c.strokeStyle='rgba(8,14,24,.45)'; c.lineWidth=Math.max(2,2.4*u); c.stroke(); add(c,()=>{ c.strokeStyle=rgba(d.c,.85); c.lineWidth=Math.max(1,1.1*u); c.stroke(); }); },
+  // purple: a painted pool of light under the feet with an ink-edged brush crescent sweeping it
+  glow:(k,d)=>{ const {c,x,y,u,t}=k; soft(c,x,y-2*u,20*u,d.c,.4); c.beginPath(); crescent(c,x,y,12*u,4.6*u,t*.6,t*.6+2.6,2.4*u); crescent(c,x,y,12*u,4.6*u,t*.6+Math.PI,t*.6+Math.PI+1.6,1.6*u); c.fillStyle=rgba(d.c2||d.c,.7); c.fill(); c.strokeStyle='rgba(12,8,20,.35)'; c.lineWidth=1; c.stroke(); },
+  // purple: twin brush crescents counter-rotating on the ground (replaces the pulsing ring)
+  ring:(k,d)=>{ const {c,x,y,u,t}=k; c.beginPath(); crescent(c,x,y,13*u,5*u,t*.8,t*.8+2.4,2.2*u); crescent(c,x,y,9*u,3.4*u,-t*1.1,-t*1.1+2,1.6*u); c.fillStyle='rgba(12,8,20,.4)'; c.fill(); add(c,()=>{ c.fillStyle=rgba(d.c,.8); c.fill(); }); },
+  // orange: a corona of painted flame petals behind the body, inner light, one bloom sprite
+  nova:(k,d)=>{ const {c,x,y,u,t}=k; const cy=y-24*u; soft(c,x,cy,26*u,d.c,.32); c.beginPath(); for(let i=0;i<7;i++){ const a=i*Math.PI*2/7+t*.25, L=(15+3*Math.sin(t*1.2+i*1.7))*u; const bx=x+Math.cos(a)*7*u, by=cy+Math.sin(a)*7*u, tx=x+Math.cos(a)*L, ty=cy+Math.sin(a)*L, nx=-Math.sin(a)*3*u, ny=Math.cos(a)*3*u; c.moveTo(bx-nx,by-ny); c.quadraticCurveTo(bx+(tx-bx)*.5+nx*1.4,by+(ty-by)*.5+ny*1.4,tx,ty); c.quadraticCurveTo(bx+(tx-bx)*.5-nx*.6,by+(ty-by)*.5-ny*.6,bx+nx,by+ny); c.closePath(); } c.fillStyle='rgba(20,10,4,.35)'; c.fill(); add(c,()=>{ c.fillStyle=rgba(d.c,.62); c.fill(); }); soft(c,x,cy,10*u,d.c2||'#fff0c8',.35); },
 };
 
 const FN:Partial<Record<CosSlot,Record<string,Fn>>>={ skin:SKIN, tattoo:TAT, torso:CLOTH, arms:CLOTH, hands:CLOTH, legs:CLOTH, hair:HAIR, head:HEAD, eyes:EYES, back:BACK, aura:AURA };
@@ -174,6 +189,9 @@ function paintTrail(c:C,pts:TrailPt[],now:number,u:number,d:CosDef,head?:{x:numb
   ribbon(1,d.c,T.a);                                                             // the brush body
   if(d.c2) ribbon(.7,d.c2,T.a*.7);
   if(T.core) ribbon(.38,S.core,T.a*T.core*.9);                                    // light core (blue+)
+  if(d.rarity==='purple'||d.rarity==='orange'){ // tier read at 40 px: a twisting violet (purple) / gold (orange) braid weaves through the stroke; blue never gets it
+    c.globalCompositeOperation='source-over'; c.beginPath(); for(let i=Math.floor(n*.25);i<n;i++){ const l=L[i],r=R[i],q=.5+.5*Math.sin(Q[i].t*16); const x=l[0]+(r[0]-l[0])*q, y=l[1]+(r[1]-l[1])*q; i>Math.floor(n*.25)?c.lineTo(x,y):c.moveTo(x,y); }
+    c.lineJoin='round'; c.strokeStyle=d.rarity==='orange'?'#ffd27a':'#b48cff'; c.globalAlpha=1; c.lineWidth=Math.max(1.5,1.7*u); c.stroke(); c.globalAlpha=1; if(S.add) c.globalCompositeOperation='lighter'; }
   if(T.fl){ const k=Math.min(T.fl,Math.floor(n/3)); c.fillStyle=rgba(d.c2||S.core,.8*T.a); for(let j=0;j<k;j++){ const i=Math.floor((j+.5)/k*(n-1)); const p=Q[i], age=Math.min(1,(now-p.t)/TRAIL_LIFE); const l=L[i],r=R[i]; const side=j%2?1:-1; const ox=(r[0]-l[0])*.5*side*1.4, oy=(r[1]-l[1])*.5*side*1.4; const rr=(.6+T.w*.08)*u*(1-age); if(rr<.3) continue; c.globalAlpha=1-age; c.beginPath(); c.ellipse((l[0]+r[0])/2+ox,(l[1]+r[1])/2+oy-age*(S.rise||2)*u,rr*2.2,rr*.6,Math.atan2(oy,ox)+1.57,0,7); c.fill(); } c.globalAlpha=1; } // painted flecks (deterministic, fade with age)
   c.restore();
 }
