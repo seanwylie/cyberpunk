@@ -10,6 +10,6 @@ self.addEventListener('fetch', e => {
   if (HEAVY.test(u.pathname) && !/manifest/.test(u.pathname)) {
     e.respondWith(caches.open(CACHE).then(async c => { const hit = await c.match(r); if (hit) return hit; const res = await fetch(r); if (res.ok && res.status === 200) c.put(r, res.clone()).catch(() => { }); return res; }));
   } else {
-    e.respondWith(fetch(r).then(res => { if (res.ok) { const cp = res.clone(); caches.open(CACHE).then(c => c.put(r, cp)).catch(() => { }); } return res; }).catch(() => caches.match(r).then(h => h || Response.error())));
+    e.respondWith(fetch(r, { cache: 'no-cache' }).then(res => { if (res.ok) { const cp = res.clone(); caches.open(CACHE).then(c => c.put(r, cp)).catch(() => { }); } return res; }).catch(() => caches.match(r).then(h => h || Response.error())));
   }
 });
