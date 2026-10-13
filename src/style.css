@@ -703,7 +703,7 @@ mark.shint{ background:transparent; color:var(--accent,#ffae2b); border-bottom:1
 body.reducefx .tile.r-orange,body.reducefx .tile.r-orange::after,body.reducefx .tile.r-purple::after{ animation:none!important; }
 @media (prefers-reduced-motion:reduce){ .tile.r-orange,.tile.r-orange::after,.tile.r-purple::after{ animation:none!important; } }
 /* alt gameplay (docs/ALT_GAMEPLAY.md): restrained, painterly: warm parchment-gold on deep ink, no neon spam */
-.humg{display:flex;align-items:center;gap:6px;font-size:11px;margin:6px 0;color:#d9c9a3}
+.humg{display:flex;align-items:center;gap:6px;font-size:12px;margin:6px 0;color:#d9c9a3}
 .humg i{flex:1;height:6px;border-radius:3px;background:#1d1a24;box-shadow:inset 0 0 0 1px #3a3346;overflow:hidden}
 .humg u{display:block;height:100%;background:linear-gradient(90deg,#7b8fa6,#e7c88a)}
 .humg.hb-chrome u,.humg.hb-psycho u{background:linear-gradient(90deg,#8a2f3c,#a9b4c2)}
