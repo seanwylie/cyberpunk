@@ -51,6 +51,7 @@ def basehum(spec,bruiser=False):
         bl='L' if side=='R' else 'R'
         hide|={BE.index('wr'+bl),BE.index('el'+bl)}
     hide|={BE.index('anL'),BE.index('anR')}   # feet -> boots
+    hide|={BE.index(b) for b in spec.get('hideb',())}   # radical (elite/boss) installs replace whole limb segments
     # ---- material per face: hair / skin / shirt / pants / boots
     z=BD['P'][:,2]; y=BD['P'][:,1]; x=BD['P'][:,0]; ez=BD['LM'][0][2]
     hairm=head&(z>ez+.035-.09*np.clip((y+.05)/.15,0,1))&~((np.abs(x)>.085)&(z<ez+.03))
@@ -88,7 +89,7 @@ def basehum(spec,bruiser=False):
     for E in BD['LM'][:2]:
         ex,ey,ezz=E[0],E[1],E[2]-hz; sph(hd,.016,(ex,ey+.006,ezz),'b_eye',(1,.6,.75)); sph(hd,.008,(ex,ey-.004,ezz),'b_pupil')
         box(hd,(.034,.012,.009),(ex,ey-.004,ezz+.02),'b_brow',bevel=0)
-    for side in ('L','R'):   # work boots: sole, upper, toe cap, laced shaft
+    for side in [x for x in ('L','R') if x not in spec.get('piston',())]:   # work boots: sole, upper, toe cap, laced shaft
         ft=getattr(R,'ft'+side); g=1.15 if bruiser else 1.0
         box(ft,(.11*g,.25*g,.05),(0,-.06,-.065),'b_boot',bevel=.015); box(ft,(.1*g,.19*g,.07),(0,-.04,-.02),'b_boot',bevel=.025)
         sph(ft,.05*g,(0,-.15*g,-.04),'b_boot',(1.05,1.0,.75)); cyl(ft,.058*g,.12,(0,.0,.04),'b_boot',v=14,r2=.052*g); box(ft,(.11*g,.26*g,.012),(0,-.06,-.092),'k_rubber',bevel=.004)

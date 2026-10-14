@@ -385,6 +385,7 @@ def pose(R,spec,anim,f,n):
         R.root.rotation_euler=(0,0,0)
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'arch_bestiary.py')).read())
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'arch_base.py')).read())   # sculpted base body + manufacturer kits (regular mobs)
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'arch_radical.py')).read())   # elites/bosses: radical replacement (board B)
 # ---------------- scene, camera, lights ----------------
 def setup_scene(ortho):
     cam=bpy.data.cameras.new('c'); cam.type='ORTHO'; cam.ortho_scale=ortho; cam.shift_y=.30; cam.clip_end=60

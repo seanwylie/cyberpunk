@@ -86,3 +86,8 @@ try:   # regular humanoid/bruiser mobs -> sculpted base body + manufacturer kits
     from specs_base import apply as _base_apply
     _base_apply(SPECS)
 except ImportError: pass
+
+try:   # elites/bosses (humanoid/bruiser) -> radical replacement on the base body (arch_radical.py)
+    from specs_radical import apply as _rad_apply
+    _rad_apply(SPECS)
+except ImportError: pass
