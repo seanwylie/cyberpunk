@@ -17,7 +17,7 @@ import { Q } from './quality';
 import { initMobile, registerSW } from './mobile';
 import { Tutorial } from './tutorial';
 import { initNet } from './net';
-import { showCharsOnLoad } from './charselui';
+import { showCharsOnLoad, mustName } from './charselui';
 import { cityEvent, cityInit } from './cityclient';
 
 try{ (document as any).fonts?.load('600 14px "Roboto Condensed"'); }catch{}
@@ -53,4 +53,4 @@ requestAnimationFrame(frame);
 import('./version').then(v=>v.startVersionWatch());
 // living city UI (faction banner, news panel, street chatter): lazy, after first paint; news + chatter are behind feature flags inside
 setTimeout(()=>{ import('./cityui').then(m=>m.initCityUi(game,ui)).catch(e=>console.warn('city ui failed (game unaffected)',e)); },2500);
-(window as any).__game=game; (window as any).__ui=ui; { const sync=()=>{ const b=document.getElementById('idkfabadge'); if(b) b.style.display=idkfaActive(game.save)?'inline-block':'none'; }; sync(); setInterval(sync,500); } if(showCharsOnLoad()) setTimeout(()=>{ if(!ui.modal) ui.open('chars'); },50); { const bc=new URLSearchParams(location.search).get('build'); if(bc) setTimeout(()=>viewCode(ui,bc),800); } (window as any).__tut=tut; (window as any).__rend=rend; (window as any).__audio=audio; (window as any).__enemies=ENEMIES;
+(window as any).__game=game; (window as any).__ui=ui; { const sync=()=>{ const b=document.getElementById('idkfabadge'); if(b) b.style.display=idkfaActive(game.save)?'inline-block':'none'; }; sync(); setInterval(sync,500); } if(showCharsOnLoad()){ if(game.mode==='town') ui.open('chars'); setTimeout(()=>{ if(game.mode==='town'&&(mustName()||!ui.modal)) ui.open('chars'); },50); } { const bc=new URLSearchParams(location.search).get('build'); if(bc) setTimeout(()=>viewCode(ui,bc),800); } (window as any).__tut=tut; (window as any).__rend=rend; (window as any).__audio=audio; (window as any).__enemies=ENEMIES;

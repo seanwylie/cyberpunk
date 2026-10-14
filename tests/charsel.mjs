@@ -11,6 +11,12 @@ const roster = () => page.evaluate(() => JSON.parse(localStorage.getItem('wv_ros
 await page.evaluate(() => { localStorage.clear(); localStorage.setItem('wv_notut', '1'); localStorage.setItem('wv_nograce', '1'); localStorage.setItem('wv_city_neutral', '1'); window.__wvNoPersist = true; });
 await reload();
 ok(await page.evaluate(() => window.__ui.modal === 'chars' && !!document.getElementById('csname') && !document.querySelector('.csgrid')), 'first-time player: boot lands in naming');
+ok(await page.evaluate(() => [...document.querySelectorAll('#modal [data-act="close"]')].every(e => getComputedStyle(e).display === 'none' || !e.offsetParent)), 'naming: no Close button');
+await page.evaluate(() => { window.__ui.close(); window.__ui.open('settings'); }); await page.keyboard.press('Escape'); await sleep(100);
+ok(await page.evaluate(() => window.__ui.modal === 'chars'), 'naming: cannot be dismissed (close, Escape, other modals)');
+for (const bad of ['Runner 2', 'a', '   ', 'Guest-1234']) { await page.fill('#csname', bad); await page.click('[data-act="cs-create"]'); await sleep(60); }
+ok(await page.evaluate(() => window.__ui.modal === 'chars' && /Pick a name/.test(document.querySelector('.csmsg')?.textContent || '')), 'naming: placeholder / too-short names rejected');
+await page.click('[data-act="cs-rand"]'); const rnd = await page.inputValue('#csname'); ok(rnd.length >= 2 && !/^runner/i.test(rnd), 'Random suggests a name: ' + rnd);
 await page.fill('#csname', 'Vex'); await page.screenshot({ path: OUT + '/first_time.png' });
 await page.click('[data-act="cs-create"]'); await sleep(200);
 let r = await roster(); ok(r.chars.length === 1 && r.chars[0].name === 'Vex' && !r.chars[0].fresh && await page.evaluate(() => window.__ui.modal !== 'chars' && window.__game.save.level === 1), 'first character named, level 1, in game');
@@ -51,5 +57,16 @@ await page.click('.sswitch'); await sleep(150); ok(await page.evaluate(() => win
 await page.evaluate(() => { window.__ui.close(); window.__game.startRun('annex'); window.__ui.open('settings'); }); await sleep(300);
 ok(await page.evaluate(() => { const b = document.querySelector('.sswitch'); return b && b.disabled; }), 'menu: Switch character disabled in a run');
 await page.evaluate(() => window.__ui.open('chars')); ok(await page.evaluate(() => window.__ui.modal !== 'chars'), 'selector refuses to open in a run');
+// old placeholder name: prompt on next boot, before the tutorial
+await page.evaluate(() => { const r = JSON.parse(localStorage.getItem('wv_roster_v1')); r.chars.find(c => c.id === r.active).name = 'Runner 3'; localStorage.setItem('wv_roster_v1', JSON.stringify(r)); localStorage.removeItem('wv_name_' + r.active); localStorage.removeItem('wv_notut'); const s = JSON.parse(localStorage.getItem('arpg-proto-save-v1')); delete s.tutorial; s.stats = { runs: 0, kills: 0, clears: 0 }; s.level = 1; localStorage.setItem('arpg-proto-save-v1', JSON.stringify(s)); });
+await reload();
+ok(await page.evaluate(() => window.__ui.modal === 'chars' && !!document.getElementById('csname') && /needs a name/.test(document.querySelector('.csintro').textContent)), 'existing "Runner N" character: naming prompt on boot');
+ok(await page.evaluate(() => { const t = document.querySelector('#tut, .tut'); return !t || getComputedStyle(t).display === 'none' || !t.offsetParent; }), 'tutorial waits behind the naming screen');
+await page.screenshot({ path: OUT + '/rename_prompt.png' });
+await page.fill('#csname', 'Kade Volt'); await page.click('[data-act="cs-create"]'); await sleep(300);
+ok(await page.evaluate(async () => (await import('/src/chars.ts')).partyName() === 'Kade Volt'), 'named: party name follows the character name');
+// remote views never show placeholders
+const nm = await page.evaluate(async () => { const S = await import('/src/net/shared.ts'); return [S.cleanName('Runner 4'), S.cleanName('Guest'), S.cleanName(''), S.cleanName('Guest-77'), S.cleanName('Kade')]; });
+ok(JSON.stringify(nm) === JSON.stringify(['', '', '', '', 'Kade']), 'server name cleaning drops placeholders: ' + JSON.stringify(nm));
 ok(!errors.length, 'no page errors ' + errors.slice(0, 3).join(' | '));
 await browser.close(); console.log(fails ? fails + ' FAILED' : 'ALL PASSED'); process.exit(fails ? 1 : 0);

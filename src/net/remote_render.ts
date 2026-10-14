@@ -43,6 +43,7 @@ export class RemoteDrawer {
   }
   private plate(p: RemoteP, a: number, b: number, s: number, dist: number, always: boolean) {
     if (!always && dist > PLATE_RANGE) return; const c = this.r.ctx; const alpha = always ? 1 : Math.max(0, Math.min(1, (PLATE_RANGE - dist) / 2.5)); if (alpha <= .02) return;
+    if (!p.name && !p.down) return; // no name chosen yet: no plate (never a placeholder)
     const xi = RemoteDrawer.exInfo(p); if (xi.n && !this.seen.has('ex:' + p.id)) this.seen.set('ex:' + p.id, performance.now() / 1000); const fl = xi.n ? flairAlpha(this.seen.get('ex:' + p.id) ?? -99, performance.now() / 1000) : 0; this.flair.set(p.id, fl);
     const txt = (xi.n ? '◆ ' : '') + p.name + (p.down ? '  (downed)' : ''); c.save(); c.globalAlpha = alpha; c.font = `600 ${cpx(12)}px "Roboto Condensed", sans-serif`; const w = c.measureText(txt).width + 12, h = cpx(12) + 6; const x0 = a - w / 2, y0 = b - 74 * s - h;
     const box = { x0, y0, x1: x0 + w, y1: y0 + h + (p.maxHp ? 5 : 0) }; if (this.plates.some(q => box.x0 < q.x1 && box.x1 > q.x0 && box.y0 < q.y1 && box.y1 > q.y0)) { c.restore(); return; } // one label rules: skip overlapping plates

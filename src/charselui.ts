@@ -1,18 +1,24 @@
 // Character select (modal 'chars'). Shown on boot (first-time players go straight to naming), from the menu's Switch character (town only) and Settings > Gameplay > Characters.
 // 10 slots, free create, delete with a confirm step. Short labels; full details live in the tooltip (docs/UI.md).
-import { ensureRoster, createChar, selectChar, deleteChar, CHAR_LIMIT, charSave, nameFresh } from './chars';
+import { ensureRoster, createChar, selectChar, deleteChar, CHAR_LIMIT, charSave, nameFresh, needsName, randomName, validName, setPartyName } from './chars';
 import { TOWN_INFO } from './towns';
 import { drawMini } from './wardrobeui';
 import { newSave, persist } from './state';
 import { TRAIT_BY_ID } from './traits';
 import { esc } from './esc';
 type UIx=any;
-export const CS={ confirmDel:'' as string, naming:false, msg:'' };
+export const CS={ confirmDel:'' as string, naming:false, msg:'', draft:'' };
 const ago=(t:number)=>{ if(!t) return 'never played'; const m=Math.round((Date.now()-t)/60000); return m<1?'just now':m<60?m+' min ago':m<1440?Math.round(m/60)+' h ago':Math.round(m/1440)+' d ago'; };
 const townName=(id?:string)=>((TOWN_INFO as any)[id&&(TOWN_INFO as any)[id]?id:'rustline']?.name||'Town') as string;
-const fresh=()=>{ const r=ensureRoster(); return r.chars.length===1&&!!r.chars[0].fresh; };
+/** Naming gate: the active character has no real name yet. Tests opt out with wv_nocharsel (tests/lib.mjs). */
+let mnAt=-1e9, mnV=false;
+export const mustName=()=>{ const now=performance.now(); if(now-mnAt<250) return mnV; mnAt=now; return mnV=mustName0(); };
+export const mustNameNow=()=>{ mnAt=-1e9; return mustName(); };
+const mustName0=()=>{ let off=false; try{ off=!!localStorage.getItem('wv_nocharsel')&&!new URLSearchParams(location.search).has('chars'); }catch{} return !off&&needsName(); };
+const fresh=mustName;
 export function charsHtml(ui:UIx):string{ const r=ensureRoster(); void ui;
-  if(fresh()) return `<div class="csbody csfirst"><p class="csintro">Name your runner. You start at level 1 with stock gear.</p><div class="cscard csnew"><input id="csname" maxlength="16" placeholder="Name" aria-label="Character name" value=""/><span class="csrow"><button class="btn" data-act="cs-create" data-tip="Start playing. Leave blank for Runner 1.">Start</button></span></div></div>`;
+  if(fresh()){ const c=r.chars.find(x=>x.id===r.active); const old=!c?.fresh;
+    return `<div class="csbody csfirst"><p class="csintro">${old?`Your runner${c&&c.level>1?` (Lv ${c.level})`:''} needs a name.`:'Name your runner. You start at level 1 with stock gear.'}</p><div class="cscard csnew"><input id="csname" maxlength="16" placeholder="Name" aria-label="Character name" value="${esc(CS.draft)}"/><span class="csrow"><button class="btn" data-act="cs-rand" data-tip="Suggest a random name.">Random</button><button class="btn primary" data-act="cs-create" data-tip="2-16 letters, numbers or spaces.">Start</button></span></div>${CS.msg?`<p class="mut csmsg">${esc(CS.msg)}</p>`:''}</div>`; }
   let h=`<div class="csbody"><p class="mut csintro" data-tip="Each character keeps its own level, traits, gear, bank and reputation. Cosmetics, settings and locker upgrades are shared.">Pick a runner.</p><div class="csgrid">`;
   for(let i=0;i<CHAR_LIMIT;i++){ const c=r.chars[i];
     if(!c){ if(i!==r.chars.length) continue; h+= CS.naming?`<div class="cscard csnew"><input id="csname" maxlength="16" placeholder="Name" aria-label="Character name"/><span class="csrow"><button class="btn" data-act="cs-create" data-tip="Free. Starts at level 1 with stock gear.">Create</button><button class="btn ghost" data-act="cs-cancel">Cancel</button></span></div>`
@@ -29,14 +35,15 @@ export function charsClick(ui:UIx,el:HTMLElement,a:string):boolean{ const g=ui.g
   switch(a){
     case 'cs-new': CS.naming=true; CS.msg=''; ui.render(); setTimeout(()=>(document.getElementById('csname') as HTMLInputElement)?.focus(),0); return true;
     case 'cs-cancel': CS.naming=false; ui.render(); return true;
-    case 'cs-create': { if(fresh()){ nameFresh((document.getElementById('csname') as HTMLInputElement)?.value||''); persist(g.save); ui.close(); return true; } const nm=(document.getElementById('csname') as HTMLInputElement)?.value||''; persist(g.save); const r=createChar(nm,newSave); CS.naming=false; if(!r.ok){ CS.msg=r.why; ui.render(); return true; } go(r.id); return true; }
+    case 'cs-rand': { const i=document.getElementById('csname') as HTMLInputElement|null; CS.draft=randomName(); if(i){ i.value=CS.draft; i.focus(); } else ui.render(); return true; }
+    case 'cs-create': { if(fresh()){ const v=(document.getElementById('csname') as HTMLInputElement)?.value||''; if(!nameFresh(v)){ mnAt=-1e9; CS.draft=v; CS.msg='Pick a name: 2-16 letters, numbers or spaces.'; ui.render(); return true; } mnAt=-1e9; CS.draft=''; CS.msg=''; setPartyName(validName(v)); (g.save as any).charName=validName(v); persist(g.save); try{ ui.sess?.sendProfile?.(); }catch{} if(ensureRoster().chars.length>1) ui.render(); else ui.close(); return true; } const nm=(document.getElementById('csname') as HTMLInputElement)?.value||''; persist(g.save); const r=createChar(nm,newSave); CS.naming=false; if(!r.ok){ CS.msg=r.why; ui.render(); return true; } go(r.id); return true; }
     case 'cs-play': { const id=el.dataset.id!; if(id===ensureRoster().active){ ui.close(); return true; } go(id); return true; }
     case 'cs-del': CS.confirmDel=el.dataset.id!; CS.msg=''; ui.render(); setTimeout(()=>(document.getElementById('csdelname') as HTMLInputElement)?.focus(),0); return true;
     case 'cs-delno': CS.confirmDel=''; ui.render(); return true;
     case 'cs-delgo': { const id=el.dataset.id!; { const want=ensureRoster().chars.find(c=>c.id===id)?.name||''; const got=((document.getElementById('csdelname') as HTMLInputElement)?.value||'').trim(); if(got.toLowerCase()!==want.toLowerCase()){ CS.msg='Type the name to delete.'; ui.render(); return true; } } const wasActive=id===ensureRoster().active; if(!wasActive) persist(g.save); CS.confirmDel=''; const r=deleteChar(id); if(wasActive&&r.ok){ (window as any).__wvNoPersist=true; location.reload(); return true; } CS.msg='Character deleted.'; ui.render(); return true; }
   } return false; }
 /** Boot: always show the selector (first-time players land in naming). Tests opt out with wv_nocharsel (tests/lib.mjs), keeping the old 2+ rule. */
-export function showCharsOnLoad():boolean{ const r=ensureRoster(); let q=false, off=false; try{ q=new URLSearchParams(location.search).has('chars'); off=!!localStorage.getItem('wv_nocharsel'); }catch{} return q||(off?r.chars.length>1:true); }
+export function showCharsOnLoad():boolean{ const r=ensureRoster(); let q=false, off=false; try{ q=new URLSearchParams(location.search).has('chars'); off=!!localStorage.getItem('wv_nocharsel'); }catch{} return q||(off?r.chars.length>1:true)||mustName(); }
 /** Live previews: every canvas.csprev shows that character's own body and worn cosmetics, idling and slowly turning. One rAF at ~15 fps. */
 let prevRaf=0;
 export function charsAfter(_ui:UIx){ cancelAnimationFrame(prevRaf); const cvs=Array.from(document.querySelectorAll('#modal canvas.csprev')) as HTMLCanvasElement[]; if(!cvs.length) return;

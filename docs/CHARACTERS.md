@@ -20,7 +20,9 @@ First boot after the update: no roster exists, so the existing save JSON is copi
 
 ## Selector
 
-- **Shown on every boot** (in town). A first-time player (no save, no roster) goes straight to naming their runner (level 1, stock gear); closing it keeps "Runner 1" and asks again next boot.
+- **Shown on every boot** (in town), before the tutorial (the tutorial card stays hidden while the selector or naming screen is up).
+- **Naming gate:** a character must have a real name before entering the world. A first-time player, or any existing character still named "Runner N" / empty, gets the naming screen: no Close/Escape, other windows refuse to open, Start only accepts 2-16 letters/numbers/spaces (placeholders like "Runner 2" or "Guest" rejected), **Random** suggests a cyberpunk name.
+- **Multiplayer:** placeholder names never reach other players. The server (`cleanName`) turns "Runner N"/"Guest" into an empty name, and remote views draw no nameplate for an empty name; system lines say "A player".
 - Each card: live model preview (own body + worn cosmetics, idle, slowly turning, one rAF at ~15 fps), name, level, last town; details in the tooltip.
 - `+ New` asks for a name (16 chars max) and starts a fresh character at **level 1** (`PROGRESSION.startLevel`) with the Standard Issue stock kit. Hidden at the 10-character cap.
 - Delete asks you to **type the character's name**, then click the red **Delete** (Keep cancels). Deleting the active character switches to the next one; deleting the last one leaves a fresh character (naming again). Account purchases are never deleted.

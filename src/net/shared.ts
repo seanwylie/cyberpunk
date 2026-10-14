@@ -72,7 +72,9 @@ export function stepPlayer(lv: Level, p: { x: number; y: number }, mx: number, m
 export const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 export const r2 = (v: number) => Math.round(v * 100) / 100;
 /** names: printable, trimmed, bounded */
-export function cleanName(s: any, fallback = 'Guest'): string { const t = String(s ?? '').replace(/[^\p{L}\p{N} _\-.']/gu, '').trim().slice(0, NAME_MAX); return t || fallback; }
+/** placeholder names ("Runner 3", "Guest", "Guest-1234") are never shown to other players */
+export const isPlaceholder = (t: string) => /^(runner\s*\d*|guest(-\d+)?)$/i.test(t.trim());
+export function cleanName(s: any, fallback = ''): string { const t = String(s ?? '').replace(/[^\p{L}\p{N} _\-.']/gu, '').trim().slice(0, NAME_MAX); if (t && isPlaceholder(t)) return ''; return t || (isPlaceholder(fallback) ? '' : fallback); }
 export function cleanChat(s: any): string { return String(s ?? '').replace(/[\u0000-\u001f\u007f<>]/g, '').trim().slice(0, CHAT_MAX); }
 export function cleanLook(l: any): Look | undefined {
   if (!l || typeof l !== 'object') return undefined; const o: Look = {};

@@ -86,7 +86,7 @@ export function startHub(o: HubOpts = {}) {
   function endInstance(p: Party, reason: string) { const r = p.room; if (!r) return; for (const m of p.members) if (r.players.has(m.id)) send(m, { t: 'instance_end', reason }); rooms.delete(r.id); p.room = null; p.ready.clear(); bcastParty(p); }
 
   // ---------- instance event handlers (client-authoritative gameplay; the hub only sanity-checks and relays)
-  const kickCheater = (r: Room, g: Guest, why: string) => { stats.kicked++; r.players.delete(g.id); send(g, { t: 'instance_end', reason: why }); toRoom(r, { t: 'sys', msg: g.name + ' was removed from the dungeon (' + why + ').' }); if (!r.players.size) endInstance(r.party, 'empty'); };
+  const kickCheater = (r: Room, g: Guest, why: string) => { stats.kicked++; r.players.delete(g.id); send(g, { t: 'instance_end', reason: why }); toRoom(r, { t: 'sys', msg: (g.name || 'A player') + ' was removed from the dungeon (' + why + ').' }); if (!r.players.size) endInstance(r.party, 'empty'); };
   const num = (v: any, lo: number, hi: number, d = 0) => { v = +v; return Number.isFinite(v) ? clamp(v, lo, hi) : d; };
   /** 8 Hz display state: position/facing/hp/anim. Speed-gated with a distance budget so teleports are rejected; never blocks the sender. */
   function onState(r: Room, g: Guest, m: any) {
@@ -134,13 +134,13 @@ export function startHub(o: HubOpts = {}) {
   // ---------- zero-config grouping: invite / join request from town, ready check on the world entrance, drop-in (docs/MULTIPLAYER.md section 2b)
   const INVITE_MS = 60000, CHECK_MS = 15000;
   function mkParty(g: Guest): Party { if (g.party) return g.party; const p: Party = { code: newCode(), leader: g.id, members: [g], dungeon: null, room: null, ready: new Set(), check: null }; parties.set(p.code, p); g.party = p; return p; }
-  function addMember(p: Party, g: Guest) { if (g.party === p) return true; if (p.members.length >= MAX_PARTY) { err(g, 'full', 'Party is full (4 max).'); return false; } if (g.party) leaveParty(g); p.members.push(g); g.party = p; bcastParty(p); for (const x of p.members) if (x !== g) send(x, { t: 'sys', msg: g.name + ' joined the party.' }); return true; }
+  function addMember(p: Party, g: Guest) { if (g.party === p) return true; if (p.members.length >= MAX_PARTY) { err(g, 'full', 'Party is full (4 max).'); return false; } if (g.party) leaveParty(g); p.members.push(g); g.party = p; bcastParty(p); for (const x of p.members) if (x !== g) send(x, { t: 'sys', msg: (g.name || 'A player') + ' joined the party.' }); return true; }
   function onInvite(g: Guest, m: any) {
     if (!g.b.chat.take()) return err(g, 'slow', 'Slow down.'); const to = guests.get(String(m.to || '')); if (!to || !to.ws || to === g) return err(g, 'gone', 'That player is not online.');
     const kind: 'invite' | 'join' = m.kind === 'join' ? 'join' : 'invite'; if (kind === 'invite' && g.party && g.party === to.party) return;
     if (kind === 'invite' && parties.size >= (o.maxParties ?? 500) && !g.party) { stats.roomCapHits++; return err(g, 'busy', 'Server is full, try again later.'); }
     let box = invites.get(to.id); if (!box) { box = new Map(); invites.set(to.id, box); } box.set(g.id, { from: g.id, kind, at: Date.now() }); if (box.size > 8) box.delete(box.keys().next().value!);
-    send(to, { t: 'invite', from: g.id, name: g.name, lvl: g.lvl, kind }); send(g, { t: 'sys', msg: (kind === 'join' ? 'Asked to join ' : 'Invited ') + to.name + '.' });
+    send(to, { t: 'invite', from: g.id, name: g.name, lvl: g.lvl, kind }); send(g, { t: 'sys', msg: (kind === 'join' ? 'Asked to join ' : 'Invited ') + (to.name || 'A player') + '.' });
   }
   function onInviteReply(g: Guest, m: any) {
     const box = invites.get(g.id); const inv = box?.get(String(m.from || '')); if (!inv) return; box!.delete(inv.from); const from = guests.get(inv.from); if (!from || Date.now() - inv.at > INVITE_MS) return err(g, 'expired', 'That invite expired.');
@@ -161,7 +161,7 @@ export function startHub(o: HubOpts = {}) {
     for (const x of p.members) if (!c.yes.has(x.id)) send(x, { t: 'sys', msg: 'Your party went in. Press Join in the Party panel to drop in.' });
   }
   /** drop-in: a party member in town joins the running instance (gets seed, killed set and flags; spawns at the entrance). Party scaling stays as it was at the start. */
-  function onDropIn(g: Guest) { const p = g.party, r = p?.room; if (!p || !r || r.players.has(g.id) || r.completed) return; if (r.players.size >= MAX_PARTY) return err(g, 'full', 'That run is full.'); leaveShard(g); r.players.set(g.id, mkRP(g, r.spawn)); send(g, startMsg(r, g.id)); toRoom(r, { t: 'sys', msg: g.name + ' dropped in.' }, g.id); bcastParty(p); }
+  function onDropIn(g: Guest) { const p = g.party, r = p?.room; if (!p || !r || r.players.has(g.id) || r.completed) return; if (r.players.size >= MAX_PARTY) return err(g, 'full', 'That run is full.'); leaveShard(g); r.players.set(g.id, mkRP(g, r.spawn)); send(g, startMsg(r, g.id)); toRoom(r, { t: 'sys', msg: (g.name || 'A player') + ' dropped in.' }, g.id); bcastParty(p); }
 
   function onMsg(g: Guest, m: any) {
     if (!m || typeof m !== 'object' || typeof m.t !== 'string') return;
@@ -172,7 +172,7 @@ export function startHub(o: HubOpts = {}) {
       case 'build': break; // protocol v1 leftover: gameplay is client-side now, the server keeps no build
       case 'profile': g.name = cleanName(m.name, g.name); if (m.pub !== undefined) o.city?.setPublic(g.id, cleanName(m.name, g.name), m.pub === 1); g.lvl = clamp(Math.floor(+m.lvl) || 1, 1, 50); g.look = cleanLook(m.look) ?? g.look; if (g.party) bcastParty(g.party); break;
       case 'party_create': { if (parties.size >= (o.maxParties ?? 500) && !g.party) { stats.roomCapHits++; return err(g, 'busy', 'Server is full, try again later.'); } if (g.party) leaveParty(g); const p: Party = { code: newCode(), leader: g.id, members: [g], dungeon: null, room: null, ready: new Set(), check: null }; parties.set(p.code, p); g.party = p; bcastParty(p); break; }
-      case 'party_join': { const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); const p = parties.get(code); if (!p) return err(g, 'nocode', 'No party with that code.'); if (g.party === p) return; if (p.members.length >= MAX_PARTY) return err(g, 'full', 'Party is full (4 max).'); if (g.party) leaveParty(g); p.members.push(g); g.party = p; bcastParty(p); for (const x of p.members) if (x !== g) send(x, { t: 'sys', msg: g.name + ' joined the party.' }); break; }
+      case 'party_join': { const code = String(m.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8); const p = parties.get(code); if (!p) return err(g, 'nocode', 'No party with that code.'); if (g.party === p) return; if (p.members.length >= MAX_PARTY) return err(g, 'full', 'Party is full (4 max).'); if (g.party) leaveParty(g); p.members.push(g); g.party = p; bcastParty(p); for (const x of p.members) if (x !== g) send(x, { t: 'sys', msg: (g.name || 'A player') + ' joined the party.' }); break; }
       case 'party_leave': leaveParty(g); break;
       case 'invite': onInvite(g, m); break;
       case 'invite_reply': onInviteReply(g, m); break;
@@ -206,7 +206,7 @@ export function startHub(o: HubOpts = {}) {
       if (!g) { // handshake: anonymous guest id + secret token (server issues both on first contact)
         if (!tmp.all.take() || m?.t !== 'hello') return;
         if (m.proto !== PROTO) { stats.versionRefused++; try { ws.send(JSON.stringify({ t: 'err', code: 'version', server: PROTO, client: m.proto ?? 0, msg: 'Your game version is out of date for this server (protocol ' + (m.proto ?? 1) + ', server ' + PROTO + '). Refresh the page (Ctrl+F5) to update, then reconnect.' })); } catch {} setTimeout(() => { try { ws.close(4001, 'version mismatch'); } catch {} }, 50); return; } let gg = typeof m.guest === 'string' ? guests.get(m.guest) : undefined; if (gg && gg.token !== m.token) gg = undefined;
-        if (!gg) { gg = { id: 'g' + randomBytes(5).toString('hex'), token: randomBytes(12).toString('hex'), name: 'Guest', lvl: 1, ws: null, party: null, shard: null, pos: { x: 0, y: 0, face: 0, moving: false, t: 0, town: 'rustline' }, ready: false, b: mkBuckets(), viol: 0 }; guests.set(gg.id, gg); }
+        if (!gg) { gg = { id: 'g' + randomBytes(5).toString('hex'), token: randomBytes(12).toString('hex'), name: '', lvl: 1, ws: null, party: null, shard: null, pos: { x: 0, y: 0, face: 0, moving: false, t: 0, town: 'rustline' }, ready: false, b: mkBuckets(), viol: 0 }; guests.set(gg.id, gg); }
         if (gg.ws && gg.ws !== ws) { try { gg.ws.close(4000, 'replaced'); } catch {} } gg.ws = ws; g = gg; g.name = cleanName(m.name, g.name); g.lvl = clamp(Math.floor(+m.lvl) || 1, 1, 50); g.look = cleanLook(m.look) ?? g.look;
         send(g, { t: 'welcome', proto: PROTO, id: g.id, token: g.token, stateHz: STATE_HZ, name: g.name, dev: !!o.dev });
         if (g.party) { bcastParty(g.party); const r = g.party.room; if (r && r.players.has(g.id)) send(g, startMsg(r, g.id, true)); } return; }

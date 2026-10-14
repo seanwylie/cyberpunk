@@ -50,7 +50,7 @@ export class InstanceClient {
   claimKill(id: number) { this.flushDmg(Date.now(), true); this.stats.claims++; this.net.send({ t: 'kill', id }); }
   setFlag(k: string, v: any) { if (this.flags[k] === v) return; this.flags[k] = v; this.stats.flagsSent++; this.net.send({ t: 'flag', k, v }); }
   revive(id: string) { this.net.send({ t: 'revive', id }); }
-  onPs(m: any, nowMs: number) { this.snaps++; this.lastN = m.n; const list = (m.p as any[]).filter(p => p.id !== this.myId).map(p => { const r = this.roster.get(p.id); return { id: p.id, name: r?.name || 'Guest', lvl: r?.lvl || 1, look: r?.look, x: p.x, y: p.y, face: p.f, hp: p.hp, maxHp: p.mh, down: !!p.dn, moving: !!p.mv, atk: !!p.at, em: p.em | 0 } as any; });
+  onPs(m: any, nowMs: number) { this.snaps++; this.lastN = m.n; const list = (m.p as any[]).filter(p => p.id !== this.myId).map(p => { const r = this.roster.get(p.id); return { id: p.id, name: r?.name || '', lvl: r?.lvl || 1, look: r?.look, x: p.x, y: p.y, face: p.f, hp: p.hp, maxHp: p.mh, down: !!p.dn, moving: !!p.mv, atk: !!p.at, em: p.em | 0 } as any; });
     // merge with the previous known set so players that did not change this tick stay visible (server sends deltas)
     for (const l of list) this.known.set(l.id, l); this.players.push(m.n / STATE_HZ, nowMs, [...this.known.values()]); }
   onEvent(m: any) { if (m.t === 'ekill') { if (m.id) this.killed.add(m.id); else this.flags.bossDead = true; } else if (m.t === 'flag') this.flags[m.k] = m.v; }

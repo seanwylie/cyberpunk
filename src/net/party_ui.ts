@@ -89,7 +89,7 @@ export class PartyUI {
   private saveName() { const nm = (this.panel.querySelector('#pp-name') as HTMLInputElement)?.value.trim(); if (nm) { try { setPartyName(nm); } catch {} this.net!.profile(nm, Math.max(1, (this.g.save as any).level || 1), this.sess?.look()); } }
   render() {
     this.syncBtn(); const n = this.net; const p = this.panel; if (!this.open) return; const keep = { chat: (p.querySelector('#pp-chat') as HTMLInputElement | null)?.value, name: (p.querySelector('#pp-name') as HTMLInputElement | null)?.value, code: (p.querySelector('#pp-code') as HTMLInputElement | null)?.value }; const focus = document.activeElement?.id;
-    const name = keep.name ?? (partyName() || 'Guest-' + Math.floor(1000 + Math.random() * 9000)); let h = '';
+    const name = keep.name ?? (partyName() || ''); let h = '';
     if (!n || n.state !== 'online') {
       const bad = !!n?.lastErr && n.state === 'off';
       h = `<h4>Party <span class="mut">${bad ? 'offline' : 'connecting…'}</span></h4><div class="mut">${bad ? esc(n!.versionError || 'Can\'t reach the game server right now. Solo play is unaffected.') : 'Solo play is unaffected.'}</div>${bad && !n!.versionError ? '<div class="row"><button data-a="retry" class="go">Retry</button></div>' : ''}`;

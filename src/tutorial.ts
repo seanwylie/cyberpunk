@@ -1,3 +1,4 @@
+import { mustName } from './charselui';
 import { pickCommonAbilityItem } from './abilities/hw';
 // First-run tutorial: a step-based state machine that OBSERVES game state (it never drives the game), so players can skip ahead,
 // do things out of order, die, open other panels or resize without breaking it. See docs/TUTORIAL.md.
@@ -163,6 +164,7 @@ export class Tutorial {
   // ---------- per-frame ----------
   tick(){ const md=this.g.mode+'|'+(this.ui as any).modal; if(md!==this.lastTMode){ this.lastTMode=md; this.spot.style.display=this.world.style.display=this.edge.style.display='none'; this.stepSince=performance.now(); }
     { const sv=this.g.save, ss=sv.stats; /* a player who has clearly moved past the intro (3+ runs or any clear) never gets a lingering ring: retire the tutorial quietly */ if(this.st.status==='active'&&ss&&(ss.runs>=3||ss.clears>=1)){ this.st.status='skipped'; persist(sv); } }
+    if(!this.disabled&&(mustName()||(this.ui as any).modal==='chars')){ this.spot.style.display=this.world.style.display=this.edge.style.display='none'; if(this.shown) this.hideAll(); return; } // character select / naming always comes first
     if(this.disabled||this.st.status!=='active'){ this.spot.style.display=this.world.style.display=this.edge.style.display='none'; if(this.shown) this.hideAll(); return; }
     const g=this.g, ui=this.ui as any; if(document.getElementById('splash')){ return; }
     this.observe();
