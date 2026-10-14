@@ -384,6 +384,7 @@ def pose(R,spec,anim,f,n):
         R.root.location.y=0
         R.root.rotation_euler=(0,0,0)
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'arch_bestiary.py')).read())
+exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'arch_base.py')).read())   # sculpted base body + manufacturer kits (regular mobs)
 # ---------------- scene, camera, lights ----------------
 def setup_scene(ortho):
     cam=bpy.data.cameras.new('c'); cam.type='ORTHO'; cam.ortho_scale=ortho; cam.shift_y=.30; cam.clip_end=60
@@ -411,7 +412,9 @@ for eid in ids:
                 if FSEL and f not in FSEL: continue
                 pose(R,spec,anim,f,n); R.root.rotation_euler=(R.root.rotation_euler[0],0,math.atan2(fy,fx)+math.pi/2) if anim!='death' else (0,0,math.atan2(fy,fx)+math.pi/2)
                 # facing yaw applied on a parent so root offsets (lunge) follow the facing
-                bpy.context.view_layer.update(); sc.render.filepath=f'{OUT}/{eid}/{anim}/{d}_{f}.png'; bpy.ops.render.render(write_still=True); cnt+=1
+                bpy.context.view_layer.update()
+                if hasattr(R,'skin'): R.skin()
+                sc.render.filepath=f'{OUT}/{eid}/{anim}/{d}_{f}.png'; bpy.ops.render.render(write_still=True); cnt+=1
         print(eid,anim,cnt,f'{time.time()-T0:.0f}s',flush=True)
     from bpy_extras.object_utils import world_to_camera_view
     pv=world_to_camera_view(sc,co,Vector((0,0,0))); json.dump({'ortho':co.data.ortho_scale,'res':RES,'anchor':[pv.x,1-pv.y]},open(f'{OUT}/{eid}/meta.json','w'))

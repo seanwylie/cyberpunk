@@ -81,3 +81,8 @@ try:
     from specs_bestiary import BESTIARY
     SPECS.update(BESTIARY)
 except ImportError: pass
+
+try:   # regular humanoid/bruiser mobs -> sculpted base body + manufacturer kits (arch_base.py)
+    from specs_base import apply as _base_apply
+    _base_apply(SPECS)
+except ImportError: pass
