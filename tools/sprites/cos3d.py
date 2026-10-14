@@ -14,9 +14,10 @@ def cos_mat(name,col,rough=0.42,metal=0.0,emit=None,es=0.0,coat=0.25):
 cos_mat('cA',(1,0,0,1)); cos_mat('cB',(0,1,0,1)); cos_mat('cAm',(1,0,0,1),rough=0.5,metal=0.22,coat=0.08); cos_mat('cBm',(0,1,0,1),rough=0.5,metal=0.22,coat=0.08)  # low metal/spec: white reflections washed item colours out
 cos_mat('cE',(0,0,0,1),emit=(0,0,1,1),es=3.0,coat=0.0)
 # measured head (after the face HS scale): every piece is sized from this so it sits on the head of whichever body is built
-_fp=[o.matrix_world@Vector(c) for o in SLOTOBJ['face'] for c in o.bound_box]
-HX=max(abs(p.x) for p in _fp if p.z>hb+0.05); HY0=min(p.y for p in _fp if p.z>hb+0.05); HY1=max(p.y for p in _fp if p.z>hb+0.05); HT=max(p.z for p in _fp)
-HC=Vector((0,0.01,hb+0.11)); HR=0.128; HY0=HC.y-HR*1.08; HY1=HC.y+HR*1.08  # skull+hood radius (the bbox includes goggle straps/hood back)
+hb=float(EYL[2])-0.135   # head-piece reference height, re-based on the fitted body's eye line (old rig: eyes at hb+0.135)
+_hv=BP[BP[:,2]>EYL[2]-0.02]; HT=float(_hv[:,2].max())+0.012   # skull of the fitted base body (+ hair thickness)
+HC=Vector((0,float(_hv[:,1].min()+_hv[:,1].max())/2,float(EYL[2])+0.02)); HR=max(float(np.abs(_hv[:,0]).max()),float(_hv[:,1].max()-_hv[:,1].min())/2)+0.012
+HX=HR; HY0=HC.y-HR*1.08; HY1=HC.y+HR*1.08
 def _ring(slot,mat,joint,R,r,z,ry=1.0,yc=None,tilt=0.0):
     o=torus(slot,mat,joint,R,r,(0,HC.y if yc is None else yc,z),(tilt,0,0)); o.scale=(1,ry,1); return o
 cos_mat('cAc',(1,0,0,1),rough=0.9,coat=0.0); cos_mat('cBc',(0,1,0,1),rough=0.9,coat=0.0)
@@ -27,7 +28,7 @@ def _arc(s,mat,j,pts,r0,r1,v=12):
     n=len(pts)-1
     for i in range(n): seg(s,mat,j,pts[i],pts[i+1],r0+(r1-r0)*i/n,r0+(r1-r0)*(i+1)/n,v=v)
 def head_item(iid):
-    s='cos_'+iid; j=headP; R=HR*1.12; top=HT; F=HY0; B=HY1; cy=HC.y; ez=hb+0.135
+    s='cos_'+iid; j=headP; R=HR*1.12; top=HT; F=HY0; B=HY1; cy=HC.y; ez=float(EYL[2])
     if iid=='head_cap':
         loft(s,'cAc',j,top-0.05,top+0.035,lambda t:(0,cy,R*(1-0.3*t**3),R*1.06*(1-0.3*t**3)),nv=10,nu=36,cap=(False,True),solid=0.01,bevel=0.003)
         loft(s,'cAc',j,-0.006,0.006,lambda t:(0,0,0.085,0.075),nv=2,nu=28,origin=(0,F-0.06,top-0.045),rot=(0.18,0,0),bevel=0.003,delete=lambda x,y,z:y>0.035)
@@ -176,7 +177,7 @@ def legs_item(iid):
 def arms_item(iid):
     s='cos_'+iid
     for side,sx in (('L',1),('R',-1)):
-        sh,el,wr=J['sh'+side],J['el'+side],J['wr'+side]; X=0.0;  # base arm meshes are authored centred on x=0 (see REST bbox), so pieces are too
+        sh,el,wr=J['sh'+side],J['el'+side],J['wr'+side]; X=W(sh).x  # pieces sit on the fitted base-body arm (shoulder x from the rig)
         sz,ez,wz=W(sh).z,W(el).z,W(wr).z
         if iid=='arms_wraps':      # cable ties + tape spiralled round the forearms, loose cable end
             for k in range(6): torus(s,'cAc' if k%2 else 'cBc',el,0.05,0.008,(X,0,ez-0.04-k*0.035),(0.25*(1 if k%2 else -1),0,0))
@@ -204,7 +205,7 @@ def arms_item(iid):
 def hands_item(iid):
     s='cos_'+iid
     for side,sx in (('L',1),('R',-1)):
-        wr=J['wr'+side]; X=0.0; wz=W(wr).z; hz=wz-0.06
+        wr=J['wr'+side]; X=W(wr).x; wz=W(wr).z; hz=wz-0.06
         if iid=='hands_work':      # thick leather gloves with big flared cuffs
             sph(s,'cAc',wr,0.05,(X,0,hz),(0.9,0.7,1.2)); loft(s,'cAc',wr,wz-0.01,wz+0.07,lambda t,X=X:(X,0,0.05+0.02*t,0.048+0.02*t),nv=4,nu=24,cap=(False,False),solid=0.006)
         elif iid=='hands_nitrile':  # snug thin gloves with long cuffs up the forearm
