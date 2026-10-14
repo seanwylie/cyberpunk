@@ -41,7 +41,7 @@ const SKIN:Record<string,Fn>={
 // ---------- tattoos ----------
 const TAT:Record<string,Fn>={
   barcode:(k,d)=>{ const {c,x,y,u}=k; c.fillStyle=rgba(d.c,.85); for(let i=0;i<9;i++) c.fillRect(x+(-3.6+i*.9)*u,y-37.5*u,(i%3?.4:.7)*u,3*u); },
-  serial:(k,d)=>{ const {c,x,y,u}=k; c.fillStyle=rgba(d.c,.85); c.font=`${Math.max(5,2.6*u)}px monospace`; c.textAlign='center'; c.fillText('HB-4471',x+10.5*u,y-26*u); },
+  serial:(k,d)=>{ const {c,x,y,u}=k; c.fillStyle=rgba(d.c,.85); c.font=`${Math.max(5,2.6*u)}px monospace`; c.textAlign='center'; c.fillText('HB-4471',x+6.8*u,y-25*u); },
   sigil:(k,d)=>{ const {c,x,y,u}=k; c.strokeStyle=rgba(d.c,.9); c.lineWidth=Math.max(1,.9*u); c.beginPath(); c.arc(x,y-30*u,2.6*u,0,7); c.moveTo(x-3.4*u,y-30*u); c.lineTo(x+3.4*u,y-30*u); c.moveTo(x,y-33.6*u); c.lineTo(x,y-26.4*u); c.stroke(); },
   cracks:(k,d)=>{ const {c,x,y,u}=k; c.strokeStyle=rgba(d.c,.8); c.lineWidth=Math.max(1,.7*u); for(const [a,b] of [[-6,-34],[3,-31],[-9,-26],[10,-27]]){ c.beginPath(); c.moveTo(x+a*u,y+b*u); c.lineTo(x+(a+2)*u,y+(b+2.2)*u); c.lineTo(x+(a+1)*u,y+(b+4.4)*u); c.lineTo(x+(a+3)*u,y+(b+6)*u); c.stroke(); } },
   circuit:(k,d)=>{ const {c,x,y,u,t}=k; add(c,()=>{ c.strokeStyle=rgba(d.c,.55+.3*Math.sin(t*2.4)); c.lineWidth=Math.max(1,.8*u); c.beginPath(); c.moveTo(x-11*u,y-34*u); c.lineTo(x-11*u,y-28*u); c.lineTo(x-9.5*u,y-26*u); c.lineTo(x-9.5*u,y-20*u); c.moveTo(x-11*u,y-30*u); c.lineTo(x-13*u,y-28*u); c.stroke(); }); },
