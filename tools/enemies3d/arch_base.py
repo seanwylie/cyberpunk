@@ -4,10 +4,10 @@
 # PS = dirty ivory ceramic, slate markings, tapered/blade; MM = olive stamped polymer with visible repairs. No emissive materials.
 import numpy as np
 _BASE=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','sprites','base')
-KIT={'HI':dict(shell='#6e3326',trim='#3a2a24',metal='#77706a',rubber='#1f1d1b',mark='#b8a98a'),
-     'PS':dict(shell='#cbc2ad',trim='#4a545c',metal='#8a8c88',rubber='#2a2c2e',mark='#4a545c'),
-     'MM':dict(shell='#4f5338',trim='#34372a',metal='#6d6f68',rubber='#26261f',mark='#a89a74')}
-CLOTH={'HI':('#4a3c33','#33302c'),'PS':('#8e968f','#5d625e'),'MM':('#4b4d3a','#3a3b31')}
+KIT={'HI':dict(shell='#9a4630',trim='#4e3a30',metal='#8e8780',rubber='#2c2926',mark='#d0c09c'),
+     'PS':dict(shell='#ddd3bc',trim='#56626b',metal='#9a9c97',rubber='#34373a',mark='#4a545c'),
+     'MM':dict(shell='#6e7448',trim='#474b37',metal='#83857d',rubber='#33332a',mark='#c2b285')}
+CLOTH={'HI':('#6e5a4c','#4e4840'),'PS':('#aab2a8','#7a807a'),'MM':('#727658','#57594a')}
 def _desat(h,k=.55,mix=None):
     c=np.array([int(h[i:i+2],16) for i in (1,3,5)],float); g=c.mean(); c=g+(c-g)*k
     if mix: m=np.array([int(mix[i:i+2],16) for i in (1,3,5)],float); c=c*.5+m*.5
@@ -20,8 +20,8 @@ def _kitmats(mfr,spec):
     MATS['k_tape']=mat('k_tape',rgb('#8f8466'),metal=0,rough=.95,panel=False,bump=1.0); MATS['k_patch']=mat('k_patch',rgb('#6a6c66'),metal=.4,rough=.6,panel=True,scale=9)
     MATS['b_shirt']=mat('b_shirt',rgb(_desat(p['main'],.7,sh)),metal=0,rough=.95,panel=False,bump=.9)
     MATS['b_pants']=mat('b_pants',rgb(_desat(p.get('cloth',p['dark']),.4,pa)),metal=0,rough=.95,panel=False,bump=.9)
-    MATS['b_boot']=mat('b_boot',rgb('#2a2622'),metal=.05,rough=.75,panel=False); MATS['b_skin']=mat('b_skin',rgb(spec.get('skin','#7d6a5e')),metal=0,rough=.85,panel=False,bump=.15)
-    MATS['b_hair']=mat('b_hair',rgb('#231d19'),metal=0,rough=.9,panel=False,bump=1.2); MATS['b_eye']=mat('b_eye',rgb('#b9b2a2'),metal=0,rough=.4,panel=False); MATS['b_pupil']=mat('b_pupil',rgb('#141210'),metal=0,rough=.3,panel=False)
+    MATS['b_boot']=mat('b_boot',rgb('#3a3530'),metal=.05,rough=.75,panel=False); MATS['b_skin']=mat('b_skin',rgb(spec.get('skin','#7d6a5e')),metal=0,rough=.85,panel=False,bump=.15)
+    MATS['b_hair']=mat('b_hair',rgb('#2e2620'),metal=0,rough=.9,panel=False,bump=1.2); MATS['b_eye']=mat('b_eye',rgb('#b9b2a2'),metal=0,rough=.4,panel=False); MATS['b_pupil']=mat('b_pupil',rgb('#141210'),metal=0,rough=.3,panel=False)
     MATS['b_brow']=mat('b_brow',rgb('#1e1814'),metal=0,rough=.9,panel=False)
     for g in ('glow',): MATS[g]=mat(g,rgb(_desat(p.get('glow','#8a7a60'),.3,'#7a7466')),metal=.2,rough=.6,panel=False)   # no emission: former light strips read as painted plates
 _BD={}
@@ -32,7 +32,7 @@ def basehum(spec,bruiser=False):
     mfr=spec.get('mfr','MM'); _kitmats(mfr,spec); BD=_bd(spec.get('sex','m'))
     P=BD['P'].copy(); Wt=BD['W']; F=[list(r[:n]) for r,n in zip(BD['F'],BD['flen'])]; BE=[str(x) for x in BD['bones']]; dom=Wt.argmax(1)
     s=spec.get('scale',1.0); oldH=((.88+.08+.62+.1+.5) if not bruiser else (.88*.82+.08+.62*1.25+.1+.45))*s
-    bx,by=(1.55,1.4) if bruiser else (1.2,1.12); head=dom==BE.index('headP')
+    bx,by=(1.95,1.62) if bruiser else (1.45,1.28); head=dom==BE.index('headP')
     P[~head,0]*=bx; P[~head,1]=(P[~head,1]+.045)*by-.045
     k=oldH/P[:,2].max()
     R=Rig(); R.s=s; R.kind='bruiser' if bruiser else 'humanoid'; R.root=joint('root'); R.hips=joint('hips',R.root,(0,0,.96*k)); R.hips.scale=(k,k,k)
@@ -43,7 +43,7 @@ def basehum(spec,bruiser=False):
         for nm,o in (('sh',sh),('el',el),('hand',hn),('hp',hp),('kn',kn),('ft',ft)): setattr(R,nm+side,o)
     MAPJ={'hips':'hips','torsoP':'torso','headP':'head'}
     for pb,eb in (('sh','sh'),('el','el'),('wr','hand'),('hp','hp'),('kn','kn'),('an','ft')): MAPJ[pb+'L']=eb+'R'; MAPJ[pb+'R']=eb+'L'   # body L is +x = enemy R
-    R.hipH=.96*k; R.leg=.85*k; R.height=oldH
+    R.lift={'key':1.25,'fill':2.2,'rim':2.6,'rim2':2.0}; R.hipH=.96*k; R.leg=.85*k; R.height=oldH
     # ---- which limb carries the install (hidden body faces + kit parts)
     aug=spec.get('aug',{'HI':('R',),'PS':('L',),'MM':('R',)}[mfr]) if not bruiser else spec.get('aug',('R','L') if mfr!='PS' else ('L',))
     hide=set()
@@ -92,6 +92,12 @@ def basehum(spec,bruiser=False):
         ft=getattr(R,'ft'+side); g=1.15 if bruiser else 1.0
         box(ft,(.11*g,.25*g,.05),(0,-.06,-.065),'b_boot',bevel=.015); box(ft,(.1*g,.19*g,.07),(0,-.04,-.02),'b_boot',bevel=.025)
         sph(ft,.05*g,(0,-.15*g,-.04),'b_boot',(1.05,1.0,.75)); cyl(ft,.058*g,.12,(0,.0,.04),'b_boot',v=14,r2=.052*g); box(ft,(.11*g,.26*g,.012),(0,-.06,-.092),'k_rubber',bevel=.004)
+    t=R.torso; cw=.17*bx; yf=(-.16+.045)*by-.045-.03; yb=(.13+.045)*by-.045+.03   # manufacturer chest/back plates follow the bulked surface
+    if mfr=='PS': sph(t,cw*.7,(0,yf+.01,.42),'k_shell',(1,.28,1.1)); box(t,(.008,.012,.2),(0,yf-.02,.42),'k_mark',bevel=0); sph(t,cw*.65,(0,yb,.4),'k_shell',(1,.3,1.1))
+    else:
+        box(t,(cw*1.3,.04,.28),(0,yf,.4),'k_shell',(-8,0,0),bevel=.02); box(t,(cw*1.3,.04,.32),(0,yb,.38),'k_shell' if mfr=='HI' else 'k_patch',bevel=.02)
+        if mfr=='HI': _bolts(t,[(sx*cw*.5,yf-.022,zz) for sx in (-1,1) for zz in (.32,.48)])
+        else: box(t,(cw*.45,.012,.06),(-cw*.3,yf-.022,.46),'k_tape',bevel=0)
     kits(R,spec,mfr,aug,bruiser,k); extras_b(R,spec,bruiser,bx)
     for side in ('L','R'):
         wk=spec.get('weapon_'+side)

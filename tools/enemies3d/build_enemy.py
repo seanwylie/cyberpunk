@@ -391,7 +391,9 @@ def setup_scene(ortho):
     co=bpy.data.objects.new('cam',cam); sc.collection.objects.link(co); co.rotation_euler=(math.radians(60),0,0); co.location=(0,-0.866*12,0.5*12); sc.camera=co
     def sun(name,e,rot,col,ang=10):
         d=bpy.data.lights.new(name,'SUN'); d.energy=e; d.color=col; d.angle=math.radians(ang); o=bpy.data.objects.new(name,d); sc.collection.objects.link(o); o.rotation_euler=[math.radians(x) for x in rot]
-    sun('key',5.0,(50,0,-38),(1.0,.94,.84),6); sun('fill',1.0,(70,0,140),(.72,.82,1.0),25); sun('rim',2.2,(125,0,170),(.8,.9,1.0),8)
+    LF=getattr(R,'lift',None) or {}   # base-body rigs: value lift + stronger rim so slim figures separate from dungeon floors
+    sun('key',5.0*LF.get('key',1),(50,0,-38),(1.0,.94,.84),6); sun('fill',1.0*LF.get('fill',1),(70,0,140),(.72,.82,1.0),25); sun('rim',2.2*LF.get('rim',1),(125,0,170),(.8,.9,1.0),8)
+    if LF.get('rim2'): sun('rim2',LF['rim2'],(120,0,-150),(1.0,.95,.86),10)
     w=bpy.data.worlds.new('w'); w.use_nodes=True; w.node_tree.nodes['Background'].inputs[0].default_value=(.40,.43,.46,1); w.node_tree.nodes['Background'].inputs[1].default_value=.85; sc.world=w
     sc.render.engine='CYCLES'; sc.cycles.device='CPU'; sc.cycles.samples=SAMPLES; sc.cycles.use_denoising=True; sc.cycles.max_bounces=4; sc.cycles.diffuse_bounces=2; sc.cycles.glossy_bounces=2; sc.cycles.use_adaptive_sampling=True; sc.cycles.adaptive_threshold=.03
     sc.render.resolution_x=RES; sc.render.resolution_y=RES; sc.render.resolution_percentage=100; sc.render.film_transparent=True; sc.view_settings.view_transform='Standard'
