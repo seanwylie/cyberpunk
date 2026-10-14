@@ -217,8 +217,8 @@ class Poser:
     def drive_points(s, c):
         Mb, Mh, Mt, Mhd = s.mats(c)
         P = {'torso': (Mt @ Vector((0, 0, 0.55)) + Mt @ Vector((0, -0.25, 0.0))) * 0.5, 'head': Mhd @ Vector((0, 0.1, 0.1))}
-        Msh = Mt @ Matrix.Translation((0.285, 0, 0.55)) @ Euler((c['Lsx'], -c['Lab'], 0)).to_matrix().to_4x4()
-        Mel = Msh @ Matrix.Translation((0, 0, -0.29)) @ Euler((c['Lel'], 0, 0)).to_matrix().to_4x4()
+        Msh = Mt @ Matrix.Translation(tuple(s.J['shL'].location)) @ Euler((c['Lsx'], -c['Lab'], 0)).to_matrix().to_4x4()
+        Mel = Msh @ Matrix.Translation(tuple(s.J['elL'].location)) @ Euler((c['Lel'], 0, 0)).to_matrix().to_4x4()
         P['arm'] = Mel @ Vector((0, 0, -0.12)); return P
     SYS = {'jacket': ('torso', 10.5, .30, 1.0, .13), 'pouch': ('torso', 15, .22, .8, .08), 'hood': ('head', 12.5, .26, 1.15, .12), 'hose': ('arm', 14, .25, .7, .06)}
     def simulate(s, anim):
