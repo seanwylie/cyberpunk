@@ -42,6 +42,7 @@ mobile
 locker_fit
 town_hud
 tutorial
+tutorial_patch
 flash
 hud_boxes
 tray

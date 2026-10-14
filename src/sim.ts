@@ -282,7 +282,12 @@ export class Game {
     this.popup(this.px,this.py-1,hot?'HOT VENT -'+amt:'VENT -'+amt,'#e8c46a'); this.emit('sfx','cooled'); this.fx.push({kind:'ring',x:this.px,y:this.py,r:1.8,t:0,life:.45,c:'#e8c46a'}); return true; }
   /** play the equipped emote cosmetic (G); emoteSeq is relayed with town_pos so nearby players see it too */
   emoteSeq=0; emote(){ if(this.downed) return; if(playEmote(eqCos(this.save))) this.emoteSeq++; }
-  useStim(){ if(this.stimCd>0) return; const c=this.inst?.carried; if(!c||this.downed){ if(this.mode==='town'&&this.save.stims>0){ this.save.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); } return; } if(c.stims>0&&this.hp<this.maxHp){ c.stims--; this.stimCd=HARD.stimCd; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); this.heat=Math.max(0,this.heat-HEAT.stimVent); this.emit('sfx','heal'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.8,text:'+'+COMBAT.stimHeal,c:'#9fb98a'}); } else if(c.stims<=0 && this.save.stims>0 && false){} }
+  stimTries=0; stimMsgT=-1e9;
+  /** T / patch button did nothing: say why (rate-limited so mashing doesn't spam) */
+  stimNo(msg:string){ if(this.time-this.stimMsgT<1.2) return; this.stimMsgT=this.time; this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:1,text:msg,c:'#c9b48a'}); this.emit('sfx','deny'); }
+  useStim(){ this.stimTries++; if(this.downed) return; if(this.stimCd>0){ this.stimNo('Patch recharging'); return; } const c=this.inst?.carried; const have=c?c.stims:this.save.stims;
+    if(have<=0){ this.stimNo('No patches'); return; } if(this.hp>=this.maxHp){ this.stimNo('Full health'); return; }
+    if(!c){ this.save.stims--; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); return; } { c.stims--; this.stimCd=HARD.stimCd; this.hp=Math.min(this.maxHp,this.hp+COMBAT.stimHeal); this.heat=Math.max(0,this.heat-HEAT.stimVent); this.emit('sfx','heal'); this.fx.push({kind:'text',x:this.px,y:this.py,t:0,life:.8,text:'+'+COMBAT.stimHeal,c:'#9fb98a'}); } }
   musicSet(s:string){ if(this.musicState!==s){ this.musicState=s; if(s!=='town') this.emit('musicarea',this.inst?dungeonOf(this.inst.dungeon).mfr:null); this.emit('music',s); } }
 
   // ---------- main update ----------

@@ -33,6 +33,7 @@ const isVis=(e:Element|null):e is HTMLElement=>{ if(!e) return false; const r=(e
 
 export class Tutorial {
   st:TutState; view:View|null=null; idx=0; shown=false; private dist=0; private lx=0; private ly=0; private lk=0; private lastMode=''; private lastDodge=0; private flags:Record<string,boolean>={};
+  private lastTries=-1;
   private el!:HTMLElement; private spot!:HTMLElement; private world!:HTMLElement; private edge!:HTMLElement; private stepSince=performance.now(); private lastTMode=''; private lastSel=''; private lastSelModal:string|null=null; private scrollT=0; private skipArm=0; private key=''; private placeKey=''; private openedAt=0; private lastModal:string|null=null; private lastStims=-1;
   disabled=false;
   constructor(private g:Game, private ui:UI, private rend:Renderer){
@@ -91,7 +92,7 @@ export class Tutorial {
   private observe(){ const g=this.g, s=g.save, st=this.st; const ui=this.ui as any;
     // movement (cumulative distance, ignoring teleports/mode changes)
     const d=Math.hypot(g.px-this.lx,g.py-this.ly); if(d<2&&g.mode===this.lastMode) this.dist+=d; this.lx=g.px; this.ly=g.py; if(this.dist>=4) this.latch('move');
-    if(g.mode==='run'){ this.flags.entered=true; this.latch('move'); if(g.kills>this.lk&&this.lk>=0) st.kills+=g.kills-this.lk; if(g.dodgeT>0&&this.lastDodge<=0) this.flags.dodge=true; const sc=g.inst?.carried.stims??-1; if(this.lastStims>=0&&sc>=0&&sc<this.lastStims) this.flags.stim=true; this.lastStims=sc; } else this.lastStims=-1;
+    if(g.mode==='run'){ this.flags.entered=true; this.latch('move'); if(g.kills>this.lk&&this.lk>=0) st.kills+=g.kills-this.lk; if(g.dodgeT>0&&this.lastDodge<=0) this.flags.dodge=true; const sc=g.inst?.carried.stims??-1; if(this.lastStims>=0&&sc>=0&&sc<this.lastStims) this.flags.stim=true; if(g.stimTries>this.lastTries&&this.lastTries>=0) this.flags.stim=true; /* pressing T counts even when full HP / no patch */ this.lastTries=g.stimTries; this.lastStims=sc; } else this.lastStims=-1;
     this.lk=g.kills; this.lastDodge=g.dodgeT; if(g.mode!==this.lastMode){ if(g.mode==='run') { this.latch('gate'); this.latch('move'); } this.lastMode=g.mode; this.key=''; }
     if(g.mode==='run'&&g.hp<g.maxHp&&this.flags.cast===undefined) { /* nothing */ }
     // facts from the save
