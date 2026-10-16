@@ -13,28 +13,29 @@ def apply(SPECS):
 # (elites >= old size, bosses clearly biggest); look: head shape, signature limbs, back unit, extra arm, piston legs.
 LOOK = {
   # HI
-  'sawhand':     dict(bulk=(2.0,1.6),  grow=1.12, look=dict(tools={'R':'saw'}, back='tanks')),
-  'brakeman':    dict(bulk=(2.15,1.7), grow=1.14, look=dict(tools={'R':'hammer','L':'clamp'}, head='bucket', back='stacks')),
-  'quenchpriest':dict(bulk=(1.35,1.2), grow=1.16, look=dict(tools={'L':'blade'}, piston=('L','R'))),
-  'enforcer':    dict(bulk=(2.25,1.8), grow=1.2,  look=dict(donor=True, head='round', back='stacks', xarm='L')),
-  'teague':      dict(bulk=(2.4,1.9),  grow=1.22, look=dict(head='flat', tools={'R':'hammer','L':'hammer'}, back='tanks', piston=('L','R'))),
-  'brannoch':    dict(bulk=(2.3,1.85), grow=1.22, look=dict(tools={'L':'clamp'}, back='stacks')),
+  'sawhand':     dict(bulk=(2.0,1.6),  grow=1.0, look=dict(tools={'R':'saw'}, back='tanks')),
+  'brakeman':    dict(bulk=(2.15,1.7), grow=1.0, look=dict(tools={'R':'hammer','L':'clamp'}, head='bucket', back='stacks')),
+  'quenchpriest':dict(bulk=(1.35,1.2), grow=1.0, look=dict(tools={'L':'blade'}, piston=('L','R'))),
+  'enforcer':    dict(bulk=(2.25,1.8), grow=1.0,  look=dict(donor=True, head='round', back='stacks', xarm='L')),
+  'teague':      dict(bulk=(2.4,1.9),  grow=1.0, look=dict(head='flat', tools={'R':'hammer','L':'hammer'}, back='tanks', piston=('L','R'))),
+  'brannoch':    dict(bulk=(2.3,1.85), grow=1.0, look=dict(tools={'L':'clamp'}, back='stacks')),
   # PS
-  'matron':      dict(bulk=(1.5,1.3),  grow=1.1,  look=dict(back='ribs')),
-  'anesthetist': dict(bulk=(1.3,1.15), grow=1.15, look=dict(tools={'L':'blade'}, back='tanks', piston=('R',))),
-  'surgeon':     dict(shift=.41, bulk=(1.55,1.3), grow=1.14,  look=dict(tools={'R':'blade','L':'blade'}, back='ribs', xarm='R', piston=('L','R'))),
-  'recovered':   dict(bulk=(1.7,1.45), grow=1.18, look=dict(donor=True, back='ribs', xarm='L')),
+  'matron':      dict(bulk=(1.5,1.3),  grow=1.0,  look=dict(back='ribs')),
+  'anesthetist': dict(bulk=(1.3,1.15), grow=1.0, look=dict(tools={'L':'blade'}, back='tanks', piston=('R',))),
+  'surgeon':     dict(bulk=(1.55,1.3), grow=1.0,  look=dict(tools={'R':'blade','L':'blade'}, back='ribs', xarm='R', piston=('L','R'))),
+  'recovered':   dict(bulk=(1.7,1.45), grow=1.0, look=dict(donor=True, back='ribs', xarm='L')),
   # MM (were look-alikes)
-  'foreman':     dict(bulk=(2.2,1.75), grow=1.15, look=dict(tools={'R':'clamp','L':'clamp'}, head='dome', back='toolbox', piston=())),
-  'shiftlead':   dict(bulk=(1.3,1.15), grow=1.1,  look=dict(tools={'L':'drill'}, head='crt', back='mast', piston=('L','R'))),
-  'hobbs':       dict(bulk=(2.5,2.0),  grow=1.1,  look=dict(head='bucket', xarm='R', piston=())),
-  'overseer':    dict(shift=.41, bulk=(2.3,1.85), grow=1.16, look=dict(tools={'L':'drill'}, head='periscope', back='stacks', xarm='R')),
-  'stockmgr':    dict(shift=.41, bulk=(2.1,1.7),  grow=1.14,  look=dict(tools={'R':'tines','L':'tines'}, head='flat', back='mast', piston=('L','R'))),
-  'retrieval':   dict(shift=.41, bulk=(1.8,1.5),  grow=1.16, look=dict(donor=True, tools={'R':'longclaw'}, head='crt', back='reel', piston=('R',))),
-  'reclaimer':   dict(bulk=(2.35,1.9), grow=1.2,  look=dict(tools={'R':'saw'}, head='round', back='drum', piston=('L',))),
+  'foreman':     dict(bulk=(2.2,1.75), grow=1.0, look=dict(tools={'R':'clamp','L':'clamp'}, head='dome', back='toolbox', piston=())),
+  'shiftlead':   dict(bulk=(1.3,1.15), grow=1.0,  look=dict(tools={'L':'drill'}, head='crt', back='mast', piston=('L','R'))),
+  'hobbs':       dict(bulk=(2.5,2.0),  grow=1.0,  look=dict(head='bucket', xarm='R', piston=())),
+  'overseer':    dict(bulk=(2.3,1.85), grow=1.0, look=dict(tools={'L':'drill'}, head='periscope', back='stacks', xarm='R')),
+  'stockmgr':    dict(bulk=(2.1,1.7),  grow=1.0,  look=dict(tools={'R':'tines','L':'tines'}, head='flat', back='mast', piston=('L','R'))),
+  'retrieval':   dict(bulk=(1.8,1.5),  grow=1.0, look=dict(donor=True, tools={'R':'longclaw'}, head='crt', back='reel', piston=('R',))),
+  'reclaimer':   dict(bulk=(2.35,1.9), grow=1.0,  look=dict(tools={'R':'saw'}, head='round', back='drum', piston=('L',))),
 }
+ORTHOK={'brannoch':1.26,'enforcer':1.18,'overseer':1.12,'retrieval':1.2,'teague':1.08,'reclaimer':1.14,'recovered':1.08,'surgeon':1.06,'quenchpriest':1.06,'anesthetist':1.06}   # frame headroom only (game size is art.h, normalised by hpx)
 _apply0=apply
 def apply(SPECS):
     _apply0(SPECS)
     for k,v in LOOK.items():
-        if k in SPECS: SPECS[k].update(v); SPECS[k].setdefault('shift',.37)
+        if k in SPECS: SPECS[k].update(v); SPECS[k].setdefault('shift',.30); SPECS[k].setdefault('orthoK',ORTHOK.get(k,1.0))

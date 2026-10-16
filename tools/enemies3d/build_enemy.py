@@ -405,7 +405,7 @@ ids=os.environ.get('IDS','worker').split(','); want=os.environ.get('ANIMS',','.j
 fsel=os.environ.get('FRAMES'); FSEL=[int(x) for x in fsel.split(',')] if fsel else None
 for eid in ids:
     spec=SPECS[eid]; bpy.ops.wm.read_factory_settings(use_empty=True); sc=bpy.context.scene; ALL.clear(); palette(spec['palette'])
-    R=ARCH[spec['arch']](spec); co=setup_scene(spec.get('ortho',R.height*1.25+.7)); bpy.context.view_layer.update()
+    R=ARCH[spec['arch']](spec); co=setup_scene(spec.get('ortho',(R.height*1.25+.7)*spec.get('orthoK',1.0))); bpy.context.view_layer.update()
     T0=time.time(); cnt=0; os.makedirs(f'{OUT}/{eid}',exist_ok=True)
     for anim in want:
         n=ANIM_SPEC[anim]['n']; os.makedirs(f'{OUT}/{eid}/{anim}',exist_ok=True)
