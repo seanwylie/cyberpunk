@@ -32,7 +32,7 @@ def basehum(spec,bruiser=False):
     mfr=spec.get('mfr','MM'); _kitmats(mfr,spec); BD=_bd(spec.get('sex','m'))
     P=BD['P'].copy(); Wt=BD['W']; F=[list(r[:n]) for r,n in zip(BD['F'],BD['flen'])]; BE=[str(x) for x in BD['bones']]; dom=Wt.argmax(1)
     s=spec.get('scale',1.0); oldH=((.88+.08+.62+.1+.5) if not bruiser else (.88*.82+.08+.62*1.25+.1+.45))*s
-    bx,by=(1.95,1.62) if bruiser else (1.45,1.28); head=dom==BE.index('headP')
+    bx,by=spec.get('bulk',(1.95,1.62) if bruiser else (1.45,1.28)); head=dom==BE.index('headP')
     P[~head,0]*=bx; P[~head,1]=(P[~head,1]+.045)*by-.045
     k=oldH/P[:,2].max()
     R=Rig(); R.s=s; R.kind='bruiser' if bruiser else 'humanoid'; R.root=joint('root'); R.hips=joint('hips',R.root,(0,0,.96*k)); R.hips.scale=(k,k,k)
@@ -167,6 +167,8 @@ def extras_b(R,spec,br,bx):
         elif e=='coils':
             box(t,(.2,.05,.4),(0,by+.04,.32),'k_trim',bevel=.01)
             for i in range(3): cyl(t,.075,.04,(0,by+.1,.2+.12*i),'k_metal' if i%2 else 'k_shell',(90,0,0),v=16)
+        elif e=='horns':   # forged horn pair bolted to the skull (HI)
+            for sx in (-1,1): cyl(hd,.035,.26,(sx*.13,-.01,.36),'k_metal',(0,sx*-38,0),v=8,r2=.006); cyl(hd,.045,.05,(sx*.1,-.01,.33),'k_shell',(0,sx*-38,0),v=10)
         elif e=='spikes':
             for i in range(4): cyl(t,.018,.08,(0,by+.03,.15+.12*i),'k_metal',(-70,0,0),v=6,r2=.003)
         else: print('extras_b: skipped',e,flush=True)

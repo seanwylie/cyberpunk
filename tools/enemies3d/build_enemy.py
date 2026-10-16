@@ -287,7 +287,7 @@ def rx(j,d): j.rotation_euler=(math.radians(d),j.rotation_euler[1],j.rotation_eu
 def setr(j,x=0,y=0,z=0): j.rotation_euler=(math.radians(x),math.radians(y),math.radians(z))
 def reset(R):
     for o in ALL:
-        if o.type=='EMPTY' and o.name not in('root',): o.rotation_euler=(0,0,0)
+        if o.type=='EMPTY' and o.name not in('root',) and not o.name.startswith('xa'): o.rotation_euler=(0,0,0)
     R.root.location=(0,0,0); R.root.rotation_euler=(0,0,0)
 def pose(R,spec,anim,f,n):
     reset(R); u=f/n; ph=u*math.tau; hip0=R.hipH if hasattr(R,'hipH') else 0; k=R.kind
@@ -388,7 +388,7 @@ exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'arch_base.py'
 exec(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),'arch_radical.py')).read())   # elites/bosses: radical replacement (board B)
 # ---------------- scene, camera, lights ----------------
 def setup_scene(ortho):
-    cam=bpy.data.cameras.new('c'); cam.type='ORTHO'; cam.ortho_scale=ortho; cam.shift_y=.30; cam.clip_end=60
+    cam=bpy.data.cameras.new('c'); cam.type='ORTHO'; cam.ortho_scale=ortho; cam.shift_y=spec.get('shift',.30);   # larger elites/bosses: more headroom, feet lower in frame (anchor stored per atlas) cam.clip_end=60
     co=bpy.data.objects.new('cam',cam); sc.collection.objects.link(co); co.rotation_euler=(math.radians(60),0,0); co.location=(0,-0.866*12,0.5*12); sc.camera=co
     def sun(name,e,rot,col,ang=10):
         d=bpy.data.lights.new(name,'SUN'); d.energy=e; d.color=col; d.angle=math.radians(ang); o=bpy.data.objects.new(name,d); sc.collection.objects.link(o); o.rotation_euler=[math.radians(x) for x in rot]
