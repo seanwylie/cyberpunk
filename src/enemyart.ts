@@ -23,20 +23,20 @@ export const ART: Record<string, Art> = {
   ...Object.fromEntries(MOBS.map(m => [m.id, { spr: m.spr, h: m.h, ...(m.hover ? { hover: m.hover } : {}) } as Art])),
   ...Object.fromEntries(BOSSES.map(b => [b.id, { spr: 'overseer', h: b.h, ...(b.hover ? { hover: b.hover } : {}) } as Art])),
   // Reclamation Annex (original dungeon); drone = spare hover minion art
-  worker: A('worker', 1.05), shooter: A('shooter', 1.1), turret: A('turret', .85, { ground: true }), sawhand: A('sawhand', 1.5), foreman: A('foreman', 1.5),
-  overseer: A('overseer', 2.4), warden: A('warden', 2.3, { hover: .8 }), enforcer: A('enforcer', 2.4), drone: A('drone', .8, { hover: .5 }),
+  worker: A('worker', 1.05), shooter: A('shooter', 1.1), turret: A('turret', .85, { ground: true }), sawhand: A('sawhand', 1.59), foreman: A('foreman', 1.55),
+  overseer: A('overseer', 2.64), warden: A('warden', 2.3, { hover: .8 }), enforcer: A('enforcer', 2.68), drone: A('drone', .8, { hover: .5 }),
   // Harrow-Brandt Foundry
   slaghauler: A('slaghauler', 1.15), ladlecrew: A('ladlecrew', 1.1), cinderhound: A('cinderhound', .62), slagcannon: A('slagcannon', .85, { ground: true }),
-  brakeman: A('teague', 1.45, { tint: 'rgba(60,40,50,.28)' }), quenchpriest: A('quenchpriest', 1.55),
-  teague: A('teague', 2.35), brannoch: A('brannoch', 2.35), ore9: A('ore9', 2.1, { hover: .55 }),
+  brakeman: A('teague', 1.53, { tint: 'rgba(60,40,50,.28)' }), quenchpriest: A('quenchpriest', 1.7),
+  teague: A('teague', 2.61), brannoch: A('brannoch', 2.69), ore9: A('ore9', 2.1, { hover: .55 }),
   // Aldane clinic
   orderly: A('orderly', 1.1), nursebot: A('nursebot', 1.05), gurneyrunner: A('gurneyrunner', .8), sentry: A('sentry', 1.05, { ground: true }),
-  matron: A('matron', 1.5), anesthetist: A('nursebot', 1.4, { tint: 'rgba(40,70,80,.3)' }),
-  surgeon: A('surgeon', 2.3), autosurgeon: A('autosurgeon', 2.3, { hover: 1.1 }), recovered: A('recovered', 2.4),
+  matron: A('matron', 1.57), anesthetist: A('nursebot', 1.47, { tint: 'rgba(40,70,80,.3)' }),
+  surgeon: A('surgeon', 2.6), autosurgeon: A('autosurgeon', 2.3, { hover: 1.1 }), recovered: A('recovered', 2.74),
   // Kestrel warehouse
   picker: A('picker', 1.0), loader: A('loader', 1.15), forkbot: A('forkbot', 1.15), scanner: A('scanner', 1.0), camgun: A('camgun', .7, { ground: true }),
-  shiftlead: A('shiftlead', 1.45), hobbs: A('loader', 1.5, { tint: 'rgba(120,90,30,.22)' }),
-  stockmgr: A('stockmgr', 2.2), retrieval: A('retrieval', 2.9), reclaimer: A('reclaimer', 2.5),
+  shiftlead: A('shiftlead', 1.53), hobbs: A('loader', 1.58, { tint: 'rgba(120,90,30,.22)' }),
+  stockmgr: A('stockmgr', 2.53), retrieval: A('retrieval', 3.19), reclaimer: A('reclaimer', 2.82),
 };
 /** 3D-rendered 8-direction animated atlas (tools/enemies3d: Blender archetype rigs -> public/dungeons/enemies3d/<id>.json + <id>_<anim>.webp). Rows S,SW,W,NW,N,NE,E,SE; cols = frames. */
 interface AAnim { image: string; frames: number; fps: number; loop: boolean; hit: number | null; }
