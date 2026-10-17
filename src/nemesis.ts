@@ -13,7 +13,13 @@ export const NEM_CFG = {
   /** modules active per rank (rank 1..5) */ modulesByRank: [1, 1, 2, 2, 3],
   /** kills needed for each tier */ tiers: [{ id: 'stalker', kills: 1 }, { id: 'captain', kills: 3 }, { id: 'warlord', kills: 5 }] as const,
   /** a nemesis never out-scales the regular boss of its dungeon: effective hp (shield + resist included) is capped at this fraction of that boss's hp */ hpVsBossCap: .6,
+  /** scars a nemesis can carry (cosmetic + words only) */ maxScars: 3,
+  /** first-session guarantee: the first elite that kills or chases you off becomes a nemesis, and a fresh nemesis always shows up in your next run, so the system is seen in the first 30 minutes */ firstAlways: true,
 } as const;
+export type Scar = 'kinetic' | 'blade' | 'arc' | 'tech';
+export const SCARS: Record<Scar, { name: string; tip: string }> = {
+  kinetic: { name: 'Bullet-pocked', tip: 'Your rounds are still in it. Patched, not removed.' }, blade: { name: 'Stitched', tip: 'A long blade scar from your last fight, stapled shut.' },
+  arc: { name: 'Arc-burned', tip: 'Burn scars where your arc fire caught it.' }, tech: { name: 'Scorched port', tip: 'Its neural port is blackened from your hacks.' } };
 export type Tier = 'stalker' | 'captain' | 'warlord';
 export type Module = 'counter_intrusion' | 'shield' | 'gap_closer' | 'resist';
 export const MODULES: Record<Module, { name: string; tip: string }> = {
@@ -26,7 +32,8 @@ export const DMG_TYPES = ['kinetic', 'blade', 'arc', 'tech'] as const; export ty
 export interface Profile { hack: number; burst: number; kite: number; main: DmgType }
 export interface Trophy { def: string; name: string; rarity: string; slot: string }
 export interface NemRec { id: string; src: string; body: string; mfr: string; name: string; title: string; rank: number; kills: number; encounters: number; status: 'active' | 'dead'; tier: Tier;
-  modules: Module[]; resist: DmgType; trophy: Trophy | null; method: string; cat: MethodCat; dungeon: string; born: number; lastSeen: number; taunt: string; tauntKey: string; words: 'canned' | 'ai'; recruits: number; owner: string; parent?: string }
+  modules: Module[]; resist: DmgType; trophy: Trophy | null; method: string; cat: MethodCat; dungeon: string; born: number; lastSeen: number; taunt: string; tauntKey: string; words: 'canned' | 'ai'; recruits: number; owner: string; parent?: string;
+  /** visible damage the player left on it (max NEM_CFG.maxScars), from the player's main damage type */ scars?: Scar[]; /** what it read about the player last time: build_* / limb_* taunt key (the city-memory hook) */ read?: string }
 export interface TrophyItem { id: string; nem: string; name: string; title: string; kills: number; line: string; at: number; trophy: Trophy | null; owner: string }
 export interface NemState { v: 1; list: NemRec[]; seq: number; deaths: number; flees?: number; trophies: TrophyItem[] }
 export const nemOf = (s: any): NemState => { if (!s.nemesis || s.nemesis.v !== 1) s.nemesis = { v: 1, list: [], seq: 1, deaths: 0, trophies: [] }; return s.nemesis; };
@@ -55,6 +62,10 @@ export const TAUNTS: Record<string, string> = {
   recruit_1: 'I found someone else who wants a piece of you.',
   death_1: 'Keep the trophy. They will remember who earned it.', death_2: 'Took you long enough.',
   return_1: 'Back again? I kept your seat warm.', return_2: 'I have been learning how you fight.',
+  build_hack: 'Your hacks bounce off me now. I paid for new ICE.', build_burst: 'You open loud. I wear plating for that now.', build_kite: 'You keep your distance. I learned to close it.',
+  build_blade: 'You cut the same way every time. I stitched over it.', build_kinetic: 'I dug your rounds out myself. Bring more.', build_arc: 'Your arc fire left marks. I kept every one.', build_tech: 'I know what your tech does now. It tickles.',
+  limb_arm: 'Down an arm since last time? I remember which one.', limb_leg: 'Limping now. I will hear you coming.',
+  fled_1: 'You ran. Everyone saw you run.', fled_2: 'Ran last time. Run again, I am faster now.',
 };
 export const tauntKeys = (prefix: string) => Object.keys(TAUNTS).filter(k => k.startsWith(prefix + '_'));
 export function cannedWords(r: () => number, cat: MethodCat, tier: Tier) { const first = pick(r, FIRST); return { name: first + ' ' + pick(r, EPI[cat]), title: TITLE[tier], tauntKey: pick(r, tauntKeys(cat)) }; }
@@ -67,6 +78,17 @@ export function applyWords(rec: NemRec, w: any): boolean { if (!w || typeof w !=
   if (nOk) rec.name = w.name.trim(); if (tOk) { rec.taunt = w.taunt.trim(); rec.tauntKey = ''; } // custom text: no cached voice, text fallback
   rec.words = 'ai'; void any; return true; }
 
+// ---------- reading the player (deterministic; words + scars only) ----------
+/** Taunt key for what this nemesis noticed about you. Limb losses win (read from the save; any limb system can fill s.limbs.lost = ['armL', ...]), then the strongest profile signal, then damage type. */
+export function readKey(p: Profile, lost: string[] = []): string { const l = lost.find(x => /arm|leg/i.test(x)); if (l) return /arm/i.test(l) ? 'limb_arm' : 'limb_leg';
+  if (p.hack >= .3) return 'build_hack'; if (p.burst >= .5) return 'build_burst'; if (p.kite >= .5) return 'build_kite'; return 'build_' + (DMG_TYPES.includes(p.main) ? p.main : 'kinetic'); }
+export const lostLimbs = (s: any): string[] => { const L = s?.limbs?.lost ?? s?.lostLimbs; return Array.isArray(L) ? L.filter((x: any) => typeof x === 'string').slice(0, 4) : []; };
+export function addScar(n: NemRec, t: DmgType) { const sc = (n.scars ||= []); if (!sc.includes(t) && sc.length < NEM_CFG.maxScars) sc.push(t); }
+export const scarText = (n: NemRec) => (n.scars || []).filter(x => x in SCARS).map(x => SCARS[x].name).join(', ');
+/** The line it says when it finds you again: what it read about you, else the generic return lines. */
+export function returnLine(n: NemRec): { key: string; text: string } { if ((n as any).fled && n.encounters <= 1) { const k = 'fled_' + (1 + (n.encounters % 2)); return { key: k, text: TAUNTS[k] }; }
+  if (n.read && TAUNTS[n.read] && n.encounters % 2 === 1) return { key: n.read, text: TAUNTS[n.read] }; const k = 'return_' + (1 + (n.encounters % 2)); return { key: k, text: TAUNTS[k] }; }
+
 // ---------- adaptation ----------
 /** Counter-modules from the player's recent profile. Deterministic; ordered by how strongly the profile asks for each. */
 export function adapt(p: Profile, rank: number): { modules: Module[]; resist: DmgType } {
@@ -77,7 +99,7 @@ export const tierFor = (kills: number): Tier => { let t: Tier = 'stalker'; for (
 
 // ---------- lifecycle ----------
 export interface Killer { type: string; attack: string; boss: boolean; elite: boolean; mfr: string; dungeon: string; nemId?: string; name: string }
-export interface DeathCtx { seed: number; profile: Profile; trophy: Trophy | null; owner: string; body: string; now?: number }
+export interface DeathCtx { seed: number; profile: Profile; trophy: Trophy | null; owner: string; body: string; now?: number; /** lost limbs at death (any limb system), for taunts */ lost?: string[]; /** fraction of its hp the player took off (0..1); >= .25 leaves a scar */ hurt?: number }
 export type DeathResult = { kind: 'created' | 'promoted' | 'ranked' | 'recruited'; rec: NemRec; taunt: string; tauntKey: string } | { kind: 'none' };
 /** fled = the player left the run while this boss/elite was on them. Fleeing never ranks up an existing nemesis (so avoiding is always safe); it can only mark a new one, with the same caps. */
 export function onPlayerKilled(s: any, k: Killer, c: DeathCtx, fled = false): DeathResult {
@@ -86,21 +108,22 @@ export function onPlayerKilled(s: any, k: Killer, c: DeathCtx, fled = false): De
   if (k.nemId) { const n = N.list.find(x => x.id === k.nemId); if (!n || n.status !== 'active') return { kind: 'none' };
     n.kills++; n.rank = Math.min(NEM_CFG.maxRank, n.rank + 1); n.lastSeen = now; const t0 = n.tier; n.tier = tierFor(n.kills); n.title = TITLE[n.tier];
     const a = adapt(c.profile, n.rank); n.modules = a.modules; n.resist = a.resist; n.method = k.attack; n.cat = methodCat(k.attack);
-    const promoted = n.tier !== t0; n.tauntKey = promoted ? pick(r, tauntKeys('promote')) : pick(r, tauntKeys(n.cat)); if (n.words !== 'ai' || promoted) n.taunt = TAUNTS[n.tauntKey];
+    n.read = readKey(c.profile, c.lost); if ((c.hurt ?? 1) >= .25) addScar(n, n.resist);
+    const promoted = n.tier !== t0; n.tauntKey = promoted ? pick(r, tauntKeys('promote')) : (n.kills % 2 === 0 ? n.read : pick(r, tauntKeys(n.cat))); if (n.words !== 'ai' || promoted) n.taunt = TAUNTS[n.tauntKey];
     return { kind: promoted ? 'promoted' : 'ranked', rec: n, taunt: n.taunt, tauntKey: n.tauntKey }; }
   if (!k.boss && !k.elite) return { kind: 'none' };
-  if (r() >= (k.boss ? NEM_CFG.chanceBoss : NEM_CFG.chanceElite)) return { kind: 'none' };
+  const first = NEM_CFG.firstAlways && N.list.length === 0; if (!first && r() >= (k.boss ? NEM_CFG.chanceBoss : NEM_CFG.chanceElite)) return { kind: 'none' };
   const act = N.list.filter(x => x.status === 'active');
   if (act.length >= NEM_CFG.maxActive) { // hierarchy full: the strongest nemesis recruits this killer as an escort instead
     const top = [...act].sort((a, b) => b.rank - a.rank || b.kills - a.kills)[0]; if (top.recruits >= NEM_CFG.maxRecruits) return { kind: 'none' };
     top.recruits++; top.tauntKey = 'recruit_1'; top.taunt = TAUNTS.recruit_1; return { kind: 'recruited', rec: top, taunt: top.taunt, tauntKey: top.tauntKey }; }
   const cat = methodCat(k.attack); const w = cannedWords(r, cat, 'stalker'); const a = adapt(c.profile, 1);
   const rec: NemRec = { id: 'n' + (N.seq++), src: k.type, body: c.body, mfr: k.mfr, name: w.name, title: TITLE.stalker, rank: 1, kills: 1, encounters: 0, status: 'active', tier: 'stalker', modules: a.modules, resist: a.resist,
-    trophy: c.trophy, method: k.attack, cat, dungeon: k.dungeon, born: now, lastSeen: now, taunt: TAUNTS[w.tauntKey], tauntKey: w.tauntKey, words: 'canned', recruits: 0, ...(fled ? { fled: true } : {}), owner: String(c.owner || 'Runner').slice(0, 24) };
+    trophy: c.trophy, method: k.attack, cat, dungeon: k.dungeon, scars: (c.hurt ?? 0) >= .25 ? [a.resist] : [], read: readKey(c.profile, c.lost), born: now, lastSeen: now, taunt: TAUNTS[w.tauntKey], tauntKey: w.tauntKey, words: 'canned', recruits: 0, ...(fled ? { fled: true } : {}), owner: String(c.owner || 'Runner').slice(0, 24) };
   N.list.push(rec); return { kind: 'created', rec, taunt: rec.taunt, tauntKey: rec.tauntKey }; }
 /** Choose at most one active nemesis for a new run (seeded). Dead nemeses are never chosen. */
 export function pickForRun(s: any, seed: number): NemRec | null { const act = activeNems(s); if (!act.length) return null; const r = rng(seed ^ 0x9e3779b9);
-  if (r() >= NEM_CFG.spawnChance) return null; const w = act.map(n => 1 + n.rank + n.kills); let t = r() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < act.length; i++) { t -= w[i]; if (t <= 0) return act[i]; } return act[act.length - 1]; }
+  const fresh = NEM_CFG.firstAlways ? act.find(n => n.encounters === 0) : undefined; if (fresh) return fresh; if (r() >= NEM_CFG.spawnChance) return null; const w = act.map(n => 1 + n.rank + n.kills); let t = r() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < act.length; i++) { t -= w[i]; if (t <= 0) return act[i]; } return act[act.length - 1]; }
 export interface NemStats { hp: number; dmgMul: number; shield: number; resist: number; resistType: DmgType; ciMul: number; gap: boolean; escorts: number }
 /** All runtime numbers for one nemesis, clamped. baseHp = body hp after dungeon tier scaling; bossHp = this dungeon's boss hp (same scaling). */
 export function nemStats(n: NemRec, baseHp: number, bossHp: number): NemStats { const C = NEM_CFG; const rank = Math.max(1, Math.min(C.maxRank, n.rank | 0));

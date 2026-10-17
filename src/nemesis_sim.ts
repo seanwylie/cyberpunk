@@ -4,7 +4,8 @@ import { ENEMIES, ITEM_BY_ID, SLOTS } from './config';
 import { MELEE_WEAPONS } from './traits';
 import { scores } from './traitstate';
 import { feature } from './features';
-import { NEM_CFG, nemOf, onPlayerKilled, pickForRun, nemStats, noteEncounter, onNemesisKilled, MODULES, TAUNTS, type Profile, type Trophy, type NemRec, type DmgType } from './nemesis';
+import { addDeed } from './deeds';
+import { scarText, lostLimbs, returnLine, NEM_CFG, nemOf, onPlayerKilled, pickForRun, nemStats, noteEncounter, onNemesisKilled, MODULES, TAUNTS, type Profile, type Trophy, type NemRec, type DmgType } from './nemesis';
 
 const STAND_IN = ['foreman', 'sawhand'];
 /** The body a nemesis wears in later runs: the killer itself when it is a plain elite, otherwise an elite stand-in of the same maker (bosses never respawn mid-dungeon: their death completes the run). */
@@ -26,8 +27,8 @@ export function nemOnDown(g: any) { if (!feature('nemesis', g.save.settings) || 
   let near: any = null, bd = 1e9; for (const e of g.enemies) { if (e.dead || e.type !== type) continue; const dd = Math.hypot(e.x - g.px, e.y - g.py); if (dd < bd) { bd = dd; near = e; } }
   const seed = (g.inst.seed ^ (g.save.stats?.runs || 0) * 977) >>> 0; const dd = g.dd;
   const res = onPlayerKilled(g.save, { type, attack, boss: !!d.boss, elite: !!d.elite || !!near?.affix?.length, mfr: d.mfr, dungeon: g.inst.dungeon, nemId: near?.nem, name: d.name },
-    { seed, profile: playerProfile(g), trophy: trophyFrom(g, seed), owner: ownerName(g), body: bodyFor(type, [dd?.gateGuard, dd?.lockElite].filter(Boolean)) });
-  if (res.kind !== 'none') { const r = res.rec; g.emit('nemesis', { kind: res.kind, id: r.id, name: r.name, title: r.title, taunt: res.taunt, tauntKey: res.tauntKey, trophy: r.trophy?.name || null });
+    { seed, profile: playerProfile(g), trophy: trophyFrom(g, seed), owner: ownerName(g), lost: lostLimbs(g.save), hurt: near ? 1 - near.hp / (near.maxHp || 1) : 0, body: bodyFor(type, [dd?.gateGuard, dd?.lockElite].filter(Boolean)) });
+  if (res.kind !== 'none') { const r = res.rec; if (res.kind === 'created') addDeed(g.save, 'nem_new', r.name, r.trophy?.name, g.inst.dungeon); else if (res.kind === 'promoted') addDeed(g.save, 'nem_up', r.name, r.title, g.inst.dungeon); g.emit('nemesis', { kind: res.kind, id: r.id, name: r.name, title: r.title, taunt: res.taunt, tauntKey: res.tauntKey, trophy: r.trophy?.name || null });
     g.toast(res.kind === 'created' ? `${r.name} marked you. A new nemesis.` : res.kind === 'promoted' ? `${r.name} climbs to ${r.title}.` : res.kind === 'recruited' ? `${r.name} recruits another hunter.` : `${r.name} grows stronger.`); }
   return res; }
 
@@ -36,8 +37,8 @@ export function nemOnFlee(g: any) { if (!feature('nemesis', g.save.settings) || 
   let near: any = null, bd = 9; for (const e of g.enemies || []) { if (e.dead || !e.alert) continue; const d = ENEMIES[e.type]; if (!d || !(d.boss || d.elite || e.affix?.length)) continue; const dd = Math.hypot(e.x - g.px, e.y - g.py); if (dd < bd) { bd = dd; near = e; } }
   if (!near || near.nem) return null; const d = ENEMIES[near.type]; const seed = (g.inst.seed ^ (g.save.stats?.runs || 0) * 1231) >>> 0; const dd = g.dd;
   const res = onPlayerKilled(g.save, { type: near.type, attack: 'swing', boss: !!d.boss, elite: true, mfr: d.mfr, dungeon: g.inst.dungeon, name: d.name },
-    { seed, profile: playerProfile(g), trophy: null, owner: ownerName(g), body: bodyFor(near.type, [dd?.gateGuard, dd?.lockElite].filter(Boolean)) }, true);
-  if (res.kind === 'created') { const r = res.rec; g.emit('nemesis', { kind: 'created', id: r.id, name: r.name, title: r.title, taunt: res.taunt, tauntKey: res.tauntKey, trophy: null }); g.toast(`${r.name} saw you run. A new nemesis.`); }
+    { seed, profile: playerProfile(g), trophy: null, owner: ownerName(g), lost: lostLimbs(g.save), hurt: 1 - near.hp / (near.maxHp || 1), body: bodyFor(near.type, [dd?.gateGuard, dd?.lockElite].filter(Boolean)) }, true);
+  if (res.kind === 'created') { const r = res.rec; addDeed(g.save, 'nem_fled', r.name, undefined, g.inst.dungeon); g.emit('nemesis', { kind: 'created', id: r.id, name: r.name, title: r.title, taunt: res.taunt, tauntKey: res.tauntKey, trophy: null }); g.toast(`${r.name} saw you run. A new nemesis.`); }
   return res; }
 
 /** sim.startRun hook: add at most one nemesis (plus bounded escorts) to a fresh instance roster. */
@@ -46,7 +47,7 @@ export function nemOnRunStart(g: any, inst: any) { if (!feature('nemesis', g.sav
   const at = pool[Math.floor(pool.length * .55)]; const body = ENEMIES[n.body] && !avoid.includes(n.body) ? n.body : bodyFor(n.src, avoid); const mul = g.hpMul();
   const bossHp = (ENEMIES[dd.defaultBoss]?.hp || ENEMIES[body].hp * 4) * mul; const st = nemStats(n, ENEMIES[body].hp * mul, bossHp);
   const mk = (type: string, hp: number, dx: number, dy: number, extra: any) => { const e = { id: inst.nextId++, type, x: at.x + dx, y: at.y + dy, hp, maxHp: hp, alert: false, dead: false, home: { x: at.x + dx, y: at.y + dy }, group: 97, faction: 'enemy', ctrlT: 0, stunT: 0, ...extra }; inst.enemies.push(e); return e; };
-  const boss = mk(body, st.hp, .6, .3, { nem: n.id, name: n.name, nemOwner: n.owner });
+  const boss = mk(body, st.hp, .6, .3, { nem: n.id, name: n.name, nemOwner: n.owner, nemScar: scarText(n) });
   const esc = pool.find((e: any) => !ENEMIES[e.type].elite)?.type; if (esc) for (let i = 0; i < st.escorts; i++) mk(esc, ENEMIES[esc].hp * mul, -.7 + i * 1.4, -.8, { nemEscort: n.id });
   noteEncounter(g.save, n.id); return boss; }
 
@@ -54,7 +55,7 @@ export function nemOnRunStart(g: any, inst: any) { if (!feature('nemesis', g.sav
 export function nemTick(g: any, dt: number) { const L = g._nems as any[] | undefined; if (!L || !L.length) return;
   for (const e of L) { if (e.dead) continue; const rt = e._rt; const n: NemRec | undefined = nemOf(g.save).list.find(x => x.id === e.nem); if (!n) continue;
     if (!rt.nemInit) { rt.nemInit = 1; const st = nemStats(n, e.maxHp, e.maxHp); rt.nemSt = st; rt.hardDmg = (rt.hardDmg || 1) * st.dmgMul; if (st.shield > 0 && !e.nemShieldUsed) { rt.shield = { hp: e.maxHp * st.shield, max: e.maxHp * st.shield, t: 999 }; e.nemShieldUsed = true; } rt.pCtrl = e.ctrlT; rt.pStun = e.stunT; rt.pHack = rt.hack || 0; rt.gapCd = NEM_CFG.gapCd * .5; }
-    if (!rt.nemSeen && e.alert) { rt.nemSeen = 1; const k = 'return_' + (1 + (n.encounters % 2)); g.emit('nemesis', { kind: 'return', id: n.id, name: n.name, taunt: TAUNTS[k], tauntKey: k }); }
+    if (!rt.nemSeen && e.alert) { rt.nemSeen = 1; const L = returnLine(n); g.emit('nemesis', { kind: 'return', id: n.id, name: n.name, taunt: L.text, tauntKey: L.key }); }
     const st = rt.nemSt; if (st.ciMul < 1) { if (e.ctrlT > rt.pCtrl) e.ctrlT = rt.pCtrl + (e.ctrlT - rt.pCtrl) * st.ciMul; if (e.stunT > rt.pStun) e.stunT = rt.pStun + (e.stunT - rt.pStun) * st.ciMul; if ((rt.hack || 0) > rt.pHack) rt.hack = rt.pHack + (rt.hack - rt.pHack) * st.ciMul; }
     rt.pCtrl = e.ctrlT; rt.pStun = e.stunT; rt.pHack = rt.hack || 0;
     if (st.gap && e.alert && !g.downed) { rt.gapCd -= dt; const d = Math.hypot(g.px - e.x, g.py - e.y); if (rt.gapCd <= 0 && d > NEM_CFG.gapMinDist && d < 22 && e.stunT <= 0 && e.ctrlT <= 0) { rt.gapCd = NEM_CFG.gapCd; const k = Math.min(NEM_CFG.gapRange, d - 1.5) / d; const p = g.moveCircle(e.x, e.y, (g.px - e.x) * k, (g.py - e.y) * k, ENEMIES[e.type].radius); g.fx.push({ kind: 'ring', x: e.x, y: e.y, r: 1, t: 0, life: .35, c: '#c9a46a' }); e.x = p.x; e.y = p.y; } } } }
@@ -62,4 +63,4 @@ export const nemCache = (g: any) => { g._nemSelf = ownerName(g); g._nems = (g.en
 /** hurtEnemy hook: resistance to the player's main damage type. */
 export function nemIncoming(g: any, e: any, dmg: number, tag: string): number { const st = e._rt?.nemSt; if (!st || !st.resist) return dmg; return typeOfTag(tag, g.build?.weapon?.kind || 'pistol') === st.resistType ? dmg * (1 - st.resist) : dmg; }
 /** killEnemy hook: permanent kill + provenance trophy. */
-export function nemOnKill(g: any, e: any) { if (!e.nem) return null; const t = onNemesisKilled(g.save, e.nem); if (!t) return null; const rec = nemOf(g.save).list.find(x => x.id === e.nem); g.emit('nemesis', { kind: 'killed', id: e.nem, name: t.name, line: t.line, tauntKey: 'death_' + (1 + (t.kills % 2)) }); g.toast(t.line + '. Trophy: ' + t.name); g.emit('moment', { kind: 'nemesis_kill', title: t.line, sub: t.name, stats: { Nemesis: rec?.name || 'Nemesis', 'Killed you': t.kills, Rank: rec?.rank || 1 } }); return t; }
+export function nemOnKill(g: any, e: any) { if (!e.nem) return null; const t = onNemesisKilled(g.save, e.nem); if (!t) return null; const rec = nemOf(g.save).list.find(x => x.id === e.nem); addDeed(g.save, 'nem_kill', rec?.name || t.name, undefined, g.inst?.dungeon); try { const nc = (globalThis as any).__net?.client; if (nc?.state === 'online') nc.send({ t: 'cev', k: 'nem', dungeon: g.inst?.dungeon, run: String(g.save?.instance?.id || '').slice(0, 32) }); } catch {} g.emit('nemesis', { kind: 'killed', id: e.nem, name: t.name, line: t.line, tauntKey: 'death_' + (1 + (t.kills % 2)) }); g.toast(t.line + '. Trophy: ' + t.name); g.emit('moment', { kind: 'nemesis_kill', title: t.line, sub: t.name, stats: { Nemesis: rec?.name || 'Nemesis', 'Killed you': t.kills, Rank: rec?.rank || 1 } }); return t; }
