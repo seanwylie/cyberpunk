@@ -148,11 +148,11 @@ export class PlayerAnimator {
     for(const an of order){
       const d=A.anims[an]; if(!d||!d.layers||!d.order) continue; if(this.bodySig!==sig&&!this.bodyCache.has(sig)) return;
       const ims=await Promise.all(d.layers.map(async(l,i)=>{ const v=vars[names.indexOf(l.name)]||'base'; let im:HTMLImageElement|null=null;
-        const [vb,ck]=v.split('@'); if(vb!=='base'){ const ext=l.image.slice(l.image.lastIndexOf('.')); im=await load(`${base}v/${vb}/${an}_${l.name}${ext}`); if(im) this.bodyStats.loaded++; }
+        if(v==='torn') return TORN; const [vb,ck]=v.split('@'); if(vb!=='base'){ const ext=l.image.slice(l.image.lastIndexOf('.')); im=await load(`${base}v/${vb}/${an}_${l.name}${ext}`); if(im) this.bodyStats.loaded++; }
         const src=im||await load(base+l.image); return ck&&src?tintLayer(src,ck):src; }));
       if(ims.some(i=>!i)) continue;
       const cv=document.createElement('canvas'); cv.width=W*d.frames; cv.height=H*d.dirs; const x=cv.getContext('2d')!;
-      for(let row=0;row<d.dirs;row++) for(let f=0;f<d.frames;f++) for(const li of d.order[row][f]) x.drawImage(ims[li]!,f*W,row*H,W,H,f*W,row*H,W,H);
+      for(let row=0;row<d.dirs;row++) for(let f=0;f<d.frames;f++) for(const li of d.order[row][f]) if(ims[li]!==TORN) x.drawImage(ims[li]!,f*W,row*H,W,H,f*W,row*H,W,H);
       // cosmetic model layers: same cell grid, body occlusion baked in -> one recoloured blit per piece per anim, at compose time only
       for(const id of art){ const im=await load(`${base}cos/${id}/${an}.webp`); if(im&&im.width===cv.width&&im.height===cv.height){ x.drawImage(recolorSheet(im,id),0,0); this.bodyStats.cos++; } }
       out[an]=cv; this.bodyStats.composites++;
@@ -183,6 +183,9 @@ export class PlayerAnimator {
 import { cosArtIds, recolorSheet } from './coslayers';
 /** Chroma: bake a CSS filter into a layer sheet once at compose time (cached by body signature, no per-frame cost). */
 import { CHROMA_FILTER } from './content/skinlines';
+/** lost limb (src/bodyvariants.ts tornVariants): layer skipped at compose time */
+const TORN:any={torn:1};
+const SCAR_FILTER='brightness(.42) sepia(.5) saturate(.7)';
 function tintLayer(im:CanvasImageSource&{width:number;height:number},key:string):any{
-  const f=CHROMA_FILTER[key]; if(!f) return im; const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d')!; x.filter=f; x.drawImage(im,0,0); return cv;
+  const f=key==='scar'?SCAR_FILTER:CHROMA_FILTER[key]; if(!f) return im; const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d')!; x.filter=f; x.drawImage(im,0,0); return cv;
 }

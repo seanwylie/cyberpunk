@@ -28,8 +28,12 @@ export function forcedBody(search:string=typeof location!=='undefined'?location.
 export function bodyOf(save:Save, forced:Body|null=forcedBody()):Body{
   if(forced) return forced; const b=baseBody();
   for(const s of BODY_SLOTS){ const u=save.installed[s as Slot]; const inst=u?save.items.find(i=>i.uid===u):undefined; b[s]=variantOfDef(inst?.def); }
-  return applyCosmeticVariants(b,save);
+  return tornVariants(applyCosmeticVariants(b,save),save);
 }
+/** Lost limbs (src/limbs.ts) show on the body: an open arm/hand slot drops its layers (a torn arm takes the hand with it), an open leg/foot is a dark scarred stump. */
+export function tornVariants(b:Body,save:Save):Body{ const lost=(save as any).limbs?.lost; if(!lost) return b; const out={...b};
+  for(const s of Object.keys(lost) as Slot[]){ if(save.installed[s]) continue; if(s==='armL'||s==='armR'){ (out as any)[s]='torn'; (out as any)['hand'+s.slice(3)]='torn'; } else if(s==='handL'||s==='handR') (out as any)[s]='torn'; else if(s in out) (out as any)[s]='base@scar'; }
+  return out; }
 
 /** Appearance-only body parts: an equipped cosmetic with a `variant` swaps that slot's prebaked layers (real art) without changing hardware or stats.
  *  `extra` previews an unequipped cosmetic def id in the wardrobe. */
