@@ -47,7 +47,9 @@ export function graftReset(g: any) { const s = graftState(g); for (const p of s.
 export function graftStr(g: any): number { const a = g._graft?.active; if (!a) return 0; const k = 1 - a.t / GRAFT.dur; return k <= 0 ? 0 : GRAFT.floor + (1 - GRAFT.floor) * k; }
 export function graftHum(g: any): number { return g._graft?.hum || 0; }
 
-export function graftOnKill(g: any, e: any, rnd = Math.random) {
+// own PRNG: the mob drop roll must not consume Math.random, or every graft roll shifts the loot stream that follows a kill
+let gs = 0x9e3779b9; const graftRnd = () => { gs = (gs + 0x6D2B79F5) >>> 0; let t = gs; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+export function graftOnKill(g: any, e: any, rnd = graftRnd) {
   if (g.mode !== 'run' || e.faction === 'ally') return; const d = ENEMIES[e.type]; if (!d || d.static) return;
   const elite = !!(d.elite || e.affix?.length);
   if (!elite && rnd() >= GRAFT.mobChance) return;
