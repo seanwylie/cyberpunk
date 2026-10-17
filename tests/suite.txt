@@ -117,3 +117,4 @@ tests/music_town_picks.mjs
 tests/idle_ttd.mjs
 tests/aim_direction.mjs
 tests/tap_attack.mjs
+factions
