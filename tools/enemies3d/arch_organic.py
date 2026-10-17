@@ -351,7 +351,7 @@ def _extraarm_org(R,side,mfr,big):   # third arm roots in a fleshy shoulder sock
 def _horns(R):
     hd=R.head
     for sx in (-1,1):
-        p=[Vector((sx*.09,-.0,.33)),Vector((sx*.17,-.03,.4)),Vector((sx*.22,-.07,.5)),Vector((sx*.22,-.12,.6))]; r=[.045,.034,.022,.008]
+        p=[Vector((sx*.09,-.0,.33)),Vector((sx*.17,-.03,.38)),Vector((sx*.215,-.07,.45)),Vector((sx*.225,-.12,.52))]; r=[.045,.034,.022,.008]
         for i in range(3): _rod(hd,p[i],p[i+1],r[i],'k_metal',v=10,r2=r[i+1])
         cyl(hd,.055,.05,(sx*.09,0,.32),'k_shell',(0,sx*-38,0),v=12); _sk(hd,cyl,.062,.012,(sx*.088,0,.305),'o_scar',(0,sx*-38,0),v=14)
 _skull0,_head20,_back0,_extraarm0,_basehum0,_tool0=_skull,_head2,_back,_extraarm,basehum,_tool
