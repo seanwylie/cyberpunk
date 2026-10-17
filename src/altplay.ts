@@ -27,7 +27,7 @@ export const HUM_SLOT:Record<Slot,number>={ brain:1.6, torso:1.4, face:1.3, armL
 export function humanityCost(d:ItemDef|undefined):number{ if(!d) return 0; if(typeof d.hum==='number') return d.hum; const base=HUM_RARITY[d.rarity]*HUM_SLOT[d.slot];
   const extra=(d.weapon?1:0)+(d.caps||[]).filter(c=>c!=='speech').length+(d.abilities?.length||0)*.5-((d.caps||[]).includes('speech')?1:0); return Math.max(0,Math.round(base+extra)); }
 export const humanityOfDefs=(defs:(ItemDef|undefined)[])=>Math.max(0,Math.min(100,100-defs.reduce((a,d)=>a+humanityCost(d),0)));
-export function humanityOfSave(s:any):number{ return humanityOfDefs(SLOTS.map(sl=>{ const u=s.installed?.[sl]; const it=u&&s.items?.find((i:any)=>i.uid===u); return it?ITEM_BY_ID[it.def]:undefined; })); }
+export function humanityOfSave(s:any):number{ return Math.max(0,humanityOfDefs(SLOTS.map(sl=>{ const u=s.installed?.[sl]; const it=u&&s.items?.find((i:any)=>i.uid===u); return it?ITEM_BY_ID[it.def]:undefined; })) - Math.min(8,(s?.limbs?.scars|0))); } /* limb scars (src/limbs.ts LIMBS.scarMax) */
 export type Band='human'|'mixed'|'chrome'|'psycho';
 export const band=(h:number):Band=>h>=70?'human':h>=35?'mixed':h>=15?'chrome':'psycho';
 export const BAND_LABEL:Record<Band,string>={ human:'Human', mixed:'Mixed', chrome:'Chromed', psycho:'Cyberpsycho' };

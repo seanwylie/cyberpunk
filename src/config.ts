@@ -120,6 +120,8 @@ const H = (id:string,name:string,slot:Slot,mfr:Mfr,rarity:Rarity,lvl:number,stat
 export const ITEMS: ItemDef[] = [
   // --- Stock baseline hardware (grey), one per slot: "baseline hardware, not empty slots" ---
   ...SLOTS.map(s=>H('stock_'+s, 'Standard Issue '+SLOT_LABEL[s], s, 'MM','grey',1,{ maxHp: s==='torso'?10:2 }, s==='handR'?{weapon:'popper'}:{})),
+  // --- Emergency Mass-Market limb patches (src/limbs.ts): fitted free in the field after a dismember; work, but jam now and then. Never sold or dropped. ---
+  ...(['armL','armR','handL','handR','legL','legR','footL','footR'] as Slot[]).map(s=>H('mmpatch_'+s, 'Field Patch '+SLOT_LABEL[s], s, 'MM','grey',1,{ maxHp:2 }, { hum:3, ...(s==='handR'?{weapon:'popper' as WeaponKind}:{}), blurb:'Emergency Mass-Market fit. It works. Sometimes it jams.' })),
   // --- Heavy industrial (ripper + cooling) ---
   H('hi_ripper_arm','HB-40 Ripper Arm','armR','HI','blue',10,{dmg:.08,armor:2},{abilities:['sweep'],caps:['force'],blurb:'Shoulder-mounted saw assembly. Opens armory shutters.'}),
   H('hi_cutting_head','HB-12 Cutting Head','handR','HI','blue',10,{atkSpeed:.05},{weapon:'ripper',blurb:'Attachment-convention test: separate cutting head on the arm.'}),
@@ -203,7 +205,7 @@ export const ENEMIES: Record<string,EnemyDef> = {
   warden:{ id:'warden', name:'Neural Warden', hp:1700, speed:2.4, radius:.8, mfr:'PS', boss:true, elite:true, ranged:true, aggro:30, xp:340, rep:25, attacks:['zones','volley'] },
   enforcer:{ id:'enforcer', name:'Reclamation Enforcer', hp:1900, speed:3.0, radius:.95, mfr:'HI', boss:true, elite:true, aggro:30, xp:340, rep:25, attacks:['rsweep','charge'] },
 };
-export const ENEMY_DMG: Record<string,number> = { swing:12, shot:10, turretshot:14, cleave:28, charge:34, slam:34, summon:0, zones:6, volley:16, rsweep:32, ...EXTRA_ENEMY_DMG, ...MOVE_DMG, ...MOB_DMG };
+export const ENEMY_DMG: Record<string,number> = { swing:12, shot:10, turretshot:14, cleave:28, charge:34, slam:34, summon:0, zones:6, volley:16, rsweep:32, rend:20, ...EXTRA_ENEMY_DMG, ...MOVE_DMG, ...MOB_DMG };
 // balance pass (src/content/balance.ts): the four original dungeon bosses are tuned here; batch-1 bosses and batch-2 mobs apply BAL where their defs are generated
 for(const k of ['overseer','teague','surgeon','stockmgr']){ const m=BAL.boss[k], d=ENEMIES[k]; if(m&&d){ d.hp=Math.round(d.hp*(m.hp??1)); d.dmgMul=(d.dmgMul??1)*(m.dmg??1); } }
 

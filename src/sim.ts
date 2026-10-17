@@ -50,6 +50,7 @@ import { rollPrestige, ecoOf, log as ecoLog } from './loot_eco';
 import { grantCos, COS_BY_ID as COSDEF } from './content/appearance';
 import { SEASON_BY_ID } from './seasons';
 import { graftOnKill, graftTick, graftReset, graftPrompt, graftTake, graftTapAt, graftOut, graftIn } from './graft';
+import { LIMBS, rendReady, onRendHit, limbTick, applyLimbStats, jammed } from './limbs';
 
 export const TOWN_KEY=key('town');
 export type Emit = (type:string, payload?:any)=>void;
@@ -89,7 +90,7 @@ export class Game {
 
   // ---------- build / stats ----------
   traitFx:Effect[]=[];
-  recompute(){ const L=installedLayout(this.save); abPickRef.v=this.save.abPick||null; this.build=computeBuild(L,this.save.level,this.save.rep,this.inst?this.inst.broken:[]); this.traitFx=traitEffects(this.save); { const st=this.build.stats; st.maxHp*=1+statBonus(this.traitFx,'maxHp'); st.move*=1+statBonus(this.traitFx,'moveSpd'); } const mx=this.build.stats.maxHp; if(this.hp>mx||this.hp<=0&&!this.downed) this.hp=mx; }
+  recompute(){ const L=installedLayout(this.save); abPickRef.v=this.save.abPick||null; this.build=computeBuild(L,this.save.level,this.save.rep,this.inst?this.inst.broken:[]); this.traitFx=traitEffects(this.save); { const st=this.build.stats; st.maxHp*=1+statBonus(this.traitFx,'maxHp'); st.move*=1+statBonus(this.traitFx,'moveSpd'); applyLimbStats(this.save,st,jammed(this as any)); } const mx=this.build.stats.maxHp; if(this.hp>mx||this.hp<=0&&!this.downed) this.hp=mx; }
   get maxHp(){ return this.build.stats.maxHp; }
   toast(s:string){ this.emit('toast',s); }
   now(){ return Date.now(); }
@@ -507,7 +508,7 @@ export class Game {
 
   // ---------- run logic ----------
   updateRun(dt:number){
-    const inst=this.inst!; nemTick(this,dt); const f=inst.flags; const L=this.level;
+    const inst=this.inst!; nemTick(this,dt); limbTick(this as any,dt); const f=inst.flags; const L=this.level;
     // checkpoints
     for(const cp of L.checkpoints){ if(dist(this.px,this.py,cp.x,cp.y)<1.8){ inst.reached=inst.reached||[]; const first=!inst.reached.includes(cp.id); if(first&&!this.downed){ inst.reached.push(cp.id); this.hp=Math.min(this.maxHp,this.hp+this.maxHp*.4); this.heat=0; this.overheated=false; this.emit('checkpoint',cp.label); this.fx.push({kind:'ring',x:cp.x,y:cp.y,r:1.1,t:0,life:.8}); }
       if(inst.checkpoint.id!==cp.id){ inst.checkpoint={id:cp.id,x:cp.x,y:cp.y}; this.toast('CHECKPOINT: '+cp.label+(first?' · +40% HP, heat vented. Downed? you return here. Menu: Restart from checkpoint.':' · respawn point set.')); this.saveNow(); }
@@ -643,6 +644,7 @@ export class Game {
     // attack choice
     if(rt.st==='chase'){
       const choices=def.attacks.filter(a=>{ const A=ATK[a]; if((rt.acd[a]||0)>0) return false; if(d<A.min||d>A.max) return false; if(A.ranged&&!this.los(e.x,e.y,tx,ty)) return false; if(MOB_COND[a]&&!MOB_COND[a](this,e)) return false; if(def.boss&&a==='summon'&&this.enemies.filter(o=>!o.dead&&o.faction==='enemy'&&!ENEMIES[o.type].boss).length>8) return false; return true; });
+      if(d<=LIMBS.rend.r&&(rt.acd.rend||0)<=0&&rendReady(this as any,def)) choices.push('rend'); /* src/limbs.ts: telegraphed dismember */
       if(choices.length){ const a=choices[Math.floor(Math.random()*choices.length)]; this.beginAttack(e,a,ang,tx,ty); return; }
     }
     // movement
@@ -666,7 +668,7 @@ export class Game {
     return !!rt.flanker&&(rt.fkN||0)>=HARD.flank.minPack; }
   zoneSlow(e:En){ return false; }
   beginAttack(e:En,a:string,ang:number,tx:number,ty:number){
-    const rt=e._rt; const A=ATK[a]; rt.st='tele'; rt.atk=a; rt.t=0; rt.ang=ang; rt.acd[a]=A.cd*(.85+Math.random()*.3); rt.shots=[]; this.emit('sfx','telegraph_'+(ENEMIES[e.type].elite?'elite':'basic'));
+    const rt=e._rt; const A=ATK[a]; rt.st='tele'; rt.atk=a; rt.t=0; rt.ang=ang; rt.acd[a]=A.cd*(.85+Math.random()*.3); rt.shots=[]; this.emit('sfx','telegraph_'+(ENEMIES[e.type].elite?'elite':'basic')); if(a==='rend') this.popup(e.x,e.y-1,'REND','#d9a066');
     const z0=this.zones.length; const zp=this.zonePattern(e,a,tx,ty); if(zp) rt.shots=zp;
     if(a==='zones'){ // three ground zones around the player's position (readable, lingering)
       for(let i=0;i<3;i++){ const aa=Math.random()*Math.PI*2, rr=i===0?0:2.4+Math.random()*1.6; const zx=tx+Math.cos(aa)*rr, zy=ty+Math.sin(aa)*rr; if(!this.solidAt(zx,zy)){ rt.shots.push({x:zx,y:zy}); this.zones.push({x:zx,y:zy,r:2.1,t:0,life:6,dps:ENEMY_DMG.zones,heat:12,windup:1.5}); } }
@@ -699,6 +701,7 @@ export class Game {
       case 'volley': for(const o of [-.25,0,.25]) proj(rt.ang+o,10); break;
       case 'summon': for(let i=0;i<3;i++){ const aa=Math.random()*6.28; const p={x:e.x+Math.cos(aa)*2.5,y:e.y+Math.sin(aa)*2.5}; if(!this.solidAt(p.x,p.y)){ const w=this.spawnEnemy(def.summon||'worker',p.x,p.y); w.alert=true; } } this.fx.push({kind:'ring',x:e.x,y:e.y,r:2.5,t:0,life:.5,c:'#8f8a74'}); break;
       case 'zones': break;
+      case 'rend': { const h0=this.hp; cone(LIMBS.rend.r,LIMBS.rend.arc); if(this.hp<h0&&this.hp>0) onRendHit(this as any,def.name); break; }
       case 'bite': cone(1.3,Math.PI*.5); break; case 'chainsweep': cone(4.6,Math.PI*.95); break; case 'riposte': cone(2.4,Math.PI*.7); break;
       case 'slagshot': proj(Math.atan2(ty-e.y,tx-e.x),10); break; case 'dart': proj(Math.atan2(ty-e.y,tx-e.x),12); break;
       case 'scalpelfan': for(const o of [-.4,-.2,0,.2,.4]) proj(rt.ang+o,12); break;
@@ -873,6 +876,6 @@ export const ATK:Record<string,AtkDef> = {
   swing:{w:.55,rec:.5,cd:1.1,min:0,max:1.4}, shot:{w:.8,rec:.6,cd:2.6,min:0,max:9,lock:true,ranged:true}, turretshot:{w:1.1,rec:.4,cd:2.8,min:0,max:10,lock:true,ranged:true},
   cleave:{w:.9,rec:.7,cd:2.2,min:0,max:2.6}, charge:{w:1.1,rec:1.4,cd:7,min:3.2,max:10,lock:true}, slam:{w:1.1,rec:.9,cd:5,min:0,max:3.4}, summon:{w:.9,rec:.8,cd:26,min:0,max:40},
   bite:{w:.4,rec:.4,cd:1.0,min:0,max:1.3}, slagshot:{w:.9,rec:.6,cd:2.8,min:0,max:10,lock:true,ranged:true}, dart:{w:.7,rec:.5,cd:2.0,min:0,max:10,lock:true,ranged:true}, scalpelfan:{w:.9,rec:.8,cd:3.2,min:2,max:12,lock:true,ranged:true}, chainsweep:{w:1.1,rec:1.0,cd:3.5,min:0,max:4.6}, blink:{w:.8,rec:.2,cd:6.5,min:2.5,max:14}, riposte:{w:.55,rec:.9,cd:0,min:0,max:99}, slagpool:{w:.8,rec:.9,cd:7,min:0,max:16,ranged:true}, gasvent:{w:.8,rec:.9,cd:8,min:0,max:14,ranged:true}, ringpools:{w:1.0,rec:1.0,cd:10,min:0,max:16}, sawlanes:{w:1.0,rec:1.0,cd:9,min:0,max:16,ranged:true}, cratefall:{w:.8,rec:.9,cd:7,min:0,max:16,ranged:true},
-  zones:{w:.7,rec:.9,cd:8,min:0,max:16,ranged:true}, volley:{w:1.0,rec:.8,cd:3.4,min:3,max:13,lock:true,ranged:true}, rsweep:{w:1.0,rec:.9,cd:3,min:0,max:3.8},
+  zones:{w:.7,rec:.9,cd:8,min:0,max:16,ranged:true}, volley:{w:1.0,rec:.8,cd:3.4,min:3,max:13,lock:true,ranged:true}, rsweep:{w:1.0,rec:.9,cd:3,min:0,max:3.8}, rend:{w:LIMBS.rend.w,rec:LIMBS.rend.rec,cd:LIMBS.rend.cd,min:0,max:LIMBS.rend.r,lock:true},
 };
 Object.assign(ATK,MOVE_ATK,MOB_ATK); // content batch 1 boss moves (src/content/boss_moves.ts)

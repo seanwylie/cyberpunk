@@ -548,5 +548,5 @@ import { vfxFrame, vfxGround, vfxItems, vfxStatus, vfxAuras, vfxScreen } from '.
 import { mobLabel } from './content/mobs';
 import { GORE } from './gore';
 export const FONT='"Roboto Condensed","Bahnschrift","Liberation Sans Narrow","Arial Narrow",system-ui,sans-serif';
-const geo:Record<string,any>={ swing:{shape:'cone',r:1.5,arc:Math.PI*.6}, cleave:{shape:'cone',r:2.6,arc:Math.PI*.75}, rsweep:{shape:'cone',r:3.8,arc:Math.PI*.85}, slam:{shape:'circle',r:3.4,arc:0}, charge:{shape:'line',r:9,arc:0,w:1.4}, shot:{shape:'aim',r:10,arc:0}, turretshot:{shape:'aim',r:11,arc:0}, volley:{shape:'fan',r:13,arc:0}, snipe:{shape:'aim',r:18,arc:0}, hex:{shape:'aim',r:13,arc:0}, detonate:{shape:'circle',r:2.6,arc:0}, detonate_big:{shape:'circle',r:3.6,arc:0} };
+const geo:Record<string,any>={ swing:{shape:'cone',r:1.5,arc:Math.PI*.6}, cleave:{shape:'cone',r:2.6,arc:Math.PI*.75}, rsweep:{shape:'cone',r:3.8,arc:Math.PI*.85}, rend:{shape:'cone',r:2.4,arc:Math.PI*.5}, slam:{shape:'circle',r:3.4,arc:0}, charge:{shape:'line',r:9,arc:0,w:1.4}, shot:{shape:'aim',r:10,arc:0}, turretshot:{shape:'aim',r:11,arc:0}, volley:{shape:'fan',r:13,arc:0}, snipe:{shape:'aim',r:18,arc:0}, hex:{shape:'aim',r:13,arc:0}, detonate:{shape:'circle',r:2.6,arc:0}, detonate_big:{shape:'circle',r:3.6,arc:0} };
 for(const k of Object.keys(geo)) (ATKD as any)[k]={ ...geo[k], w:ATK[k].w, wid:geo[k].w };

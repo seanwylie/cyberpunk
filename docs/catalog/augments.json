@@ -1,9 +1,9 @@
 {
  "version": 1,
- "catalogVersion": "42e8215771bf",
+ "catalogVersion": "8d370a162eff",
  "generatedBy": "tools/gen_catalog.mjs",
  "stats": {
-  "augments": 172,
+  "augments": 180,
   "abilityAugments": 113,
   "abilities": 78,
   "chips": 17,
@@ -11,18 +11,18 @@
   "bySlot": {
    "face": 15,
    "brain": 19,
-   "armL": 18,
+   "armL": 19,
    "torso": 33,
-   "armR": 19,
-   "handL": 11,
-   "legL": 14,
-   "handR": 20,
-   "footL": 5,
-   "legR": 13,
-   "footR": 5
+   "armR": 20,
+   "handL": 12,
+   "legL": 15,
+   "handR": 21,
+   "footL": 6,
+   "legR": 14,
+   "footR": 6
   },
   "byRarity": {
-   "grey": 29,
+   "grey": 37,
    "green": 55,
    "blue": 41,
    "purple": 20,
@@ -2939,6 +2939,113 @@
     }
    ],
    "blurb": ""
+  },
+  {
+   "id": "mmpatch_armL",
+   "name": "Field Patch Left arm",
+   "slot": "armL",
+   "slotLabel": "Left arm",
+   "group": "arm",
+   "maker": "MM",
+   "makerName": "Kestrel Value Systems",
+   "rarity": "grey",
+   "level": 1,
+   "humanity": 3,
+   "stats": {
+    "maxHp": 2
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [],
+   "abilities": [],
+   "sockets": 3,
+   "chips": [
+    {
+     "id": "bladepat",
+     "name": "Blade Pattern",
+     "stats": {},
+     "abilityMods": {
+      "len": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "cutwide",
+     "name": "Wide-Cut Pattern",
+     "stats": {},
+     "abilityMods": {
+      "arc": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "fineedge",
+     "name": "Fine-Edge Chip",
+     "stats": {
+      "atkSpeed": 0.1,
+      "dmg": 0.04
+     },
+     "abilityMods": {
+      "cdr": 0.02,
+      "dmg": 0.02
+     },
+     "affects": []
+    },
+    {
+     "id": "overdrive",
+     "name": "Overdrive Chip",
+     "stats": {
+      "dmg": 0.22,
+      "cooling": -0.1
+     },
+     "abilityMods": {
+      "dmg": 0.12
+     },
+     "affects": []
+    },
+    {
+     "id": "power",
+     "name": "Power Chip",
+     "stats": {
+      "dmg": 0.12
+     },
+     "abilityMods": {
+      "dmg": 0.06
+     },
+     "affects": []
+    },
+    {
+     "id": "speed",
+     "name": "Speed Chip",
+     "stats": {
+      "atkSpeed": 0.15
+     },
+     "abilityMods": {
+      "cdr": 0.03
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "store",
+     "minLevel": 1,
+     "towns": [
+      {
+       "town": "rustline",
+       "price": 15
+      },
+      {
+       "town": "harrow",
+       "price": 15
+      }
+     ]
+    }
+   ],
+   "blurb": "Emergency Mass-Market fit. It works. Sometimes it jams."
   },
   {
    "id": "pool_b_arm",
@@ -6563,6 +6670,113 @@
     }
    ],
    "blurb": ""
+  },
+  {
+   "id": "mmpatch_armR",
+   "name": "Field Patch Right arm",
+   "slot": "armR",
+   "slotLabel": "Right arm",
+   "group": "arm",
+   "maker": "MM",
+   "makerName": "Kestrel Value Systems",
+   "rarity": "grey",
+   "level": 1,
+   "humanity": 3,
+   "stats": {
+    "maxHp": 2
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [],
+   "abilities": [],
+   "sockets": 3,
+   "chips": [
+    {
+     "id": "bladepat",
+     "name": "Blade Pattern",
+     "stats": {},
+     "abilityMods": {
+      "len": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "cutwide",
+     "name": "Wide-Cut Pattern",
+     "stats": {},
+     "abilityMods": {
+      "arc": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "fineedge",
+     "name": "Fine-Edge Chip",
+     "stats": {
+      "atkSpeed": 0.1,
+      "dmg": 0.04
+     },
+     "abilityMods": {
+      "cdr": 0.02,
+      "dmg": 0.02
+     },
+     "affects": []
+    },
+    {
+     "id": "overdrive",
+     "name": "Overdrive Chip",
+     "stats": {
+      "dmg": 0.22,
+      "cooling": -0.1
+     },
+     "abilityMods": {
+      "dmg": 0.12
+     },
+     "affects": []
+    },
+    {
+     "id": "power",
+     "name": "Power Chip",
+     "stats": {
+      "dmg": 0.12
+     },
+     "abilityMods": {
+      "dmg": 0.06
+     },
+     "affects": []
+    },
+    {
+     "id": "speed",
+     "name": "Speed Chip",
+     "stats": {
+      "atkSpeed": 0.15
+     },
+     "abilityMods": {
+      "cdr": 0.03
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "store",
+     "minLevel": 1,
+     "towns": [
+      {
+       "town": "rustline",
+       "price": 15
+      },
+      {
+       "town": "harrow",
+       "price": 15
+      }
+     ]
+    }
+   ],
+   "blurb": "Emergency Mass-Market fit. It works. Sometimes it jams."
   },
   {
    "id": "ps_blade_arm",
@@ -12204,6 +12418,80 @@
    "blurb": "Dev cheat gear (IDKFA)."
   },
   {
+   "id": "mmpatch_footL",
+   "name": "Field Patch Left foot",
+   "slot": "footL",
+   "slotLabel": "Left foot",
+   "group": "foot",
+   "maker": "MM",
+   "makerName": "Kestrel Value Systems",
+   "rarity": "grey",
+   "level": 1,
+   "humanity": 3,
+   "stats": {
+    "maxHp": 2
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [],
+   "abilities": [],
+   "sockets": 1,
+   "chips": [
+    {
+     "id": "magnet",
+     "name": "Magnet Chip",
+     "stats": {
+      "pickup": 0.7
+     },
+     "abilityMods": {},
+     "affects": []
+    },
+    {
+     "id": "servo",
+     "name": "Servo Chip",
+     "stats": {
+      "move": 0.1,
+      "armor": 1
+     },
+     "abilityMods": {
+      "dash": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "stride",
+     "name": "Stride Chip",
+     "stats": {
+      "move": 0.06
+     },
+     "abilityMods": {
+      "dash": 0.06
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "store",
+     "minLevel": 1,
+     "towns": [
+      {
+       "town": "rustline",
+       "price": 15
+      },
+      {
+       "town": "harrow",
+       "price": 15
+      }
+     ]
+    }
+   ],
+   "blurb": "Emergency Mass-Market fit. It works. Sometimes it jams."
+  },
+  {
    "id": "pool_b_foot",
    "name": "AS Damped Foot (L)",
    "slot": "footL",
@@ -13261,6 +13549,80 @@
     }
    ],
    "blurb": "Dev cheat gear (IDKFA)."
+  },
+  {
+   "id": "mmpatch_footR",
+   "name": "Field Patch Right foot",
+   "slot": "footR",
+   "slotLabel": "Right foot",
+   "group": "foot",
+   "maker": "MM",
+   "makerName": "Kestrel Value Systems",
+   "rarity": "grey",
+   "level": 1,
+   "humanity": 3,
+   "stats": {
+    "maxHp": 2
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [],
+   "abilities": [],
+   "sockets": 1,
+   "chips": [
+    {
+     "id": "magnet",
+     "name": "Magnet Chip",
+     "stats": {
+      "pickup": 0.7
+     },
+     "abilityMods": {},
+     "affects": []
+    },
+    {
+     "id": "servo",
+     "name": "Servo Chip",
+     "stats": {
+      "move": 0.1,
+      "armor": 1
+     },
+     "abilityMods": {
+      "dash": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "stride",
+     "name": "Stride Chip",
+     "stats": {
+      "move": 0.06
+     },
+     "abilityMods": {
+      "dash": 0.06
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "store",
+     "minLevel": 1,
+     "towns": [
+      {
+       "town": "rustline",
+       "price": 15
+      },
+      {
+       "town": "harrow",
+       "price": 15
+      }
+     ]
+    }
+   ],
+   "blurb": "Emergency Mass-Market fit. It works. Sometimes it jams."
   },
   {
    "id": "stock_footR",
@@ -14520,6 +14882,113 @@
     }
    ],
    "blurb": ""
+  },
+  {
+   "id": "mmpatch_handL",
+   "name": "Field Patch Left hand",
+   "slot": "handL",
+   "slotLabel": "Left hand",
+   "group": "hand",
+   "maker": "MM",
+   "makerName": "Kestrel Value Systems",
+   "rarity": "grey",
+   "level": 1,
+   "humanity": 3,
+   "stats": {
+    "maxHp": 2
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [],
+   "abilities": [],
+   "sockets": 2,
+   "chips": [
+    {
+     "id": "bladepat",
+     "name": "Blade Pattern",
+     "stats": {},
+     "abilityMods": {
+      "len": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "cutwide",
+     "name": "Wide-Cut Pattern",
+     "stats": {},
+     "abilityMods": {
+      "arc": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "fineedge",
+     "name": "Fine-Edge Chip",
+     "stats": {
+      "atkSpeed": 0.1,
+      "dmg": 0.04
+     },
+     "abilityMods": {
+      "cdr": 0.02,
+      "dmg": 0.02
+     },
+     "affects": []
+    },
+    {
+     "id": "overdrive",
+     "name": "Overdrive Chip",
+     "stats": {
+      "dmg": 0.22,
+      "cooling": -0.1
+     },
+     "abilityMods": {
+      "dmg": 0.12
+     },
+     "affects": []
+    },
+    {
+     "id": "power",
+     "name": "Power Chip",
+     "stats": {
+      "dmg": 0.12
+     },
+     "abilityMods": {
+      "dmg": 0.06
+     },
+     "affects": []
+    },
+    {
+     "id": "speed",
+     "name": "Speed Chip",
+     "stats": {
+      "atkSpeed": 0.15
+     },
+     "abilityMods": {
+      "cdr": 0.03
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "store",
+     "minLevel": 1,
+     "towns": [
+      {
+       "town": "rustline",
+       "price": 15
+      },
+      {
+       "town": "harrow",
+       "price": 15
+      }
+     ]
+    }
+   ],
+   "blurb": "Emergency Mass-Market fit. It works. Sometimes it jams."
   },
   {
    "id": "ps_blade_hand_l",
@@ -18888,6 +19357,125 @@
    "blurb": "Heavy ranged tool: must stand still to fire."
   },
   {
+   "id": "mmpatch_handR",
+   "name": "Field Patch Right hand",
+   "slot": "handR",
+   "slotLabel": "Right hand",
+   "group": "hand",
+   "maker": "MM",
+   "makerName": "Kestrel Value Systems",
+   "rarity": "grey",
+   "level": 1,
+   "humanity": 3,
+   "stats": {
+    "maxHp": 2
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": {
+    "kind": "popper",
+    "dmg": 6,
+    "rate": 1.7,
+    "range": 5,
+    "arc": 0,
+    "heat": 0.5,
+    "proj": true,
+    "pspeed": 15,
+    "plife": 0.5,
+    "label": "Pop pistol (starter)",
+    "rarityMul": 1
+   },
+   "caps": [],
+   "abilities": [],
+   "sockets": 2,
+   "chips": [
+    {
+     "id": "bladepat",
+     "name": "Blade Pattern",
+     "stats": {},
+     "abilityMods": {
+      "len": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "cutwide",
+     "name": "Wide-Cut Pattern",
+     "stats": {},
+     "abilityMods": {
+      "arc": 0.25
+     },
+     "affects": []
+    },
+    {
+     "id": "fineedge",
+     "name": "Fine-Edge Chip",
+     "stats": {
+      "atkSpeed": 0.1,
+      "dmg": 0.04
+     },
+     "abilityMods": {
+      "cdr": 0.02,
+      "dmg": 0.02
+     },
+     "affects": []
+    },
+    {
+     "id": "overdrive",
+     "name": "Overdrive Chip",
+     "stats": {
+      "dmg": 0.22,
+      "cooling": -0.1
+     },
+     "abilityMods": {
+      "dmg": 0.12
+     },
+     "affects": []
+    },
+    {
+     "id": "power",
+     "name": "Power Chip",
+     "stats": {
+      "dmg": 0.12
+     },
+     "abilityMods": {
+      "dmg": 0.06
+     },
+     "affects": []
+    },
+    {
+     "id": "speed",
+     "name": "Speed Chip",
+     "stats": {
+      "atkSpeed": 0.15
+     },
+     "abilityMods": {
+      "cdr": 0.03
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "store",
+     "minLevel": 1,
+     "towns": [
+      {
+       "town": "rustline",
+       "price": 15
+      },
+      {
+       "town": "harrow",
+       "price": 15
+      }
+     ]
+    }
+   ],
+   "blurb": "Emergency Mass-Market fit. It works. Sometimes it jams."
+  },
+  {
    "id": "pool_p_hand",
    "name": "HB Rotor Hand (R)",
    "slot": "handR",
@@ -22285,6 +22873,106 @@
    "blurb": ""
   },
   {
+   "id": "mmpatch_legL",
+   "name": "Field Patch Left leg",
+   "slot": "legL",
+   "slotLabel": "Left leg",
+   "group": "leg",
+   "maker": "MM",
+   "makerName": "Kestrel Value Systems",
+   "rarity": "grey",
+   "level": 1,
+   "humanity": 3,
+   "stats": {
+    "maxHp": 2
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [],
+   "abilities": [],
+   "sockets": 3,
+   "chips": [
+    {
+     "id": "ablative",
+     "name": "Ablative Chip",
+     "stats": {
+      "armor": 2,
+      "maxHp": 10
+     },
+     "abilityMods": {
+      "shield": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "plating",
+     "name": "Plating Chip",
+     "stats": {
+      "armor": 3
+     },
+     "abilityMods": {
+      "shield": 0.08
+     },
+     "affects": []
+    },
+    {
+     "id": "servo",
+     "name": "Servo Chip",
+     "stats": {
+      "move": 0.1,
+      "armor": 1
+     },
+     "abilityMods": {
+      "dash": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "stride",
+     "name": "Stride Chip",
+     "stats": {
+      "move": 0.06
+     },
+     "abilityMods": {
+      "dash": 0.06
+     },
+     "affects": []
+    },
+    {
+     "id": "sustain",
+     "name": "Sustain Chip",
+     "stats": {
+      "regen": 0.8,
+      "maxHp": 6
+     },
+     "abilityMods": {
+      "heal": 0.1
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "store",
+     "minLevel": 1,
+     "towns": [
+      {
+       "town": "rustline",
+       "price": 15
+      },
+      {
+       "town": "harrow",
+       "price": 15
+      }
+     ]
+    }
+   ],
+   "blurb": "Emergency Mass-Market fit. It works. Sometimes it jams."
+  },
+  {
    "id": "pool_g_legs",
    "name": "Scrap Gait Leg",
    "slot": "legL",
@@ -24950,6 +25638,106 @@
     }
    ],
    "blurb": ""
+  },
+  {
+   "id": "mmpatch_legR",
+   "name": "Field Patch Right leg",
+   "slot": "legR",
+   "slotLabel": "Right leg",
+   "group": "leg",
+   "maker": "MM",
+   "makerName": "Kestrel Value Systems",
+   "rarity": "grey",
+   "level": 1,
+   "humanity": 3,
+   "stats": {
+    "maxHp": 2
+   },
+   "statRolls": "fixed (no random rolls)",
+   "weapon": null,
+   "caps": [],
+   "abilities": [],
+   "sockets": 3,
+   "chips": [
+    {
+     "id": "ablative",
+     "name": "Ablative Chip",
+     "stats": {
+      "armor": 2,
+      "maxHp": 10
+     },
+     "abilityMods": {
+      "shield": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "plating",
+     "name": "Plating Chip",
+     "stats": {
+      "armor": 3
+     },
+     "abilityMods": {
+      "shield": 0.08
+     },
+     "affects": []
+    },
+    {
+     "id": "servo",
+     "name": "Servo Chip",
+     "stats": {
+      "move": 0.1,
+      "armor": 1
+     },
+     "abilityMods": {
+      "dash": 0.1
+     },
+     "affects": []
+    },
+    {
+     "id": "stride",
+     "name": "Stride Chip",
+     "stats": {
+      "move": 0.06
+     },
+     "abilityMods": {
+      "dash": 0.06
+     },
+     "affects": []
+    },
+    {
+     "id": "sustain",
+     "name": "Sustain Chip",
+     "stats": {
+      "regen": 0.8,
+      "maxHp": 6
+     },
+     "abilityMods": {
+      "heal": 0.1
+     },
+     "affects": []
+    }
+   ],
+   "conflicts": [],
+   "makerSet": "mixing makers costs 8% cooling per extra maker (-2% per rep rank)",
+   "synergies": [],
+   "sources": [
+    {
+     "kind": "store",
+     "minLevel": 1,
+     "towns": [
+      {
+       "town": "rustline",
+       "price": 15
+      },
+      {
+       "town": "harrow",
+       "price": 15
+      }
+     ]
+    }
+   ],
+   "blurb": "Emergency Mass-Market fit. It works. Sometimes it jams."
   },
   {
    "id": "pool_o_legs",
