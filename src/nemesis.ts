@@ -79,10 +79,11 @@ export function applyWords(rec: NemRec, w: any): boolean { if (!w || typeof w !=
   rec.words = 'ai'; void any; return true; }
 
 // ---------- reading the player (deterministic; words + scars only) ----------
-/** Taunt key for what this nemesis noticed about you. Limb losses win (read from the save; any limb system can fill s.limbs.lost = ['armL', ...]), then the strongest profile signal, then damage type. */
-export function readKey(p: Profile, lost: string[] = []): string { const l = lost.find(x => /arm|leg/i.test(x)); if (l) return /arm/i.test(l) ? 'limb_arm' : 'limb_leg';
+/** Taunt key for what this nemesis noticed about you. Limb losses win (read from the save; src/limbs.ts save.limbs.lost), then the strongest profile signal, then damage type. */
+export function readKey(p: Profile, lost: string[] = []): string { const l = lost.find(x => /arm|hand|leg|foot|feet/i.test(x)); if (l) return /arm|hand/i.test(l) ? 'limb_arm' : 'limb_leg';
   if (p.hack >= .3) return 'build_hack'; if (p.burst >= .5) return 'build_burst'; if (p.kite >= .5) return 'build_kite'; return 'build_' + (DMG_TYPES.includes(p.main) ? p.main : 'kinetic'); }
-export const lostLimbs = (s: any): string[] => { const L = s?.limbs?.lost ?? s?.lostLimbs; return Array.isArray(L) ? L.filter((x: any) => typeof x === 'string').slice(0, 4) : []; };
+/** Lost limb slots from src/limbs.ts (save.limbs.lost is a slot-keyed record); arrays also accepted. */
+export const lostLimbs = (s: any): string[] => { const L = s?.limbs?.lost; const a = Array.isArray(L) ? L : L && typeof L === 'object' ? Object.keys(L).filter(k => L[k]) : []; return a.filter((x: any) => typeof x === 'string').slice(0, 6); };
 export function addScar(n: NemRec, t: DmgType) { const sc = (n.scars ||= []); if (!sc.includes(t) && sc.length < NEM_CFG.maxScars) sc.push(t); }
 export const scarText = (n: NemRec) => (n.scars || []).filter(x => x in SCARS).map(x => SCARS[x].name).join(', ');
 /** The line it says when it finds you again: what it read about you, else the generic return lines. */

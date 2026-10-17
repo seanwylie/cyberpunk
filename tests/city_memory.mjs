@@ -12,6 +12,7 @@ await ev(() => document.getElementById('splash')?.remove());
 const u = await ev(async () => { const N = await import('/src/nemesis.ts'); const D = await import('/src/deeds.ts'); const M = await import('/src/npcmem.ts'); const Cy = await import('/src/city.ts'); const o = {};
   const prof = (p) => ({ hack: 0, burst: .2, kite: 0, main: 'kinetic', ...p });
   o.keys = [N.readKey(prof({ hack: .5 })), N.readKey(prof({ burst: .7 })), N.readKey(prof({ kite: .6 })), N.readKey(prof({ main: 'blade' })), N.readKey(prof({ hack: .9 }), ['armL']), N.readKey(prof(), ['legR'])];
+  o.limbRec = N.lostLimbs({ limbs: { lost: { handR: { by: 'x' } }, scars: 1, tears: 1 } }); o.keys.push(N.readKey(prof(), o.limbRec));
   o.allVoiced = o.keys.every(k => typeof N.TAUNTS[k] === 'string');
   // first elite kill always makes a nemesis (any seed); later elites still roll
   let firsts = 0; for (let sd = 0; sd < 40; sd++) { const s = {}; if (N.onPlayerKilled(s, { type: 'foreman', attack: 'cleave', boss: false, elite: true, mfr: 'HI', dungeon: 'annex', name: 'F' }, { seed: sd, profile: prof(), trophy: null, owner: 'Vex', body: 'foreman', hurt: .5 }).kind === 'created') firsts++; } o.firsts = firsts;
@@ -30,7 +31,7 @@ const u = await ev(async () => { const N = await import('/src/nemesis.ts'); cons
   const cs = Cy.newCity(); Cy.notePlayer(cs, 'g1', 'Vex'); const d = Object.keys(cs.dist)[0]; Cy.applyEvents(cs, [{ k: 'nem', d, f: Cy.FACTIONS[0], who: 'g1', w: .35 }]); o.cityNem = cs.week.players.g1.nems;
   const bad = /\b(drug|drugs|dope|meth|cocaine|heroin|pill|pills|stim|stims|junkie|dealer|dose|overdose|weed)\b/i; o.clean = Object.values(N.TAUNTS).every(t => !bad.test(t)) && w.every(x => !bad.test(x.h + x.b));
   return o; });
-ok(JSON.stringify(u.keys) === JSON.stringify(['build_hack', 'build_burst', 'build_kite', 'build_blade', 'limb_arm', 'limb_leg']) && u.allVoiced, 'taunt read: hacks / burst / kiting / damage type, limb losses win: ' + u.keys.join(','));
+ok(JSON.stringify(u.keys) === JSON.stringify(['build_hack', 'build_burst', 'build_kite', 'build_blade', 'limb_arm', 'limb_leg', 'limb_arm']) && u.allVoiced, 'taunt read: hacks / burst / kiting / damage type, limb losses win: ' + u.keys.join(','));
 ok(u.firsts === 40, `first elite that kills you always becomes a nemesis (${u.firsts}/40 seeds)`);
 ok(u.fresh, 'a fresh nemesis is guaranteed in your next run (seen in the first 30 minutes)');
 ok(JSON.stringify(u.scar0) === '["blade"]' && JSON.stringify(u.scar1) === '["blade"]' && u.scarCap === 3, 'scars: hurting it leaves your damage type as a scar; a scratch does not; capped at 3');
