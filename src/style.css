@@ -781,3 +781,8 @@ body.reducefx .tile.r-orange,body.reducefx .tile.r-orange::after,body.reducefx .
 .pop.popsplit{ overflow:hidden; } .pop.popsplit .popbody{ flex:1 1 auto; min-height:0; overflow:auto; display:flex; flex-direction:column; gap:8px; } .pop.popsplit .popbtns{ position:static; flex:none; }
 .cosw.art{background:radial-gradient(circle at 50% 40%,#2a2f36,#14171b);padding:0;overflow:hidden}.cosw.art .cosicon{width:100%;height:100%;object-fit:contain;display:block}
 .facbar{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; max-width:100%; } .facb{ border:1px solid var(--ac,#666); border-left-width:4px; background:#2a2c2e; padding:1px 7px; border-radius:3px; font-size:max(var(--fmin),calc(10px*var(--fs))); white-space:nowrap; color:#b9b3a3; } .facb b{ color:#f1ecdc; font-weight:600; } .facb i{ font-style:normal; display:inline-block; width:1.1em; text-align:center; margin-right:3px; color:var(--ac); } .facb.fac-hostile{ background:#331f1b; } .facb.fac-hostile b{ color:#e0a093; } .facb.fac-wary b{ color:#d8c08a; } .facb.fac-loyal{ background:#2f2e26; }
+
+/* limb loss panel (src/limbsui.ts) */
+#limbpanel{ display:none; position:absolute; left:50%; bottom:22%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--oxide); padding:8px 10px; min-width:min(260px,70vw); font-size:max(var(--fmin),calc(12px*var(--fs))); pointer-events:auto; z-index:5; }
+#limbpanel .lp-row{ display:flex; gap:8px; align-items:center; justify-content:space-between; margin:4px 0; }
+#limbpanel > .btn{ width:100%; margin-top:4px; }
