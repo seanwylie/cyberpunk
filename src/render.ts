@@ -153,7 +153,7 @@ export class Renderer {
     for(const it of L.interacts){ if(!this.interactVisible(it.id)) continue; items.push({d:L.kind==='town'?-1e9:it.x+it.y,f:()=>this.drawInteract(it)}); /* town rings are floor decals: drawn before every character and prop */ }
     for(const dr of (g.inst&&g.mode==='run'?g.inst.drops:[])) items.push({d:dr.x+dr.y,f:()=>this.drawDrop(dr)});
     if(g.mode==='run'){ const gs=(g as any)._graft; if(gs){ for(const p of gs.parts) if(p.on) items.push({d:p.x+p.y,f:()=>this.drawGraftPart(p)}); if(gs.active) items.push({d:g.px+g.py+.01,f:()=>this.drawGraftActive()}); } }
-    for(const e of g.enemies){ if(e.dead){ if(this.eart.dying(e,g.time)) items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); continue; } items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); }
+    for(const e of g.enemies){ if(e.dead){ if((e as any)._gibAt!==undefined&&g.time>=(e as any)._gibAt) continue; /* gibbed (gore.ts): burst into chunks, no corpse */ if(this.eart.dying(e,g.time)) items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); continue; } items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); }
     if(!g.downed||true) items.push({d:g.px+g.py,f:()=>this.drawPlayer()});
     (this as any).netItems?.(items);
     vfxItems(this,items); GORE.items(this,items);

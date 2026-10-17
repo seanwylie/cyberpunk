@@ -1,4 +1,4 @@
-// Gore vs walls (docs/GORE.md): Bloody kills right next to walls and in corners. Every gib path sample, every resting gib and every decal centre
+// Gore vs walls (docs/GORE.md): Bloody kills right next to walls and in corners. Every gib path sample (the first pn samples of its pooled path buffer), every resting gib and every decal centre
 // must be on a walkable tile (never a wall or wall top); gibs keep clear of wall faces; gibs are in the depth-sorted world list. Snapshot: shots/gore/walls.png
 import { launch, sleep } from './lib.mjs'; import fs from 'fs';
 let fail = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); if (!c) fail++; };
@@ -14,7 +14,7 @@ ok(spots.edge.length >= 6 && spots.corner.length >= 3, `found wall-side spots ($
 const bad = await ev(async (spots) => { const g = window.__game, Gs = window.__gore; const all = [...spots.edge, ...spots.corner]; const types = ['worker', 'cinderhound', 'recovered']; let n = 0;
   for (let rep = 0; rep < 3; rep++) for (const [x, y] of all) { const ex = x + .5 + (Math.random() - .5) * .3, ey = y + .5 + (Math.random() - .5) * .3; const e = g.spawnEnemy(types[n++ % 3], ex, ey); e._rt.reveal = 0; g.curTag = 'pulse'; g.budgetHack = 0; g.hurtEnemy(e, 1e7, ex - 1.5 + Math.random() * 3, ey - 1.5 + Math.random() * 3, 0); g.curTag = 'auto'; g.time += .2; }
   const fl = (x, y) => !g.solidAt(x, y); const r = { chunks: Gs.chunks.length, decals: Gs.decals.length, pathBad: 0, restBad: 0, faceBad: 0, decalBad: 0 };
-  for (const k of Gs.chunks) { for (let i = 0; i < k.path.length; i += 3) if (!fl(k.path[i], k.path[i + 1])) r.pathBad++; if (!fl(k.fx, k.fy)) r.restBad++; const m = .15; if (!(fl(k.fx - m, k.fy) && fl(k.fx + m, k.fy) && fl(k.fx, k.fy - m) && fl(k.fx, k.fy + m))) r.faceBad++; }
+  for (const k of Gs.chunks) { for (let i = 0; i < (k.pn ?? k.path.length / 3) * 3; i += 3) if (!fl(k.path[i], k.path[i + 1])) r.pathBad++; if (!fl(k.fx, k.fy)) r.restBad++; const m = .15; if (!(fl(k.fx - m, k.fy) && fl(k.fx + m, k.fy) && fl(k.fx, k.fy - m) && fl(k.fx, k.fy + m))) r.faceBad++; }
   for (const d of Gs.decals) if (!fl(d.x, d.y)) r.decalBad++; return r; }, spots);
 ok(bad.chunks >= 10, `gibs spawned next to walls: ${bad.chunks}, decals ${bad.decals}`);
 ok(bad.pathBad === 0, `no gib flight sample is inside a wall (${bad.pathBad})`);

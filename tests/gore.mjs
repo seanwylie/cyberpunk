@@ -14,7 +14,7 @@ const cnt = () => ev(() => window.__gore.counts());
 await set('off'); await mk('worker'); let c = await kill(); ok(c.decals + c.chunks + c.drops === 0, 'Off: no gore at all ' + JSON.stringify(c));
 // --- fluids per body
 const F = await ev(async () => { const G = await import('/src/gore.ts'); const k = id => G.fluidsOf(id).map(f => f.kind).join('+'); return { worker: k('worker'), hound: k('cinderhound'), recovered: k('recovered'), ghost: k('hollowghost'), glitch: k('glitchshard'), sac: k('soothsac'), fung: k('rootcluster'), doll: k('fittingdoll'), jelly: k('drapejelly'), bodies: ['worker', 'cinderhound', 'recovered', 'hollowghost'].map(G.bodyOf).join() }; });
-ok(F.worker.startsWith('coolant') && F.hound === 'blood' && F.recovered === 'blood+coolant' && F.ghost === '' && F.glitch === '' && F.sac === 'ichor' && F.fung === 'sap' && F.doll.startsWith('oil') && F.jelly === 'ichor', 'distinct fluids per body: ' + JSON.stringify(F));
+ok(F.worker === 'blood+oil' /* augmented human: flesh + augments */ && F.hound === 'blood' && F.recovered === 'blood+oil' && F.ghost === '' && F.glitch === '' && F.sac === 'ichor' && F.fung === 'sap' && F.doll.startsWith('oil') && F.jelly === 'ichor', 'distinct fluids per body: ' + JSON.stringify(F));
 // --- Mild
 await set('mild'); await mk('cinderhound'); c = await kill(5, 'auto'); await mk('cinderhound', 2.5, 1); c = await kill(); ok(c.decals >= 1 && c.chunks === 0, 'Mild: pool + droplets, no gibs ' + JSON.stringify(c)); await sleep(500);
 await page.screenshot({ path: 'shots/gore/mild.png' });
