@@ -9,7 +9,7 @@ await build({ entryPoints: [entry], bundle: true, platform: 'node', format: 'esm
 const { D, M, A } = await import(pathToFileURL(path.join(tmp, 'e.mjs')).href);
 const SEEDS = [3, 101, 1078, 4242, 31337, 777777]; const ALL = D.DUNGEON_LIST.map(d => d.id); const B1 = D.BATCH1_IDS;
 const lv = {}; for (const id of ALL) lv[id] = SEEDS.map(s => D.DUNGEONS[id].build(s));
-ok(ALL.length === 24, '24 dungeons under test (' + ALL.length + ')');
+ok(ALL.length >= 24 && ALL.length === Object.keys(D.DUNGEONS).length, 'every dungeon under test (' + ALL.length + ' of ' + Object.keys(D.DUNGEONS).length + ')'); // was a hard 24; gateways brought it to 32
 // ---- solvability: every dungeon x seed ----
 let bad = [], nlv = 0, fb = [];
 for (const id of ALL) lv[id].forEach((L, i) => { nlv++; const v = M.validate(L); if (v.length) bad.push(id + '@' + SEEDS[i] + ':' + v[0]); if (B1.includes(id)) { const c = A.archCheck(L); if (c.length) bad.push(id + '@' + SEEDS[i] + ':' + c[0]); if ((L.attempt || 0) > 25) fb.push(id); } });
