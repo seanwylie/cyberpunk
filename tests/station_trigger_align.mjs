@@ -30,7 +30,7 @@ for (const town of TOWNS) {
     await page.screenshot({ path: `shots/town_align/${vp.name}_${town}_${st0.key}.png` });
     ok(Math.abs(st.sdx) <= MAX_TAIL_TILES, `${town}/${st.key}: pad is under the prop on screen (offset ${st.sdx.toFixed(1)} tiles)`);
     // prompt flips at the ring edge
-    const edge = await ev(st => { const g = window.__game; const out = []; for (const dd of [st.r + .25, st.r - .25]) { let hit = null; for (let a = 0; a < 32 && hit === null; a++) { const t = a * Math.PI / 16, x = st.x + Math.cos(t) * dd, y = st.y + Math.sin(t) * dd; if (g.solidAt(x, y)) continue; g.px = x; g.py = y; g.prompt = null; for (let i = 0; i < 4; i++) g.update(.016); hit = g.prompt?.id === st.id; } out.push(hit); } return out; }, st);
+    const edge = await ev(st => { const g = window.__game; const out = []; for (const dd of [st.r + .25, st.r - .25]) { let hit = null; for (let a = 0; a < 32 && hit === null; a++) { const t = a * Math.PI / 16, x = st.x + Math.cos(t) * dd, y = st.y + Math.sin(t) * dd; if (g.solidAt(x, y) || g.circleHits(x, y, .38 /* COMBAT.playerRadius */)) continue; /* a spot overlapping a wall gets eased toward its tile centre (6f7ec07 anti-stuck) and drifts across the ring edge */ g.px = x; g.py = y; g.prompt = null; for (let i = 0; i < 4; i++) g.update(.016); hit = g.prompt?.id === st.id; } out.push(hit); } return out; }, st);
     ok(edge[0] !== true && edge[1] !== false, `${town}/${st.key}: prompt off just outside the ring (${edge[0]}), on just inside (${edge[1]})`);
   }
 }
