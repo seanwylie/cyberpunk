@@ -3,6 +3,7 @@
 // src/cityui.ts and are lazy-imported behind the `city_news` flag. Nothing here runs per frame; sync is event-driven and tiny.
 import { newCity, applyEvents, decay, effectsFor, fromWire, factionOfDungeon, districtOfDungeon, DISTRICTS, FACTIONS, CityState, CityEv, Effects, Wire } from './city';
 import { DUNGEONS } from './content/dungeons';
+import { addDeed } from './deeds';
 
 const LS = 'wv_city';
 const env = (() => { try { return (import.meta as any).env || {}; } catch { return {}; } })();
@@ -44,7 +45,7 @@ export function cityEvent(g: any, t: string, p: any) {
   if (t === 'mode' && p === 'run' && dd) { CITY_C.run = { dungeon: dId, at: Date.now() }; netOf()?.send({ t: 'cev', k: 'run', dungeon: dId, run: String(g.save?.instance?.id || '').slice(0, 32) }); return; }
   if (!dd || !f) return;
   if (t === 'traitcheck' && p === 'clear') { const kills = Object.values(g.inst?.kills || {}).reduce((a: number, b: any) => a + (+b || 0), 0) as number;
-    payBounty(g, dId, d); if (inParty()) return; /* party clears are arbitrated by the hub */ record({ k: 'clear', d, f, w: 1 }, { k: 'clear', dungeon: dId, kills }); if (kills) { const n = netOf(); if (!n) { applyEvents(CITY_C.s, [{ k: 'kill', d, f, n: kills }]); saveLocal(); changed(); } } return; }
+    try { addDeed(g.save, 'clear', dId); } catch {} payBounty(g, dId, d); if (inParty()) return; /* party clears are arbitrated by the hub */ record({ k: 'clear', d, f, w: 1 }, { k: 'clear', dungeon: dId, kills }); if (kills) { const n = netOf(); if (!n) { applyEvents(CITY_C.s, [{ k: 'kill', d, f, n: kills }]); saveLocal(); changed(); } } return; }
   if (t === 'althack') return record({ k: 'hack', d, f }, { k: 'hack', dungeon: dId });
   if (t === 'altspeech_res') return record({ k: 'speech', d, f, ok: !!p?.ok }, { k: 'speech', dungeon: dId, ok: p?.ok ? 1 : 0 });
 }

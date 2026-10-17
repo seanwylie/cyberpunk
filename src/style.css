@@ -786,3 +786,5 @@ body.reducefx .tile.r-orange,body.reducefx .tile.r-orange::after,body.reducefx .
 #limbpanel{ display:none; position:absolute; left:50%; bottom:22%; transform:translateX(-50%); background:var(--panel); border:1px solid var(--oxide); padding:8px 10px; min-width:min(260px,70vw); font-size:max(var(--fmin),calc(12px*var(--fs))); pointer-events:auto; z-index:5; }
 #limbpanel .lp-row{ display:flex; gap:8px; align-items:center; justify-content:space-between; margin:4px 0; }
 #limbpanel > .btn{ width:100%; margin-top:4px; }
+/* city memory: "Your file" in city news (docs/CITY_MEMORY.md) — restrained, no glow */
+.cnfile{display:flex;flex-direction:column;gap:6px;margin:0 0 10px;padding:8px;border-left:3px solid #8a6a3a;background:rgba(138,106,58,.08)}.cnfilehead{font-weight:700;color:#cdb68a;letter-spacing:.04em;text-transform:uppercase;font-size:.85em}.cnhunt b{color:#e3c27a}.nem-scar{border-color:#7a5a4a;color:#d4b8a4}

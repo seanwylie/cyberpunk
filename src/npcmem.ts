@@ -6,6 +6,7 @@ import { traitsOf } from './traitstate';
 import { TRAIT_BY_ID } from './traits';
 import { ITEM_BY_ID, SLOTS } from './config';
 import { humanityOfSave } from './altplay';
+import { deedNpcLine, deedsOf } from './deeds';
 
 export type MemKind='talked_down'|'bribed'|'intimidated'|'deceived'|'empathized'|'betrayed'|'scammed'|'helped'|'killed_crew'|'cleared'|'contract_done'|'speech_failed'|'gift'|'witnessed_death'|'failed_job'|'met';
 export const MEM_KINDS:MemKind[]=['talked_down','bribed','intimidated','deceived','empathized','betrayed','scammed','helped','killed_crew','cleared','contract_done','speech_failed','gift','witnessed_death','failed_job','met'];
@@ -94,9 +95,11 @@ const LINES:Record<MemKind,string[]>={
   met:['We have met. Make it quick.'] };
 const HUM_LINES:Record<HumBand,string>={ human:'Still mostly you under there. People can tell.', mixed:'', chrome:'More metal every time you come by.', psycho:'There is less of you each visit. People are starting to step back.' };
 const pick=<T>(a:T[],n:number)=>a[Math.abs(n)%a.length];
-export interface MemRef { kind:MemKind|'humanity'|'trait'|'first'; text:string }
+export interface MemRef { kind:MemKind|'humanity'|'trait'|'first'|'deed'; text:string }
 /** The most salient memory this NPC has of you, as a ready line. Deterministic for a given log (no RNG), so it's testable. */
 export function memLine(s:any,npc:string,keyName:(k:string)=>string=(k)=>k,now=Date.now()):MemRef{ const L=memFor(s,npc); const m=memOf(s);
+  /* the city remembers (docs/CITY_MEMORY.md): a fresh street-worthy deed (nemesis made, fled, promoted, slain) beats an older personal memory */
+  const dl=deedNpcLine(s,npc,now); if(dl){ const dAt=deedsOf(s).filter(x=>x.k!=='clear').slice(-1)[0].at; if(!L.length||L[L.length-1].at<=dAt) return { kind:'deed', text:dl }; }
   if(!L.length){ const h=humBand(humanityOf(s)); if(m.met[npc]&&HUM_LINES[h]) return { kind:'humanity', text:HUM_LINES[h] }; return { kind:'first', text:'First time I see you. Keep it simple.' }; }
   let best=L[L.length-1], bs=-1; for(const e of L){ const sc=SALIENCE[e.k]*decay(e.at,now)+(e.at/1e13); if(sc>bs){ bs=sc; best=e; } }
   const t=pick(LINES[best.k],L.length).replace('{key}',best.key?keyName(best.key):'that place');
