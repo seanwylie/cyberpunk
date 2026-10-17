@@ -24,11 +24,11 @@ export const ART: Record<string, Art> = {
   ...Object.fromEntries(BOSSES.map(b => [b.id, { spr: 'overseer', h: b.h, ...(b.hover ? { hover: b.hover } : {}) } as Art])),
   // Reclamation Annex (original dungeon); drone = spare hover minion art
   worker: A('worker', 1.05), shooter: A('shooter', 1.1), turret: A('turret', .85, { ground: true }), sawhand: A('sawhand', 1.59), foreman: A('foreman', 1.55),
-  overseer: A('overseer', 2.64), warden: A('warden', 2.3, { hover: .8 }), enforcer: A('enforcer', 2.68), drone: A('drone', .8, { hover: .5 }),
+  overseer: A('overseer', 2.77), warden: A('warden', 2.3, { hover: .8 }), enforcer: A('enforcer', 2.68), drone: A('drone', .8, { hover: .5 }),
   // Harrow-Brandt Foundry
   slaghauler: A('slaghauler', 1.15), ladlecrew: A('ladlecrew', 1.1), cinderhound: A('cinderhound', .62), slagcannon: A('slagcannon', .85, { ground: true }),
   brakeman: A('teague', 1.53, { tint: 'rgba(60,40,50,.28)' }), quenchpriest: A('quenchpriest', 1.7),
-  teague: A('teague', 2.61), brannoch: A('brannoch', 2.69), ore9: A('ore9', 2.1, { hover: .55 }),
+  teague: A('teague', 2.61), brannoch: A('brannoch', 2.88), ore9: A('ore9', 2.1, { hover: .55 }),
   // Aldane clinic
   orderly: A('orderly', 1.1), nursebot: A('nursebot', 1.05), gurneyrunner: A('gurneyrunner', .8), sentry: A('sentry', 1.05, { ground: true }),
   matron: A('matron', 1.57), anesthetist: A('nursebot', 1.47, { tint: 'rgba(40,70,80,.3)' }),
