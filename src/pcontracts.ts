@@ -11,17 +11,19 @@ import { hostsOf, isUnlocked } from './towns';
 import { SEAL_MARGIN } from './discovery';
 import { traitsOf } from './traitstate';
 import { TRAIT_BY_ID } from './traits';
+import { tier as facTier } from './factions';
 import { humanityOf, humBand, questAccess, NPC_BY_ID, trust, memFor, remember } from './npcmem';
 
 export type ObjType='clear'|'boss'|'cull'|'salvage'|'condition';
-export type ModId='premium'|'nemesis'|'face'|'chrome'|'rival'|'hacker'|'repeat'|'redeem';
+export type ModId='patron'|'premium'|'nemesis'|'face'|'chrome'|'rival'|'hacker'|'repeat'|'redeem';
 export interface PContract extends ContractDef { personal:true; giver:string; tpl:string; boss:string; kit:string|null; obj:ObjType; mods:ModId[]; brief?:string; src:'rules'|'ai'; made:number; why:string[] }
 export const PC_CFG={ offers:3, candidates:6, maxActivePersonal:2,
   objMul:{ clear:1, boss:1.1, cull:.7, salvage:.45, condition:1.2 } as Record<ObjType,number>,
-  modMul:{ premium:.25, nemesis:.3, face:.1, chrome:.1, rival:.15, hacker:.1, repeat:.05, redeem:.1 } as Record<ModId,number>,
+  modMul:{ patron:.15, premium:.25, nemesis:.3, face:.1, chrome:.1, rival:.15, hacker:.1, repeat:.05, redeem:.1 } as Record<ModId,number>,
   maxModMul:.5, cull:[12,18,24] as number[], salvage:[3,4,5] as number[], creditPerLevel:28, creditCap:2400, repMax:10 };
 export const OBJ_LABEL:Record<ObjType,string>={ clear:'Clear', boss:'Boss', cull:'Cull', salvage:'Salvage', condition:'Wake' };
 export const MOD_LABEL:Record<ModId,{ label:string; tip:string }>={
+  patron:{ label:'Patron', tip:'The house that made your parts trusts you: +15% credits.' },
   premium:{ label:'Premium', tip:'Trusted contact: +25% credits.' }, nemesis:{ label:'Rival', tip:'Your nemesis is the target or haunts this place: +30% credits.' },
   face:{ label:'Clean', tip:'For a human face: +10% credits.' }, chrome:{ label:'Loud', tip:'For a chromed runner: +10% credits.' },
   rival:{ label:'Grudge', tip:'Hits a faction that wants you gone: +15% credits.' }, hacker:{ label:'Wired', tip:'Uses the hack route you favor: +10% credits.' },
@@ -45,6 +47,7 @@ const hash=(x:string)=>{ let h=2166136261; for(let i=0;i<x.length;i++){ h^=x.cha
 
 /** Modifiers this character qualifies for on this combo (each has a checkable precondition). */
 export function modsFor(s:any,d:DungeonDef,obj:ObjType,boss:string,giver:string,caps:Set<string>):ModId[]{ const out:ModId[]=[]; const h=humanityOf(s), b=humBand(h); const fams=[traitsOf(s).l10,traitsOf(s).l20].flatMap(p=>p&&TRAIT_BY_ID[p.id]?(TRAIT_BY_ID[p.id] as any).fams:[]);
+  { const ft=facTier(s,d.mfr); if(ft==='trusted'||ft==='loyal') out.push('patron'); }
   if(questAccess(s,giver).premium) out.push('premium'); if(nemesesOf(s).some(n=>(obj==='boss'&&n.boss===boss)||n.dungeon===d.id)) out.push('nemesis');
   if(memFor(s,giver).some(e=>(e.k==='failed_job'||e.k==='witnessed_death')&&e.key===d.id)) out.push('redeem');
   if(b==='human') out.push('face'); else if(b==='chrome'||b==='psycho') out.push('chrome');
@@ -52,6 +55,8 @@ export function modsFor(s:any,d:DungeonDef,obj:ObjType,boss:string,giver:string,
   if(obj==='condition'&&(fams.includes('hack')||(s.speechStats?.by?.hack||0)>0)&&d.conds.some(c=>c.cap==='hack'&&caps.has('hack'))) out.push('hacker');
   if(s.cleared?.[d.id]) out.push('repeat'); return out.slice(0,3); }
 
+/** faction weighting: houses that like you send more work, hostile houses less (never zero, never story jobs) */
+const FAC_W:Record<string,number>={ hostile:-2, wary:-.7, neutral:0, trusted:.8, loyal:1.5 };
 export interface GenCtx { caps:Set<string>; now?:number; salt?:number }
 /** All valid combos for this character, scored by how personal they are. Deterministic for (save, day, salt). */
 export function candidates(s:any,ctx:GenCtx):PContract[]{ const now=ctx.now??Date.now(); const day=todayStr(now); const out:PContract[]=[]; const nem=nemesesOf(s); const fams=[traitsOf(s).l10,traitsOf(s).l20].flatMap(p=>p&&TRAIT_BY_ID[p.id]?(TRAIT_BY_ID[p.id] as any).fams:[]);
@@ -64,7 +69,7 @@ export function candidates(s:any,ctx:GenCtx):PContract[]{ const now=ctx.now??Dat
     objs.push({ obj:'salvage', boss:bosses[0], n:PC_CFG.salvage[ci], w:fams.includes('tech')?2:.4, why:['playstyle'] });
     for(const c of d.conds) if(ctx.caps.has(c.cap)) objs.push({ obj:'condition', boss:c.boss, n:1, cond:c.id, w:(c.cap==='hack'&&fams.includes('hack')?3:1), why:['caps'] });
     for(const o of objs){ const mods=modsFor(s,d,o.obj,o.boss,giver,ctx.caps); const goal=goalOf(d,o.obj,o.boss,o.n,o.cond); const id='pc_'+hash([day,ctx.salt||0,d.id,o.obj,o.boss,o.n,o.cond||''].join('|'));
-      const lvFit=1-Math.min(1,Math.abs(s.level-(d.minLevel+d.maxLevel)/2)/12); const w=o.w+lvFit*2+(d.mfr===topFac?.5:0)+(memFor(s,giver).length?.3:0)+mods.length*.4+((hash(id+day).charCodeAt(1)%7)/20);
+      const lvFit=1-Math.min(1,Math.abs(s.level-(d.minLevel+d.maxLevel)/2)/12); const w=o.w+lvFit*2+(d.mfr===topFac?.5:0)+FAC_W[facTier(s,d.mfr)]+(memFor(s,giver).length?.3:0)+mods.length*.4+((hash(id+day).charCodeAt(1)%7)/20);
       const kit=KITS[o.boss]?o.boss:null; const r=rewardFor(s,d,o.obj,mods,giver);
       out.push({ id, personal:true, title:OBJ_LABEL[o.obj]+': '+d.short, text:'', goal, reward:r, minLevel:Math.max(1,d.minLevel-SEAL_MARGIN), repeat:'once', giver, tpl:d.id, boss:o.boss, kit, obj:o.obj, mods, src:'rules', made:now, why:[...o.why,...mods], _w:w } as any); } }
   out.sort((a:any,b:any)=>b._w-a._w||a.id.localeCompare(b.id)); const pick:PContract[]=[];
@@ -106,7 +111,7 @@ export function applyPick(s:any,cands:PContract[],pick:unknown,caps:Set<string>,
   B.offers=out; return true; }
 export function cannedBrief(s:any,c:PContract):string{ const d=DUNGEONS[c.tpl]; const bn=ENEMIES[c.boss]?.name||'the boss'; const nem=nemesesOf(s).find(n=>n.boss===c.boss);
   const core={ clear:`Clear ${d.name}. Controller out, boss down.`, boss:`Put ${nem?.name||bn} down in ${d.short}.`, cull:`Thin out ${c.goal.n} of their crew in ${d.short}.`, salvage:`Bring back ${c.goal.n} pieces from ${d.short}.`, condition:`Wake the other boss in ${d.short}: ${bn}.` }[c.obj];
-  const why=c.mods.includes('nemesis')?' It beat you once. Not twice.':c.mods.includes('rival')?' They already want you gone, so be quick.':c.mods.includes('face')?' Keep it clean.':c.mods.includes('chrome')?' Go loud; it suits you now.':c.mods.includes('premium')?' Best rate I have, for you.':'';
+  const why=c.mods.includes('nemesis')?' It beat you once. Not twice.':c.mods.includes('rival')?' They already want you gone, so be quick.':c.mods.includes('face')?' Keep it clean.':c.mods.includes('chrome')?' Go loud; it suits you now.':c.mods.includes('premium')?' Best rate I have, for you.':c.mods.includes('patron')?' The house that built your parts asked for you.':'';
   return core+why; }
 export function acceptPersonal(s:any,id:string,caps:Set<string>,maxActive:number,now=Date.now()):{ ok:boolean; why?:string }{ const B=boardOf(s); const c=B.offers.find(o=>o.id===id); if(!c) return { ok:false, why:'No longer offered.' };
   const v=validateContract(s,c,caps,now); if(v.length) return { ok:false, why:'This job no longer fits ('+v[0]+').' }; const cs=contractState(s);

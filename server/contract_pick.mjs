@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 export const CAT = JSON.parse(fs.readFileSync(new URL('./npc_catalog.json', import.meta.url), 'utf8'));
 const SESSION = /^[a-f0-9]{16,32}$/; const ID = /^pc_[a-z0-9]{1,10}$/;
-const OBJS = ['clear', 'boss', 'cull', 'salvage', 'condition']; const MODS = ['premium', 'nemesis', 'face', 'chrome', 'rival', 'hacker', 'repeat', 'redeem'];
+const OBJS = ['clear', 'boss', 'cull', 'salvage', 'condition']; const MODS = ['patron', 'premium', 'nemesis', 'face', 'chrome', 'rival', 'hacker', 'repeat', 'redeem'];
 const BANDS = ['human', 'mixed', 'chrome', 'psycho'];
 export const CONTRACT_PROMPT = [
   'You are Odalys Vane, a wry, guarded Fixer in "Warranty Void", a gritty cyberpunk loot game. You hand the player personal jobs.',

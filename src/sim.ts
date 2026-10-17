@@ -1,3 +1,5 @@
+import { hunterPlan } from './factions';
+import { MFR } from './config';
 import { nemOnFlee, nemOnDown, nemOnRunStart, nemTick, nemCache, nemIncoming, nemOnKill } from './nemesis_sim';
 import { progressTick, objectiveStep, unstuck } from './progress';
 import { PROFILES } from './abilities/vfxprofile';
@@ -135,8 +137,13 @@ export class Game {
       checkpoint:{id:1,x:lv.checkpoints[0].x,y:lv.checkpoints[0].y}, px:lv.spawn.x, py:lv.spawn.y, hp:0, broken:[], protectedSlots:[], repairAdded:0, nextId:1, xpEarned:0, warned:false, kills:{}, claimed:[], elapsed:0 };
     for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp*this.hpMul(), maxHp:ENEMIES[sp.type].hp*this.hpMul(), alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); }
     { const n=Math.min(2,s.stims); inst.carried.stims=n; s.stims-=n; }
-    s.instance=inst; this.inst=inst; s.stats.runs++; try{ nemOnRunStart(this,inst); }catch(e){ console.warn('nemesis spawn skipped',e); } this.resumeInstance(true); if(s.level<dd.minLevel-2) this.toast('Warning: '+dd.name+' is recommended for Lv '+dd.minLevel+'+ (you are Lv '+s.level+'). Press '+key('town')+' any time to leave, or use Abandon in the menu.'); return true;
+    s.instance=inst; this.inst=inst; s.stats.runs++; try{ nemOnRunStart(this,inst); }catch(e){ console.warn('nemesis spawn skipped',e); } try{ this.spawnHunters(inst); }catch(e){ console.warn('hunter squad skipped',e); } this.resumeInstance(true); if(s.level<dd.minLevel-2) this.toast('Warning: '+dd.name+' is recommended for Lv '+dd.minLevel+'+ (you are Lv '+s.level+'). Press '+key('town')+' any time to leave, or use Abandon in the menu.'); return true;
   }
+  /** Manufacturer hunter squad (src/factions.ts): one elite + two crew from the house you angered, parked off the entry, optional fight. */
+  spawnHunters(inst:InstanceState){ if(String(inst.id).startsWith('net-')) return; const dd:any=this.dd; const avoid=[dd.gateGuard,dd.lockElite].filter(Boolean); const plan=hunterPlan(this.save,inst.seed,avoid); if(!plan) return;
+    const pool=inst.enemies.filter(e=>!ENEMIES[e.type]?.boss&&!avoid.includes(e.type)); if(!pool.length) return; const at=pool[Math.floor(pool.length*.35)]; const mul=this.hpMul(); const grp=97;
+    [plan.elite,...plan.crew].forEach((type,i)=>{ const a=i*2.1, r=i?1.6:0; const x=at.x+Math.cos(a)*r+1.2, y=at.y+Math.sin(a)*r; const hp=ENEMIES[type].hp*mul; inst.enemies.push({ id:inst.nextId++, type, x, y, hp, maxHp:hp, alert:false, dead:false, home:{x,y}, group:grp, faction:'enemy', ctrlT:0, stunT:0, ...(i===0?{ hunter:plan.mfr }:{}) } as any); });
+    (inst as any).hunters=plan.mfr; this.toast(MFR[plan.mfr].short+' sent a hunter squad after you. Their hardware, your problem.'); }
   resumeInstance(fresh=false){
     const inst=this.inst!; abxReset(this); this.clearTransients(); this.mode='run'; this.level=dungeonOf(inst.dungeon).build(inst.seed); this.projs=[]; this.zones=this.envZones(); this.fx=[]; this.target=null; this.cast=null; this.aim=null; this.channel=null; this.townFails=0; this.downed=false; this.revealing=false;
     this.lastZone=''; this.zoneShown={}; this.zoneAnyAt=-1e9; this.pathWp=null; this.applyDoors(); this.progT=0; this.progKey=''; this.progPulled=false; this.progScan=0;
