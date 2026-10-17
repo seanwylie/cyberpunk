@@ -79,6 +79,54 @@
    "mfr": "MM",
    "rarity": "grey"
   },
+  "mmpatch_armL": {
+   "name": "Field Patch Left arm",
+   "slot": "armL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "mmpatch_armR": {
+   "name": "Field Patch Right arm",
+   "slot": "armR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "mmpatch_handL": {
+   "name": "Field Patch Left hand",
+   "slot": "handL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "mmpatch_handR": {
+   "name": "Field Patch Right hand",
+   "slot": "handR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "mmpatch_legL": {
+   "name": "Field Patch Left leg",
+   "slot": "legL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "mmpatch_legR": {
+   "name": "Field Patch Right leg",
+   "slot": "legR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "mmpatch_footL": {
+   "name": "Field Patch Left foot",
+   "slot": "footL",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
+  "mmpatch_footR": {
+   "name": "Field Patch Right foot",
+   "slot": "footR",
+   "mfr": "MM",
+   "rarity": "grey"
+  },
   "hi_ripper_arm": {
    "name": "Ripper Arm",
    "slot": "armR",
@@ -448,6 +496,24 @@
   "sig_r0_lifter": {
    "name": "R-0 Lifter Legs",
    "slot": "legR",
+   "mfr": "MM",
+   "rarity": "orange"
+  },
+  "sig_oven_heart": {
+   "name": "Voss Oven-Heart",
+   "slot": "torso",
+   "mfr": "HI",
+   "rarity": "orange"
+  },
+  "sig_pit_drill": {
+   "name": "Ossendrecht Pit-Drill",
+   "slot": "armL",
+   "mfr": "HI",
+   "rarity": "orange"
+  },
+  "sig_crane_legs": {
+   "name": "Gantry-Mother Crane Legs",
+   "slot": "legL",
    "mfr": "MM",
    "rarity": "orange"
   },
@@ -1008,6 +1074,24 @@
    "slot": "torso",
    "mfr": "MM",
    "rarity": "orange"
+  },
+  "s1_bloom_veil": {
+   "name": "Static Bloom Veil",
+   "slot": "torso",
+   "mfr": "PS",
+   "rarity": "orange"
+  },
+  "s1_prism_lancer": {
+   "name": "Prism Lancer Arm",
+   "slot": "armR",
+   "mfr": "HI",
+   "rarity": "orange"
+  },
+  "s1_quiet_halo": {
+   "name": "Quiet Halo",
+   "slot": "face",
+   "mfr": "MM",
+   "rarity": "orange"
   }
  },
  "chips": {
@@ -1159,18 +1243,26 @@
   "arms_piston": "Exposed Piston Sleeves",
   "arms_conduit": "Lit Conduit Bracers",
   "arms_fused": "Foundry-Fused Arms",
+  "arms_pauldron": "Warden Pauldron",
+  "arms_bladed": "Fin-Blade Bracers",
   "hands_work": "Work Gloves",
   "hands_hi": "Harrow Pattern Hands",
   "hands_ps": "Aldane Pattern Hands",
   "hands_nitrile": "Clinic Nitrile",
   "hands_signet": "Signet Knuckles",
   "hands_ember": "Ember-Palm Grips",
+  "hands_gauntlet": "Press Gauntlets",
+  "hands_claws": "Scrapper Claws",
   "legs_mm": "Kestrel Pattern Legs",
   "legs_stripe": "Hi-Vis Leg Stripes",
   "legs_hi": "Harrow Pattern Legs",
   "legs_ps": "Aldane Pattern Legs",
   "legs_greaves": "Slag-Plate Greaves",
   "legs_rails": "Strider Light Rails",
+  "legs_cargo": "Cargo Utility Legs",
+  "legs_wraps": "Runner Wraps",
+  "legs_tassets": "Plated Tassets",
+  "legs_hydraulic": "Hydraulic Struts",
   "back_rucksack": "Salvage Rucksack",
   "back_cable": "Trailing Cable Tail",
   "back_cape": "Tarp Cape",
@@ -1180,6 +1272,7 @@
   "back_banner": "Reclaim Banner",
   "back_spine": "Exposed Ceramic Spine",
   "back_disc": "Warrant Disc",
+  "back_s1_halo": "Storm Halo Wings",
   "back_wings": "Cinder Wings",
   "skin_tan": "Weathered Tan",
   "skin_pale": "Basin Pallor",
@@ -1207,6 +1300,7 @@
   "aura_static": "Static Halo",
   "aura_foundry": "Foundry Glow",
   "aura_audit": "Audit Ring",
+  "aura_s1_bloom": "Static Bloom Corona",
   "aura_nova": "Heartstar Corona",
   "trail_dust": "Dust Wake",
   "trail_sparks": "Spark Trail",
@@ -1221,7 +1315,66 @@
   "pm_trail_sodium": "Sodium Spark Trail",
   "pm_back_hazard": "Hazard-Stripe Cape",
   "pm_head_nightvisor": "Night-Shift Visor",
-  "pm_eyes_lime": "Lime Diagnostic Lenses"
+  "pm_eyes_lime": "Lime Diagnostic Lenses",
+  "pm_hair_prism": "Prism-Fibre Mane",
+  "pm_head_vigil": "Vigil Halo",
+  "pm_torso_lattice": "Lattice Plate",
+  "pm_trail_violet": "Violet Static Trail",
+  "pm_skin_plasma": "Plasma-Vein Dermis",
+  "pm_aura_swarm": "Nanoswarm Halo",
+  "pm_back_chrome": "Liquid-Chrome Wings",
+  "pm_arcforge_saint": "Arc-Forge Saint",
+  "pm_arcforge_saint__ruby": "Arc-Forge Saint: Ruby",
+  "pm_arcforge_saint__obsidian": "Arc-Forge Saint: Obsidian",
+  "pm_arcforge_saint__jade": "Arc-Forge Saint: Jade",
+  "pm_arcforge_warden": "Arc-Forge Warden",
+  "pm_arcforge_lancer": "Arc-Forge Lancer",
+  "pm_bloom_empress": "Chrome Bloom Empress",
+  "pm_bloom_empress__violet": "Chrome Bloom Empress: Nightshade",
+  "pm_bloom_empress__jade": "Chrome Bloom Empress: Verdant",
+  "pm_bloom_empress__frost": "Chrome Bloom Empress: Glasswing",
+  "pm_bloom_courier": "Bloom Courier",
+  "pm_bloom_medic": "Orchid Medic",
+  "pm_neon_ronin": "Neon Ronin",
+  "pm_neon_ronin__gold": "Neon Ronin: Shogun Gold",
+  "pm_neon_ronin__frost": "Neon Ronin: White Lotus",
+  "pm_neon_ronin__ash": "Neon Ronin: Ash",
+  "pm_ronin_initiate": "Ronin Initiate",
+  "pm_street_ronin": "Street Ronin",
+  "pm_undercity_pipefitter": "Undercity Pipefitter",
+  "pm_undercity_alchemist": "Undercity Alchemist",
+  "pm_void_auditor": "Void Auditor",
+  "pm_void_breach": "Void Breach",
+  "pm_arcforge_standard": "Arc-Forge Recruit",
+  "pm_founder_mark": "Founder's Mark",
+  "pm_founder_mark__ember": "Founder's Mark: Ember",
+  "emote_wave": "Shift Change Wave",
+  "emote_bow": "Ronin Bow",
+  "emote_hexsign": "Hex Benediction",
+  "emote_salute": "Pass Salute",
+  "recall_arcforge": "Arc-Forge Ascension",
+  "recall_bloom": "Petal Fold",
+  "recall_ronin": "Iaido Step",
+  "recall_founder": "Founder's Bell",
+  "recall_glitch": "Void Unwarranty",
+  "weapon_hexblade": "Arc-Forge Reliquary Blade",
+  "weapon_neon_katana": "Neon Katana",
+  "weapon_bloom_thorn": "Bloom Thorn",
+  "pet_drone_scout": "Scout Drone",
+  "pet_drone_hex": "Hex Seraph",
+  "pet_drone_moth": "Chrome Moth",
+  "pass_s1_visor": "Saint's Visor",
+  "pass_s1_trail": "Neon Saints Trail",
+  "pass_s1_aura": "Saint's Glow",
+  "col_arcforge_halo": "Saint's Halo",
+  "col_bloom_petals": "Petal Drift",
+  "col_ronin_banner": "Ronin Banner",
+  "col_undercity_lantern": "Undercity Lantern",
+  "col_void_sigil": "Void Sigil",
+  "col_founder_plate": "Founder's Plate",
+  "ex_launch_week_halo": "Launch Week Halo",
+  "ex_world_first_gateway": "Gateway Breaker Crest",
+  "ex_alpha_visor": "Alpha Tester Visor"
  },
  "contacts": {
   "odalys_vane": {
@@ -1352,7 +1505,15 @@
   "night_tunnels": "Quiet Shift Tunnels",
   "breaker_yard": "Kellan Breaker Yard",
   "radio_mast": "Basin Radio Mast",
-  "recall_yard": "Recall Authority Yard"
+  "recall_yard": "Recall Authority Yard",
+  "gw_coke_ovens": "Through the Slag Ovens",
+  "gw_tailings_pit": "Tailings Crossing",
+  "gw_bell_foundry": "The Bell Road",
+  "gw_pharmacy_vault": "Down the Vault Stairs",
+  "gw_audit_tower": "Audit Ascent",
+  "gw_radio_mast": "Climb the Mast",
+  "gw_liquidation_floor": "Final Markdown",
+  "gw_recall_yard": "Recall Run"
  },
  "bosses": {
   "teague": {
@@ -1982,6 +2143,108 @@
    ]
   },
   "recall_yard": {
+   "boss": "recall",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r",
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain",
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "gw_coke_ovens": {
+   "boss": "voss",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r"
+   ]
+  },
+  "gw_tailings_pit": {
+   "boss": "pitboss",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r"
+   ]
+  },
+  "gw_bell_foundry": {
+   "boss": "bellfounder",
+   "rewards": [
+    "hi_crucible_torso",
+    "hi_press_arm",
+    "hi_slug_cannon",
+    "hi_shard_arm_p",
+    "hi_gantry_leg_l",
+    "hi_gantry_leg_r"
+   ]
+  },
+  "gw_pharmacy_vault": {
+   "boss": "apothecary",
+   "rewards": [
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain"
+   ]
+  },
+  "gw_audit_tower": {
+   "boss": "auditor",
+   "rewards": [
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain"
+   ]
+  },
+  "gw_radio_mast": {
+   "boss": "widow",
+   "rewards": [
+    "ps_theatre_torso",
+    "ps_fan_arm",
+    "ps_arc_caster",
+    "ps_needle_rifle_p",
+    "ps_ceramic_leg_l",
+    "ps_ceramic_leg_r",
+    "ps_nerve_brain"
+   ]
+  },
+  "gw_liquidation_floor": {
+   "boss": "liquidator",
+   "rewards": [
+    "mm_returns_torso",
+    "mm_barcode_brain",
+    "mm_cutter_hand",
+    "mm_autopistol_b",
+    "mm_shocktack"
+   ]
+  },
+  "gw_recall_yard": {
    "boss": "recall",
    "rewards": [
     "hi_crucible_torso",
