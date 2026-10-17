@@ -1,3 +1,4 @@
+import { GRAFT, graftDefFor, graftStr } from './graft';
 import { drawGearFx, topTier, flourish } from './cosfx';
 import { gearFxOf } from './gearfx';
 import { drawPrestigeBeam, isPrestigeDrop } from './dropbeam';
@@ -151,6 +152,7 @@ export class Renderer {
     if(L.kind==='town'&&this.town?.ready) this.townItems(items);
     for(const it of L.interacts){ if(!this.interactVisible(it.id)) continue; items.push({d:L.kind==='town'?-1e9:it.x+it.y,f:()=>this.drawInteract(it)}); /* town rings are floor decals: drawn before every character and prop */ }
     for(const dr of (g.inst&&g.mode==='run'?g.inst.drops:[])) items.push({d:dr.x+dr.y,f:()=>this.drawDrop(dr)});
+    if(g.mode==='run'){ const gs=(g as any)._graft; if(gs){ for(const p of gs.parts) if(p.on) items.push({d:p.x+p.y,f:()=>this.drawGraftPart(p)}); if(gs.active) items.push({d:g.px+g.py+.01,f:()=>this.drawGraftActive()}); } }
     for(const e of g.enemies){ if(e.dead){ if(this.eart.dying(e,g.time)) items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); continue; } items.push({d:e.x+e.y,f:()=>this.drawEnemy(e)}); }
     if(!g.downed||true) items.push({d:g.px+g.py,f:()=>this.drawPlayer()});
     (this as any).netItems?.(items);
@@ -179,6 +181,16 @@ export class Renderer {
     if(it.id==='annex'){ this.box(it.x-1,it.y-1,2,2,.12,'#5a5d5f','#444','#333'); }
     c.save(); c.fillStyle='#3a3d40'; c.fillRect(a-9*s,b-22*s,18*s,22*s); c.fillStyle='#cfc6b0'; c.globalAlpha=.8; c.fillRect(a-6*s,b-19*s,12*s,8*s); c.globalAlpha=1; c.fillStyle=it.kind==='hack'||it.kind==='terminal'?PAL.slate:PAL.oxide; c.fillRect(a-9*s,b-5*s,18*s,3*s); c.restore();
     { const d=Math.hypot(this.g.px-it.x,this.g.py-it.y); const R=(it as any).r??1.5; const show=R+2.5; if(d<show){ const alpha=Math.min(1,(show-d)/1.5); this.labelQ.push({id:it.id,text:it.label,a,b,s,alpha}); } } }
+  // ---- field grafts (src/graft.ts, docs/GRAFT.md): matte part + oil stain + bone outline; no glow ----
+  drawGraftPart(p:{x:number;y:number;t:number;type:string}){ const c=this.ctx, a=this.sx(p.x,p.y), b=this.sy(p.x,p.y); if(a<-60||a>this.w+60||b<-60||b>this.h+60) return; const s=this.TW/64*1.5; const d=graftDefFor(p.type); const left=GRAFT.life-p.t; const blink=left<1.5&&((left*6)|0)%2===0; const pop=Math.min(1,p.t*6);
+    c.save(); c.globalAlpha=blink?.45:1; c.fillStyle='rgba(28,18,14,.55)'; c.beginPath(); c.ellipse(a,b,14*s,6*s,0,0,Math.PI*2); c.fill();
+    const hop=Math.max(0,1-p.t*2.5)*10*s; const y=b-3*s-hop+Math.sin(p.t*5)*1*s; c.translate(a,y); c.rotate(-.5); c.scale(pop,pop);
+    c.fillStyle='#5a3a30'; c.fillRect(-11*s,-2.5*s,6*s,5*s); /* torn flesh end */ c.fillStyle=d.c; c.fillRect(-6*s,-3*s,14*s,6*s); c.fillStyle='rgba(0,0,0,.35)'; c.fillRect(-6*s,1*s,14*s,2*s);
+    if(d.kind==='HI'){ c.fillStyle='#3a3836'; c.fillRect(8*s,-4*s,7*s,2*s); c.fillRect(8*s,2*s,7*s,2*s); } else if(d.kind==='PS'){ c.fillStyle='#bfb9ab'; c.beginPath(); c.moveTo(8*s,-3*s); c.lineTo(17*s,0); c.lineTo(8*s,3*s); c.fill(); } else { c.fillStyle='#4e5233'; c.fillRect(8*s,-2*s,4*s,4*s); c.fillStyle='#8d8c7a'; c.fillRect(-1*s,-1*s,2*s,2*s); }
+    c.setTransform(this.dpr,0,0,this.dpr,0,0); const near=Math.hypot(p.x-this.g.px,p.y-this.g.py)<GRAFT.pickR; c.strokeStyle=near?'#e8e0cc':'rgba(216,205,180,.55)'; c.lineWidth=near?2:1.2; const pr=1-((p.t*1.6)%1); c.globalAlpha*=near?1:.4+.6*pr; c.beginPath(); c.ellipse(a,b,(16+(near?0:4*(1-pr)))*s,(7+(near?0:2*(1-pr)))*s,0,0,Math.PI*2); c.stroke();
+    c.globalAlpha=blink?.45:1; c.font='600 '+Math.round(11*Math.max(.8,s))+'px system-ui,sans-serif'; c.textAlign='center'; c.fillStyle='rgba(16,14,12,.75)'; const lab=near?'GRAFT: '+d.name:d.name; const tw=c.measureText(lab).width; c.fillRect(a-tw/2-4,b-30*s-11,tw+8,15); c.fillStyle=near?'#efe6d2':'#bdb3a0'; c.fillText(lab,a,b-30*s); c.restore(); }
+  drawGraftActive(){ const g=this.g, c=this.ctx; const gs=(g as any)._graft; const ac=gs?.active; if(!ac) return; const a=this.sx(g.px,g.py), b=this.sy(g.px,g.py); const s=this.TW/64; const k=graftStr(g); const w=34*s;
+    c.save(); c.fillStyle='rgba(16,14,12,.7)'; c.fillRect(a-w/2-1,b+9*s-1,w+2,5); c.fillStyle=ac.jam>0?'#8a7d5a':ac.def.c; c.fillRect(a-w/2,b+9*s,w*Math.max(0,1-ac.t/GRAFT.dur),3); c.globalAlpha=.55+.45*k; c.restore(); }
   // ---- loot drops (see lootart.ts / docs/LOOT_ART.md) ----
   private lootLabels:{x:number;y:number;spec:LootSpec;strong:boolean;rk:number}[]=[]; private lootBudget=0; private mouseX=-1e5; private mouseY=-1e5; private mouseHook=false;
   drawDrop(d:import('./state').Drop){ const g=this.g; const st=g.save.settings; if(!this.mouseHook){ this.mouseHook=true; window.addEventListener('mousemove',e=>{ this.mouseX=e.clientX; this.mouseY=e.clientY; }); }

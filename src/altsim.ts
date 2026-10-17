@@ -2,13 +2,14 @@
 import { ENEMIES } from './config';
 import { tierOf, NODES, tooltip, canUse, miniFor, cursorAt, miniHit, speechOptions, rollOk, ALT_CFG, STYLE_META, TEACH, altState, firstSeen, humanityOfSave, psychoDmg, nextHint, type Ctx, type Payoff, type Style, type Mini } from './altplay';
 import { memOnSpeech } from './npcmem';
+import { graftHum } from './graft';
 import { traitsOf, recordHack, recordSpeech, recordHumanity } from './traitstate';
 type G=any;
 export function ctxOf(g:G):Ctx{ const T=traitsOf(g.save); return { caps:g.build?.caps||new Set(), abilities:g.build?.abilities||[], traits:{ l10:T.l10?.id||null, l20:T.l20?.id||null }, rep:g.save.rep, mfr:g.dd?.mfr, humanity:humanity(g), credits:g.save.credits }; }
 export const hackTier=(g:G)=>g.dbg?.noHack?0:tierOf('hack',ctxOf(g));
 export const speechTier=(g:G)=>tierOf('speech',ctxOf(g));
 /** dbg.hum: test/dev override (docs/HUMANITY.md) */
-export function humanity(g:G):number{ return typeof g.dbg?.hum==='number'?g.dbg.hum:humanityOfSave(g.save); }
+export function humanity(g:G):number{ const h=typeof g.dbg?.hum==='number'?g.dbg.hum:humanityOfSave(g.save); return Math.max(0,h-graftHum(g)); /* field grafts cost a little humanity for the run (docs/GRAFT.md) */ }
 const isTurret=(e:any)=>{ const d=ENEMIES[e.type]; return !!d&&!d.boss&&(d.static||/drone|turret|sentry|cam/i.test(d.name)); };
 const near=(g:G,e:any,r:number)=>Math.hypot(e.x-g.px,e.y-g.py)<r;
 /** teach-then-reward: the first time a style is offered, one prompt, once per save */
@@ -25,7 +26,7 @@ export function altPrompt(g:G):any{ if(g.mode!=='run'||!g.inst) return null; con
   return best; }
 function mk(id:string,e:any,p:Payoff,g:G){ const n=NODES[p]; const tier=n.style==='hack'?hackTier(g):speechTier(g); return { id, x:e.x, y:e.y, r:3, label:n.label, kind:n.style==='hack'?'hack':'npc', alt:{ payoff:p, style:n.style, tip:tooltip(p,tier) } }; }
 /** HUD tooltip for any prompt (fixed interacts get theirs too) */
-export function promptTip(g:G,it:any):string|null{ if(it?.alt) return it.alt.tip; if(it?.id==='hackproc') return tooltip('shortcut',hackTier(g))+' · '+STYLE_META.hack.fallback; if(it?.id==='cratechip') return tooltip('cache',hackTier(g)); return null; }
+export function promptTip(g:G,it:any):string|null{ if(it?.graftTip) return it.graftTip; if(it?.alt) return it.alt.tip; if(it?.id==='hackproc') return tooltip('shortcut',hackTier(g))+' · '+STYLE_META.hack.fallback; if(it?.id==='cratechip') return tooltip('cache',hackTier(g)); return null; }
 export const promptIcon=(it:any)=>it?.alt?STYLE_META[it.alt.style as Style].icon:it?.id==='hackproc'||it?.kind==='hack'||it?.kind==='terminal'?STYLE_META.hack.icon:'';
 
 export function altInteract(g:G,it:any){ const [,kind,sid]=String(it.id).split(':'); const e=g.enemies.find((x:any)=>String(x.id)===sid); if(!e||e.dead) return;

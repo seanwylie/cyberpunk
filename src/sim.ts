@@ -49,6 +49,7 @@ import { record, newStory, EventKind } from './story';
 import { rollPrestige, ecoOf, log as ecoLog } from './loot_eco';
 import { grantCos, COS_BY_ID as COSDEF } from './content/appearance';
 import { SEASON_BY_ID } from './seasons';
+import { graftOnKill, graftTick, graftReset, graftPrompt, graftTake, graftTapAt, graftOut, graftIn } from './graft';
 
 export const TOWN_KEY=key('town');
 export type Emit = (type:string, payload?:any)=>void;
@@ -95,6 +96,7 @@ export class Game {
 
   // ---------- mode transitions ----------
   enterTown(first=false){
+    graftReset(this);
     const wasRun=this.mode==='run'; this.settleCompleted(); if(!first){ try{ playRecall(eqCos(this.save)); }catch{} } if(wasRun){ altTown(this); closeRun(this.save); refreshOffer(this.save,traitPrior(this)); this.emit('traitcheck','town'); }
     if(this.mode==='run'&&this.inst){ const aq=(this.save.abAcq=this.save.abAcq||{total:0,dry:0}); if((this.inst as any).abGot) aq.dry=0; else aq.dry++; } abxReset(this); this.clearTransients();
     const tid=currentTown(this.save); this.townId=tid; setTownStations(stationsOf(tid)); this.mode='town'; this.level=buildTownLevel(tid); this.enemies=[]; this.projs=[]; this.zones=[]; this.fx=[]; { const sp=(!first&&this.level.returnSpawn)||this.level.spawn; this.px=sp.x; this.py=sp.y; } this.channel=null; this.townFails=0; this.cast=null; this.aim=null; this.target=null; this.downed=false; this.revealing=false;
@@ -137,7 +139,7 @@ export class Game {
       checkpoint:{id:1,x:lv.checkpoints[0].x,y:lv.checkpoints[0].y}, px:lv.spawn.x, py:lv.spawn.y, hp:0, broken:[], protectedSlots:[], repairAdded:0, nextId:1, xpEarned:0, warned:false, kills:{}, claimed:[], elapsed:0 };
     for(const sp of lv.spawns){ inst.enemies.push({ id:inst.nextId++, type:sp.type, x:sp.x+.5, y:sp.y+.5, hp:ENEMIES[sp.type].hp*this.hpMul(), maxHp:ENEMIES[sp.type].hp*this.hpMul(), alert:false, dead:false, home:{x:sp.x+.5,y:sp.y+.5}, group:sp.group, faction:'enemy', ctrlT:0, stunT:0, ...((sp as any).affix?{affix:(sp as any).affix}:{}) }); }
     { const n=Math.min(2,s.stims); inst.carried.stims=n; s.stims-=n; }
-    s.instance=inst; this.inst=inst; s.stats.runs++; try{ nemOnRunStart(this,inst); }catch(e){ console.warn('nemesis spawn skipped',e); } try{ this.spawnHunters(inst); }catch(e){ console.warn('hunter squad skipped',e); } this.resumeInstance(true); if(s.level<dd.minLevel-2) this.toast('Warning: '+dd.name+' is recommended for Lv '+dd.minLevel+'+ (you are Lv '+s.level+'). Press '+key('town')+' any time to leave, or use Abandon in the menu.'); return true;
+    s.instance=inst; this.inst=inst; s.stats.runs++; graftReset(this); try{ nemOnRunStart(this,inst); }catch(e){ console.warn('nemesis spawn skipped',e); } try{ this.spawnHunters(inst); }catch(e){ console.warn('hunter squad skipped',e); } this.resumeInstance(true); if(s.level<dd.minLevel-2) this.toast('Warning: '+dd.name+' is recommended for Lv '+dd.minLevel+'+ (you are Lv '+s.level+'). Press '+key('town')+' any time to leave, or use Abandon in the menu.'); return true;
   }
   /** Manufacturer hunter squad (src/factions.ts): one elite + two crew from the house you angered, parked off the entry, optional fight. */
   spawnHunters(inst:InstanceState){ if(String(inst.id).startsWith('net-')) return; const dd:any=this.dd; const avoid=[dd.gateGuard,dd.lockElite].filter(Boolean); const plan=hunterPlan(this.save,inst.seed,avoid); if(!plan) return;
@@ -257,7 +259,7 @@ export class Game {
   /** touch tap on empty floor: face it, and the next tap-cast ability goes that way (not to an auto-target off screen) */
   tapAimT=-1e9; tapFace(wx:number,wy:number){ if(Math.hypot(wx-this.px,wy-this.py)<.3) return; this.face=this.tapAng=Math.atan2(wy-this.py,wx-this.px); this.target=null; this.tapAimT=this.time; }
   tapAng=0; /** facing for an undirected cast: a recent floor tap wins over movement facing */ aimFace(){ return this.time-this.tapAimT<4?this.tapAng:this.face; }
-  tapEnemy(wx:number,wy:number){ const e=this.enemyNear(wx,wy,1.1); if(e){ this.target=e.id; this.emit('sfx','select'); return true; } return false; }
+  tapEnemy(wx:number,wy:number){ if(this.mode==='run'&&graftTapAt(this,wx,wy)) return true; const e=this.enemyNear(wx,wy,1.1); if(e){ this.target=e.id; this.emit('sfx','select'); return true; } return false; }
   clearTarget(){ this.target=null; }
   dodge(){
     if(this.downed||this.channel&&this.channel.kind==='hack'&&false) return;
@@ -302,7 +304,7 @@ export class Game {
   update(dtRaw:number){
     if(this.netHook&&this.netHook(dtRaw)) return;
     if(this.hitStop>0){ this.hitStop-=dtRaw; this.updateFx(dtRaw*.25); return; }
-    const dt=Math.min(dtRaw,.05); this.time+=dt; altTick(this,dt);
+    const dt=Math.min(dtRaw,.05); this.time+=dt; altTick(this,dt); graftTick(this,dt);
     if(this.mode==='run'&&this.inst){ this.inst.elapsed+=dt; const rem=this.inst.expiresAt-this.now(); if(rem<=0){ this.expireInstance(); this.enterTown(); return; } if(!this.inst.warned&&rem<INSTANCE_WARN_MINUTES*60000){ this.inst.warned=true; this.toast('Instance expires in under '+INSTANCE_WARN_MINUTES+' minutes. Retrieve loot.'); } }
     if(this.grace&&this.mode==='run') this.tickGrace(dt); else if(this.grace) this.grace=null;
     this.updatePlayer(dt); abxTick(this,dt); this.codexT-=dt; if(this.codexT<=0){ this.codexT=1; this.codexScan(); if(this.mode==='town') this.worldScan(); }
@@ -436,7 +438,7 @@ export class Game {
 
   // ---------- damage ----------
   hurtEnemy(e:En,dmg:number,sx:number,sy:number,knock=0){
-    if(e.dead||e._rt.reveal>0) return; if(this.grace&&e.faction==='enemy') this.grace.acted=true; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; if(e.faction==='enemy') dmg*=altDmgMul(this); dmg=abxOutgoing(this,e,dmg); const rt=e._rt, tag=this.curTag;
+    if(e.dead||e._rt.reveal>0) return; if(this.grace&&e.faction==='enemy') this.grace.acted=true; if(this.dbg.oneShot) dmg*=60; if(e._rt.vuln>0) dmg*=1.5; if(e.faction==='enemy') dmg*=altDmgMul(this); dmg=abxOutgoing(this,e,dmg); dmg=graftOut(this,e,dmg,this.curTag); const rt=e._rt, tag=this.curTag;
     if(rt.hack>0) dmg*=AB.hackMul;
     const hadShield=!!(rt.shield&&rt.shield.hp>0);
     if(hadShield&&dmg>0){ if(tag==='pulse') dmg=Math.max(dmg*AB.pulseShield,(rt.shield.max||rt.shield.hp)*AB.pulseShieldFrac); else if(tag==='auto') dmg*=AB.shieldAuto; else dmg*=AB.shieldAbility; }
@@ -467,7 +469,7 @@ export class Game {
   bossFightOn(){ return !!this.inst?.flags.bossSpawned&&this.enemies.some(e=>!e.dead&&ENEMIES[e.type]?.boss); }
   hurtPlayer(dmg:number,sx:number,sy:number){ const MOB_ARMOR_K=BAL.g.armorK;
     if(this.downed||this.iframes>0||this.revealing||this.mode!=='run'||this.dbg.god||this.grace) return;
-    const st=this.stat(); const em=this.earlyMul(); { if(em<1){ const k=String(this.dmgSrc).split(':')[0]; dmg*=em*(ENEMIES[k]?.boss?Math.sqrt(em):1); } } dmg=abxIncoming(this,dmg,sx,sy); if(dmg<=.01) return; { const k=String(this.dmgSrc).split(':')[0]; dmg=ENEMIES[k]?.boss?Math.max(dmg*(1-(em<1?BOSS_AOE.armorEarly:BOSS_AOE.armorMax)),dmg-st.armor):(dmg*=BAL.g.mobTierDmg[(this.dd as any)?.tier||0]??1,MOB_ARMOR_K>0&&!this.bossFightOn())?dmg*MOB_ARMOR_K/(MOB_ARMOR_K+st.armor):Math.max(1,dmg-st.armor); } /* armorK 0 = legacy flat armor (A/B in tools/balance/tiersweep.mjs) */ /* regular/elite hits: armor is a percentage (K/(K+armor)), not a flat subtraction, which zeroed every small mob hit once armor reached ~15 */ if(this.overheated) dmg*=HEAT.overheat.takenMul; let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg/Math.max(.25,em)*AB.reflect; /* early-band softening protects the player; it must not weaken Brace's counter */ dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
+    const st=this.stat(); const em=this.earlyMul(); { if(em<1){ const k=String(this.dmgSrc).split(':')[0]; dmg*=em*(ENEMIES[k]?.boss?Math.sqrt(em):1); } } dmg=abxIncoming(this,dmg,sx,sy); dmg=graftIn(this,dmg,!!ENEMIES[String(this.dmgSrc).split(':')[0]]?.boss); if(dmg<=.01) return; { const k=String(this.dmgSrc).split(':')[0]; dmg=ENEMIES[k]?.boss?Math.max(dmg*(1-(em<1?BOSS_AOE.armorEarly:BOSS_AOE.armorMax)),dmg-st.armor):(dmg*=BAL.g.mobTierDmg[(this.dd as any)?.tier||0]??1,MOB_ARMOR_K>0&&!this.bossFightOn())?dmg*MOB_ARMOR_K/(MOB_ARMOR_K+st.armor):Math.max(1,dmg-st.armor); } /* armorK 0 = legacy flat armor (A/B in tools/balance/tiersweep.mjs) */ /* regular/elite hits: armor is a percentage (K/(K+armor)), not a flat subtraction, which zeroed every small mob hit once armor reached ~15 */ if(this.overheated) dmg*=HEAT.overheat.takenMul; let reflectDmg=0; if(this.braceT>0){ reflectDmg=dmg/Math.max(.25,em)*AB.reflect; /* early-band softening protects the player; it must not weaken Brace's counter */ dmg*=AB.braceMul; this.vfx('brace.hit',this.px,this.py,{a:Math.atan2(sy-this.py,sx-this.px)}); } this.hp-=dmg; if(reflectDmg>0) this.braceReflect(reflectDmg,sx,sy); this.emit('sfx','hurt'); this.emit('hurt',dmg); this.combatHold=3; { const k=String(this.dmgSrc).split(':')[0]; if(ENEMIES[k]&&!ENEMIES[k].boss&&this.enemies.some(o=>!o.dead&&o.type===k&&this.isElite(o)&&dist(o.x,o.y,this.px,this.py)<24)) this.eliteExchange(); }
     if(this.channel&&!this.channel.hard){ this.townInterrupt('Town return interrupted by damage',true); this.channel=null; }
     this.fx.push({kind:'blood',x:this.px,y:this.py,t:0,life:.6,c:'#7a2f26'});
     if(this.inst?.flags.bossSpawned) (this.inst as any)._bossHits=((this.inst as any)._bossHits||0)+1;
@@ -556,6 +558,7 @@ export class Game {
     const inst=this.inst; const f=inst?.flags; const b=this.build;
     if(this.mode==='town'){ this.vendorStation=it.station||''; this.emit('open',it.opens||it.id); return; }
     if(!inst||!f) return;
+    if(it.id==='graft'){ graftTake(this); this.prompt=null; return; }
     if(String(it.id).startsWith('alt:')) return altInteract(this,it);
     const need=(cap:string,msg:string)=>{ if(!b.caps.has(cap)){ this.toast(msg); this.emit('sfx','deny'); return false; } return true; };
     switch(it.id){
@@ -579,6 +582,7 @@ export class Game {
   updatePrompt(){ const L=this.level; const inst=this.inst; const f=inst?.flags; let best:Interact|null=null,bd=1e9;
     for(const it of L.interacts){ if(this.mode==='run'&&f){ if(it.id==='hackproc'&&f.lock2) continue; if(it.id==='armorydoor'&&f.armory) continue; if(it.id==='controller'&&f.controller) continue; if(it.id==='cratechip'&&inst!.claimed.includes('cratechip')) continue; }
       const d=dist(this.px,this.py,it.x,it.y); const rr=it.r+(this.prompt?.id===it.id?.35:0) /* small hysteresis: no flicker at the edge */; if(d<rr&&d<bd){ bd=d; best=it; } }
+    { const gp=this.mode==='run'?graftPrompt(this):null; if(gp) best=gp as any; } /* a fresh part beats everything: it only lasts seconds */
     if(!best) best=altPrompt(this);
     if(this.prompt?.id!==best?.id) this.prompt=best; }
 
@@ -734,7 +738,7 @@ export class Game {
     this.emit('sfx','death_'+(def.boss?'boss':def.elite?'elite':def.mfr)); GORE.kill(this,e);
     this.fx.push({kind:'burst',x:e.x,y:e.y,t:0,life:.3});
     if(e.faction==='ally') { return; }
-    this.grantKill(e); const inst=this.inst!;
+    this.grantKill(e); graftOnKill(this,e); const inst=this.inst!;
     if(e.type===this.dd.lockElite&&!inst.flags.lock2){ inst.flags.lock2=true; this.openDoor('lock2'); this.toast(def.name+' down: lock released'); }
     if((e as any).nem) nemOnKill(this,e);
     if(def.boss) this.onBossDead(e);
