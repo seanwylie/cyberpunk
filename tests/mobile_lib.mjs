@@ -15,6 +15,8 @@ export async function launchMobile(dev, o = {}) {
   const ctx = await browser.newContext({ viewport: { width: dev.w, height: dev.h }, screen: { width: dev.w, height: dev.h }, deviceScaleFactor: dev.dpr, hasTouch: true, isMobile: true, userAgent: UA });
   const page = await ctx.newPage(); const errors = [];
   page.on('pageerror', e => errors.push('pageerror: ' + e.message)); page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  // the boot character select (6ea267a) is off here like in lib.mjs (tests/charsel.mjs covers it); pass chars:true to leave it on
+  if (!o.chars) await page.addInitScript(() => { try { localStorage.setItem('wv_nocharsel', '1'); } catch {} });
   if (o.init) await page.addInitScript(o.init);
   await page.goto(URL + (o.query || ''), { waitUntil: 'load' }); await page.waitForFunction(() => window.__game, null, { timeout: 60000 }); if (!o.keepSplash) await page.evaluate(() => document.getElementById('splash')?.remove());
   const cdp = await ctx.newCDPSession(page); if (o.cpu) await cdp.send('Emulation.setCPUThrottlingRate', { rate: o.cpu });
