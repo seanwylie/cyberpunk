@@ -42,6 +42,7 @@
     "test:perf": "node tests/perf_gate.mjs",
     "test:perf:full": "node tests/perf_gate.mjs --full",
     "test:memory": "node tests/memory.mjs",
+    "test:citymem": "node tests/city_memory.mjs",
     "test:nemesis": "node tests/nemesis.mjs && node tests/nemesis_balance.mjs",
     "test:moments": "node tests/moments.mjs",
     "voice:nemesis": "node tools/gen_nemesis_voice.mjs",

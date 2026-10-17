@@ -107,6 +107,7 @@ city_ui
 monet
 nemesis
 nemesis_balance
+city_memory
 moments
 npc_memory
 contracts_personal
