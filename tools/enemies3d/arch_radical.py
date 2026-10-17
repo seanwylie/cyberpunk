@@ -89,14 +89,15 @@ def radhum(spec,bruiser=False):
     L=sp.get('look',{})
     for side,t in L.get('tools',{}).items(): tools[side]=t; sp['weapon_'+side]=None
     if 'piston' in L: pis=L['piston']; sp['piston']=pis; sp['hideb']=tuple(('kn'+('R' if s=='L' else 'L')) for s in pis)
-    R=basehum(sp,bruiser); hs=L.get('hs',1.3 if L else 1.0); R.head.scale=(hs,hs,hs); bpy.context.view_layer.update()
+    sp['_tools']=dict(tools); R=basehum(sp,bruiser); hs=L.get('hs',1.3 if L else 1.0); R.head.scale=(hs,hs,hs); bpy.context.view_layer.update()
     if L.get('head'): _head2(R,L['head'])
     else: _skull(R,mfr,boss)
     if L.get('back'): _back(R,L['back'],sp.get('bulk',(1.95,1.62))[0])
     if L.get('xarm'): _extraarm(R,L['xarm'],mfr,boss)
     for side,t in tools.items(): _tool(R,side,t,mfr,bruiser)
     for side in pis: _piston(R,side,mfr,bruiser)
-    if L.get('donor', not L):   # mismatched assembly: a donor shoulder unit from another maker (ivory/olive/oxide) bolted on
+    if L.get('donor', not L) and getattr(R,'org',False): _donor_org(R,mfr,tools,bruiser)   # organic bosses: donor graft (arch_organic.py)
+    elif L.get('donor', not L):   # mismatched assembly: a donor shoulder unit from another maker (ivory/olive/oxide) bolted on
         donor={'HI':'PS','PS':'MM','MM':'HI'}[mfr]; c=KIT[donor]['shell']; MATS['k_donor']=mat('k_donor',rgb(c),metal=.2,rough=.6,panel=True,scale=7)
         side='L' if 'L' not in tools else 'R'; sh=getattr(R,'sh'+side); g=1.5 if bruiser else 1.2
         sph(sh,.11*g,(0,0,.02),'k_donor',(1,1,.85)); cyl(sh,.06*g,.22,(0,0,-.14),'k_donor',v=14); _bolts(sh,[(0,-.1*g,.0),(0,-.1*g,-.08)])
