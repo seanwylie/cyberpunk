@@ -33,7 +33,7 @@ LOOK = {
   'retrieval':   dict(bulk=(1.8,1.5),  grow=1.0, look=dict(donor=True, tools={'R':'longclaw'}, head='crt', back='reel', piston=('R',))),
   'reclaimer':   dict(bulk=(2.35,1.9), grow=1.0,  look=dict(tools={'R':'saw'}, head='round', back='drum', piston=('L',))),
 }
-ORTHOK={'brannoch':1.26,'enforcer':1.18,'overseer':1.12,'retrieval':1.2,'teague':1.08,'reclaimer':1.14,'recovered':1.08,'surgeon':1.06,'quenchpriest':1.06,'anesthetist':1.06}   # frame headroom only (game size is art.h, normalised by hpx)
+ORTHOK={'brannoch':1.26,'enforcer':1.18,'overseer':1.2,'retrieval':1.2,'teague':1.08,'reclaimer':1.14,'recovered':1.08,'surgeon':1.06,'quenchpriest':1.06,'anesthetist':1.06}   # frame headroom only (game size is art.h, normalised by hpx)
 _apply0=apply
 def apply(SPECS):
     _apply0(SPECS)
