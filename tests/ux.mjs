@@ -44,8 +44,8 @@ ok(Object.values(loot).every(Boolean), 'every dungeon has ranged weapons in its 
 // ---- guidance / summary ----
 await fresh('foundry', 24);
 const gd = await ev(() => { const g = window.__game; g.pathT = 0; const x = g.guidance(); return x && { text: x.obj.text, d: x.dist, wp: !!x.wp }; });
-ok(gd && gd.wp && gd.d > 5 && /secure/i.test(gd.text), 'objective guidance gives a pathed waypoint and text: ' + (gd && gd.text));
-await step(1); ok(await ev(() => { const u = document.getElementById('objective'); const m = document.getElementById('minimap'); return u.style.display !== 'none' && m.style.display !== 'none' && /secure/i.test(u.textContent); }), 'objective strip and minimap are shown in the run');
+const STEP = /secure|gate guards|open gate|lock/i; /* since 10-12 (a438497/64d7105) the HUD names the next step first: gate guards -> open gate -> lock -> objective */ ok(gd && gd.wp && gd.d > 5 && STEP.test(gd.text), 'objective guidance gives a pathed waypoint and text: ' + (gd && gd.text));
+await step(1); ok(await ev(() => { const u = document.getElementById('objective'); const m = document.getElementById('minimap'); return u.style.display !== 'none' && m.style.display !== 'none' ? u.textContent : ''; }).then(t => STEP.test(t)), 'objective strip and minimap are shown in the run');
 await ev(() => { const g = window.__game; g.inst.flags.bossDead = true; g.inst.flags.completed = true; window.__ui.open('summary'); });
 t = await ev(() => document.getElementById('modal').textContent);
 ok(/Loot recap/.test(t) && /Return to town/.test(t) && /re-run/i.test(t), 'end-of-run summary shows loot recap, return to town and re-run buttons');
