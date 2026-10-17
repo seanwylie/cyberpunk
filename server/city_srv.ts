@@ -23,7 +23,7 @@ export const ddbStore = (table: string): CityStore => ({
 
 /** anti-spoof limits for client-claimed events (party clears/kills are arbitrated by the hub and never claimed) */
 export const CLAIM = { perMin: 4, perDay: 80, hackPerRun: 12, speechPerRun: 8, soloClearGapMs: 150e3, soloMinRunMs: 90e3, soloW: .3, claimW: .5 };
-interface Claimer { tokens: number; last: number; day: string; n: number; run: { id: string; at: number; hack: number; speech: number; cleared: boolean } | null; lastClear: number }
+interface Claimer { tokens: number; last: number; day: string; n: number; run: { id: string; at: number; hack: number; speech: number; cleared: boolean; nem?: boolean } | null; lastClear: number }
 const today = () => new Date().toISOString().slice(0, 10);
 
 export class CityHub {
@@ -51,6 +51,7 @@ export class CityHub {
     else if (k === 'speech') { if (++c.run.speech > CLAIM.speechPerRun) return no('cap'); ev = { k: 'speech', d, f: fArg, ok: !!m.ok, w: CLAIM.claimW }; }
     else if (k === 'clear') { if (ctx.inRoom) return no('arbitrated'); /* party clears come from the hub, never from claims */ if (c.run.cleared || now - c.run.at < CLAIM.soloMinRunMs || now - c.lastClear < CLAIM.soloClearGapMs) return no('timing'); c.run.cleared = true; c.lastClear = now;
       const kills = Math.max(0, Math.min(+m.kills || 0, 80)); this.apply([{ k: GATEWAY_BY_DUNGEON[dungeon] ? 'gateway' : 'clear', d, f: f0 || fArg, w: CLAIM.soloW, who: guest }, ...(kills ? [{ k: 'kill' as const, d, f: f0 || fArg, n: kills, w: CLAIM.soloW }] : [])], now); }
+    else if (k === 'nem') { if (c.run.nem) return no('cap'); c.run.nem = true; ev = { k: 'nem', d, f: f0 || fArg, w: CLAIM.claimW, who: guest }; } // one nemesis kill per run counts (docs/CITY_MEMORY.md)
     else return no('kind');
     if (ev) this.apply([ev], now); c.tokens--; c.n++; this.stats.accepted++; return { ok: true };
   }

@@ -25,14 +25,14 @@ export const CITY = {
   hourCap: 12,            // max influence moved per district per hour (server + local)
   tensionBase: 20, tensionDecayH: 4, flipTension: 70,
   bountyTension: 55, lockdownTension: 80,
-  w: { kill: .02, clear: 1, gateway: 2, hack: .6, speech: .5 } as Record<string, number>,
-  tw: { kill: .01, clear: 1, gateway: 2, hack: .6, speech: .3 } as Record<string, number>,
+  w: { kill: .02, clear: 1, gateway: 2, hack: .6, speech: .5, nem: .3 } as Record<string, number>,
+  tw: { kill: .01, clear: 1, gateway: 2, hack: .6, speech: .3, nem: .5 } as Record<string, number>,
 };
-export type CityEvKind = 'kill' | 'clear' | 'gateway' | 'hack' | 'speech';
+export type CityEvKind = 'kill' | 'clear' | 'gateway' | 'hack' | 'speech' | 'nem';
 /** one aggregated event: `n` occurrences of `k` against (or, for successful speech, with) faction `f` in district `d`; `w` = source weight (arbitrated 1, unverified solo claims < 1) */
 export interface CityEv { k: CityEvKind; d: string; f: Faction; n?: number; ok?: boolean; w?: number; who?: string }
 export interface District { inf: number[]; ctrl: number; since: number; tension: number; moved: number; movedHour: number }
-export interface WeekAgg { wk: string; dist: Record<string, Record<string, number>>; flips: { d: string; from: string; to: string; at: number }[]; players: Record<string, { name: string; clears: number; gateways: number }> }
+export interface WeekAgg { wk: string; dist: Record<string, Record<string, number>>; flips: { d: string; from: string; to: string; at: number }[]; players: Record<string, { name: string; clears: number; gateways: number; nems?: number }> }
 export interface CityState { v: number; at: number; dist: Record<string, District>; week: WeekAgg; prev?: WeekAgg }
 
 export const weekKey = (t: number) => { const d = new Date(t); const day = (d.getUTCDay() + 6) % 7; const m = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - day); return new Date(m).toISOString().slice(0, 10); };
@@ -57,6 +57,7 @@ export function applyEvents(s: CityState, evs: CityEv[], now = Date.now()): stri
     norm(D.inf); D.tension = clamp(D.tension + CITY.tw[e.k] * n * w * (e.k === 'speech' && e.ok ? -1 : 1), 0, 100);
     const a = (s.week.dist[e.d] ||= {}); a[e.k + (e.k === 'speech' ? (e.ok ? '_ok' : '_fail') : '')] = (a[e.k + (e.k === 'speech' ? (e.ok ? '_ok' : '_fail') : '')] || 0) + n;
     if (e.who && (e.k === 'clear' || e.k === 'gateway')) { const p = s.week.players[e.who]; if (p) { if (e.k === 'clear') p.clears += n; else p.gateways += n; } }
+    if (e.who && e.k === 'nem') { const p = s.week.players[e.who]; if (p) p.nems = (p.nems || 0) + n; } // the city remembers: a player's nemesis kills make the weekly news
     touched.add(e.d);
   }
   for (const d of touched) if (flipCheck(s, d, now)) touched.add(d);

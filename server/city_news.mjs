@@ -12,8 +12,8 @@ export function buildFacts(state, names, which = 'prev') {
   const rows = Object.entries(wk.dist || {}).map(([d, a]) => ({ d, a, tot: Object.values(a).reduce((x, y) => x + y, 0) })).sort((x, y) => y.tot - x.tot);
   for (const r of rows.slice(0, 5)) { const D = state.dist?.[r.d]; add({ type: 'district', d: r.d, town: towns[r.d] || r.d, holder: D ? FACTIONS[D.ctrl] : undefined, tension: D ? Math.round(D.tension) : undefined, clears: r.a.clear || 0, gateways: r.a.gateway || 0, kills: r.a.kill || 0, hacks: r.a.hack || 0, talks: (r.a.speech_ok || 0) }); }
   for (const [d, D] of Object.entries(state.dist || {})) if (D.tension >= 75 && !rows.slice(0, 5).some(r => r.d === d)) add({ type: 'hot', d, town: towns[d] || d, holder: FACTIONS[D.ctrl], tension: Math.round(D.tension) });
-  const ps = Object.values(wk.players || {}).filter(p => p && p.name && (p.clears + p.gateways) > 0).sort((a, b) => (b.clears + 3 * b.gateways) - (a.clears + 3 * a.gateways)).slice(0, 3);
-  for (const p of ps) add({ type: 'player', name: p.name, clears: p.clears, gateways: p.gateways }); // only opted-in players are ever stored with a name
+  const ps = Object.values(wk.players || {}).filter(p => p && p.name && (p.clears + p.gateways + (p.nems || 0)) > 0).sort((a, b) => (b.clears + 3 * b.gateways + 5 * (b.nems || 0)) - (a.clears + 3 * a.gateways + 5 * (a.nems || 0))).slice(0, 3);
+  for (const p of ps) add({ type: 'player', name: p.name, clears: p.clears, gateways: p.gateways, ...(p.nems ? { nemeses: p.nems } : {}) }); // only opted-in players are ever stored with a name
   return { wk: wk.wk, facts };
 }
 /** entities + numbers a line may mention */
@@ -41,6 +41,7 @@ export function cannedNews(F) {
     else if (f.type === 'district') { const bits = [f.clears ? `${f.clears} clears` : '', f.hacks ? `${f.hacks} hacks` : '', f.talks ? `${f.talks} deals talked down` : ''].filter(Boolean).join(', '); if (!bits) continue;
       out.push({ h: `Busy week in ${f.town}`, b: `Crews logged ${bits}.${f.holder ? ` ${sh(f.holder)} still holds it.` : ''}`, d: f.d, src: [f.id] }); chatter.push({ d: f.d, line: f.tension >= 55 ? `${f.town} is on edge. Tension at ${f.tension}.` : `Lot of crews through ${f.town} lately.` }); }
     else if (f.type === 'hot') { out.push({ h: `${f.town} on edge`, b: `Tension hit ${f.tension}. ${sh(f.holder)} is nervous.`, d: f.d, src: [f.id] }); chatter.push({ d: f.d, line: `Heard ${f.town} is about to blow.` }); }
+    else if (f.type === 'player' && f.nemeses) { out.push({ h: `${f.name} settles a score`, b: `${f.name} put down ${f.nemeses === 1 ? 'a nemesis' : f.nemeses + ' nemeses'} this week${f.clears ? ` and logged ${f.clears} clears` : ''}.`, src: [f.id] }); chatter.push({ line: `${f.name} hunts the ones that hunt them.` }); }
     else if (f.type === 'player') { out.push({ h: `${f.name} on a tear`, b: `${f.clears} clears${f.gateways ? ` and ${f.gateways} gateways` : ''} this week.`, src: [f.id] }); chatter.push({ line: `${f.name}? Saw that crew come back loaded.` }); }
   }
   if (!out.length) out.push({ h: 'Quiet week in the Basin', b: 'No turf changed hands. The fixers are bored.', src: [] });
